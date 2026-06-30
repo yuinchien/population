@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>World Bank Data Explorer</title>
+        <meta
+            name="description"
+            content="A native JavaScript data visualization app powered by the World Bank Open Data API."
+        />
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <main class="app-shell">
+            <section class="control-panel" aria-label="Visualization controls">
+                <div class="field">
+                    <label for="indicator">Indicator</label>
+                    <select id="indicator"></select>
+                </div>
+
+                <div class="field custom-indicator">
+                    <label for="customIndicator">Custom indicator code</label>
+                    <input
+                        id="customIndicator"
+                        type="text"
+                        placeholder="Example: NY.GDP.PCAP.CD"
+                    />
+                </div>
+
+                <div class="field">
+                    <label for="countries">Countries</label>
+                    <select id="countries" multiple size="8"></select>
+                </div>
+
+                <div class="years-row">
+                    <div class="field">
+                        <label for="startYear">Start</label>
+                        <input
+                            id="startYear"
+                            type="number"
+                            min="1960"
+                            max="2026"
+                            step="1"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="endYear">End</label>
+                        <input
+                            id="endYear"
+                            type="number"
+                            min="1960"
+                            max="2026"
+                            step="1"
+                        />
+                    </div>
+                </div>
+
+                <div class="mode-toggle" aria-label="Chart mode">
+                    <button id="lineMode" class="active" type="button">
+                        Trend
+                    </button>
+                    <button id="barMode" type="button">Latest</button>
+                </div>
+
+                <p id="status" class="status" role="status">
+                    Loading countries...
+                </p>
+            </section>
+
+            <section class="viz-panel" aria-label="World Bank visualization">
+                <div class="viz-heading">
+                    <div>
+                        <p id="indicatorLabel" class="eyebrow">Indicator</p>
+                        <h2 id="chartTitle">Select a view</h2>
+                    </div>
+                    <p id="meta" class="meta"></p>
+                </div>
+
+                <div class="chart-wrap">
+                    <svg
+                        id="chart"
+                        role="img"
+                        aria-labelledby="chartTitle"
+                    ></svg>
+                    <div id="chart3d" class="chart-3d" hidden></div>
+                    <div
+                        id="chartLegend"
+                        class="chart-legend"
+                        aria-label="Chart color legend"
+                        hidden
+                    ></div>
+                    <div id="tooltip" class="tooltip" hidden></div>
+                </div>
+            </section>
+        </main>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+                }
+            }
+        </script>
+        <script type="module" src="app.js?v=20260630-threejs"></script>
+    </body>
+</html>

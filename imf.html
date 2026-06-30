@@ -1,0 +1,1232 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>IMF Data Explorer</title>
+        <meta
+            name="description"
+            content="A native JavaScript data visualization page powered by the IMF DataMapper API."
+        />
+        <style>
+            :root {
+                color-scheme: light;
+                --bg: #f7f7f4;
+                --panel: #ffffff;
+                --panel-strong: #eef3f4;
+                --text: #18201d;
+                --muted: #66716d;
+                --line: #d9dfdc;
+                --accent: #0f766e;
+                --accent-strong: #0a514c;
+                --blue: #2563a8;
+                --gold: #b7791f;
+                --rose: #b33a3a;
+                --violet: #6d5bd0;
+                --shadow: 0 18px 45px rgba(24, 32, 29, 0.08);
+                font-family:
+                    Inter,
+                    ui-sans-serif,
+                    system-ui,
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    "Segoe UI",
+                    sans-serif;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                min-width: 320px;
+                margin: 0;
+                color: var(--text);
+                background: var(--bg);
+            }
+
+            button,
+            input,
+            select {
+                font: inherit;
+            }
+
+            .app-header,
+            .app-footer,
+            .app-shell {
+                width: min(1180px, calc(100% - 32px));
+                margin: 0 auto;
+            }
+
+            .app-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+                padding: 30px 0 18px;
+            }
+
+            h1 {
+                margin: 0;
+                font-size: clamp(2rem, 5vw, 4.4rem);
+                line-height: 0.95;
+                letter-spacing: 0;
+            }
+
+            .eyebrow {
+                margin: 0 0 8px;
+                color: var(--accent-strong);
+                font-size: 0.78rem;
+                font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+
+            .header-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                justify-content: flex-end;
+            }
+
+            a,
+            button {
+                display: inline-flex;
+                min-height: 42px;
+                align-items: center;
+                justify-content: center;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                color: var(--text);
+                background: var(--panel);
+                text-decoration: none;
+                cursor: pointer;
+            }
+
+            .header-actions a,
+            button {
+                padding: 0 14px;
+            }
+
+            .app-shell {
+                display: grid;
+                grid-template-columns: 300px minmax(0, 1fr);
+                gap: 18px;
+                align-items: start;
+            }
+
+            .control-panel,
+            .viz-panel {
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                background: var(--panel);
+                box-shadow: var(--shadow);
+            }
+
+            .control-panel {
+                position: sticky;
+                top: 16px;
+                display: grid;
+                gap: 16px;
+                padding: 18px;
+            }
+
+            .field {
+                display: grid;
+                gap: 7px;
+            }
+
+            label {
+                color: var(--muted);
+                font-size: 0.82rem;
+                font-weight: 750;
+            }
+
+            select,
+            input {
+                width: 100%;
+                min-width: 0;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                color: var(--text);
+                background: #fbfcfa;
+            }
+
+            select {
+                padding: 10px;
+            }
+
+            input {
+                min-height: 42px;
+                padding: 0 11px;
+            }
+
+            select[multiple] {
+                height: 220px;
+                min-height: 0;
+                overflow-x: hidden;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                scrollbar-gutter: stable;
+            }
+
+            .years-row,
+            .action-row,
+            .mode-toggle {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .mode-toggle {
+                padding: 4px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                background: var(--panel-strong);
+            }
+
+            .mode-toggle button {
+                min-height: 36px;
+                border: 0;
+                background: transparent;
+            }
+
+            .mode-toggle button.active,
+            .primary-button {
+                color: #fff;
+                background: var(--accent);
+            }
+
+            .primary-button {
+                border-color: var(--accent);
+            }
+
+            .status,
+            .meta,
+            .app-footer {
+                color: var(--muted);
+                font-size: 0.88rem;
+            }
+
+            .status {
+                min-height: 42px;
+                margin: 0;
+                padding: 10px;
+                border-radius: 8px;
+                background: var(--panel-strong);
+            }
+
+            .viz-panel {
+                min-width: 0;
+                padding: 20px;
+            }
+
+            .viz-heading {
+                display: flex;
+                align-items: start;
+                justify-content: space-between;
+                gap: 18px;
+                margin-bottom: 14px;
+            }
+
+            h2 {
+                margin: 0;
+                font-size: clamp(1.35rem, 3vw, 2.25rem);
+                line-height: 1.05;
+                letter-spacing: 0;
+            }
+
+            .meta {
+                max-width: 300px;
+                margin: 3px 0 0;
+                text-align: right;
+            }
+
+            .chart-wrap {
+                position: relative;
+                min-height: 520px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                overflow: hidden;
+                background: linear-gradient(180deg, #ffffff 0%, #f9faf8 100%);
+            }
+
+            #chart {
+                display: block;
+                width: 100%;
+                height: 520px;
+            }
+
+            .axis,
+            .grid-line {
+                stroke: #dfe5df;
+                stroke-width: 1;
+            }
+
+            .axis-label {
+                fill: var(--muted);
+                font-size: 12px;
+            }
+
+            .series-line {
+                fill: none;
+                stroke-width: 3;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .data-dot {
+                stroke: #fff;
+                stroke-width: 2;
+                cursor: pointer;
+            }
+
+            .bar {
+                cursor: pointer;
+            }
+
+            .bar-label,
+            .legend {
+                fill: var(--text);
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .tooltip {
+                position: absolute;
+                z-index: 2;
+                max-width: 240px;
+                padding: 10px 12px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                color: var(--text);
+                background: #fff;
+                box-shadow: var(--shadow);
+                font-size: 0.86rem;
+                pointer-events: none;
+            }
+
+            .summary-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 12px;
+                margin-top: 14px;
+            }
+
+            .summary-grid article {
+                min-width: 0;
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                background: var(--panel-strong);
+            }
+
+            .summary-label {
+                display: block;
+                margin-bottom: 7px;
+                color: var(--muted);
+                font-size: 0.78rem;
+                font-weight: 750;
+            }
+
+            .summary-grid strong {
+                display: block;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .app-footer {
+                padding: 18px 0 28px;
+            }
+
+            @media (max-width: 860px) {
+                .app-header {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+                .header-actions {
+                    justify-content: flex-start;
+                }
+
+                .app-shell {
+                    grid-template-columns: 1fr;
+                }
+
+                .control-panel {
+                    position: static;
+                }
+
+                .viz-heading {
+                    display: grid;
+                }
+
+                .meta {
+                    max-width: none;
+                    text-align: left;
+                }
+
+                .chart-wrap {
+                    min-height: 430px;
+                }
+
+                #chart {
+                    height: 430px;
+                }
+            }
+
+            @media (max-width: 620px) {
+                .summary-grid,
+                .years-row,
+                .action-row {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main class="app-shell">
+            <section class="control-panel" aria-label="Visualization controls">
+                <div class="field">
+                    <label for="indicator">Indicator</label>
+                    <select id="indicator"></select>
+                </div>
+
+                <div class="field">
+                    <label for="countries">Countries</label>
+                    <select id="countries" multiple size="8"></select>
+                </div>
+
+                <div class="years-row">
+                    <div class="field">
+                        <label for="startYear">Start</label>
+                        <input
+                            id="startYear"
+                            type="number"
+                            min="1980"
+                            max="2030"
+                            step="1"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="endYear">End</label>
+                        <input
+                            id="endYear"
+                            type="number"
+                            min="1980"
+                            max="2030"
+                            step="1"
+                        />
+                    </div>
+                </div>
+
+                <div class="mode-toggle" aria-label="Chart mode">
+                    <button id="lineMode" class="active" type="button">
+                        Trend
+                    </button>
+                    <button id="barMode" type="button">Latest</button>
+                </div>
+
+                <p id="status" class="status" role="status">Ready.</p>
+            </section>
+
+            <section class="viz-panel" aria-label="IMF visualization">
+                <div class="viz-heading">
+                    <div>
+                        <p id="indicatorLabel" class="eyebrow">Indicator</p>
+                        <h2 id="chartTitle">Select a view</h2>
+                    </div>
+                    <p id="meta" class="meta"></p>
+                </div>
+
+                <div class="chart-wrap">
+                    <svg
+                        id="chart"
+                        role="img"
+                        aria-labelledby="chartTitle"
+                    ></svg>
+                    <div id="tooltip" class="tooltip" hidden></div>
+                </div>
+
+                <div class="summary-grid">
+                    <article>
+                        <span class="summary-label">Highest latest value</span>
+                        <strong id="highestValue">-</strong>
+                    </article>
+                    <article>
+                        <span class="summary-label">Most recent year</span>
+                        <strong id="latestYear">-</strong>
+                    </article>
+                    <article>
+                        <span class="summary-label">Series points</span>
+                        <strong id="pointCount">-</strong>
+                    </article>
+                </div>
+            </section>
+        </main>
+
+        <footer class="app-footer">
+            <span
+                >Static app. Native JavaScript and SVG. Data from IMF DataMapper
+                API.</span
+            >
+        </footer>
+
+        <script>
+            const API_BASE = "https://www.imf.org/external/datamapper/api/v1";
+            const CACHE_BASE = "imf-cache";
+
+            const indicators = [
+                {
+                    code: "NGDP_RPCH",
+                    name: "Real GDP growth",
+                    unit: "%",
+                    description: "Annual percent change",
+                },
+                {
+                    code: "PCPIPCH",
+                    name: "Inflation",
+                    unit: "%",
+                    description:
+                        "Average consumer prices, annual percent change",
+                },
+                {
+                    code: "LUR",
+                    name: "Unemployment rate",
+                    unit: "%",
+                    description: "Percent of total labor force",
+                },
+                {
+                    code: "GGXWDG_NGDP",
+                    name: "Government gross debt",
+                    unit: "% of GDP",
+                    description: "General government gross debt",
+                },
+                {
+                    code: "BCA_NGDPD",
+                    name: "Current account balance",
+                    unit: "% of GDP",
+                    description: "Current account balance",
+                },
+                {
+                    code: "NGDPDPC",
+                    name: "GDP per capita",
+                    unit: "current US$",
+                    description: "Gross domestic product per person",
+                },
+            ];
+
+            const countries = [
+                ["ARG", "Argentina"],
+                ["AUS", "Australia"],
+                ["BRA", "Brazil"],
+                ["CAN", "Canada"],
+                ["CHN", "China"],
+                ["FRA", "France"],
+                ["DEU", "Germany"],
+                ["IND", "India"],
+                ["IDN", "Indonesia"],
+                ["ITA", "Italy"],
+                ["JPN", "Japan"],
+                ["KOR", "Korea"],
+                ["MEX", "Mexico"],
+                ["NGA", "Nigeria"],
+                ["SAU", "Saudi Arabia"],
+                ["ZAF", "South Africa"],
+                ["TWN", "Taiwan"],
+                ["TUR", "Turkiye"],
+                ["GBR", "United Kingdom"],
+                ["USA", "United States"],
+            ];
+
+            const palette = [
+                "#0f766e",
+                "#b7791f",
+                "#2563a8",
+                "#b33a3a",
+                "#6d5bd0",
+                "#2f855a",
+            ];
+            const defaultCountries = ["USA", "CHN", "DEU", "JPN"];
+
+            const elements = {
+                indicator: document.querySelector("#indicator"),
+                countries: document.querySelector("#countries"),
+                startYear: document.querySelector("#startYear"),
+                endYear: document.querySelector("#endYear"),
+                lineMode: document.querySelector("#lineMode"),
+                barMode: document.querySelector("#barMode"),
+                status: document.querySelector("#status"),
+                indicatorLabel: document.querySelector("#indicatorLabel"),
+                chartTitle: document.querySelector("#chartTitle"),
+                meta: document.querySelector("#meta"),
+                chart: document.querySelector("#chart"),
+                tooltip: document.querySelector("#tooltip"),
+                highestValue: document.querySelector("#highestValue"),
+                latestYear: document.querySelector("#latestYear"),
+                pointCount: document.querySelector("#pointCount"),
+            };
+
+            const state = {
+                data: [],
+                mode: "line",
+            };
+
+            function init() {
+                const currentYear = new Date().getFullYear();
+                elements.startYear.value = currentYear - 10;
+                elements.endYear.value = currentYear + 1;
+
+                indicators.forEach((indicator) => {
+                    const option = document.createElement("option");
+                    option.value = indicator.code;
+                    option.textContent = `${indicator.name} (${indicator.code})`;
+                    elements.indicator.append(option);
+                });
+
+                countries.forEach(([code, name]) => {
+                    const option = document.createElement("option");
+                    option.value = code;
+                    option.textContent = name;
+                    option.selected = defaultCountries.includes(code);
+                    elements.countries.append(option);
+                });
+
+                restoreFromUrl();
+                bindEvents();
+                updateUrl();
+                fetchAndRender();
+            }
+
+            function bindEvents() {
+                elements.indicator.addEventListener("change", () => {
+                    updateUrl();
+                    fetchAndRender();
+                });
+                elements.countries.addEventListener("change", () => {
+                    updateUrl();
+                    fetchAndRender();
+                });
+                elements.startYear.addEventListener("change", handleYearChange);
+                elements.endYear.addEventListener("change", handleYearChange);
+                elements.lineMode.addEventListener("click", () =>
+                    setMode("line"),
+                );
+                elements.barMode.addEventListener("click", () =>
+                    setMode("bar"),
+                );
+                window.addEventListener("resize", render);
+            }
+
+            function restoreFromUrl() {
+                const params = new URLSearchParams(window.location.search);
+                const indicator = params.get("indicator");
+                const selectedCountries = params.get("countries");
+                const start = params.get("start");
+                const end = params.get("end");
+                const mode = params.get("mode");
+
+                if (
+                    indicator &&
+                    indicators.some((item) => item.code === indicator)
+                ) {
+                    elements.indicator.value = indicator;
+                }
+                if (selectedCountries) {
+                    const selected = selectedCountries
+                        .split(",")
+                        .map((code) => code.toUpperCase());
+                    Array.from(elements.countries.options).forEach((option) => {
+                        option.selected = selected.includes(option.value);
+                    });
+                }
+                if (start) elements.startYear.value = start;
+                if (end) elements.endYear.value = end;
+                if (mode === "bar") setMode("bar", false);
+            }
+
+            function handleYearChange() {
+                const start = Number(elements.startYear.value);
+                const end = Number(elements.endYear.value);
+                if (start > end) elements.endYear.value = start;
+                updateUrl();
+                fetchAndRender();
+            }
+
+            function updateUrl() {
+                const params = new URLSearchParams();
+                params.set("indicator", getIndicator().code);
+                params.set("countries", getSelectedCountryCodes().join(","));
+                params.set("start", elements.startYear.value);
+                params.set("end", elements.endYear.value);
+                params.set("mode", state.mode);
+                history.replaceState(
+                    null,
+                    "",
+                    `${window.location.pathname}?${params}`,
+                );
+            }
+
+            async function fetchAndRender() {
+                const indicator = getIndicator();
+                const selected = getSelectedCountryCodes();
+                const start = Number(elements.startYear.value);
+                const end = Number(elements.endYear.value);
+
+                if (!selected.length) {
+                    setStatus("Choose at least one country.");
+                    return;
+                }
+
+                try {
+                    const rows = [];
+                    const periods = makePeriods(start, end).join(",");
+
+                    const url = `${API_BASE}/${indicator.code}?periods=${periods}`;
+                    const payload = await fetchJson(url, indicator.code);
+
+                    selected.forEach((countryCode) => {
+                        rows.push(
+                            ...normalizeImfRows(
+                                payload,
+                                indicator.code,
+                                countryCode,
+                            ),
+                        );
+                    });
+
+                    state.data = rows
+                        .filter(
+                            (row) =>
+                                row.year >= start &&
+                                row.year <= end &&
+                                Number.isFinite(row.value),
+                        )
+                        .sort(
+                            (a, b) =>
+                                a.countryName.localeCompare(b.countryName) ||
+                                a.year - b.year,
+                        );
+
+                    setStatus(
+                        state.data.length
+                            ? `Loaded ${state.data.length} data points.`
+                            : "No data returned for this selection.",
+                    );
+                    updateSummary();
+                    render();
+                } catch (error) {
+                    state.data = [];
+                    render();
+                    setStatus(`Could not fetch data: ${error.message}`);
+                } finally {
+                }
+            }
+
+            async function fetchJson(url, indicatorCode) {
+                try {
+                    return await requestJson(url);
+                } catch (directError) {
+                    try {
+                        return await requestJson(
+                            `${CACHE_BASE}/${indicatorCode}.json`,
+                        );
+                    } catch (cacheError) {
+                        throw new Error(
+                            `IMF request failed: ${directError.message}`,
+                        );
+                    }
+                }
+            }
+
+            async function requestJson(url) {
+                const response = await fetch(url, { cache: "no-store" });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const text = await response.text();
+                const payload = JSON.parse(text);
+                if (payload?.values) return payload;
+                throw new Error("Unexpected IMF response");
+            }
+
+            function normalizeImfRows(payload, indicatorCode, countryCode) {
+                const countryName = countryNameFor(countryCode);
+                const values =
+                    payload?.values?.[indicatorCode]?.[countryCode] || {};
+
+                return Object.entries(values).map(([year, value]) => ({
+                    countryCode,
+                    countryName,
+                    year: Number(year),
+                    value: Number(value),
+                }));
+            }
+
+            function makePeriods(start, end) {
+                const periods = [];
+                for (let year = start; year <= end; year += 1)
+                    periods.push(year);
+                return periods;
+            }
+
+            function setMode(mode, shouldRender = true) {
+                state.mode = mode;
+                elements.lineMode.classList.toggle("active", mode === "line");
+                elements.barMode.classList.toggle("active", mode === "bar");
+                if (shouldRender) {
+                    updateUrl();
+                    render();
+                }
+            }
+
+            function getIndicator() {
+                return (
+                    indicators.find(
+                        (item) => item.code === elements.indicator.value,
+                    ) || indicators[0]
+                );
+            }
+
+            function getSelectedCountryCodes() {
+                return Array.from(elements.countries.selectedOptions).map(
+                    (option) => option.value,
+                );
+            }
+
+            function countryNameFor(code) {
+                return (
+                    countries.find((country) => country[0] === code)?.[1] ||
+                    code
+                );
+            }
+
+            function setStatus(message) {
+                elements.status.textContent = message;
+            }
+
+            function render() {
+                const indicator = getIndicator();
+                elements.indicatorLabel.textContent = indicator.code;
+                elements.chartTitle.textContent = indicator.name;
+                elements.meta.textContent = `${elements.startYear.value}-${elements.endYear.value} | ${state.mode === "line" ? "trend view" : "latest value view"}`;
+
+                clearTooltip();
+                clearSvg();
+
+                if (!state.data.length) {
+                    renderEmptyState("No data to display");
+                    return;
+                }
+
+                if (state.mode === "bar") {
+                    renderBarChart();
+                } else {
+                    renderLineChart();
+                }
+            }
+
+            function clearSvg() {
+                elements.chart.replaceChildren();
+            }
+
+            function getChartSize() {
+                const rect = elements.chart.getBoundingClientRect();
+                const width = Math.max(320, Math.floor(rect.width));
+                const height = Math.max(360, Math.floor(rect.height));
+                elements.chart.setAttribute(
+                    "viewBox",
+                    `0 0 ${width} ${height}`,
+                );
+                return { width, height };
+            }
+
+            function renderEmptyState(message) {
+                const { width, height } = getChartSize();
+                const text = svgNode("text", {
+                    x: width / 2,
+                    y: height / 2,
+                    "text-anchor": "middle",
+                    class: "axis-label",
+                });
+                text.textContent = message;
+                elements.chart.append(text);
+            }
+
+            function renderLineChart() {
+                const { width, height } = getChartSize();
+                const margin = { top: 28, right: 34, bottom: 54, left: 74 };
+                const innerWidth = width - margin.left - margin.right;
+                const innerHeight = height - margin.top - margin.bottom;
+                const years = unique(state.data.map((item) => item.year)).sort(
+                    (a, b) => a - b,
+                );
+                const values = state.data.map((item) => item.value);
+                const xDomain = [Math.min(...years), Math.max(...years)];
+                const yDomain = paddedDomain(values);
+                const grouped = groupByCountry(state.data);
+
+                drawAxes({
+                    width,
+                    height,
+                    margin,
+                    innerWidth,
+                    innerHeight,
+                    xDomain,
+                    yDomain,
+                });
+
+                grouped.forEach((series, index) => {
+                    const color = palette[index % palette.length];
+                    const pathData = series
+                        .sort((a, b) => a.year - b.year)
+                        .map((point, pointIndex) => {
+                            const x = scale(point.year, xDomain, [
+                                margin.left,
+                                margin.left + innerWidth,
+                            ]);
+                            const y = scale(point.value, yDomain, [
+                                margin.top + innerHeight,
+                                margin.top,
+                            ]);
+                            return `${pointIndex === 0 ? "M" : "L"} ${x} ${y}`;
+                        })
+                        .join(" ");
+
+                    elements.chart.append(
+                        svgNode("path", {
+                            d: pathData,
+                            class: "series-line",
+                            stroke: color,
+                        }),
+                    );
+
+                    series.forEach((point) => {
+                        const cx = scale(point.year, xDomain, [
+                            margin.left,
+                            margin.left + innerWidth,
+                        ]);
+                        const cy = scale(point.value, yDomain, [
+                            margin.top + innerHeight,
+                            margin.top,
+                        ]);
+                        const dot = svgNode("circle", {
+                            cx,
+                            cy,
+                            r: 4,
+                            fill: color,
+                            class: "data-dot",
+                            tabindex: 0,
+                        });
+                        attachTooltip(dot, point);
+                        elements.chart.append(dot);
+                    });
+
+                    const legend = svgNode("text", {
+                        x: margin.left + 12,
+                        y: margin.top + 18 + index * 22,
+                        fill: color,
+                        class: "legend",
+                    });
+                    legend.textContent = series[0].countryName;
+                    elements.chart.append(legend);
+                });
+            }
+
+            function renderBarChart() {
+                const { width, height } = getChartSize();
+                const margin = { top: 30, right: 42, bottom: 48, left: 150 };
+                const innerWidth = width - margin.left - margin.right;
+                const latest = latestRowsByCountry(state.data).sort(
+                    (a, b) => b.value - a.value,
+                );
+                const values = latest.map((item) => item.value);
+                const max = Math.max(...values, 0);
+                const rowHeight = Math.min(
+                    58,
+                    (height - margin.top - margin.bottom) /
+                        Math.max(latest.length, 1),
+                );
+
+                latest.forEach((point, index) => {
+                    const y = margin.top + index * rowHeight;
+                    const barWidth = max ? (point.value / max) * innerWidth : 0;
+                    const color = palette[index % palette.length];
+
+                    const label = svgNode("text", {
+                        x: margin.left - 12,
+                        y: y + rowHeight / 2 + 5,
+                        "text-anchor": "end",
+                        class: "bar-label",
+                    });
+                    label.textContent = point.countryName;
+                    elements.chart.append(label);
+
+                    const bar = svgNode("rect", {
+                        x: margin.left,
+                        y: y + 8,
+                        width: Math.max(2, Math.abs(barWidth)),
+                        height: Math.max(12, rowHeight - 16),
+                        rx: 4,
+                        fill: color,
+                        class: "bar",
+                        tabindex: 0,
+                    });
+                    attachTooltip(bar, point);
+                    elements.chart.append(bar);
+
+                    const value = svgNode("text", {
+                        x: Math.min(
+                            width - margin.right,
+                            margin.left + Math.abs(barWidth) + 8,
+                        ),
+                        y: y + rowHeight / 2 + 5,
+                        class: "axis-label",
+                    });
+                    value.textContent = formatValue(point.value);
+                    elements.chart.append(value);
+                });
+            }
+
+            function drawAxes({
+                width,
+                height,
+                margin,
+                innerWidth,
+                innerHeight,
+                xDomain,
+                yDomain,
+            }) {
+                const yTicks = makeTicks(yDomain[0], yDomain[1], 5);
+                yTicks.forEach((tick) => {
+                    const y = scale(tick, yDomain, [
+                        margin.top + innerHeight,
+                        margin.top,
+                    ]);
+                    elements.chart.append(
+                        svgNode("line", {
+                            x1: margin.left,
+                            y1: y,
+                            x2: width - margin.right,
+                            y2: y,
+                            class: "grid-line",
+                        }),
+                    );
+                    const label = svgNode("text", {
+                        x: margin.left - 10,
+                        y: y + 4,
+                        "text-anchor": "end",
+                        class: "axis-label",
+                    });
+                    label.textContent = formatValue(tick);
+                    elements.chart.append(label);
+                });
+
+                makeYearTicks(xDomain[0], xDomain[1]).forEach((tick) => {
+                    const x = scale(tick, xDomain, [
+                        margin.left,
+                        margin.left + innerWidth,
+                    ]);
+                    const label = svgNode("text", {
+                        x,
+                        y: height - 18,
+                        "text-anchor": "middle",
+                        class: "axis-label",
+                    });
+                    label.textContent = tick;
+                    elements.chart.append(label);
+                });
+
+                elements.chart.append(
+                    svgNode("line", {
+                        x1: margin.left,
+                        y1: margin.top,
+                        x2: margin.left,
+                        y2: margin.top + innerHeight,
+                        class: "axis",
+                    }),
+                );
+                elements.chart.append(
+                    svgNode("line", {
+                        x1: margin.left,
+                        y1: margin.top + innerHeight,
+                        x2: width - margin.right,
+                        y2: margin.top + innerHeight,
+                        class: "axis",
+                    }),
+                );
+            }
+
+            function updateSummary() {
+                const latest = latestRowsByCountry(state.data);
+                const highest = latest.reduce(
+                    (winner, row) =>
+                        !winner || row.value > winner.value ? row : winner,
+                    null,
+                );
+                const latestYear = state.data.reduce(
+                    (year, row) => Math.max(year, row.year),
+                    0,
+                );
+
+                elements.highestValue.textContent = highest
+                    ? `${highest.countryName}: ${formatValue(highest.value)}`
+                    : "-";
+                elements.latestYear.textContent = latestYear || "-";
+                elements.pointCount.textContent = state.data.length || "-";
+            }
+
+            function latestRowsByCountry(rows) {
+                const latest = new Map();
+                rows.forEach((row) => {
+                    const previous = latest.get(row.countryCode);
+                    if (!previous || row.year > previous.year)
+                        latest.set(row.countryCode, row);
+                });
+                return Array.from(latest.values());
+            }
+
+            function groupByCountry(rows) {
+                const groups = new Map();
+                rows.forEach((row) => {
+                    if (!groups.has(row.countryCode))
+                        groups.set(row.countryCode, []);
+                    groups.get(row.countryCode).push(row);
+                });
+                return Array.from(groups.values());
+            }
+
+            function attachTooltip(node, point) {
+                const show = (event) => {
+                    const rect = elements.chart.getBoundingClientRect();
+                    elements.tooltip.hidden = false;
+                    elements.tooltip.innerHTML = `
+            <strong>${point.countryName}</strong><br>
+            ${point.year}: ${formatValue(point.value)} ${getIndicator().unit}
+          `;
+                    elements.tooltip.style.left = `${Math.min(rect.width - 250, event.clientX - rect.left + 12)}px`;
+                    elements.tooltip.style.top = `${Math.max(8, event.clientY - rect.top - 46)}px`;
+                };
+
+                node.addEventListener("mousemove", show);
+                node.addEventListener("focus", (event) => {
+                    const rect = node.getBoundingClientRect();
+                    show({
+                        clientX: rect.left + rect.width / 2,
+                        clientY: rect.top,
+                    });
+                    event.preventDefault();
+                });
+                node.addEventListener("mouseleave", clearTooltip);
+                node.addEventListener("blur", clearTooltip);
+            }
+
+            function clearTooltip() {
+                elements.tooltip.hidden = true;
+            }
+
+            function downloadCsv() {
+                if (!state.data.length) return;
+                const indicator = getIndicator();
+                const header = [
+                    "country_code",
+                    "country",
+                    "year",
+                    "indicator_code",
+                    "indicator",
+                    "value",
+                ];
+                const rows = state.data.map((row) => [
+                    row.countryCode,
+                    row.countryName,
+                    row.year,
+                    indicator.code,
+                    indicator.name,
+                    row.value,
+                ]);
+                const csv = [header, ...rows]
+                    .map((row) => row.map(csvCell).join(","))
+                    .join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.href = url;
+                link.download = `imf-${indicator.code}.csv`;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function csvCell(value) {
+                return `"${String(value).replaceAll('"', '""')}"`;
+            }
+
+            function svgNode(name, attrs) {
+                const node = document.createElementNS(
+                    "http://www.w3.org/2000/svg",
+                    name,
+                );
+                Object.entries(attrs || {}).forEach(([key, value]) =>
+                    node.setAttribute(key, value),
+                );
+                return node;
+            }
+
+            function unique(values) {
+                return Array.from(new Set(values));
+            }
+
+            function scale(value, domain, range) {
+                if (domain[0] === domain[1]) return (range[0] + range[1]) / 2;
+                const percent = (value - domain[0]) / (domain[1] - domain[0]);
+                return range[0] + percent * (range[1] - range[0]);
+            }
+
+            function paddedDomain(values) {
+                const min = Math.min(...values);
+                const max = Math.max(...values);
+                if (min === max) {
+                    const pad = Math.abs(min || 1) * 0.1;
+                    return [min - pad, max + pad];
+                }
+                const pad = (max - min) * 0.12;
+                return [min - pad, max + pad];
+            }
+
+            function makeTicks(min, max, count) {
+                const step = (max - min) / Math.max(1, count - 1);
+                return Array.from(
+                    { length: count },
+                    (_, index) => min + step * index,
+                );
+            }
+
+            function makeYearTicks(start, end) {
+                const span = end - start;
+                const step = span > 35 ? 10 : span > 16 ? 5 : span > 8 ? 2 : 1;
+                const ticks = [];
+                for (let year = start; year <= end; year += step)
+                    ticks.push(year);
+                if (!ticks.includes(end)) ticks.push(end);
+                return ticks;
+            }
+
+            function formatValue(value) {
+                const absolute = Math.abs(value);
+                if (absolute >= 1_000_000_000)
+                    return `${(value / 1_000_000_000).toFixed(2)}B`;
+                if (absolute >= 1_000_000)
+                    return `${(value / 1_000_000).toFixed(2)}M`;
+                if (absolute >= 10_000)
+                    return Math.round(value).toLocaleString();
+                if (absolute >= 100)
+                    return value.toLocaleString(undefined, {
+                        maximumFractionDigits: 1,
+                    });
+                return value.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                });
+            }
+
+            init();
+        </script>
+    </body>
+</html>
