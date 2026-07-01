@@ -1,0 +1,28 @@
+{
+  "name": "economy",
+  "version": "1.0.0",
+  "description": "A static data visualization web app using native JavaScript, CSS, SVG, and the World Bank Open Data API.",
+  "main": "app.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuinchien/economy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/yuinchien/economy/issues"
+  },
+  "homepage": "https://github.com/yuinchien/economy#readme",
+  "dependencies": {
+    "three": "^0.185.0"
+  },
+  "devDependencies": {
+    "vite": "^8.1.2"
+  }
+}

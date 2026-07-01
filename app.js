@@ -9,40 +9,38 @@ const API_BASE = "https://api.worldbank.org/v2";
 
 const indicators = [
   {
-    code: "NY.GDP.PCAP.CD",
-    name: "GDP per capita",
-    unit: "current US$",
-    description: "GDP per person in current US dollars",
-  },
-  {
     code: "SP.POP.TOTL",
-    name: "Population",
+    name: "Population, total",
     unit: "people",
     description: "Total population",
+    clamp: (value) => Math.max(0, value),
+  },
+  {
+    code: "SP.POP.GROW",
+    name: "Population growth",
+    unit: "% annual",
+    description: "Annual population growth rate",
   },
   {
     code: "SP.DYN.LE00.IN",
     name: "Life expectancy",
     unit: "years",
-    description: "Life expectancy at birth",
+    description: "Life expectancy at birth, total",
+    clamp: (value) => Math.max(0, value),
   },
   {
-    code: "EN.ATM.CO2E.PC",
-    name: "CO2 emissions per capita",
-    unit: "metric tons",
-    description: "Carbon dioxide emissions per person",
+    code: "SP.DYN.TFRT.IN",
+    name: "Fertility rate",
+    unit: "births per woman",
+    description: "Total fertility rate",
+    clamp: (value) => Math.max(0, value),
   },
   {
-    code: "SE.XPD.TOTL.GD.ZS",
-    name: "Education spending",
-    unit: "% of GDP",
-    description: "Government expenditure on education",
-  },
-  {
-    code: "SL.UEM.TOTL.ZS",
-    name: "Unemployment",
-    unit: "% of labor force",
-    description: "Modeled ILO estimate",
+    code: "SP.URB.TOTL.IN.ZS",
+    name: "Urban population",
+    unit: "% of total",
+    description: "Share of population living in urban areas",
+    clamp: (value) => Math.min(100, Math.max(0, value)),
   },
 ];
 
@@ -54,28 +52,32 @@ const palette = [
   "#6d5bd0",
   "#2f855a",
 ];
-const defaultCountries = ["USA", "JPN", "DEU", "BRA"];
-const manualCountries = [
-  {
-    id: "TWN",
-    name: "Taiwan",
-    region: { id: "EAS" },
-  },
-];
+const TOP_N = 20;
+const CURRENT_YEAR = new Date().getFullYear();
+const FORECAST_HORIZON_YEARS = 25;
+const FORECAST_LOOKBACK_YEARS = 20;
+const MIN_FORECAST_HISTORY = 3;
+const FORECAST_FIT_WINDOW = 15;
+const PROJECTED_BAR_COLOR = 0x8aa6ff;
+
+function seriesColor(index) {
+  if (index < palette.length) return palette[index];
+  const hue = (index * 137.508) % 360;
+  return `hsl(${hue.toFixed(0)}, 55%, 45%)`;
+}
 
 const elements = {
   indicator: document.querySelector("#indicator"),
-  customIndicator: document.querySelector("#customIndicator"),
-  countries: document.querySelector("#countries"),
   startYear: document.querySelector("#startYear"),
   endYear: document.querySelector("#endYear"),
+  startYearLabel: document.querySelector("#startYearLabel"),
+  endYearLabel: document.querySelector("#endYearLabel"),
+  yearRangeFill: document.querySelector("#yearRangeFill"),
+  forecastHint: document.querySelector("#forecastHint"),
   lineMode: document.querySelector("#lineMode"),
   barMode: document.querySelector("#barMode"),
   status: document.querySelector("#status"),
-  indicatorLabel: document.querySelector("#indicatorLabel"),
   chartTitle: document.querySelector("#chartTitle"),
-  meta: document.querySelector("#meta"),
-  chart: document.querySelector("#chart"),
   chart3d: document.querySelector("#chart3d"),
   chartWrap: document.querySelector(".chart-wrap"),
   chartLegend: document.querySelector("#chartLegend"),
@@ -83,9 +85,9 @@ const elements = {
 };
 
 const state = {
-  countries: [],
+  validCountryIds: new Set(),
   data: [],
-  mode: "line",
+  mode: "bar",
   activeIndicator: indicators[0],
   loading: false,
 };
@@ -105,22 +107,31 @@ const scene3d = {
   pointer: null,
   ground: null,
   grid: null,
+  currentMode: null,
 };
 
 function init() {
-  const currentYear = new Date().getFullYear();
-  elements.startYear.value = currentYear - 20;
-  elements.endYear.value = currentYear - 1;
+  const minYear = 1960;
+  const maxYear = CURRENT_YEAR + FORECAST_HORIZON_YEARS;
+  [elements.startYear, elements.endYear].forEach((input) => {
+    input.min = minYear;
+    input.max = maxYear;
+    input.step = 1;
+  });
+  elements.startYear.value = CURRENT_YEAR - 15;
+  elements.endYear.value = CURRENT_YEAR + 10;
+  elements.forecastHint.textContent = `Years after ${CURRENT_YEAR} are estimated with a linear trend.`;
 
   indicators.forEach((indicator) => {
     const option = document.createElement("option");
     option.value = indicator.code;
-    option.textContent = `${indicator.name} (${indicator.code})`;
+    option.textContent = indicator.name;
     elements.indicator.append(option);
   });
 
   restoreFromUrl();
   bindEvents();
+  syncYearLabels();
   loadCountries();
 }
 
@@ -129,24 +140,23 @@ function bindEvents() {
     const selected = indicators.find(
       (item) => item.code === elements.indicator.value,
     );
-    state.activeIndicator = selected || indicatorFromCustom();
-    elements.customIndicator.value = "";
+    if (selected) state.activeIndicator = selected;
     updateUrl();
     fetchAndRender();
   });
 
-  elements.customIndicator.addEventListener("change", () => {
-    if (!elements.customIndicator.value.trim()) return;
-    state.activeIndicator = indicatorFromCustom();
-    updateUrl();
-    fetchAndRender();
+  elements.startYear.addEventListener("input", () => {
+    if (Number(elements.startYear.value) > Number(elements.endYear.value)) {
+      elements.endYear.value = elements.startYear.value;
+    }
+    syncYearLabels();
   });
-
-  elements.countries.addEventListener("change", () => {
-    updateUrl();
-    fetchAndRender();
+  elements.endYear.addEventListener("input", () => {
+    if (Number(elements.endYear.value) < Number(elements.startYear.value)) {
+      elements.startYear.value = elements.endYear.value;
+    }
+    syncYearLabels();
   });
-
   elements.startYear.addEventListener("change", handleYearChange);
   elements.endYear.addEventListener("change", handleYearChange);
   elements.lineMode.addEventListener("click", () => setMode("line"));
@@ -157,12 +167,21 @@ function bindEvents() {
   });
 }
 
+function syncYearLabels() {
+  elements.startYearLabel.textContent = elements.startYear.value;
+  elements.endYearLabel.textContent = elements.endYear.value;
+
+  const min = Number(elements.startYear.min);
+  const max = Number(elements.startYear.max);
+  const span = max - min || 1;
+  const startPct = ((Number(elements.startYear.value) - min) / span) * 100;
+  const endPct = ((Number(elements.endYear.value) - min) / span) * 100;
+  elements.yearRangeFill.style.left = `${startPct}%`;
+  elements.yearRangeFill.style.width = `${Math.max(0, endPct - startPct)}%`;
+}
+
 function handleYearChange() {
-  const start = Number(elements.startYear.value);
-  const end = Number(elements.endYear.value);
-  if (start > end) {
-    elements.endYear.value = start;
-  }
+  syncYearLabels();
   updateUrl();
   fetchAndRender();
 }
@@ -170,7 +189,6 @@ function handleYearChange() {
 function restoreFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const indicator = params.get("indicator");
-  const countries = params.get("countries");
   const start = params.get("start");
   const end = params.get("end");
   const mode = params.get("mode");
@@ -180,25 +198,16 @@ function restoreFromUrl() {
     if (known) {
       elements.indicator.value = known.code;
       state.activeIndicator = known;
-    } else {
-      elements.customIndicator.value = indicator;
-      state.activeIndicator = indicatorFromCustom();
     }
   }
   if (start) elements.startYear.value = start;
   if (end) elements.endYear.value = end;
   if (mode === "bar") setMode("bar", false);
-  if (countries) {
-    state.pendingCountrySelection = countries
-      .split(",")
-      .map((code) => code.toUpperCase());
-  }
 }
 
 function updateUrl() {
   const params = new URLSearchParams();
   params.set("indicator", getIndicator().code);
-  params.set("countries", getSelectedCountryCodes().join(","));
   params.set("start", elements.startYear.value);
   params.set("end", elements.endYear.value);
   params.set("mode", state.mode);
@@ -211,20 +220,11 @@ async function loadCountries() {
     const payload = await fetchJson(
       `${API_BASE}/country?format=json&per_page=400`,
     );
-    state.countries = payload[1]
-      .filter((country) => country.region && country.region.id !== "NA")
-      .concat(manualCountries)
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    const selected = state.pendingCountrySelection || defaultCountries;
-    elements.countries.innerHTML = "";
-    state.countries.forEach((country) => {
-      const option = document.createElement("option");
-      option.value = country.id;
-      option.textContent = country.name;
-      option.selected = selected.includes(country.id);
-      elements.countries.append(option);
-    });
+    state.validCountryIds = new Set(
+      payload[1]
+        .filter((country) => country.region && country.region.id !== "NA")
+        .map((country) => country.id),
+    );
 
     setStatus("Ready.");
     updateUrl();
@@ -235,27 +235,29 @@ async function loadCountries() {
 }
 
 async function fetchAndRender() {
-  const countryCodes = getSelectedCountryCodes();
   const indicator = getIndicator();
   const start = Number(elements.startYear.value);
   const end = Number(elements.endYear.value);
 
-  if (!countryCodes.length) {
-    setStatus("Choose at least one country.");
-    return;
-  }
   if (!indicator.code) {
     setStatus("Choose an indicator or enter a custom code.");
     return;
   }
 
+  const fetchStart = Math.max(
+    1960,
+    Math.min(start, CURRENT_YEAR - FORECAST_LOOKBACK_YEARS),
+  );
+  const fetchEnd = Math.min(end, CURRENT_YEAR);
+
   state.loading = true;
+  setStatus(`Loading top ${TOP_N} countries...`);
 
   try {
-    const url = `${API_BASE}/country/${countryCodes.join(";")}/indicator/${indicator.code}?format=json&date=${start}:${end}&per_page=20000`;
+    const url = `${API_BASE}/country/all/indicator/${indicator.code}?format=json&date=${fetchStart}:${fetchEnd}&per_page=20000`;
     const payload = await fetchJson(url);
     const rows = Array.isArray(payload[1]) ? payload[1] : [];
-    state.data = rows
+    const allData = rows
       .filter((row) => row.value !== null)
       .map((row) => ({
         countryCode: row.countryiso3code || row.country.id,
@@ -263,7 +265,27 @@ async function fetchAndRender() {
         year: Number(row.date),
         value: Number(row.value),
         indicatorName: row.indicator.value,
+        projected: false,
       }))
+      .filter((row) => state.validCountryIds.has(row.countryCode));
+
+    const extended = groupByCountry(allData).flatMap((countryRows) =>
+      withForecast(countryRows, indicator, end),
+    );
+
+    const visibleData = extended.filter(
+      (row) => row.year >= start && row.year <= end,
+    );
+
+    const topCodes = new Set(
+      latestRowsByCountry(visibleData)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, TOP_N)
+        .map((row) => row.countryCode),
+    );
+
+    state.data = visibleData
+      .filter((row) => topCodes.has(row.countryCode))
       .sort(
         (a, b) => a.countryName.localeCompare(b.countryName) || a.year - b.year,
       );
@@ -275,9 +297,10 @@ async function fetchAndRender() {
       };
     }
 
+    const projectedCount = state.data.filter((row) => row.projected).length;
     setStatus(
       state.data.length
-        ? `Loaded ${state.data.length} data points.`
+        ? `Loaded top ${topCodes.size} countries (${state.data.length} data points${projectedCount ? `, ${projectedCount} projected` : ""}).`
         : "No data returned for this selection.",
     );
     render();
@@ -288,6 +311,57 @@ async function fetchAndRender() {
   } finally {
     state.loading = false;
   }
+}
+
+function linearRegression(points) {
+  const n = points.length;
+  const sumX = points.reduce((sum, point) => sum + point.year, 0);
+  const sumY = points.reduce((sum, point) => sum + point.value, 0);
+  const sumXY = points.reduce(
+    (sum, point) => sum + point.year * point.value,
+    0,
+  );
+  const sumXX = points.reduce(
+    (sum, point) => sum + point.year * point.year,
+    0,
+  );
+  const denom = n * sumXX - sumX * sumX;
+  if (denom === 0) return { slope: 0, intercept: sumY / n };
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function withForecast(rows, indicator, endYear) {
+  const actual = rows
+    .slice()
+    .sort((a, b) => a.year - b.year)
+    .map((row) => ({ ...row, projected: false }));
+  const lastActual = actual[actual.length - 1];
+
+  if (
+    !lastActual ||
+    endYear <= lastActual.year ||
+    actual.length < MIN_FORECAST_HISTORY
+  ) {
+    return actual;
+  }
+
+  const fitPoints = actual.slice(-FORECAST_FIT_WINDOW);
+  const { slope, intercept } = linearRegression(fitPoints);
+  const forecast = [];
+  for (let year = lastActual.year + 1; year <= endYear; year++) {
+    const raw = slope * year + intercept;
+    forecast.push({
+      countryCode: lastActual.countryCode,
+      countryName: lastActual.countryName,
+      indicatorName: lastActual.indicatorName,
+      year,
+      value: indicator.clamp ? indicator.clamp(raw) : raw,
+      projected: true,
+    });
+  }
+  return [...actual, ...forecast];
 }
 
 async function fetchJson(url) {
@@ -313,26 +387,9 @@ function setMode(mode, shouldRender = true) {
 }
 
 function getIndicator() {
-  const custom = elements.customIndicator.value.trim().toUpperCase();
-  if (custom) return indicatorFromCustom();
   return (
     indicators.find((item) => item.code === elements.indicator.value) ||
     state.activeIndicator
-  );
-}
-
-function indicatorFromCustom() {
-  return {
-    code: elements.customIndicator.value.trim().toUpperCase(),
-    name: elements.customIndicator.value.trim().toUpperCase(),
-    unit: "",
-    description: "Custom World Bank indicator",
-  };
-}
-
-function getSelectedCountryCodes() {
-  return Array.from(elements.countries.selectedOptions).map(
-    (option) => option.value,
   );
 }
 
@@ -342,138 +399,32 @@ function setStatus(message) {
 
 function render() {
   const indicator = getIndicator();
-  elements.indicatorLabel.textContent = indicator.code || "Indicator";
   elements.chartTitle.textContent = indicator.name || "World Bank data";
-  elements.meta.textContent = `${elements.startYear.value}-${elements.endYear.value} | ${state.mode === "line" ? "trend view" : "latest value view"}`;
 
   clearTooltip();
-  clearSvg();
   clearLegend();
-
-  const is3d = state.mode === "bar";
-  elements.chart.hidden = is3d;
-  elements.chart3d.hidden = !is3d;
-  elements.chartWrap.classList.toggle("is-3d", is3d);
+  elements.chartWrap.classList.add("is-3d");
+  elements.chart3d.hidden = false;
 
   if (!state.data.length) {
-    if (is3d) {
-      clearBars3D();
-      stopAnimation();
-    }
-    renderEmptyState("No data to display");
+    ensureThreeScene();
+    clearBars3D();
+    stopAnimation();
+    resizeThree();
     return;
   }
 
-  if (is3d) {
+  if (state.mode === "bar") {
     renderBarChart3D();
   } else {
-    stopAnimation();
-    renderLineChart();
+    renderLineChart3D();
   }
-}
-
-function clearSvg() {
-  elements.chart.replaceChildren();
 }
 
 function clearLegend() {
   elements.chartWrap.classList.remove("has-legend");
   elements.chartLegend.hidden = true;
   elements.chartLegend.replaceChildren();
-}
-
-function getChartSize() {
-  const rect = elements.chart.getBoundingClientRect();
-  const width = Math.max(320, Math.floor(rect.width));
-  const height = Math.max(360, Math.floor(rect.height));
-  elements.chart.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  return { width, height };
-}
-
-function renderEmptyState(message) {
-  const { width, height } = getChartSize();
-  const text = svgNode("text", {
-    x: width / 2,
-    y: height / 2,
-    "text-anchor": "middle",
-    class: "axis-label",
-  });
-  text.textContent = message;
-  elements.chart.append(text);
-}
-
-function renderLineChart() {
-  const years = unique(state.data.map((item) => item.year)).sort(
-    (a, b) => a - b,
-  );
-  const values = state.data.map((item) => item.value);
-  const xDomain = [Math.min(...years), Math.max(...years)];
-  const yDomain = paddedDomain(values);
-  const grouped = groupByCountry(state.data);
-
-  renderLegend(grouped);
-
-  const { width, height } = getChartSize();
-  const margin = { top: 28, right: 34, bottom: 54, left: 74 };
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
-
-  drawAxes({
-    width,
-    height,
-    margin,
-    innerWidth,
-    innerHeight,
-    xDomain,
-    yDomain,
-  });
-
-  grouped.forEach((series, index) => {
-    const color = palette[index % palette.length];
-    const pathData = series
-      .sort((a, b) => a.year - b.year)
-      .map((point, pointIndex) => {
-        const x = scale(point.year, xDomain, [
-          margin.left,
-          margin.left + innerWidth,
-        ]);
-        const y = scale(point.value, yDomain, [
-          margin.top + innerHeight,
-          margin.top,
-        ]);
-        return `${pointIndex === 0 ? "M" : "L"} ${x} ${y}`;
-      })
-      .join(" ");
-
-    elements.chart.append(
-      svgNode("path", {
-        d: pathData,
-        class: "series-line",
-        stroke: color,
-      }),
-    );
-
-    series.forEach((point) => {
-      const cx = scale(point.year, xDomain, [
-        margin.left,
-        margin.left + innerWidth,
-      ]);
-      const cy = scale(point.value, yDomain, [
-        margin.top + innerHeight,
-        margin.top,
-      ]);
-      const dot = svgNode("circle", {
-        cx,
-        cy,
-        r: 4,
-        fill: color,
-        class: "data-dot",
-        tabindex: 0,
-      });
-      attachTooltip(dot, point);
-      elements.chart.append(dot);
-    });
-  });
 }
 
 function renderLegend(grouped) {
@@ -486,7 +437,7 @@ function renderLegend(grouped) {
 
     const swatch = document.createElement("span");
     swatch.className = "legend-swatch";
-    swatch.style.background = palette[index % palette.length];
+    swatch.style.background = seriesColor(index);
 
     const name = document.createElement("span");
     name.className = "legend-name";
@@ -531,12 +482,12 @@ function ensureThreeScene() {
   labelEl.style.pointerEvents = "none";
   container.appendChild(labelEl);
 
-  const hemi = new THREE.HemisphereLight(0xfdfcf6, 0xc0c8b8, 0.55);
+  const hemi = new THREE.HemisphereLight(0x3d5346, 0x05070a, 0.65);
   scene.add(hemi);
-  const ambient = new THREE.AmbientLight(0xffffff, 0.18);
+  const ambient = new THREE.AmbientLight(0xffffff, 0.12);
   scene.add(ambient);
 
-  const key = new THREE.DirectionalLight(0xffffff, 2.4);
+  const key = new THREE.DirectionalLight(0xffffff, 1.9);
   key.position.set(280, 480, 220);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -550,15 +501,15 @@ function ensureThreeScene() {
   key.shadow.normalBias = 0.02;
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight(0xb8c4d6, 0.5);
+  const fill = new THREE.DirectionalLight(0x8aa6ff, 0.4);
   fill.position.set(-300, 220, -180);
   scene.add(fill);
 
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(2400, 2400),
     new THREE.MeshStandardMaterial({
-      color: 0xeef1ec,
-      roughness: 0.92,
+      color: 0x0b120f,
+      roughness: 0.95,
       metalness: 0,
     }),
   );
@@ -566,10 +517,10 @@ function ensureThreeScene() {
   ground.receiveShadow = true;
   scene.add(ground);
 
-  const grid = new THREE.GridHelper(2000, 40, 0xb6bdb5, 0xd5dad3);
+  const grid = new THREE.GridHelper(2000, 40, 0x37493f, 0x1c2620);
   grid.position.y = 0.05;
   grid.material.transparent = true;
-  grid.material.opacity = 0.55;
+  grid.material.opacity = 0.7;
   scene.add(grid);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -604,6 +555,7 @@ function ensureThreeScene() {
   scene3d.ground = ground;
   scene3d.grid = grid;
   scene3d.raycaster = new THREE.Raycaster();
+  scene3d.raycaster.params.Line = { threshold: 4 };
   scene3d.pointer = new THREE.Vector2();
 
   bindRaycasterTooltip();
@@ -626,10 +578,6 @@ function resizeThree() {
 }
 
 function animateThree() {
-  if (state.mode !== "bar") {
-    scene3d.raf = null;
-    return;
-  }
   scene3d.controls.update();
   scene3d.renderer.render(scene3d.scene, scene3d.camera);
   scene3d.labelRenderer.render(scene3d.scene, scene3d.camera);
@@ -669,6 +617,8 @@ function clearBars3D() {
 function renderBarChart3D() {
   ensureThreeScene();
   clearBars3D();
+  const isModeChange = scene3d.currentMode !== "bar";
+  scene3d.currentMode = "bar";
 
   const latest = latestRowsByCountry(state.data).sort(
     (a, b) => b.value - a.value,
@@ -690,11 +640,21 @@ function renderBarChart3D() {
     roughness: 0.42,
     metalness: 0.1,
   });
+  const projectedMaterial = new THREE.MeshStandardMaterial({
+    color: PROJECTED_BAR_COLOR,
+    roughness: 0.42,
+    metalness: 0.1,
+    transparent: true,
+    opacity: 0.55,
+  });
 
   latest.forEach((point, index) => {
     const h = Math.max(2, max ? (point.value / max) * maxH : 0);
     const geom = new THREE.BoxGeometry(barW, h, barD);
-    const mesh = new THREE.Mesh(geom, material);
+    const mesh = new THREE.Mesh(
+      geom,
+      point.projected ? projectedMaterial : material,
+    );
     const cx = (index - (n - 1) / 2) * slot;
     mesh.position.set(cx, h / 2, 0);
     mesh.castShadow = true;
@@ -704,7 +664,8 @@ function renderBarChart3D() {
 
     const valDiv = document.createElement("div");
     valDiv.className = "label-3d label-value";
-    valDiv.textContent = formatValue(point.value);
+    valDiv.textContent =
+      formatValue(point.value) + (point.projected ? " (est.)" : "");
     const valLabel = new CSS2DObject(valDiv);
     valLabel.position.set(cx, h + 22, 0);
     scene3d.labelGroup.add(valLabel);
@@ -718,16 +679,175 @@ function renderBarChart3D() {
   });
 
   const span = Math.max(n * slot, 320);
+  if (isModeChange) {
+    scene3d.camera.position.set(420, 320, 520);
+  }
   scene3d.controls.target.set(0, Math.min(maxH * 0.4, 120), 0);
   scene3d.controls.maxDistance = span * 2.5;
+  scene3d.controls.update();
   resizeThree();
   startAnimation();
+}
+
+function renderLineChart3D() {
+  ensureThreeScene();
+  clearBars3D();
+  const isModeChange = scene3d.currentMode !== "line";
+  scene3d.currentMode = "line";
+
+  const ranked = latestRowsByCountry(state.data).sort(
+    (a, b) => b.value - a.value,
+  );
+  if (!ranked.length) {
+    stopAnimation();
+    return;
+  }
+
+  const seriesByCode = new Map(
+    groupByCountry(state.data).map((series) => [series[0].countryCode, series]),
+  );
+  renderLegend(
+    ranked.map((row) => seriesByCode.get(row.countryCode) || [row]),
+  );
+
+  const years = unique(state.data.map((item) => item.year)).sort(
+    (a, b) => a - b,
+  );
+  const xDomain = [years[0], years[years.length - 1]];
+  const yDomain = paddedDomain(state.data.map((item) => item.value));
+
+  const n = ranked.length;
+  const rowDepth = 24;
+  const spanX = 420;
+  const maxH = 240;
+
+  const mapX = (year) => scale(year, xDomain, [-spanX / 2, spanX / 2]);
+  const mapY = (value) => scale(value, yDomain, [0, maxH]);
+  const mapZ = (index) => (index - (n - 1) / 2) * rowDepth;
+
+  ranked.forEach((row, index) => {
+    const series = (seriesByCode.get(row.countryCode) || [])
+      .slice()
+      .sort((a, b) => a.year - b.year);
+    if (!series.length) return;
+
+    const color = seriesColor(index);
+    const z = mapZ(index);
+    const plotted = series.map((point) => ({
+      ...point,
+      _plotX: mapX(point.year),
+    }));
+    const toVec = (point) =>
+      new THREE.Vector3(mapX(point.year), mapY(point.value), z);
+
+    const actualPoints = plotted.filter((point) => !point.projected);
+    const projectedPoints = plotted.filter((point) => point.projected);
+
+    if (actualPoints.length > 1) {
+      const geometry = new THREE.BufferGeometry().setFromPoints(
+        actualPoints.map(toVec),
+      );
+      const line = new THREE.Line(
+        geometry,
+        new THREE.LineBasicMaterial({ color }),
+      );
+      line.userData = { series: plotted };
+      scene3d.barGroup.add(line);
+    }
+
+    if (projectedPoints.length) {
+      const bridge = actualPoints.length
+        ? [actualPoints[actualPoints.length - 1], ...projectedPoints]
+        : projectedPoints;
+      const geometry = new THREE.BufferGeometry().setFromPoints(
+        bridge.map(toVec),
+      );
+      const line = new THREE.Line(
+        geometry,
+        new THREE.LineDashedMaterial({
+          color,
+          dashSize: 6,
+          gapSize: 5,
+          transparent: true,
+          opacity: 0.85,
+        }),
+      );
+      line.computeLineDistances();
+      line.userData = { series: plotted };
+      scene3d.barGroup.add(line);
+    }
+
+    const last = plotted[plotted.length - 1];
+    const lastVec = toVec(last);
+
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "label-3d label-country";
+    nameDiv.textContent = row.countryName;
+    const nameLabel = new CSS2DObject(nameDiv);
+    nameLabel.position.set(lastVec.x + 26, lastVec.y, lastVec.z);
+    scene3d.labelGroup.add(nameLabel);
+  });
+
+  const depth = n * rowDepth;
+  addAxisTicks({
+    xDomain,
+    yDomain,
+    spanX,
+    maxH,
+    depth,
+    values: state.data.map((item) => item.value),
+  });
+
+  if (isModeChange) {
+    scene3d.camera.position.set(
+      spanX * 0.55,
+      maxH * 1.15 + 60,
+      depth * 0.85 + 260,
+    );
+  }
+  scene3d.controls.target.set(0, maxH * 0.3, 0);
+  scene3d.controls.maxDistance = Math.max(spanX, depth) * 2.4;
+  scene3d.controls.update();
+  resizeThree();
+  startAnimation();
+}
+
+function addAxisTicks({ xDomain, yDomain, spanX, maxH, depth, values }) {
+  const backZ = -(depth / 2 + 20);
+  const trueMin = Math.min(...values);
+  const trueMax = Math.max(...values);
+
+  const maxLabel = document.createElement("div");
+  maxLabel.className = "label-3d label-tick";
+  maxLabel.textContent = `MAX ${formatValue(trueMax)}`;
+  const maxObj = new CSS2DObject(maxLabel);
+  maxObj.position.set(-spanX / 2 - 70, maxH, backZ + 40);
+  scene3d.labelGroup.add(maxObj);
+
+  const minLabel = document.createElement("div");
+  minLabel.className = "label-3d label-tick";
+  minLabel.textContent = `MIN ${formatValue(trueMin)}`;
+  const minObj = new CSS2DObject(minLabel);
+  minObj.position.set(-spanX / 2 - 70, 0, backZ + 40);
+  scene3d.labelGroup.add(minObj);
+
+  makeYearTicks(xDomain[0], xDomain[1]).forEach((year) => {
+    const div = document.createElement("div");
+    div.className = "label-3d label-tick";
+    div.textContent = year;
+    const obj = new CSS2DObject(div);
+    obj.position.set(
+      scale(year, xDomain, [-spanX / 2, spanX / 2]),
+      0,
+      backZ - 14,
+    );
+    scene3d.labelGroup.add(obj);
+  });
 }
 
 function bindRaycasterTooltip() {
   const canvas = scene3d.renderer.domElement;
   canvas.addEventListener("mousemove", (event) => {
-    if (state.mode !== "bar") return;
     const rect = canvas.getBoundingClientRect();
     scene3d.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     scene3d.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -736,8 +856,20 @@ function bindRaycasterTooltip() {
       scene3d.barGroup.children,
       false,
     );
-    if (hits.length) {
-      showTooltip3D(event, hits[0].object.userData.point);
+    if (!hits.length) {
+      clearTooltip();
+      return;
+    }
+    const hit = hits[0];
+    if (hit.object.userData.point) {
+      showTooltip3D(event, hit.object.userData.point);
+    } else if (hit.object.userData.series) {
+      const nearest = nearestSeriesPoint(hit.object.userData.series, hit.point.x);
+      if (nearest) {
+        showTooltip3D(event, nearest);
+      } else {
+        clearTooltip();
+      }
     } else {
       clearTooltip();
     }
@@ -745,79 +877,28 @@ function bindRaycasterTooltip() {
   canvas.addEventListener("mouseleave", clearTooltip);
 }
 
+function nearestSeriesPoint(series, x) {
+  let nearest = null;
+  let bestDist = Infinity;
+  series.forEach((point) => {
+    const dist = Math.abs(point._plotX - x);
+    if (dist < bestDist) {
+      bestDist = dist;
+      nearest = point;
+    }
+  });
+  return nearest;
+}
+
 function showTooltip3D(event, point) {
   const rect = elements.chartWrap.getBoundingClientRect();
   elements.tooltip.hidden = false;
   elements.tooltip.innerHTML = `
     <strong>${point.countryName}</strong><br>
-    ${point.year}: ${formatValue(point.value)} ${getIndicator().unit || ""}
+    ${point.year}: ${formatValue(point.value)} ${getIndicator().unit || ""}${point.projected ? " (projected)" : ""}
   `;
   elements.tooltip.style.left = `${Math.min(rect.width - 240, event.clientX - rect.left + 12)}px`;
   elements.tooltip.style.top = `${Math.max(8, event.clientY - rect.top - 46)}px`;
-}
-
-function drawAxes({
-  width,
-  height,
-  margin,
-  innerWidth,
-  innerHeight,
-  xDomain,
-  yDomain,
-}) {
-  const yTicks = makeTicks(yDomain[0], yDomain[1], 5);
-  yTicks.forEach((tick) => {
-    const y = scale(tick, yDomain, [margin.top + innerHeight, margin.top]);
-    elements.chart.append(
-      svgNode("line", {
-        x1: margin.left,
-        y1: y,
-        x2: width - margin.right,
-        y2: y,
-        class: "grid-line",
-      }),
-    );
-    const label = svgNode("text", {
-      x: margin.left - 10,
-      y: y + 4,
-      "text-anchor": "end",
-      class: "axis-label",
-    });
-    label.textContent = formatValue(tick);
-    elements.chart.append(label);
-  });
-
-  const xTicks = makeYearTicks(xDomain[0], xDomain[1]);
-  xTicks.forEach((tick) => {
-    const x = scale(tick, xDomain, [margin.left, margin.left + innerWidth]);
-    const label = svgNode("text", {
-      x,
-      y: height - 18,
-      "text-anchor": "middle",
-      class: "axis-label",
-    });
-    label.textContent = tick;
-    elements.chart.append(label);
-  });
-
-  elements.chart.append(
-    svgNode("line", {
-      x1: margin.left,
-      y1: margin.top,
-      x2: margin.left,
-      y2: margin.top + innerHeight,
-      class: "axis",
-    }),
-  );
-  elements.chart.append(
-    svgNode("line", {
-      x1: margin.left,
-      y1: margin.top + innerHeight,
-      x2: width - margin.right,
-      y2: margin.top + innerHeight,
-      class: "axis",
-    }),
-  );
 }
 
 function latestRowsByCountry(rows) {
@@ -840,28 +921,6 @@ function groupByCountry(rows) {
   return Array.from(groups.values());
 }
 
-function attachTooltip(node, point) {
-  const show = (event) => {
-    const rect = elements.chart.getBoundingClientRect();
-    elements.tooltip.hidden = false;
-    elements.tooltip.innerHTML = `
-      <strong>${point.countryName}</strong><br>
-      ${point.year}: ${formatValue(point.value)} ${getIndicator().unit || ""}
-    `;
-    elements.tooltip.style.left = `${Math.min(rect.width - 240, event.clientX - rect.left + 12)}px`;
-    elements.tooltip.style.top = `${Math.max(8, event.clientY - rect.top - 46)}px`;
-  };
-
-  node.addEventListener("mousemove", show);
-  node.addEventListener("focus", (event) => {
-    const rect = node.getBoundingClientRect();
-    show({ clientX: rect.left + rect.width / 2, clientY: rect.top });
-    event.preventDefault();
-  });
-  node.addEventListener("mouseleave", clearTooltip);
-  node.addEventListener("blur", clearTooltip);
-}
-
 function clearTooltip() {
   elements.tooltip.hidden = true;
 }
@@ -875,6 +934,7 @@ function downloadCsv() {
     "indicator_code",
     "indicator",
     "value",
+    "projected",
   ];
   const rows = state.data.map((row) => [
     row.countryCode,
@@ -883,6 +943,7 @@ function downloadCsv() {
     getIndicator().code,
     row.indicatorName,
     row.value,
+    row.projected ? "yes" : "no",
   ]);
   const csv = [header, ...rows]
     .map((row) => row.map(csvCell).join(","))
@@ -898,14 +959,6 @@ function downloadCsv() {
 
 function csvCell(value) {
   return `"${String(value).replaceAll('"', '""')}"`;
-}
-
-function svgNode(name, attrs) {
-  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
-  Object.entries(attrs || {}).forEach(([key, value]) =>
-    node.setAttribute(key, value),
-  );
-  return node;
 }
 
 function unique(values) {
@@ -927,11 +980,6 @@ function paddedDomain(values) {
   }
   const pad = (max - min) * 0.12;
   return [min - pad, max + pad];
-}
-
-function makeTicks(min, max, count) {
-  const step = (max - min) / Math.max(1, count - 1);
-  return Array.from({ length: count }, (_, index) => min + step * index);
 }
 
 function makeYearTicks(start, end) {
