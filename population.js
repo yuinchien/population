@@ -396,6 +396,7 @@ function ensureThreeScene() {
   scene3d.seriesGroup = seriesGroup;
   scene3d.labelGroup = labelGroup;
   scene3d.raycaster = new THREE.Raycaster();
+  scene3d.raycaster.params.Line2 = { threshold: 6 };
   scene3d.pointer = new THREE.Vector2();
 
   bindRaycasterTooltip();
@@ -457,86 +458,6 @@ function clearSeriesGroup() {
       child.element.parentNode.removeChild(child.element);
     }
   }
-}
-
-function glassMaterial(color, opts = {}) {
-  return new THREE.MeshPhysicalMaterial({
-    color,
-    transparent: true,
-    opacity: opts.opacity ?? 0.6,
-    roughness: 0.15,
-    metalness: 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.1,
-    transmission: 0.35,
-    thickness: 1.4,
-    ior: 1.4,
-    emissive: color,
-    emissiveIntensity: opts.emissiveIntensity ?? 0.6,
-    side: THREE.DoubleSide,
-  });
-}
-
-function ribbonShapeFromPoints(points2D) {
-  const shape = new THREE.Shape();
-  shape.moveTo(points2D[0].x, 0);
-  points2D.forEach((point) => shape.lineTo(point.x, point.y));
-  shape.lineTo(points2D[points2D.length - 1].x, 0);
-  shape.closePath();
-  return shape;
-}
-
-function extrudeRibbon(shape, thickness) {
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: thickness,
-    bevelEnabled: true,
-    bevelThickness: 2.5,
-    bevelSize: 2.5,
-    bevelSegments: 4,
-    steps: 1,
-  });
-  geometry.translate(0, 0, -thickness / 2);
-  return geometry;
-}
-
-// Builds a solid glass wall that follows the curve along its top edge and
-// extends down to the baseline (y=0), extruded with real thickness.
-function buildRibbonMesh(points2D, color, opts = {}) {
-  const curve = new THREE.SplineCurve(points2D);
-  const sampled = curve.getPoints(Math.max(24, points2D.length * 4));
-  const shape = ribbonShapeFromPoints(sampled);
-  const geometry = extrudeRibbon(shape, opts.thickness ?? RIBBON_THICKNESS);
-  return new THREE.Mesh(geometry, glassMaterial(color, opts));
-}
-
-function buildDashedRibbonGroup(points2D, color, opts = {}) {
-  const group = new THREE.Group();
-  if (points2D.length < 2) return group;
-
-  const curve = new THREE.SplineCurve(points2D);
-  const totalLength = curve.getLength();
-  const dashLength = 16;
-  const gapLength = 11;
-  const samplesPerDash = 8;
-  const thickness = opts.thickness ?? RIBBON_THICKNESS;
-  const material = glassMaterial(color, opts);
-
-  let traveled = 0;
-  while (traveled < totalLength) {
-    const segStart = traveled;
-    const segEnd = Math.min(totalLength, traveled + dashLength);
-    const dashPoints = [];
-    for (let i = 0; i <= samplesPerDash; i++) {
-      const dist = segStart + ((segEnd - segStart) * i) / samplesPerDash;
-      dashPoints.push(curve.getPointAt(dist / totalLength));
-    }
-    const shape = ribbonShapeFromPoints(dashPoints);
-    const geometry = extrudeRibbon(shape, thickness);
-    group.add(new THREE.Mesh(geometry, material));
-    traveled += dashLength + gapLength;
-  }
-
-  return group;
 }
 
 function addBaseGrid({ spanX, depth }) {
