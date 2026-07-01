@@ -12,7 +12,7 @@ const DATA_URL = "/data/population-global.json";
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1960;
 const MAX_YEAR = 2050;
-const LINE_WIDTH = 6;
+const LINE_WIDTH = 4.5;
 
 const SERIES_DEFS = [
   {
@@ -210,6 +210,7 @@ function renderTrend3D() {
   );
 
   addBaseGrid({ spanX, depth });
+  addCurrentYearMarker({ start, end, spanX, depth, maxH });
 
   seriesList.forEach((series, index) => {
     const z = mapZ(index);
@@ -257,11 +258,11 @@ function renderTrend3D() {
         linewidth: LINE_WIDTH,
         resolution,
         dashed: true,
-        dashSize: 8,
-        gapSize: 8,
+        dashSize: 4,
+        gapSize: 4,
         dashScale: 1,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.6,
       });
       const line = new Line2(geometry, material);
       line.computeLineDistances();
@@ -509,8 +510,65 @@ function addBaseGrid({ spanX, depth }) {
   scene3d.seriesGroup.add(border);
 }
 
+let currentYearGradientTexture = null;
+function verticalGradientTexture() {
+  if (currentYearGradientTexture) return currentYearGradientTexture;
+  const canvas = document.createElement("canvas");
+  canvas.width = 8;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d");
+  const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+  gradient.addColorStop(0, "rgba(210, 255, 120, 0.5)");
+  gradient.addColorStop(0.35, "rgba(210, 255, 120, 0.16)");
+  gradient.addColorStop(1, "rgba(210, 255, 120, 0)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  currentYearGradientTexture = new THREE.CanvasTexture(canvas);
+  return currentYearGradientTexture;
+}
+
+function addCurrentYearMarker({ start, end, spanX, depth, maxH }) {
+  if (CURRENT_YEAR < start || CURRENT_YEAR > end) return;
+
+  const x = scale(CURRENT_YEAR, [start, end], [-spanX / 2, spanX / 2]);
+  const height = maxH * 1.35;
+  const width = depth + 40;
+
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({
+      map: verticalGradientTexture(),
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      opacity: 0.5,
+    }),
+  );
+  plane.rotation.y = Math.PI / 2;
+  plane.position.set(x, height / 2, 0);
+  scene3d.seriesGroup.add(plane);
+
+  const beamLine = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 0.5, width),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.5,
+    }),
+  );
+  beamLine.position.set(x, 0, 0);
+  scene3d.seriesGroup.add(beamLine);
+
+  // const div = document.createElement("div");
+  // div.className = "label-3d label-tick";
+  // div.textContent = `${CURRENT_YEAR}`;
+  // const obj = new CSS2DObject(div);
+  // obj.position.set(x, -10, depth / 2 + 20);
+  // scene3d.labelGroup.add(obj);
+}
+
 function addYearAxisTicks({ start, end, spanX, depth }) {
-  const backZ = -(depth / 2 + 20);
+  const frontZ = depth / 2 + 20;
   makeYearTicks(start, end).forEach((year) => {
     const div = document.createElement("div");
     div.className = "label-3d label-tick";
@@ -519,7 +577,7 @@ function addYearAxisTicks({ start, end, spanX, depth }) {
     obj.position.set(
       scale(year, [start, end], [-spanX / 2, spanX / 2]),
       0,
-      backZ,
+      frontZ,
     );
     scene3d.labelGroup.add(obj);
   });
