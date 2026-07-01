@@ -12,6 +12,7 @@ const DATA_URL = "/data/population-global.json";
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1960;
 const MAX_YEAR = 2050;
+const LINE_WIDTH = 6;
 
 const SERIES_DEFS = [
   {
@@ -236,7 +237,7 @@ function renderTrend3D() {
       geometry.setPositions(toPositions(actualPoints));
       const material = new LineMaterial({
         color: series.color,
-        linewidth: 3,
+        linewidth: LINE_WIDTH,
         resolution,
       });
       const line = new Line2(geometry, material);
@@ -253,14 +254,14 @@ function renderTrend3D() {
       geometry.setPositions(toPositions(bridge));
       const material = new LineMaterial({
         color: series.color,
-        linewidth: 3,
+        linewidth: LINE_WIDTH,
         resolution,
         dashed: true,
-        dashSize: 6,
-        gapSize: 6,
-        dashScale: 1.5,
+        dashSize: 8,
+        gapSize: 8,
+        dashScale: 1,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.8,
       });
       const line = new Line2(geometry, material);
       line.computeLineDistances();
@@ -271,20 +272,13 @@ function renderTrend3D() {
     const first = plotted[0];
     const firstVec = toVec(first);
     const nameDiv = document.createElement("div");
-    nameDiv.className = "label-3d label-country";
+    nameDiv.className = "label-3d label-pill";
     nameDiv.textContent = series.label;
+    nameDiv.style.background = series.color;
     const nameLabel = new CSS2DObject(nameDiv);
-    nameLabel.center.set(1, 1);
-    nameLabel.position.set(firstVec.x - 20, maxH + 14, z);
+    nameLabel.center.set(1, 0.5);
+    nameLabel.position.set(firstVec.x - 14, firstVec.y, firstVec.z);
     scene3d.labelGroup.add(nameLabel);
-
-    const rangeDiv = document.createElement("div");
-    rangeDiv.className = "label-3d label-tick";
-    rangeDiv.textContent = `${series.format(yDomain[0])} — ${series.format(yDomain[1])}`;
-    const rangeLabel = new CSS2DObject(rangeDiv);
-    rangeLabel.center.set(1, 1);
-    rangeLabel.position.set(firstVec.x - 20, maxH - 14, z);
-    scene3d.labelGroup.add(rangeLabel);
   });
 
   addYearAxisTicks({ start, end, spanX, depth });
