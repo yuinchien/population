@@ -97,6 +97,10 @@ button {
     cursor: pointer;
 }
 
+button[hidden] {
+    display: none;
+}
+
 .source-link {
     flex: 0 0 auto;
     padding: 0 14px;
@@ -107,7 +111,7 @@ button {
     width: 100vw;
     height: 100vh;
     margin: 0;
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: 1fr;
     gap: 0;
     align-items: stretch;
 }
@@ -136,10 +140,20 @@ button {
     gap: 18px;
     padding: 22px 18px;
     height: 100vh;
+    width: 280px;
     overflow-y: auto;
-    border-right: 1px solid var(--cp-line);
-    background: var(--cp-bg);
+    /*border-right: 1px solid var(--cp-line);*/
+    /*background: var(--cp-bg);*/
     color: var(--cp-text);
+
+    position: fixed;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(4.7px);
+    -webkit-backdrop-filter: blur(4.7px);
+    border: none;
 }
 
 .control-panel label {
@@ -419,6 +433,20 @@ select[multiple] {
     text-transform: none;
 }
 
+.page-nav-link {
+    display: inline-block;
+    margin-top: 4px;
+    color: var(--cp-text-dim, #3a8f5e);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-decoration: none;
+}
+
+.page-nav-link:hover {
+    color: var(--cp-accent, #8aa6ff);
+}
+
 .mode-toggle {
     padding: 4px;
     border: 1px solid var(--line);
@@ -477,6 +505,7 @@ select[multiple] {
     justify-content: space-between;
     gap: 18px;
     pointer-events: none;
+    display: none;
 }
 
 .viz-heading h2 {
@@ -502,6 +531,10 @@ select[multiple] {
     grid-template-columns: minmax(0, 1fr);
     overflow: hidden;
     background: linear-gradient(180deg, #0c1310 0%, #05070a 100%);
+}
+
+.chart-wrap[hidden] {
+    display: none;
 }
 
 .chart-wrap.has-legend {
@@ -558,6 +591,8 @@ select[multiple] {
     font-weight: 500;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    text-align: left;
+    transform-origin: bottom left;
 }
 
 .label-3d.label-tick {
@@ -579,6 +614,7 @@ select[multiple] {
     overflow-y: auto;
     border-left: 1px solid #16201a;
     background: rgba(7, 9, 10, 0.8);
+    display: none;
 }
 
 .chart-legend[hidden] {

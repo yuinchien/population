@@ -4,6 +4,9 @@ import {
   CSS2DRenderer,
   CSS2DObject,
 } from "three/addons/renderers/CSS2DRenderer.js";
+import { Line2 } from "three/addons/lines/Line2.js";
+import { LineGeometry } from "three/addons/lines/LineGeometry.js";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
 const API_BASE = "https://api.worldbank.org/v2";
 
@@ -52,9 +55,9 @@ const palette = [
   "#6d5bd0",
   "#2f855a",
 ];
-const TOP_N = 20;
+const TOP_N = 10;
 const CURRENT_YEAR = new Date().getFullYear();
-const FORECAST_HORIZON_YEARS = 25;
+const FORECAST_HORIZON_YEARS = 24;
 const FORECAST_LOOKBACK_YEARS = 20;
 const MIN_FORECAST_HISTORY = 3;
 const FORECAST_FIT_WINDOW = 15;
@@ -321,10 +324,7 @@ function linearRegression(points) {
     (sum, point) => sum + point.year * point.value,
     0,
   );
-  const sumXX = points.reduce(
-    (sum, point) => sum + point.year * point.year,
-    0,
-  );
+  const sumXX = points.reduce((sum, point) => sum + point.year * point.year, 0);
   const denom = n * sumXX - sumX * sumX;
   if (denom === 0) return { slope: 0, intercept: sumY / n };
   const slope = (n * sumXY - sumX * sumY) / denom;
@@ -556,6 +556,7 @@ function ensureThreeScene() {
   scene3d.grid = grid;
   scene3d.raycaster = new THREE.Raycaster();
   scene3d.raycaster.params.Line = { threshold: 4 };
+  scene3d.raycaster.params.Line2 = { threshold: 6 };
   scene3d.pointer = new THREE.Vector2();
 
   bindRaycasterTooltip();
@@ -619,6 +620,8 @@ function renderBarChart3D() {
   clearBars3D();
   const isModeChange = scene3d.currentMode !== "bar";
   scene3d.currentMode = "bar";
+  scene3d.ground.visible = true;
+  scene3d.grid.visible = true;
 
   const latest = latestRowsByCountry(state.data).sort(
     (a, b) => b.value - a.value,
@@ -674,6 +677,7 @@ function renderBarChart3D() {
     nameDiv.className = "label-3d label-country";
     nameDiv.textContent = point.countryName;
     const nameLabel = new CSS2DObject(nameDiv);
+    nameLabel.center.set(0, 1);
     nameLabel.position.set(cx, 0, barD / 2 + 32);
     scene3d.labelGroup.add(nameLabel);
   });
@@ -706,9 +710,7 @@ function renderLineChart3D() {
   const seriesByCode = new Map(
     groupByCountry(state.data).map((series) => [series[0].countryCode, series]),
   );
-  renderLegend(
-    ranked.map((row) => seriesByCode.get(row.countryCode) || [row]),
-  );
+  renderLegend(ranked.map((row) => seriesByCode.get(row.countryCode) || [row]));
 
   const years = unique(state.data.map((item) => item.year)).sort(
     (a, b) => a - b,
@@ -719,11 +721,22 @@ function renderLineChart3D() {
   const n = ranked.length;
   const rowDepth = 24;
   const spanX = 420;
-  const maxH = 240;
+  const maxH = 480;
 
   const mapX = (year) => scale(year, xDomain, [-spanX / 2, spanX / 2]);
   const mapY = (value) => scale(value, yDomain, [0, maxH]);
   const mapZ = (index) => (index - (n - 1) / 2) * rowDepth;
+  const depth = n * rowDepth;
+
+  const containerRect = elements.chart3d.getBoundingClientRect();
+  const resolution = new THREE.Vector2(
+    Math.max(1, containerRect.width),
+    Math.max(1, containerRect.height),
+  );
+
+  scene3d.ground.visible = false;
+  scene3d.grid.visible = false;
+  addBaseGrid({ spanX, depth });
 
   ranked.forEach((row, index) => {
     const series = (seriesByCode.get(row.countryCode) || [])
@@ -743,14 +756,22 @@ function renderLineChart3D() {
     const actualPoints = plotted.filter((point) => !point.projected);
     const projectedPoints = plotted.filter((point) => point.projected);
 
+    const toPositions = (points) =>
+      points.flatMap((point) => {
+        const v = toVec(point);
+        return [v.x, v.y, v.z];
+      });
+
     if (actualPoints.length > 1) {
-      const geometry = new THREE.BufferGeometry().setFromPoints(
-        actualPoints.map(toVec),
-      );
-      const line = new THREE.Line(
-        geometry,
-        new THREE.LineBasicMaterial({ color }),
-      );
+      const geometry = new LineGeometry();
+      geometry.setPositions(toPositions(actualPoints));
+      const material = new LineMaterial({
+        color,
+        linewidth: 3.2,
+        resolution,
+      });
+      const line = new Line2(geometry, material);
+      line.computeLineDistances();
       line.userData = { series: plotted };
       scene3d.barGroup.add(line);
     }
@@ -759,19 +780,20 @@ function renderLineChart3D() {
       const bridge = actualPoints.length
         ? [actualPoints[actualPoints.length - 1], ...projectedPoints]
         : projectedPoints;
-      const geometry = new THREE.BufferGeometry().setFromPoints(
-        bridge.map(toVec),
-      );
-      const line = new THREE.Line(
-        geometry,
-        new THREE.LineDashedMaterial({
-          color,
-          dashSize: 6,
-          gapSize: 5,
-          transparent: true,
-          opacity: 0.85,
-        }),
-      );
+      const geometry = new LineGeometry();
+      geometry.setPositions(toPositions(bridge));
+      const material = new LineMaterial({
+        color,
+        linewidth: 3,
+        resolution,
+        dashed: true,
+        dashSize: 4,
+        gapSize: 8,
+        dashScale: 1.5,
+        transparent: true,
+        opacity: 0.8,
+      });
+      const line = new Line2(geometry, material);
       line.computeLineDistances();
       line.userData = { series: plotted };
       scene3d.barGroup.add(line);
@@ -784,52 +806,66 @@ function renderLineChart3D() {
     nameDiv.className = "label-3d label-country";
     nameDiv.textContent = row.countryName;
     const nameLabel = new CSS2DObject(nameDiv);
+    nameLabel.center.set(0, 1);
     nameLabel.position.set(lastVec.x + 26, lastVec.y, lastVec.z);
     scene3d.labelGroup.add(nameLabel);
   });
 
-  const depth = n * rowDepth;
-  addAxisTicks({
-    xDomain,
-    yDomain,
-    spanX,
-    maxH,
-    depth,
-    values: state.data.map((item) => item.value),
-  });
+  addAxisTicks({ xDomain, yDomain, spanX, maxH, depth });
 
   if (isModeChange) {
     scene3d.camera.position.set(
-      spanX * 0.55,
-      maxH * 1.15 + 60,
-      depth * 0.85 + 260,
+      spanX * 0.5,
+      maxH * 0.65 + 120,
+      depth * 1.15 + maxH * 1.1 + 380,
     );
   }
-  scene3d.controls.target.set(0, maxH * 0.3, 0);
-  scene3d.controls.maxDistance = Math.max(spanX, depth) * 2.4;
+  scene3d.controls.target.set(0, maxH * 0.4, 0);
+  scene3d.controls.maxDistance = Math.max(spanX, depth, maxH) * 2.8;
   scene3d.controls.update();
   resizeThree();
   startAnimation();
 }
 
-function addAxisTicks({ xDomain, yDomain, spanX, maxH, depth, values }) {
+function addAxisTicks({ xDomain, yDomain, spanX, maxH, depth }) {
   const backZ = -(depth / 2 + 20);
-  const trueMin = Math.min(...values);
-  const trueMax = Math.max(...values);
+  const axisX = -spanX / 2 - 40;
+  const tickMaterial = new THREE.LineBasicMaterial({
+    color: 0x4a6355,
+    transparent: true,
+    opacity: 0.85,
+  });
 
-  const maxLabel = document.createElement("div");
-  maxLabel.className = "label-3d label-tick";
-  maxLabel.textContent = `MAX ${formatValue(trueMax)}`;
-  const maxObj = new CSS2DObject(maxLabel);
-  maxObj.position.set(-spanX / 2 - 70, maxH, backZ + 40);
-  scene3d.labelGroup.add(maxObj);
+  const axisGeom = new THREE.BufferGeometry();
+  axisGeom.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute([axisX, 0, backZ, axisX, maxH, backZ], 3),
+  );
+  scene3d.barGroup.add(new THREE.Line(axisGeom, tickMaterial));
 
-  const minLabel = document.createElement("div");
-  minLabel.className = "label-3d label-tick";
-  minLabel.textContent = `MIN ${formatValue(trueMin)}`;
-  const minObj = new CSS2DObject(minLabel);
-  minObj.position.set(-spanX / 2 - 70, 0, backZ + 40);
-  scene3d.labelGroup.add(minObj);
+  const tickCount = 5;
+  for (let i = 0; i < tickCount; i++) {
+    const t = i / (tickCount - 1);
+    const y = t * maxH;
+    const value = yDomain[0] + t * (yDomain[1] - yDomain[0]);
+
+    const tickGeom = new THREE.BufferGeometry();
+    tickGeom.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        [axisX - 10, y, backZ, axisX + 10, y, backZ],
+        3,
+      ),
+    );
+    scene3d.barGroup.add(new THREE.Line(tickGeom, tickMaterial));
+
+    const div = document.createElement("div");
+    div.className = "label-3d label-tick";
+    div.textContent = formatValue(value);
+    const obj = new CSS2DObject(div);
+    obj.position.set(axisX - 26, y, backZ);
+    scene3d.labelGroup.add(obj);
+  }
 
   makeYearTicks(xDomain[0], xDomain[1]).forEach((year) => {
     const div = document.createElement("div");
@@ -843,6 +879,62 @@ function addAxisTicks({ xDomain, yDomain, spanX, maxH, depth, values }) {
     );
     scene3d.labelGroup.add(obj);
   });
+}
+
+function addBaseGrid({ spanX, depth }) {
+  const width = spanX + 100;
+  const depthSize = depth + 100;
+
+  const plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(width, depthSize),
+    new THREE.MeshStandardMaterial({
+      color: 0x0d1712,
+      roughness: 0.95,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.92,
+    }),
+  );
+  plane.rotation.x = -Math.PI / 2;
+  plane.receiveShadow = true;
+  scene3d.barGroup.add(plane);
+
+  const divisionsX = 12;
+  const divisionsZ = 10;
+  const points = [];
+  for (let i = 0; i <= divisionsX; i++) {
+    const x = -width / 2 + (i / divisionsX) * width;
+    points.push(x, 0.02, -depthSize / 2, x, 0.02, depthSize / 2);
+  }
+  for (let i = 0; i <= divisionsZ; i++) {
+    const z = -depthSize / 2 + (i / divisionsZ) * depthSize;
+    points.push(-width / 2, 0.02, z, width / 2, 0.02, z);
+  }
+  const gridGeom = new THREE.BufferGeometry();
+  gridGeom.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(points, 3),
+  );
+  scene3d.barGroup.add(
+    new THREE.LineSegments(
+      gridGeom,
+      new THREE.LineBasicMaterial({
+        color: 0x2a3a30,
+        transparent: true,
+        opacity: 0.6,
+      }),
+    ),
+  );
+
+  const edgesGeom = new THREE.EdgesGeometry(
+    new THREE.BoxGeometry(width, 0.02, depthSize),
+  );
+  const border = new THREE.LineSegments(
+    edgesGeom,
+    new THREE.LineBasicMaterial({ color: 0x4a6355 }),
+  );
+  border.position.y = 0.03;
+  scene3d.barGroup.add(border);
 }
 
 function bindRaycasterTooltip() {
@@ -864,7 +956,10 @@ function bindRaycasterTooltip() {
     if (hit.object.userData.point) {
       showTooltip3D(event, hit.object.userData.point);
     } else if (hit.object.userData.series) {
-      const nearest = nearestSeriesPoint(hit.object.userData.series, hit.point.x);
+      const nearest = nearestSeriesPoint(
+        hit.object.userData.series,
+        hit.point.x,
+      );
       if (nearest) {
         showTooltip3D(event, nearest);
       } else {
