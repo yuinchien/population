@@ -3,29 +3,34 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>World Bank Data Explorer</title>
+        <title>Global Population Trends — World Bank Explorer</title>
         <meta
             name="description"
-            content="A native JavaScript data visualization app powered by the World Bank Open Data API."
+            content="Global population, growth rate, life expectancy, fertility rate, and median age over time (1950-2100), sourced from the UN World Population Prospects 2024 dataset."
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-            rel="preconnect"
-            href="https://fonts.gstatic.com"
-            crossorigin
-        />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
             rel="stylesheet"
         />
         <link rel="stylesheet" href="styles.css" />
+        <link rel="stylesheet" href="population.css" />
     </head>
     <body>
         <main class="app-shell">
-            <section class="control-panel" aria-label="Visualization controls">
+            <section class="control-panel" aria-label="Population controls">
+                <div class="title">
+                    World Population Prospects
+                    <!--<a
+                        href="https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=Most%20used"
+                        >World Population Prospects
+                    </a>-->
+                </div>
+
                 <div class="field">
-                    <label for="indicator">Indicator</label>
-                    <select id="indicator"></select>
+                    <label for="seriesSelect">Indicators</label>
+                    <select id="seriesSelect" multiple size="6"></select>
                 </div>
 
                 <div class="field year-range-field">
@@ -56,44 +61,27 @@
                             aria-label="End year"
                         />
                     </div>
-                    <p id="forecastHint" class="forecast-hint"></p>
-                </div>
-
-                <div class="mode-toggle" aria-label="Chart mode">
-                    <button id="lineMode" type="button">Trend</button>
-                    <button id="barMode" class="active" type="button">
-                        Latest
-                    </button>
                 </div>
 
                 <p id="status" class="status" role="status">
-                    Loading countries...
+                    Loading population data...
                 </p>
-
-                <a href="./population.html" class="page-nav-link"
-                    >Population by age &amp; sex &rarr;</a
-                >
             </section>
 
-            <section class="viz-panel" aria-label="World Bank visualization">
+            <section class="viz-panel" aria-label="Global population trends">
                 <div class="viz-heading">
                     <div>
-                        <h2 id="chartTitle">Select a view</h2>
+                        <h2 id="chartTitle">Global Population Trends</h2>
+                        <p id="chartSubtitle" class="chart-subtitle"></p>
                     </div>
                 </div>
 
                 <div class="chart-wrap">
-                    <div
-                        id="chart3d"
-                        class="chart-3d"
-                        role="img"
-                        aria-labelledby="chartTitle"
-                        hidden
-                    ></div>
+                    <div id="chart3d" class="chart-3d"></div>
                     <div
                         id="chartLegend"
                         class="chart-legend"
-                        aria-label="Chart color legend"
+                        aria-label="Series legend"
                         hidden
                     ></div>
                     <div id="tooltip" class="tooltip" hidden></div>
@@ -101,6 +89,6 @@
             </section>
         </main>
 
-        <script type="module" src="./app.js"></script>
+        <script type="module" src="./population.js"></script>
     </body>
 </html>
