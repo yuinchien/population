@@ -13,6 +13,8 @@
         <style>
             html,
             body {
+                font-size: 14px;
+                line-height: 16px;
                 margin: 0;
                 height: 100%;
                 /*background: #07090a;*/
@@ -63,6 +65,7 @@
                 color: #222;
                 font-size: 3rem;
                 font-weight: 500;
+                line-height: 1em;
             }
             #yearSlider {
                 width: 280px;
@@ -105,7 +108,6 @@
             #metrics {
                 margin-top: 18px;
                 display: grid;
-                gap: 8px;
                 pointer-events: none;
             }
             .metric {
@@ -114,19 +116,60 @@
                 align-items: baseline;
                 gap: 16px;
                 border-top: 1px solid rgba(34, 34, 34, 0.12);
-                padding-top: 4px;
+                padding: 6px 0;
             }
             .metric-label {
                 color: #666;
-                font-size: 0.72rem;
+                font-size: 0.78rem;
                 text-transform: uppercase;
-                letter-spacing: 0.03em;
+                letter-spacing: 0.02em;
             }
             .metric-value {
                 color: #222;
-                font-size: 0.88rem;
+                font-size: 0.84rem;
                 font-weight: 500;
                 white-space: nowrap;
+            }
+            #colorMode {
+                margin-top: 18px;
+                display: flex;
+                gap: 6px;
+                pointer-events: auto;
+            }
+            #colorMode button {
+                font-family: inherit;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+                color: #666;
+                background: transparent;
+                border: 1px solid rgba(34, 34, 34, 0.25);
+                border-radius: 999px;
+                padding: 4px 12px;
+                cursor: pointer;
+            }
+            #colorMode button.active {
+                color: #fff;
+                background: #222;
+                border-color: #222;
+            }
+            #legend {
+                margin-top: 12px;
+                display: grid;
+                gap: 6px;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.72rem;
+                color: #444;
+            }
+            .legend-swatch {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex: none;
             }
         </style>
     </head>
@@ -165,6 +208,13 @@
                     ></span>
                 </div>
             </div>
+            <div id="colorMode" hidden>
+                <button type="button" data-mode="region" class="active">
+                    Region
+                </button>
+                <button type="button" data-mode="income">Income group</button>
+            </div>
+            <div id="legend"></div>
         </div>
         <div id="tooltip" class="glass" hidden></div>
 

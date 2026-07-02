@@ -3,6 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
+const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 4.4;
@@ -21,6 +22,14 @@ const REGION_COLORS = {
 };
 const DEFAULT_COLOR = "#5fe39a";
 
+const INCOME_GROUP_COLORS = {
+  "High-income countries": "#4EA8FF",
+  "Middle-income countries": "#FFB454",
+  "Low-income countries": "#FF6B6B",
+};
+const UNCLASSIFIED_INCOME = "Not classified";
+const UNCLASSIFIED_COLOR = "#999999";
+
 const elements = {
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
@@ -33,6 +42,8 @@ const elements = {
   metricLifeExpectancy: document.querySelector("#metricLifeExpectancy"),
   metricMedianAge: document.querySelector("#metricMedianAge"),
   metricPopulationGrowth: document.querySelector("#metricPopulationGrowth"),
+  colorMode: document.querySelector("#colorMode"),
+  legend: document.querySelector("#legend"),
 };
 
 const scene = new THREE.Scene();
@@ -74,6 +85,16 @@ function latLonToVector3(lat, lon, radius) {
 
 function regionColor(region) {
   return new THREE.Color(REGION_COLORS[region.trim()] || DEFAULT_COLOR);
+}
+
+function incomeGroupLabel(iso3, incomeGroups) {
+  if (!incomeGroups) return UNCLASSIFIED_INCOME;
+  const code = incomeGroups.countryIncomeCodes[iso3];
+  return (code && incomeGroups.incomeCodes[code]) || UNCLASSIFIED_INCOME;
+}
+
+function incomeColor(label) {
+  return new THREE.Color(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR);
 }
 
 function createDotTexture() {
@@ -136,15 +157,22 @@ let yearsData = [];
 let currentYearIndex = -1;
 let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
+let colorMode = "region";
 const clock = new THREE.Clock();
+
+function colorFor(country) {
+  return colorMode === "income" ? country._incomeColor : country._regionColor;
+}
 
 // Allocates buffers sized to each country's maximum dot count (the most
 // people it ever had across the whole time series), and precomputes each
 // dot's fixed screen position + pulse identity so scrubbing the year slider
 // only changes how many dots per country are drawn, not where they sit.
-function setupScene(countries) {
+function setupScene(countries, incomeGroups) {
   countries.forEach((country) => {
-    country._color = regionColor(country.region);
+    country._regionColor = regionColor(country.region);
+    country._incomeLabel = incomeGroupLabel(country.iso3, incomeGroups);
+    country._incomeColor = incomeColor(country._incomeLabel);
     country._xyz = new Float32Array(country.dots.length * 3);
     country._freqs = new Float32Array(country.dots.length);
     country._phases = new Float32Array(country.dots.length);
@@ -208,7 +236,7 @@ function applyYear(year) {
       country.dots.length,
       Math.max(1, Math.round(pop / PEOPLE_PER_DOT)),
     );
-    const color = country._color;
+    const color = colorFor(country);
     for (let i = 0; i < activeCount; i++) {
       const i3 = cursor * 3;
       const src3 = i * 3;
@@ -238,26 +266,80 @@ function applyYear(year) {
 
   const isProjected = year > historicalCutoffYear;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
-  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${countriesData.length} countries · ${formatCount(totalPop)} total`;
+  // Use the UN "World" total (same figure shown in the metrics panel)
+  // rather than summing our 211-country subset, which excludes ~26 small
+  // territories/dependencies and would otherwise show a slightly lower,
+  // inconsistent number here.
+  const worldPop = globalMetricsByYear.get(year)?.population ?? totalPop;
+  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ 1M people`;
   updateMetricsPanel(year);
+}
+
+// Cheap recolor for switching between Region/Income group modes: reuses
+// the already-active dot set (positions, pulse identity) and only rewrites
+// the color buffer, instead of rerunning applyYear()'s full rebuild.
+function recolor() {
+  if (!pointsMesh || !activeTotal) return;
+  const colorAttr = pointsMesh.geometry.getAttribute("color");
+  for (let i = 0; i < activeTotal; i++) {
+    const color = colorFor(dotCountry[i]);
+    const i3 = i * 3;
+    colorAttr.array[i3] = color.r;
+    colorAttr.array[i3 + 1] = color.g;
+    colorAttr.array[i3 + 2] = color.b;
+  }
+  colorAttr.needsUpdate = true;
+  renderLegend();
+}
+
+function renderLegend() {
+  const entries =
+    colorMode === "income"
+      ? [...Object.entries(INCOME_GROUP_COLORS), [UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]]
+      : Object.entries(REGION_COLORS);
+  elements.legend.replaceChildren(
+    ...entries.map(([label, color]) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      const swatch = document.createElement("span");
+      swatch.className = "legend-swatch";
+      swatch.style.background = color;
+      const text = document.createElement("span");
+      text.textContent = label.replace(" countries", "");
+      item.append(swatch, text);
+      return item;
+    }),
+  );
+}
+
+function setColorMode(mode) {
+  if (mode === colorMode) return;
+  colorMode = mode;
+  elements.colorMode
+    .querySelectorAll("button")
+    .forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === mode));
+  recolor();
 }
 
 async function init() {
   try {
-    const [dotsResponse, globalResponse] = await Promise.all([
+    const [dotsResponse, globalResponse, incomeResponse] = await Promise.all([
       fetch(DATA_URL),
       fetch(GLOBAL_METRICS_URL),
+      fetch(INCOME_GROUPS_URL),
     ]);
     if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
     if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
+    if (!incomeResponse.ok) throw new Error(`HTTP ${incomeResponse.status}`);
     const data = await dotsResponse.json();
     const globalData = await globalResponse.json();
+    const incomeGroups = await incomeResponse.json();
     countriesData = data.countries;
     yearsData = data.years;
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
     globalMetricsByYear = buildGlobalMetricsIndex(globalData);
 
-    setupScene(countriesData);
+    setupScene(countriesData, incomeGroups);
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
@@ -274,7 +356,13 @@ async function init() {
       applyYear(Number(elements.yearSlider.value));
     });
 
+    elements.colorMode.hidden = false;
+    elements.colorMode.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => setColorMode(btn.dataset.mode));
+    });
+
     applyYear(defaultYear);
+    renderLegend();
   } catch (error) {
     elements.status.textContent = `Could not load data: ${error.message}`;
   }
@@ -322,8 +410,10 @@ function updateTooltip(event) {
     return;
   }
   const pop = country.populations[currentYearIndex] ?? country.population;
+  const groupLabel =
+    colorMode === "income" ? country._incomeLabel : country.region;
   elements.tooltip.hidden = false;
-  elements.tooltip.textContent = `${country.name} — ${pop.toLocaleString()}`;
+  elements.tooltip.textContent = `${country.name} — ${pop.toLocaleString()} (${groupLabel})`;
   elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
   elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
 }
