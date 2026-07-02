@@ -14,6 +14,7 @@ const MIN_YEAR = 1960;
 const MAX_YEAR = 2050;
 const LINE_WIDTH = 4.5;
 const BASE_GRID_PADDING = 100;
+const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
 
 const SERIES_DEFS = [
   {
@@ -78,6 +79,7 @@ const scene3d = {
   labelGroup: null,
   hoverAxisGroup: null,
   hoverMarker: null,
+  hoverMarkerElement: null,
   hoverAxisLabels: [],
   hoverSeriesLabel: null,
   hoverPoint: null,
@@ -422,6 +424,10 @@ function ensureThreeScene() {
   const hoverMarker = createHoverMarker();
   hoverMarker.visible = false;
   scene.add(hoverMarker);
+  const hoverMarkerElement = document.createElement("div");
+  hoverMarkerElement.className = "tooltip-marker";
+  hoverMarkerElement.hidden = true;
+  elements.chartWrap.appendChild(hoverMarkerElement);
 
   scene3d.scene = scene;
   scene3d.camera = camera;
@@ -432,6 +438,7 @@ function ensureThreeScene() {
   scene3d.labelGroup = labelGroup;
   scene3d.hoverAxisGroup = hoverAxisGroup;
   scene3d.hoverMarker = hoverMarker;
+  scene3d.hoverMarkerElement = hoverMarkerElement;
   scene3d.raycaster = new THREE.Raycaster();
   scene3d.raycaster.params.Line2 = { threshold: 6 };
   scene3d.pointer = new THREE.Vector2();
@@ -457,8 +464,13 @@ function resizeThree() {
 
 function animateThree() {
   scene3d.controls.update();
-  if (scene3d.hoverPoint && !elements.tooltip.hidden) {
-    positionTrendTooltip(scene3d.hoverPoint);
+  if (scene3d.hoverPoint) {
+    if (!elements.tooltip.hidden) {
+      positionTrendTooltip(scene3d.hoverPoint);
+    }
+    if (scene3d.isDragging) {
+      showHoverMarker(scene3d.hoverPoint);
+    }
   }
   scene3d.renderer.render(scene3d.scene, scene3d.camera);
   scene3d.labelRenderer.render(scene3d.scene, scene3d.camera);
@@ -546,10 +558,7 @@ function showHoverAxis(seriesLabel) {
     const tickGeom = new THREE.BufferGeometry();
     tickGeom.setAttribute(
       "position",
-      new THREE.Float32BufferAttribute(
-        [axisX - 4, y, z, axisX + 4, y, z],
-        3,
-      ),
+      new THREE.Float32BufferAttribute([axisX - 4, y, z, axisX + 4, y, z], 3),
     );
     scene3d.hoverAxisGroup.add(new THREE.Line(tickGeom, axisMaterial));
 
@@ -599,17 +608,22 @@ function createHoverMarker() {
 }
 
 function showHoverMarker(point) {
-  if (!scene3d.hoverMarker || !point) return;
+  if (!scene3d.hoverMarkerElement || !point) return;
   const meta = scene3d.seriesMeta && scene3d.seriesMeta.get(point.seriesLabel);
-  if (meta) {
-    scene3d.hoverMarker.userData.dot.material.color.set(meta.color);
-  }
-  scene3d.hoverMarker.position.set(point._plotX, point._plotY, point._plotZ);
-  scene3d.hoverMarker.visible = true;
+  const marker = projectPointToChart(point);
+  scene3d.hoverMarkerElement.style.setProperty(
+    "--marker-color",
+    meta ? meta.color : "#e3ed55",
+  );
+  scene3d.hoverMarkerElement.style.left = `${marker.x}px`;
+  scene3d.hoverMarkerElement.style.top = `${marker.y}px`;
+  scene3d.hoverMarkerElement.hidden = false;
+  if (scene3d.hoverMarker) scene3d.hoverMarker.visible = false;
 }
 
 function clearHoverMarker() {
   if (scene3d.hoverMarker) scene3d.hoverMarker.visible = false;
+  if (scene3d.hoverMarkerElement) scene3d.hoverMarkerElement.hidden = true;
 }
 
 function setCurveCursor(isHovering) {
@@ -843,16 +857,14 @@ function positionTrendTooltip(point) {
   const wrapRect = elements.chartWrap.getBoundingClientRect();
   const marker = projectPointToChart(point);
   const tooltipRect = elements.tooltip.getBoundingClientRect();
-  const connectorHeight = Math.min(110, Math.max(48, marker.y - 16));
+  const connectorHeight =
+    Math.min(110, Math.max(48, marker.y - 16)) * TOOLTIP_CONNECTOR_SCALE;
   const maxLeft = Math.max(12, wrapRect.width - tooltipRect.width - 12);
   const left = clamp(marker.x, 12, maxLeft);
   const top = Math.max(8, marker.y - tooltipRect.height - connectorHeight);
   elements.tooltip.style.left = `${left}px`;
   elements.tooltip.style.top = `${top}px`;
-  elements.tooltip.style.setProperty(
-    "--connector-x",
-    `${marker.x - left}px`,
-  );
+  elements.tooltip.style.setProperty("--connector-x", `${marker.x - left}px`);
   elements.tooltip.style.setProperty(
     "--connector-height",
     `${Math.max(0, marker.y - top - tooltipRect.height)}px`,
@@ -879,9 +891,7 @@ function projectPointToChart(point) {
       wrapRect.left +
       ((projected.x + 1) / 2) * chartRect.width,
     y:
-      chartRect.top -
-      wrapRect.top +
-      ((1 - projected.y) / 2) * chartRect.height,
+      chartRect.top - wrapRect.top + ((1 - projected.y) / 2) * chartRect.height,
   };
 }
 

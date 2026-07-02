@@ -709,7 +709,7 @@ select[multiple] {
     left: var(--connector-x, 0px);
     bottom: 0;
     width: 1px;
-    height: var(--connector-height, 80px);
+    height: var(--connector-height, 40px);
     background: var(--tooltip-color, #e3ed55);
     transform: translateY(100%);
 }
@@ -717,6 +717,17 @@ select[multiple] {
 .tooltip strong {
     display: block;
     font-weight: 400;
+}
+
+.tooltip-marker {
+    position: absolute;
+    z-index: 3;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--marker-color, #e3ed55);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
 }
 
 .app-footer {
