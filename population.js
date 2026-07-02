@@ -15,7 +15,7 @@ const MAX_YEAR = 2100;
 // Last year covered by the UN WPP "Estimates" sheet; years after this come
 // from the "Medium variant" projection sheet.
 const HISTORICAL_CUTOFF_YEAR = 2023;
-const LINE_WIDTH = 4.5;
+const LINE_WIDTH = 4;
 const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
 const YEAR_LABEL_FRONT_OFFSET = 20;
@@ -23,22 +23,6 @@ const YEAR_LABEL_FRONT_OFFSET = 20;
 const GRADIENT_BASE = "95, 227, 154";
 
 const SERIES_DEFS = [
-  {
-    id: "population",
-    label: "Global Population",
-    color: "#FF48B0",
-    format: formatCount,
-    axisSubtitle: "people",
-    axisFormat: formatCount,
-  },
-  {
-    id: "lifeExpectancy",
-    label: "Life Expectancy at Birth",
-    color: "#00A95C",
-    format: (value) => `${value.toFixed(1)} yrs`,
-    axisSubtitle: "years",
-    axisFormat: (value) => value.toFixed(1),
-  },
   {
     id: "fertility",
     label: "Fertility Rate",
@@ -56,12 +40,28 @@ const SERIES_DEFS = [
     axisFormat: (value) => value.toFixed(2),
   },
   {
+    id: "lifeExpectancy",
+    label: "Life Expectancy at Birth",
+    color: "#00A95C",
+    format: (value) => `${value.toFixed(1)} yrs`,
+    axisSubtitle: "years",
+    axisFormat: (value) => value.toFixed(1),
+  },
+  {
     id: "medianAge",
     label: "Median Age",
     color: "#FF8E91",
     format: (value) => `${value.toFixed(1)} yrs`,
     axisSubtitle: "years",
     axisFormat: (value) => value.toFixed(1),
+  },
+  {
+    id: "population",
+    label: "Global Population",
+    color: "#FF48B0",
+    format: formatCount,
+    axisSubtitle: "people",
+    axisFormat: formatCount,
   },
 ];
 
@@ -312,9 +312,9 @@ function renderTrend3D() {
         linewidth: LINE_WIDTH,
         resolution,
         dashed: true,
-        dashSize: 4,
-        gapSize: 4,
-        dashScale: 1,
+        dashSize: 2,
+        gapSize: 3,
+        dashScale: 0.5,
         transparent: true,
         opacity: 0.8,
       });
@@ -650,7 +650,9 @@ function setCurveCursor(isHovering) {
 }
 
 function addBaseGrid({ spanX, depth, rowZs = [], yearXs = [] }) {
-  const width = spanX + BASE_GRID_PADDING;
+  // X extent matches the year range exactly (no left/right edge column
+  // outside the selected years); only the Z (row) direction keeps padding.
+  const width = spanX;
   const depthSize = depth + BASE_GRID_PADDING;
 
   const plane = new THREE.Mesh(
@@ -753,17 +755,19 @@ function addCurrentYearMarker({ start, end, spanX, depth, maxH }) {
   beamLine.position.set(x, 0, 0);
   scene3d.seriesGroup.add(beamLine);
 
-  // const div = document.createElement("div");
-  // div.className = "label-3d label-tick";
-  // div.textContent = `${CURRENT_YEAR}`;
-  // const obj = new CSS2DObject(div);
-  // obj.position.set(x, -10, depth / 2 + 20);
-  // scene3d.labelGroup.add(obj);
+  const div = document.createElement("div");
+  div.className = "label-3d label-tick";
+  div.textContent = `${CURRENT_YEAR}`;
+  const obj = new CSS2DObject(div);
+  const frontZ = (depth + BASE_GRID_PADDING) / 2 + YEAR_LABEL_FRONT_OFFSET;
+  obj.center.set(0.5, 0.5);
+  obj.position.set(x, 0, frontZ);
+  scene3d.labelGroup.add(obj);
 }
 
 function addYearAxisTicks({ start, end, spanX, depth, yearTicks }) {
   const frontZ = (depth + BASE_GRID_PADDING) / 2 + YEAR_LABEL_FRONT_OFFSET;
-  yearTicks.forEach((year) => {
+  yearTicks.forEach((year, i) => {
     const div = document.createElement("div");
     div.className = "label-3d label-tick";
     div.textContent = year;
@@ -774,6 +778,9 @@ function addYearAxisTicks({ start, end, spanX, depth, yearTicks }) {
       0,
       frontZ,
     );
+    if (i > 0 && i < yearTicks.length - 1) {
+      div.classList.add("hidden");
+    }
     scene3d.labelGroup.add(obj);
   });
 }

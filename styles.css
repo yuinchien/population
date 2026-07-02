@@ -57,6 +57,10 @@ select {
     font: inherit;
 }
 
+.hidden {
+    display: none;
+}
+
 .app-header,
 .app-footer {
     width: min(1180px, calc(100% - 32px));
