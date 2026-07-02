@@ -37,7 +37,7 @@ canvas {
     top: 0px;
     left: 0px;
     bottom: 0;
-    width: 240px;
+    width: 216px;
     padding: 0 12px;
 }
 #overlay h1 {
@@ -48,7 +48,7 @@ canvas {
     text-transform: uppercase;
 }
 #overlay p {
-    margin: 0;
+    margin: 0 0 4px 0;
 }
 #yearControl .year-value {
     font-weight: 500;
@@ -237,7 +237,7 @@ hr {
     margin-bottom: 12px;
 }
 .tabs button {
-    padding: 8px 12px;
+    padding: 6px 8px;
     background: transparent;
     border: none;
     cursor: pointer;

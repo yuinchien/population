@@ -352,7 +352,7 @@ function applyYear(year) {
   // territories/dependencies and would otherwise show a slightly lower,
   // inconsistent number here.
   const worldPop = globalMetricsByYear.get(year)?.population ?? totalPop;
-  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people`;
+  elements.status.textContent = `${activeTotal.toLocaleString()} dots · ${formatCount(PEOPLE_PER_DOT)} ppl/dot`;
   updateMetricsPanel(year);
 }
 
