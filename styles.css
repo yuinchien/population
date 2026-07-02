@@ -131,7 +131,8 @@ button[hidden] {
     --cp-text: #5fe39a;
     --cp-text-dim: #3a8f5e;
     --cp-text-muted: #2b5a40;
-    --cp-accent: #8aa6ff;
+    --cp-accent: #5fe39a;
+    /*--cp-accent: #8aa6ff;*/
     --cp-accent-ink: #06140d;
     --cp-line: #16201a;
 

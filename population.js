@@ -302,7 +302,7 @@ function renderTrend3D() {
         gapSize: 4,
         dashScale: 1,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.8,
       });
       const line = new Line2(geometry, material);
       line.computeLineDistances();
