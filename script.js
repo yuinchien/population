@@ -12,6 +12,272 @@ const DATA_URL = "./data/population-global.json";
 const LOCATION_DEFS_URL = "./data/location-definitions.json";
 const COUNTRY_INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const TYPE_FILTER_CODES = ["1503", "1517", "1500"];
+const TYPE_FILTER_LABELS = {
+  1503: "High-income",
+  1517: "Middle-income",
+  1500: "Low-income",
+};
+const COUNTRY_LABELS = {
+  344: "Hong Kong",
+  446: "Macao",
+  158: "Taiwan",
+};
+const alpha3ToAlpha2Map = {
+  AFG: "AF",
+  ALB: "AL",
+  DZA: "DZ",
+  ASM: "AS",
+  AND: "AD",
+  AGO: "AO",
+  AIA: "AI",
+  ATA: "AQ",
+  ATG: "AG",
+  ARG: "AR",
+  ARM: "AM",
+  ABW: "AW",
+  AUS: "AU",
+  AUT: "AT",
+  AZE: "AZ",
+  BHS: "BS",
+  BHR: "BH",
+  BGD: "BD",
+  BRB: "BB",
+  BLR: "BY",
+  BEL: "BE",
+  BLZ: "BZ",
+  BEN: "BJ",
+  BMU: "BM",
+  BTN: "BT",
+  BOL: "BO",
+  BES: "BQ",
+  BIH: "BA",
+  BWA: "BW",
+  BVT: "BV",
+  BRA: "BR",
+  IOT: "IO",
+  BRN: "BN",
+  BGR: "BG",
+  BFA: "BF",
+  BDI: "BI",
+  CPV: "CV",
+  KHM: "KH",
+  CMR: "CM",
+  CAN: "CA",
+  CYM: "KY",
+  CAF: "CF",
+  TCD: "TD",
+  CHL: "CL",
+  CHN: "CN",
+  CXR: "CX",
+  CCK: "CC",
+  COL: "CO",
+  COM: "KM",
+  COG: "CG",
+  COD: "CD",
+  COK: "CK",
+  CRI: "CR",
+  CIV: "CI",
+  HRV: "HR",
+  CUB: "CU",
+  CUW: "CW",
+  CYP: "CY",
+  CZE: "CZ",
+  DNK: "DK",
+  DJI: "DJ",
+  DMA: "DM",
+  DOM: "DO",
+  ECU: "EC",
+  EGY: "EG",
+  SLV: "SV",
+  GNQ: "GQ",
+  ERI: "ER",
+  EST: "EE",
+  SWZ: "SZ",
+  ETH: "ET",
+  FLK: "FK",
+  FRO: "FO",
+  FJI: "FJ",
+  FIN: "FI",
+  FRA: "FR",
+  GUF: "GF",
+  PYF: "PF",
+  ATF: "TF",
+  GAB: "GA",
+  GMB: "GM",
+  GEO: "GE",
+  DEU: "DE",
+  GHA: "GH",
+  GIB: "GI",
+  GRC: "GR",
+  GRL: "GL",
+  GRD: "GD",
+  GLP: "GP",
+  GUM: "GU",
+  GTM: "GT",
+  GGY: "GG",
+  GIN: "GN",
+  GNB: "GW",
+  GUY: "GY",
+  HTI: "HT",
+  HMD: "HM",
+  VAT: "VA",
+  HND: "HN",
+  HKG: "HK",
+  HUN: "HU",
+  ISL: "IS",
+  IND: "IN",
+  IDN: "ID",
+  IRN: "IR",
+  IRQ: "IQ",
+  IRL: "IE",
+  IMN: "IM",
+  ISR: "IL",
+  ITA: "IT",
+  JAM: "JM",
+  JPN: "JP",
+  JEY: "JE",
+  JOR: "JO",
+  KAZ: "KZ",
+  KEN: "KE",
+  KIR: "KI",
+  PRK: "KP",
+  KOR: "KR",
+  KWT: "KW",
+  KGZ: "KG",
+  LAO: "LA",
+  LVA: "LV",
+  LBN: "LB",
+  LSO: "LS",
+  LBR: "LR",
+  LBY: "LY",
+  LIE: "LI",
+  LTU: "LT",
+  LUX: "LU",
+  MAC: "MO",
+  MKD: "MK",
+  MDG: "MG",
+  MWI: "MW",
+  MYS: "MY",
+  MDV: "MV",
+  MLI: "ML",
+  MLT: "MT",
+  MHL: "MH",
+  MTQ: "MQ",
+  MRT: "MR",
+  MUS: "MU",
+  MYT: "YT",
+  MEX: "MX",
+  FSM: "FM",
+  MDA: "MD",
+  MCO: "MC",
+  MNG: "MN",
+  MNE: "ME",
+  MSR: "MS",
+  MAR: "MA",
+  MOZ: "MZ",
+  MMR: "MM",
+  NAM: "NA",
+  NRU: "NR",
+  NPL: "NP",
+  NLD: "NL",
+  NCL: "NC",
+  NZL: "NZ",
+  NIC: "NI",
+  NER: "NE",
+  NGA: "NG",
+  NIU: "NU",
+  NFK: "NF",
+  MNP: "MP",
+  NOR: "NO",
+  OMN: "OM",
+  PAK: "PK",
+  PLW: "PW",
+  PSE: "PS",
+  PAN: "PA",
+  PNG: "PG",
+  PRY: "PY",
+  PER: "PR",
+  PHL: "PH",
+  PCN: "PN",
+  POL: "PL",
+  PRT: "PT",
+  PRI: "PR",
+  QAT: "QA",
+  REU: "RE",
+  ROU: "RO",
+  RUS: "RU",
+  RWA: "RW",
+  BLM: "BL",
+  SHN: "SH",
+  KNA: "KN",
+  LCA: "LC",
+  MAF: "MF",
+  SPM: "PM",
+  VCT: "VC",
+  WSM: "WS",
+  SMR: "SM",
+  STP: "ST",
+  SAU: "SA",
+  SEN: "SN",
+  SRB: "RS",
+  SYC: "SC",
+  SLE: "SL",
+  SGP: "SG",
+  SXM: "SX",
+  SVK: "SK",
+  SVN: "SI",
+  SLB: "SB",
+  SOM: "SO",
+  ZAF: "ZA",
+  SGS: "GS",
+  SSD: "SS",
+  ESP: "ES",
+  LKA: "LK",
+  SDN: "SD",
+  SUR: "SR",
+  SJM: "SJ",
+  SWE: "SE",
+  CHE: "CH",
+  SYR: "SY",
+  TWN: "TW",
+  TJK: "TJ",
+  TZA: "TZ",
+  THA: "TH",
+  TLS: "TL",
+  TGO: "TG",
+  TKL: "TK",
+  TON: "TO",
+  TTO: "TT",
+  TUN: "TN",
+  TUR: "TR",
+  TKM: "TM",
+  TCA: "TC",
+  TUV: "TV",
+  UGA: "UG",
+  UKR: "UA",
+  ARE: "AE",
+  GBR: "GB",
+  UMI: "UM",
+  USA: "USA",
+  URY: "UY",
+  UZB: "UZ",
+  VUT: "VU",
+  VEN: "VE",
+  VNM: "VN",
+  VGB: "VG",
+  VIR: "VI",
+  WLF: "WF",
+  ESH: "EH",
+  YEM: "YE",
+  ZMB: "ZM",
+  ZWE: "ZW",
+};
+
+function convertAlpha3ToAlpha2(code) {
+  if (!code) return null;
+  return alpha3ToAlpha2Map[code.toUpperCase()] || null;
+}
+
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2100;
@@ -281,7 +547,10 @@ function populateTypeOptions() {
     makeOption("", "ALL"),
     ...TYPE_FILTER_CODES.map((code) => {
       const location = state.locationIndex.get(code);
-      return makeOption(code, location ? location.name : code);
+      return makeOption(
+        code,
+        TYPE_FILTER_LABELS[code] || location?.name || code,
+      );
     }),
   ];
   elements.typeSelect.replaceChildren(...options);
@@ -295,7 +564,9 @@ function updateRegionOptions() {
   const regions = getRegionOptions(selectedType);
   elements.regionSelect.replaceChildren(
     makeOption("", "ALL"),
-    ...regions.map((location) => makeOption(String(location.code), location.name)),
+    ...regions.map((location) =>
+      makeOption(String(location.code), location.name),
+    ),
   );
 
   const pendingRegion = state.pendingLocationSelection.region;
@@ -308,10 +579,18 @@ function updateRegionOptions() {
 function updateCountryOptions() {
   const selectedType = elements.typeSelect.value;
   const selectedRegion = elements.regionSelect.value;
-  const countries = getCountryOptions(selectedType, selectedRegion);
+  const countries = getCountryOptions(selectedType, selectedRegion).sort(
+    (a, b) => countryLabel(a).localeCompare(countryLabel(b)),
+  );
   elements.countrySelect.replaceChildren(
-    makeOption("", "ALL"),
-    ...countries.map((location) => makeOption(String(location.code), location.name)),
+    // makeOption("", "ALL"),
+    ...countries.map((location) =>
+      makeOptionCountry(
+        String(location.code),
+        countryLabel(location),
+        location.iso3,
+      ),
+    ),
   );
 
   const pendingCountry = state.pendingLocationSelection.country;
@@ -355,7 +634,9 @@ function getCountryOptions(selectedType, selectedRegion) {
 }
 
 function locationsByType(type) {
-  return state.locationDefs.locations.filter((location) => location.type === type);
+  return state.locationDefs.locations.filter(
+    (location) => location.type === type,
+  );
 }
 
 function filterCountriesByIncomeGroup(countries, selectedType) {
@@ -381,11 +662,29 @@ function descendantCountries(rootCode) {
   return countries;
 }
 
+function makeOptionCountry(value, label, iso3) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  option.dataset.iso3 = iso3;
+  const iso2 = convertAlpha3ToAlpha2(iso3).toLowerCase();
+  option.style.setProperty(
+    "--flag",
+    `url("node_modules/flag-icons/flags/1x1/${iso2}.svg")`,
+    // `url("node_modules/flag-icons/flags/4x3/${iso2}.svg")`,
+  );
+  return option;
+}
+
 function makeOption(value, label) {
   const option = document.createElement("option");
   option.value = value;
   option.textContent = label;
   return option;
+}
+
+function countryLabel(location) {
+  return COUNTRY_LABELS[location.code] || location.name;
 }
 
 function hasOption(select, value) {

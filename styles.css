@@ -230,6 +230,27 @@ button[hidden] {
     margin-bottom: 0;
 }
 
+#countrySelect option {
+    position: relative;
+}
+#countrySelect option::before {
+    content: ""; /* Required for pseudo-elements */
+    /*position: absolute;*/
+    /*left: 0;*/
+    /*top: 50%;*/
+    /*transform: translateY(-50%);*/
+
+    /* Required sizing for flag-icons */
+    width: 18px;
+    height: 18px; /* Maintains the standard 4:3 flag aspect ratio */
+
+    /* Pulling the asset directly from the library's classes */
+    background-size: contain;
+    background-position: 50%;
+    background-repeat: no-repeat;
+    background-image: var(--flag, url("default.jpg"));
+}
+
 .control-panel select[multiple] option:checked,
 .control-panel select[size]:not([size="1"]) option:checked {
     background: var(--cp-accent)
@@ -310,6 +331,10 @@ input {
 
 select {
     padding: 10px;
+    appearance: base-select;
+}
+select option::checkmark {
+    display: none;
 }
 
 input {
