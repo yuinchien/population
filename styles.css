@@ -561,6 +561,14 @@ select[multiple] {
     cursor: grabbing;
 }
 
+.chart-3d.is-hovering-curve {
+    cursor: crosshair;
+}
+
+.chart-3d.is-grabbing.is-hovering-curve {
+    cursor: grabbing;
+}
+
 .chart-3d canvas {
     display: block;
     width: 100% !important;
@@ -682,15 +690,33 @@ select[multiple] {
 .tooltip {
     position: absolute;
     z-index: 2;
-    max-width: 230px;
-    padding: 10px 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    color: var(--text);
-    background: #fff;
-    box-shadow: var(--shadow);
-    font-size: 0.86rem;
+    max-width: 360px;
+    padding: 2px 6px;
+    border: 0;
+    border-radius: 0;
+    color: #05070a;
+    background: var(--tooltip-color, #e3ed55);
+    box-shadow: none;
+    font-size: 1rem;
+    line-height: 1.4;
     pointer-events: none;
+    white-space: nowrap;
+}
+
+.tooltip::before {
+    content: "";
+    position: absolute;
+    left: var(--connector-x, 0px);
+    bottom: 0;
+    width: 1px;
+    height: var(--connector-height, 80px);
+    background: var(--tooltip-color, #e3ed55);
+    transform: translateY(100%);
+}
+
+.tooltip strong {
+    display: block;
+    font-weight: 400;
 }
 
 .app-footer {

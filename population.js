@@ -77,8 +77,10 @@ const scene3d = {
   seriesGroup: null,
   labelGroup: null,
   hoverAxisGroup: null,
+  hoverMarker: null,
   hoverAxisLabels: [],
   hoverSeriesLabel: null,
+  hoverPoint: null,
   seriesMeta: null,
   currentSpanX: 0,
   currentMaxH: 0,
@@ -235,7 +237,7 @@ function renderTrend3D() {
 
   seriesList.forEach((series, index) => {
     const z = mapZ(index);
-    const yDomain = paddedDomain(series.points.map((point) => point.value));
+    const yDomain = zeroBasedDomain(series.points.map((point) => point.value));
     const mapY = (value) => scale(value, yDomain, [0, maxH]);
     scene3d.seriesMeta.set(series.label, {
       z,
@@ -248,6 +250,8 @@ function renderTrend3D() {
     const plotted = series.points.map((point) => ({
       ...point,
       _plotX: mapX(point.year),
+      _plotY: mapY(point.value),
+      _plotZ: z,
       seriesLabel: series.label,
       format: series.format,
     }));
@@ -415,6 +419,9 @@ function ensureThreeScene() {
   scene.add(labelGroup);
   const hoverAxisGroup = new THREE.Group();
   scene.add(hoverAxisGroup);
+  const hoverMarker = createHoverMarker();
+  hoverMarker.visible = false;
+  scene.add(hoverMarker);
 
   scene3d.scene = scene;
   scene3d.camera = camera;
@@ -424,6 +431,7 @@ function ensureThreeScene() {
   scene3d.seriesGroup = seriesGroup;
   scene3d.labelGroup = labelGroup;
   scene3d.hoverAxisGroup = hoverAxisGroup;
+  scene3d.hoverMarker = hoverMarker;
   scene3d.raycaster = new THREE.Raycaster();
   scene3d.raycaster.params.Line2 = { threshold: 6 };
   scene3d.pointer = new THREE.Vector2();
@@ -449,6 +457,9 @@ function resizeThree() {
 
 function animateThree() {
   scene3d.controls.update();
+  if (scene3d.hoverPoint && !elements.tooltip.hidden) {
+    positionTrendTooltip(scene3d.hoverPoint);
+  }
   scene3d.renderer.render(scene3d.scene, scene3d.camera);
   scene3d.labelRenderer.render(scene3d.scene, scene3d.camera);
   scene3d.raf = requestAnimationFrame(animateThree);
@@ -476,6 +487,7 @@ function disposeObject3D(object) {
 function clearSeriesGroup() {
   if (!scene3d.seriesGroup) return;
   clearHoverAxis();
+  clearHoverMarker();
   while (scene3d.seriesGroup.children.length) {
     const child = scene3d.seriesGroup.children[0];
     scene3d.seriesGroup.remove(child);
@@ -569,6 +581,39 @@ function clearHoverAxis() {
   });
   scene3d.hoverAxisLabels = [];
   scene3d.hoverSeriesLabel = null;
+}
+
+function createHoverMarker() {
+  const group = new THREE.Group();
+  const dot = new THREE.Mesh(
+    new THREE.SphereGeometry(4.8, 24, 16),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      depthTest: false,
+    }),
+  );
+  group.add(dot);
+  group.renderOrder = 10;
+  group.userData.dot = dot;
+  return group;
+}
+
+function showHoverMarker(point) {
+  if (!scene3d.hoverMarker || !point) return;
+  const meta = scene3d.seriesMeta && scene3d.seriesMeta.get(point.seriesLabel);
+  if (meta) {
+    scene3d.hoverMarker.userData.dot.material.color.set(meta.color);
+  }
+  scene3d.hoverMarker.position.set(point._plotX, point._plotY, point._plotZ);
+  scene3d.hoverMarker.visible = true;
+}
+
+function clearHoverMarker() {
+  if (scene3d.hoverMarker) scene3d.hoverMarker.visible = false;
+}
+
+function setCurveCursor(isHovering) {
+  elements.chart3d.classList.toggle("is-hovering-curve", isHovering);
 }
 
 function addBaseGrid({ spanX, depth, rowZs = [] }) {
@@ -704,7 +749,7 @@ function bindRaycasterTooltip() {
   const canvas = scene3d.renderer.domElement;
   canvas.addEventListener("mousemove", (event) => {
     if (scene3d.isDragging) {
-      clearTooltip();
+      setCurveCursor(false);
       return;
     }
 
@@ -718,33 +763,53 @@ function bindRaycasterTooltip() {
     );
     if (!hits.length) {
       clearTooltip();
-      if (!scene3d.isDragging) clearHoverAxis();
+      setCurveCursor(false);
+      if (!scene3d.isDragging) {
+        clearHoverAxis();
+        clearHoverMarker();
+      }
       return;
     }
     const hit = hits[0];
     if (hit.object.userData.point) {
+      setCurveCursor(true);
       showTrendTooltip(event, hit.object.userData.point);
       showHoverAxis(hit.object.userData.point.seriesLabel);
+      showHoverMarker(hit.object.userData.point);
     } else if (hit.object.userData.series) {
       const nearest = nearestSeriesPoint(
         hit.object.userData.series,
         hit.point.x,
       );
       if (nearest) {
+        setCurveCursor(true);
         showTrendTooltip(event, nearest);
         showHoverAxis(nearest.seriesLabel);
+        showHoverMarker(nearest);
       } else {
         clearTooltip();
-        if (!scene3d.isDragging) clearHoverAxis();
+        setCurveCursor(false);
+        if (!scene3d.isDragging) {
+          clearHoverAxis();
+          clearHoverMarker();
+        }
       }
     } else {
       clearTooltip();
-      if (!scene3d.isDragging) clearHoverAxis();
+      setCurveCursor(false);
+      if (!scene3d.isDragging) {
+        clearHoverAxis();
+        clearHoverMarker();
+      }
     }
   });
   canvas.addEventListener("mouseleave", () => {
-    clearTooltip();
-    if (!scene3d.isDragging) clearHoverAxis();
+    setCurveCursor(false);
+    if (!scene3d.isDragging) {
+      clearTooltip();
+      clearHoverAxis();
+      clearHoverMarker();
+    }
   });
 }
 
@@ -761,19 +826,67 @@ function nearestSeriesPoint(series, x) {
   return nearest;
 }
 
-function showTrendTooltip(event, point) {
-  const rect = elements.chartWrap.getBoundingClientRect();
+function showTrendTooltip(_event, point) {
+  const meta = scene3d.seriesMeta && scene3d.seriesMeta.get(point.seriesLabel);
+  const tooltipColor = meta ? meta.color : "#e3ed55";
+  scene3d.hoverPoint = point;
   elements.tooltip.hidden = false;
+  elements.tooltip.style.setProperty("--tooltip-color", tooltipColor);
   elements.tooltip.innerHTML = `
-    <strong>${point.seriesLabel}</strong><br>
+    <strong>${point.seriesLabel}</strong>
     ${point.year}: ${point.format(point.value)}${point.projected ? " (projected)" : ""}
   `;
-  elements.tooltip.style.left = `${Math.min(rect.width - 220, event.clientX - rect.left + 12)}px`;
-  elements.tooltip.style.top = `${Math.max(8, event.clientY - rect.top - 46)}px`;
+  positionTrendTooltip(point);
+}
+
+function positionTrendTooltip(point) {
+  const wrapRect = elements.chartWrap.getBoundingClientRect();
+  const marker = projectPointToChart(point);
+  const tooltipRect = elements.tooltip.getBoundingClientRect();
+  const connectorHeight = Math.min(110, Math.max(48, marker.y - 16));
+  const maxLeft = Math.max(12, wrapRect.width - tooltipRect.width - 12);
+  const left = clamp(marker.x, 12, maxLeft);
+  const top = Math.max(8, marker.y - tooltipRect.height - connectorHeight);
+  elements.tooltip.style.left = `${left}px`;
+  elements.tooltip.style.top = `${top}px`;
+  elements.tooltip.style.setProperty(
+    "--connector-x",
+    `${marker.x - left}px`,
+  );
+  elements.tooltip.style.setProperty(
+    "--connector-height",
+    `${Math.max(0, marker.y - top - tooltipRect.height)}px`,
+  );
 }
 
 function clearTooltip() {
   elements.tooltip.hidden = true;
+  scene3d.hoverPoint = null;
+}
+
+function projectPointToChart(point) {
+  const chartRect = elements.chart3d.getBoundingClientRect();
+  const wrapRect = elements.chartWrap.getBoundingClientRect();
+  const projected = new THREE.Vector3(
+    point._plotX,
+    point._plotY,
+    point._plotZ,
+  ).project(scene3d.camera);
+
+  return {
+    x:
+      chartRect.left -
+      wrapRect.left +
+      ((projected.x + 1) / 2) * chartRect.width,
+    y:
+      chartRect.top -
+      wrapRect.top +
+      ((1 - projected.y) / 2) * chartRect.height,
+  };
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function scale(value, domain, range) {
@@ -782,15 +895,9 @@ function scale(value, domain, range) {
   return range[0] + percent * (range[1] - range[0]);
 }
 
-function paddedDomain(values) {
-  const min = Math.min(...values);
+function zeroBasedDomain(values) {
   const max = Math.max(...values);
-  if (min === max) {
-    const pad = Math.abs(min || 1) * 0.1;
-    return [min - pad, max + pad];
-  }
-  const pad = (max - min) * 0.12;
-  return [min - pad, max + pad];
+  return [0, max * 1.08 || 1];
 }
 
 function makeYearTicks(start, end) {
