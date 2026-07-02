@@ -149,8 +149,8 @@ button[hidden] {
     color: var(--cp-text);
 
     position: fixed;
-    top: 16px;
-    left: 16px;
+    top: 0;
+    left: 0;
     z-index: 100;
     background: rgba(0, 0, 0, 0.2);
     border-radius: 16px;
@@ -158,12 +158,23 @@ button[hidden] {
     backdrop-filter: blur(4.7px);
     -webkit-backdrop-filter: blur(4.7px);
     border: none;
+
+    /* Hide scrollbar for Modern Browsers (Firefox / Chrome / Edge) */
+    scrollbar-width: none;
+
+    /* Hide scrollbar for IE and legacy Edge */
+    -ms-overflow-style: none;
+
+    /* Hide scrollbar for older Chrome, Safari, and Opera */
+    &&::-webkit-scrollbar {
+        display: none;
+    }
 }
 
 .control-panel label {
     color: var(--cp-text-dim);
-    font-size: 0.68rem;
-    letter-spacing: 0.16em;
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
 }
 
@@ -204,7 +215,6 @@ button[hidden] {
     background-image: none;
     padding: 0;
     background: none;
-    border: none;
 }
 
 .control-panel select[multiple] option,
@@ -249,6 +259,7 @@ button[hidden] {
     background-position: 50%;
     background-repeat: no-repeat;
     background-image: var(--flag, url("default.jpg"));
+    margin-right: 2px;
 }
 
 .control-panel select[multiple] option:checked,
@@ -308,6 +319,8 @@ button[hidden] {
 }
 
 .field {
+    display: grid;
+    gap: 7px;
     display: grid;
     gap: 7px;
 }

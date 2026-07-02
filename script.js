@@ -21,6 +21,10 @@ const COUNTRY_LABELS = {
   344: "Hong Kong",
   446: "Macao",
   158: "Taiwan",
+  180: "Congo",
+  408: "North Korea",
+  834: "Tanzania",
+  663: "Saint Martin",
 };
 const alpha3ToAlpha2Map = {
   AFG: "AF",
