@@ -15,7 +15,7 @@ const MAX_YEAR = 2100;
 // Last year covered by the UN WPP "Estimates" sheet; years after this come
 // from the "Medium variant" projection sheet.
 const HISTORICAL_CUTOFF_YEAR = 2023;
-const LINE_WIDTH = 4;
+const LINE_WIDTH = 2.4;
 const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
 const YEAR_LABEL_FRONT_OFFSET = 20;
