@@ -2,3 +2,4 @@ node_modules
 dist
 .DS_Store
 data/Population-EstimatesCSV.csv
+data/WPP2024_GEN_F01_DEMOGRAPHIC_INDICATORS_FULL.xlsx
