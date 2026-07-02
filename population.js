@@ -310,7 +310,7 @@ function renderTrend3D() {
     const nameDiv = document.createElement("div");
     nameDiv.className = "label-3d label-pill";
     nameDiv.textContent = series.label;
-    nameDiv.style.background = series.color;
+    nameDiv.style.setProperty("--pill-color", series.color);
     const nameLabel = new CSS2DObject(nameDiv);
     nameLabel.center.set(0, 0.5);
     nameLabel.position.set(lastVec.x + 14, lastVec.y, lastVec.z);
