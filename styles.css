@@ -1,5 +1,8 @@
 :root {
     --slider-size: 12px;
+    --border-color: rgba(34, 34, 34, 0.12);
+    --border: 1px solid var(--border-color);
+    --color-text: #222;
 }
 html,
 body {
@@ -8,7 +11,7 @@ body {
     letter-spacing: -0.01em;
     margin: 0;
     height: 100%;
-    /*background: #eee;*/
+    color: var(--color-text);
     background: linear-gradient(
         180deg,
         rgba(240, 240, 240, 1) 0%,
@@ -23,6 +26,9 @@ body {
     font-weight: 400;
     font-style: normal;
 }
+a {
+    color: #666;
+}
 canvas {
     display: block;
 }
@@ -31,35 +37,23 @@ canvas {
     top: 0px;
     left: 0px;
     bottom: 0;
-    color: #222;
-    width: 320px;
-    pointer-events: none;
-    padding: 12px;
+    width: 240px;
+    padding: 0 12px;
 }
 #overlay h1 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1rem;
     font-weight: 500;
-    letter-spacing: 0.015em;
+    letter-spacing: 0.01em;
 }
 #overlay p {
     margin: 0;
-    color: #222;
     font-size: 0.8rem;
     line-height: 1.5;
-    /*display: none;*/
-}
-
-#yearControl {
-    margin-top: 16px;
-    pointer-events: auto;
 }
 #yearControl .year-value {
-    color: #222;
-    font-size: 2rem;
     font-weight: 500;
     line-height: 1em;
-    margin-bottom: 8px;
 }
 #yearSlider {
     --progress: 0%;
@@ -93,7 +87,7 @@ canvas {
     width: var(--slider-size);
     height: var(--slider-size);
     border-radius: 50%;
-    background-color: #222;
+    background-color: var(--color-text);
     cursor: pointer;
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
 }
@@ -116,13 +110,12 @@ canvas {
     height: var(--slider-size);
     border-radius: 50%;
     border: none;
-    background-color: #222;
+    background-color: var(--color-text);
     cursor: pointer;
 }
 #tooltip {
     position: fixed;
     transform: translate(-50%, -130%);
-    color: #222;
     padding: 6px 10px;
     font-size: 0.8rem;
     border-radius: 2px;
@@ -143,6 +136,12 @@ canvas {
     margin-top: 2px;
     color: #555;
 }
+hr {
+    border: none;
+    height: 1px; /* Control thickness here */
+    background-color: var(--border-color); /* Your custom color */
+    margin: 10px 0;
+}
 .glass {
     background: rgba(255, 255, 255, 0.1);
 
@@ -161,12 +160,13 @@ canvas {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 12px 0;
 }
 .all-caps {
     text-transform: uppercase;
 }
 #metrics {
-    margin-top: 12px;
+    margin-top: 8px;
     display: grid;
     pointer-events: none;
 }
@@ -175,17 +175,17 @@ canvas {
     justify-content: space-between;
     align-items: baseline;
     gap: 16px;
-    border-top: 1px solid rgba(34, 34, 34, 0.12);
+    border-top: var(--border);
     padding: 6px 0;
 }
 .metric-label {
     color: #666;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.02em;
 }
 .metric-value {
-    color: #222;
+    color: var(--color-text);
     font-size: 0.84rem;
     font-weight: 500;
     white-space: nowrap;
@@ -196,37 +196,39 @@ canvas {
         "wght" 400,
         "GRAD" 0,
         "opsz" 20;
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
 }
-#viewMode {
+
+.toggle-icon-button {
     display: flex;
     gap: 0px;
     pointer-events: auto;
     border: none;
     background-color: rgba(34, 34, 34, 0.1);
-    width: fit-content;
+    margin-bottom: 12px;
     border-radius: 40px;
+    padding: 2px;
+    overflow: hidden;
 }
-#viewMode button {
+
+.toggle-icon-button button {
+    flex: 1;
     font-family: inherit;
     color: #666;
     background: transparent;
-    /*border: 1px solid rgba(34, 34, 34, 0.25);*/
     border: none;
-    border-radius: 999px;
-    width: 28px;
-    height: 28px;
+    border-radius: 40px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
     cursor: pointer;
 }
-#viewMode button.active {
+.toggle-icon-button button.active {
     color: #fff;
-    background: #222;
-    border-color: #222;
+    background: var(--color-text);
 }
 #colorMode {
     margin-top: 12px;
@@ -236,12 +238,12 @@ canvas {
 }
 #colorMode button {
     font-family: inherit;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.02em;
     color: #666;
     background: transparent;
-    border: 1px solid rgba(34, 34, 34, 0.25);
+    border: var(--border);
     border-radius: 999px;
     padding: 4px 12px;
     cursor: pointer;
@@ -260,7 +262,7 @@ canvas {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     color: #444;
 }
 .legend-swatch {

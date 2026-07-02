@@ -20,30 +20,32 @@
         <div id="overlay" class="glass">
             <div class="topbar">
                 <h1 class="all-caps">Global Population</h1>
-                <div id="viewMode" hidden>
-                    <button
-                        type="button"
-                        data-mode="globe"
-                        class="active"
-                        aria-label="Globe view"
-                        title="Globe"
-                    >
-                        <span class="material-symbols-outlined">globe</span>
-                    </button>
-                    <button
-                        type="button"
-                        data-mode="map"
-                        aria-label="Map view"
-                        title="Map"
-                    >
-                        <span class="material-symbols-outlined">map</span>
-                    </button>
-                </div>
             </div>
-            <p id="status">Loading population data…</p>
+
+            <div id="viewMode" class="toggle-icon-button" hidden>
+                <button
+                    type="button"
+                    data-mode="globe"
+                    class="active"
+                    aria-label="Globe view"
+                    title="Globe"
+                >
+                    <span class="material-symbols-outlined">globe</span>
+                </button>
+                <button
+                    type="button"
+                    data-mode="map"
+                    aria-label="Map view"
+                    title="Map"
+                >
+                    <span class="material-symbols-outlined">map</span>
+                </button>
+            </div>
+
             <div id="yearControl" hidden>
-                <div class="year-value">
-                    <span id="yearValue" class="font-sans"></span>
+                <div class="metric">
+                    <span class="metric-label">Year</span>
+                    <span id="yearValue" class="metric-value"></span>
                 </div>
                 <input id="yearSlider" type="range" autocomplete="off" />
             </div>
@@ -80,6 +82,12 @@
                 <button type="button" data-mode="income">Income group</button>
             </div>
             <div id="legend"></div>
+
+            <hr />
+            <p id="status">Loading population data…</p>
+            <p>
+                <a href="https://population.un.org/wpp/">Data source</a>
+            </p>
         </div>
         <div id="tooltip" class="glass" hidden></div>
 

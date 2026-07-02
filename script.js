@@ -397,7 +397,11 @@ function renderLegend() {
       swatch.className = "legend-swatch";
       swatch.style.background = color;
       const text = document.createElement("span");
-      text.textContent = label.replace(" countries", "");
+      if (label.includes("Afghanistan & Pakistan")) {
+        text.textContent = "Middle East & North Africa";
+      } else {
+        text.textContent = label.replace(" countries", "");
+      }
       item.append(swatch, text);
       return item;
     }),
