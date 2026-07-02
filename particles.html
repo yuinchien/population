@@ -187,8 +187,31 @@
                 font-weight: 500;
                 white-space: nowrap;
             }
-            #colorMode {
+            #viewMode {
                 margin-top: 18px;
+                display: flex;
+                gap: 6px;
+                pointer-events: auto;
+            }
+            #viewMode button {
+                font-family: inherit;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+                color: #666;
+                background: transparent;
+                border: 1px solid rgba(34, 34, 34, 0.25);
+                border-radius: 999px;
+                padding: 4px 12px;
+                cursor: pointer;
+            }
+            #viewMode button.active {
+                color: #fff;
+                background: #222;
+                border-color: #222;
+            }
+            #colorMode {
+                margin-top: 12px;
                 display: flex;
                 gap: 6px;
                 pointer-events: auto;
@@ -264,6 +287,12 @@
                         id="metricPopulationGrowth"
                     ></span>
                 </div>
+            </div>
+            <div id="viewMode" hidden>
+                <button type="button" data-mode="globe" class="active">
+                    Globe
+                </button>
+                <button type="button" data-mode="map">Map</button>
             </div>
             <div id="colorMode" hidden>
                 <button type="button" data-mode="region" class="active">

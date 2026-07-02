@@ -10,6 +10,11 @@ const DOT_SIZE = 5.5;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
+const MAP_WIDTH = 400;
+const MAP_HEIGHT = 200;
+const VIEW_TRANSITION_MS = 1200;
+const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
+const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 
 const REGION_COLORS = {
   "East Asia & Pacific": "#ac936e",
@@ -44,6 +49,7 @@ const elements = {
   metricPopulationGrowth: document.querySelector("#metricPopulationGrowth"),
   colorMode: document.querySelector("#colorMode"),
   legend: document.querySelector("#legend"),
+  viewMode: document.querySelector("#viewMode"),
 };
 
 const scene = new THREE.Scene();
@@ -80,6 +86,14 @@ function latLonToVector3(lat, lon, radius) {
     -radius * Math.sin(phi) * Math.cos(theta),
     radius * Math.cos(phi),
     radius * Math.sin(phi) * Math.sin(theta),
+  );
+}
+
+function latLonToMapVector3(lat, lon) {
+  return new THREE.Vector3(
+    (lon / 180) * (MAP_WIDTH / 2),
+    (lat / 90) * (MAP_HEIGHT / 2),
+    0,
   );
 }
 
@@ -158,7 +172,14 @@ let currentYearIndex = -1;
 let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
 let colorMode = "region";
+let viewMode = "globe";
+let dotLocalIndex = null;
+let transition = null;
 const clock = new THREE.Clock();
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 function colorFor(country) {
   return colorMode === "income" ? country._incomeColor : country._regionColor;
@@ -173,14 +194,19 @@ function setupScene(countries, incomeGroups) {
     country._regionColor = regionColor(country.region);
     country._incomeLabel = incomeGroupLabel(country.iso3, incomeGroups);
     country._incomeColor = incomeColor(country._incomeLabel);
-    country._xyz = new Float32Array(country.dots.length * 3);
+    country._xyzGlobe = new Float32Array(country.dots.length * 3);
+    country._xyzMap = new Float32Array(country.dots.length * 3);
     country._freqs = new Float32Array(country.dots.length);
     country._phases = new Float32Array(country.dots.length);
     country.dots.forEach(([lat, lon], i) => {
-      const p = latLonToVector3(lat, lon, GLOBE_RADIUS);
-      country._xyz[i * 3] = p.x;
-      country._xyz[i * 3 + 1] = p.y;
-      country._xyz[i * 3 + 2] = p.z;
+      const globePoint = latLonToVector3(lat, lon, GLOBE_RADIUS);
+      country._xyzGlobe[i * 3] = globePoint.x;
+      country._xyzGlobe[i * 3 + 1] = globePoint.y;
+      country._xyzGlobe[i * 3 + 2] = globePoint.z;
+      const mapPoint = latLonToMapVector3(lat, lon);
+      country._xyzMap[i * 3] = mapPoint.x;
+      country._xyzMap[i * 3 + 1] = mapPoint.y;
+      country._xyzMap[i * 3 + 2] = mapPoint.z;
       country._freqs[i] = PULSE_FREQ_MIN + Math.random() * PULSE_FREQ_RANGE;
       country._phases[i] = Math.random() * Math.PI * 2;
     });
@@ -216,12 +242,21 @@ function setupScene(countries, incomeGroups) {
   frequencies = new Float32Array(maxTotal);
   phases = new Float32Array(maxTotal);
   dotCountry = new Array(maxTotal);
+  dotLocalIndex = new Int32Array(maxTotal);
+}
+
+function positionsFor(country) {
+  return viewMode === "map" ? country._xyzMap : country._xyzGlobe;
 }
 
 function applyYear(year) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1 || !pointsMesh) return;
   currentYearIndex = yearIndex;
+  // A slider move mid-transition invalidates the in-flight tween's index
+  // mapping (activeTotal/dotCountry are about to be rebuilt), so just cut
+  // straight to the target view's positions instead of finishing the morph.
+  transition = null;
 
   const posAttr = pointsMesh.geometry.getAttribute("position");
   const colorAttr = pointsMesh.geometry.getAttribute("color");
@@ -237,12 +272,13 @@ function applyYear(year) {
       Math.max(1, Math.round(pop / PEOPLE_PER_DOT)),
     );
     const color = colorFor(country);
+    const positions = positionsFor(country);
     for (let i = 0; i < activeCount; i++) {
       const i3 = cursor * 3;
       const src3 = i * 3;
-      const x = country._xyz[src3];
-      const y = country._xyz[src3 + 1];
-      const z = country._xyz[src3 + 2];
+      const x = positions[src3];
+      const y = positions[src3 + 1];
+      const z = positions[src3 + 2];
       basePositions[i3] = x;
       basePositions[i3 + 1] = y;
       basePositions[i3 + 2] = z;
@@ -255,6 +291,7 @@ function applyYear(year) {
       frequencies[cursor] = country._freqs[i];
       phases[cursor] = country._phases[i];
       dotCountry[cursor] = country;
+      dotLocalIndex[cursor] = i;
       cursor++;
     }
   });
@@ -334,6 +371,83 @@ function setColorMode(mode) {
   recolor();
 }
 
+// Reads target positions straight out of each active dot's precomputed
+// globe/map array, in the exact cursor order applyYear() last laid out
+// (dotCountry[slot] + dotLocalIndex[slot] together identify which of that
+// country's dots occupies this slot).
+function computeTargetPositions(mode) {
+  const target = new Float32Array(activeTotal * 3);
+  for (let slot = 0; slot < activeTotal; slot++) {
+    const country = dotCountry[slot];
+    const src3 = dotLocalIndex[slot] * 3;
+    const source = mode === "map" ? country._xyzMap : country._xyzGlobe;
+    const i3 = slot * 3;
+    target[i3] = source[src3];
+    target[i3 + 1] = source[src3 + 1];
+    target[i3 + 2] = source[src3 + 2];
+  }
+  return target;
+}
+
+function setViewMode(mode) {
+  if (mode === viewMode || !activeTotal) return;
+
+  const fromPositions = basePositions.slice(0, activeTotal * 3);
+  const toPositions = computeTargetPositions(mode);
+  viewMode = mode;
+
+  transition = {
+    fromPositions,
+    toPositions,
+    fromCamPos: camera.position.clone(),
+    toCamPos: mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
+    fromTarget: controls.target.clone(),
+    toTarget: new THREE.Vector3(0, 0, 0),
+    start: performance.now(),
+  };
+  controls.enabled = false;
+  controls.autoRotate = false;
+
+  elements.viewMode
+    .querySelectorAll("button")
+    .forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === mode));
+}
+
+function updateTransition() {
+  if (!transition) return;
+  const t = Math.min(
+    1,
+    (performance.now() - transition.start) / VIEW_TRANSITION_MS,
+  );
+  const e = easeInOutCubic(t);
+
+  for (let k = 0; k < transition.toPositions.length; k++) {
+    basePositions[k] =
+      transition.fromPositions[k] +
+      (transition.toPositions[k] - transition.fromPositions[k]) * e;
+  }
+  camera.position.lerpVectors(transition.fromCamPos, transition.toCamPos, e);
+  controls.target.lerpVectors(transition.fromTarget, transition.toTarget, e);
+
+  if (t >= 1) {
+    transition = null;
+    controls.enabled = true;
+    if (viewMode === "globe") {
+      controls.enableRotate = true;
+      controls.enablePan = false;
+      controls.autoRotate = true;
+      controls.minDistance = GLOBE_RADIUS * 1.3;
+      controls.maxDistance = GLOBE_RADIUS * 8;
+    } else {
+      controls.enableRotate = false;
+      controls.enablePan = true;
+      controls.autoRotate = false;
+      controls.minDistance = 250;
+      controls.maxDistance = 1200;
+    }
+  }
+}
+
 async function init() {
   try {
     const [dotsResponse, globalResponse, incomeResponse] = await Promise.all([
@@ -375,6 +489,11 @@ async function init() {
       btn.addEventListener("click", () => setColorMode(btn.dataset.mode));
     });
 
+    elements.viewMode.hidden = false;
+    elements.viewMode.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => setViewMode(btn.dataset.mode));
+    });
+
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();
@@ -383,10 +502,17 @@ async function init() {
   }
 }
 
+// On the globe, each dot pulses outward along its own surface normal
+// (equivalent to scaling the position vector from the sphere's center,
+// since every base position already sits exactly GLOBE_RADIUS from
+// origin). On the flat map there's no "outward" direction shared with the
+// origin, so dots instead pulse toward/away from the camera along Z —
+// same twinkle feel, without the map-center dots barely moving.
 function pulseDots(elapsedTime) {
   if (!pointsMesh || !activeTotal) return;
   const positionAttribute = pointsMesh.geometry.getAttribute("position");
   const array = positionAttribute.array;
+  const isMap = viewMode === "map";
   for (let i = 0; i < activeTotal; i++) {
     const i3 = i * 3;
     const ox = basePositions[i3];
@@ -394,10 +520,16 @@ function pulseDots(elapsedTime) {
     const oz = basePositions[i3 + 2];
     const wave =
       Math.sin(elapsedTime * frequencies[i] + phases[i]) * PULSE_AMPLITUDE;
-    const scale = 1 + wave / GLOBE_RADIUS;
-    array[i3] = ox * scale;
-    array[i3 + 1] = oy * scale;
-    array[i3 + 2] = oz * scale;
+    if (isMap) {
+      array[i3] = ox;
+      array[i3 + 1] = oy;
+      array[i3 + 2] = oz + wave;
+    } else {
+      const scale = 1 + wave / GLOBE_RADIUS;
+      array[i3] = ox * scale;
+      array[i3 + 1] = oy * scale;
+      array[i3 + 2] = oz * scale;
+    }
   }
   positionAttribute.needsUpdate = true;
 }
@@ -440,6 +572,7 @@ renderer.domElement.addEventListener("pointermove", (event) => {
 
 function animate() {
   requestAnimationFrame(animate);
+  updateTransition();
   controls.update();
   pulseDots(clock.getElapsedTime());
   if (lastPointerEvent) updateTooltip(lastPointerEvent);
