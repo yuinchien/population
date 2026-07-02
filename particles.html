@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Global Population — 1 Dot = 1M People</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                background: #07090a;
+                overflow: hidden;
+                font-family: "DM Mono", ui-monospace, monospace;
+            }
+            canvas {
+                display: block;
+            }
+            #overlay {
+                position: fixed;
+                top: 24px;
+                left: 24px;
+                color: #5fe39a;
+                max-width: 320px;
+                pointer-events: none;
+            }
+            #overlay h1 {
+                margin: 0 0 6px;
+                font-size: 1rem;
+                font-weight: 500;
+                letter-spacing: 0.02em;
+            }
+            #overlay p {
+                margin: 0;
+                color: #3a8f5e;
+                font-size: 0.8rem;
+                line-height: 1.5;
+            }
+            #tooltip {
+                position: fixed;
+                transform: translate(-50%, -130%);
+                background: #0d1411;
+                border: 1px solid #16201a;
+                color: #5fe39a;
+                padding: 6px 10px;
+                font-size: 0.78rem;
+                border-radius: 4px;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+            #tooltip[hidden] {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="overlay">
+            <h1>Global Population</h1>
+            <p id="status">Loading population data…</p>
+        </div>
+        <div id="tooltip" hidden></div>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@0.185.0/build/three.module.js",
+                    "three/addons/": "https://unpkg.com/three@0.185.0/examples/jsm/"
+                }
+            }
+        </script>
+
+        <script type="module" src="./particles.js"></script>
+    </body>
+</html>
