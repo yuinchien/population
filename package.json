@@ -10,15 +10,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yuinchien/economy.git"
+    "url": "git+https://github.com/yuinchien/population.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/yuinchien/economy/issues"
+    "url": "https://github.com/yuinchien/population/issues"
   },
-  "homepage": "https://github.com/yuinchien/economy#readme",
+  "homepage": "https://github.com/yuinchien/population#readme",
   "dependencies": {
     "three": "^0.185.0"
   },
