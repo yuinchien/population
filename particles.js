@@ -201,7 +201,7 @@ function applyYear(year) {
   colorAttr.needsUpdate = true;
 
   const isProjected = year > historicalCutoffYear;
-  elements.yearValue.textContent = `${year}${isProjected ? " (projected)" : ""}`;
+  elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
   elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${countriesData.length} countries · ${formatCount(totalPop)} total`;
 }
 

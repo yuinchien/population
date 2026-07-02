@@ -7,7 +7,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
+            href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
             rel="stylesheet"
         />
         <style>
@@ -25,6 +25,11 @@
                 overflow: hidden;
                 font-family: "DM Mono", ui-monospace, monospace;
             }
+            .font-sans {
+                font-family: "DM Sans", sans-serif;
+                font-weight: 400;
+                font-style: normal;
+            }
             canvas {
                 display: block;
             }
@@ -35,7 +40,6 @@
                 color: #222;
                 max-width: 280px;
                 pointer-events: none;
-                padding: 16px;
             }
             #overlay h1 {
                 margin: 0 0 6px;
@@ -55,23 +59,24 @@
             }
             #yearControl .year-value {
                 color: #222;
-                font-size: 1.1rem;
-                margin-bottom: 6px;
+                font-size: 3rem;
+                font-weight: 500;
             }
             #yearSlider {
                 width: 280px;
-                accent-color: #5fe39a;
+                accent-color: #222;
                 background: transparent;
             }
             #tooltip {
                 position: fixed;
                 transform: translate(-50%, -130%);
-                background: #0d1411;
-                border: 1px solid #16201a;
-                color: #5fe39a;
+                /*background: #0d1411;*/
+                /*background: #f2f2f2;*/
+                /*border: 1px solid #fff;*/
+                color: #222;
                 padding: 6px 10px;
-                font-size: 0.78rem;
-                border-radius: 4px;
+                font-size: 0.8rem;
+                border-radius: 2px;
                 pointer-events: none;
                 white-space: nowrap;
             }
@@ -92,18 +97,23 @@
                 /*border-radius: 16px;*/
                 box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
             }
+            .all-caps {
+                text-transform: uppercase;
+            }
         </style>
     </head>
     <body>
-        <div id="overlay" class="glass">
-            <h1>Global Population</h1>
+        <div id="overlay">
+            <h1 class="all-caps">Global Population</h1>
             <p id="status">Loading population data…</p>
             <div id="yearControl" hidden>
-                <div class="year-value"><span id="yearValue"></span></div>
+                <div class="year-value">
+                    <span id="yearValue" class="font-sans"></span>
+                </div>
                 <input id="yearSlider" type="range" autocomplete="off" />
             </div>
         </div>
-        <div id="tooltip" hidden></div>
+        <div id="tooltip" class="glass" hidden></div>
 
         <script type="importmap">
             {
