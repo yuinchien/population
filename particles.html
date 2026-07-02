@@ -35,11 +35,13 @@
             }
             #overlay {
                 position: fixed;
-                top: 16px;
-                left: 16px;
+                top: 0px;
+                left: 0px;
+                bottom: 0;
                 color: #222;
                 max-width: 280px;
                 pointer-events: none;
+                padding: 16px;
             }
             #overlay h1 {
                 margin: 0 0 6px;
@@ -95,15 +97,41 @@
 
                 /* Smooth curves and depth shadow */
                 /*border-radius: 16px;*/
-                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+                /*box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);*/
             }
             .all-caps {
                 text-transform: uppercase;
             }
+            #metrics {
+                margin-top: 18px;
+                display: grid;
+                gap: 8px;
+                pointer-events: none;
+            }
+            .metric {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                gap: 16px;
+                border-top: 1px solid rgba(34, 34, 34, 0.12);
+                padding-top: 4px;
+            }
+            .metric-label {
+                color: #666;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+            .metric-value {
+                color: #222;
+                font-size: 0.88rem;
+                font-weight: 500;
+                white-space: nowrap;
+            }
         </style>
     </head>
     <body>
-        <div id="overlay">
+        <div id="overlay" class="glass">
             <h1 class="all-caps">Global Population</h1>
             <p id="status">Loading population data…</p>
             <div id="yearControl" hidden>
@@ -111,6 +139,31 @@
                     <span id="yearValue" class="font-sans"></span>
                 </div>
                 <input id="yearSlider" type="range" autocomplete="off" />
+            </div>
+            <div id="metrics" hidden>
+                <div class="metric">
+                    <span class="metric-label">Population</span>
+                    <span class="metric-value" id="metricPopulation"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Fertility rate</span>
+                    <span class="metric-value" id="metricFertility"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Life expectancy</span>
+                    <span class="metric-value" id="metricLifeExpectancy"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Median age</span>
+                    <span class="metric-value" id="metricMedianAge"></span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Population growth</span>
+                    <span
+                        class="metric-value"
+                        id="metricPopulationGrowth"
+                    ></span>
+                </div>
             </div>
         </div>
         <div id="tooltip" class="glass" hidden></div>

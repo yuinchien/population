@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const DATA_URL = "./data/population-dots.json";
+const GLOBAL_METRICS_URL = "./data/population-global.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 4.4;
@@ -26,6 +27,12 @@ const elements = {
   yearControl: document.querySelector("#yearControl"),
   yearSlider: document.querySelector("#yearSlider"),
   yearValue: document.querySelector("#yearValue"),
+  metrics: document.querySelector("#metrics"),
+  metricPopulation: document.querySelector("#metricPopulation"),
+  metricFertility: document.querySelector("#metricFertility"),
+  metricLifeExpectancy: document.querySelector("#metricLifeExpectancy"),
+  metricMedianAge: document.querySelector("#metricMedianAge"),
+  metricPopulationGrowth: document.querySelector("#metricPopulationGrowth"),
 };
 
 const scene = new THREE.Scene();
@@ -90,6 +97,34 @@ function formatCount(value) {
   return `${value}`;
 }
 
+// data/population-global.json holds one series per indicator, each an
+// array of {year, value} rows; index by year so applyYear() can look up
+// all five in O(1) as the slider moves.
+function buildGlobalMetricsIndex(globalData) {
+  const byYear = new Map();
+  Object.entries(globalData).forEach(([series, rows]) => {
+    rows.forEach(({ year, value }) => {
+      if (!byYear.has(year)) byYear.set(year, {});
+      byYear.get(year)[series] = value;
+    });
+  });
+  return byYear;
+}
+
+function updateMetricsPanel(year) {
+  const metrics = globalMetricsByYear.get(year);
+  if (!metrics) {
+    elements.metrics.hidden = true;
+    return;
+  }
+  elements.metrics.hidden = false;
+  elements.metricPopulation.textContent = formatCount(metrics.population);
+  elements.metricFertility.textContent = `${metrics.fertility.toFixed(2)} births/woman`;
+  elements.metricLifeExpectancy.textContent = `${metrics.lifeExpectancy.toFixed(1)} yrs`;
+  elements.metricMedianAge.textContent = `${metrics.medianAge.toFixed(1)} yrs`;
+  elements.metricPopulationGrowth.textContent = `${metrics.populationGrowth.toFixed(2)}%`;
+}
+
 let pointsMesh = null;
 let basePositions = null; // pre-pulse baseline, rebuilt whenever the year changes
 let frequencies = null;
@@ -100,6 +135,7 @@ let countriesData = [];
 let yearsData = [];
 let currentYearIndex = -1;
 let historicalCutoffYear = Infinity;
+let globalMetricsByYear = new Map();
 const clock = new THREE.Clock();
 
 // Allocates buffers sized to each country's maximum dot count (the most
@@ -203,16 +239,23 @@ function applyYear(year) {
   const isProjected = year > historicalCutoffYear;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
   elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${countriesData.length} countries · ${formatCount(totalPop)} total`;
+  updateMetricsPanel(year);
 }
 
 async function init() {
   try {
-    const response = await fetch(DATA_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
+    const [dotsResponse, globalResponse] = await Promise.all([
+      fetch(DATA_URL),
+      fetch(GLOBAL_METRICS_URL),
+    ]);
+    if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
+    if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
+    const data = await dotsResponse.json();
+    const globalData = await globalResponse.json();
     countriesData = data.countries;
     yearsData = data.years;
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
+    globalMetricsByYear = buildGlobalMetricsIndex(globalData);
 
     setupScene(countriesData);
 
