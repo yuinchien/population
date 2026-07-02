@@ -17,6 +17,8 @@ const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
 const YEAR_LABEL_FRONT_OFFSET = 20;
 
+const GRADIENT_BASE = "95, 227, 154";
+
 const SERIES_DEFS = [
   {
     id: "population",
@@ -696,9 +698,9 @@ function verticalGradientTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext("2d");
   const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
-  gradient.addColorStop(0, "rgba(210, 255, 120, 0.5)");
-  gradient.addColorStop(0.35, "rgba(210, 255, 120, 0.16)");
-  gradient.addColorStop(1, "rgba(210, 255, 120, 0)");
+  gradient.addColorStop(0, `rgba(${GRADIENT_BASE}, 0.5)`);
+  gradient.addColorStop(0.2, `rgba(${GRADIENT_BASE}, 0.2)`);
+  gradient.addColorStop(0.9, `rgba(${GRADIENT_BASE}, 0)`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   currentYearGradientTexture = new THREE.CanvasTexture(canvas);
