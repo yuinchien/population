@@ -11,6 +11,9 @@
             rel="stylesheet"
         />
         <style>
+            :root {
+                --slider-size: 12px;
+            }
             html,
             body {
                 font-size: 14px;
@@ -21,7 +24,7 @@
                 /*background: #eee;*/
                 background: linear-gradient(
                     180deg,
-                    rgba(242, 242, 242, 1) 0%,
+                    rgba(240, 240, 240, 1) 0%,
                     rgba(222, 222, 222, 1) 100%
                 );
 
@@ -76,7 +79,7 @@
                 -webkit-appearance: none;
                 appearance: none;
                 width: stretch;
-                height: 16px;
+                height: var(--slider-size);
                 margin: 0;
                 border-radius: 999px;
                 /*rgba(34, 34, 34) 0%,*/
@@ -85,7 +88,7 @@
                     linear-gradient(
                             to right,
                             rgba(34, 34, 34) 0%,
-                            rgba(34, 34, 34, 0.1) 100%
+                            rgba(34, 34, 34, 0.4) 100%
                         )
                         0 / var(--progress) 100% no-repeat,
                     rgba(34, 34, 34, 0.1);
@@ -94,36 +97,36 @@
             }
             #yearSlider::-webkit-slider-runnable-track {
                 -webkit-appearance: none;
-                height: 16px;
+                height: var(--slider-size);
                 background: transparent;
                 border-radius: 999px;
             }
             #yearSlider::-webkit-slider-thumb {
                 -webkit-appearance: none;
-                width: 16px;
-                height: 16px;
+                width: var(--slider-size);
+                height: var(--slider-size);
                 border-radius: 50%;
                 background-color: #222;
                 cursor: pointer;
                 box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
             }
             #yearSlider::-moz-range-track {
-                height: 16px;
-                background: rgba(34, 34, 34, 0.12);
+                height: var(--slider-size);
+                background: rgba(34, 34, 34, 0.05);
                 border-radius: 999px;
             }
             #yearSlider::-moz-range-progress {
-                height: 16px;
+                height: var(--slider-size);
                 background: linear-gradient(
                     to right,
                     rgba(34, 34, 34) 0%,
-                    rgba(34, 34, 34, 0.2) 100%
+                    rgba(34, 34, 34, 0.4) 100%
                 );
                 border-radius: 999px 0 0 999px;
             }
             #yearSlider::-moz-range-thumb {
-                width: 16px;
-                height: 16px;
+                width: var(--slider-size);
+                height: var(--slider-size);
                 border-radius: 50%;
                 border: none;
                 background-color: #222;
@@ -132,9 +135,6 @@
             #tooltip {
                 position: fixed;
                 transform: translate(-50%, -130%);
-                /*background: #0d1411;*/
-                /*background: #f2f2f2;*/
-                /*border: 1px solid #fff;*/
                 color: #222;
                 padding: 6px 10px;
                 font-size: 0.8rem;

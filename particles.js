@@ -6,26 +6,26 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 4.4;
+const DOT_SIZE = 5.5;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
 
 const REGION_COLORS = {
-  "East Asia & Pacific": "#FF48B0",
-  "Europe & Central Asia": "#4EA8FF",
-  "Latin America & Caribbean": "#00838A",
-  "Middle East, North Africa, Afghanistan & Pakistan": "#FF8E91",
-  "North America": "#F6A04D",
-  "South Asia": "#00AA93",
-  "Sub-Saharan Africa": "#FFB454",
+  "East Asia & Pacific": "#ac936e",
+  "Europe & Central Asia": "#e6b5c9",
+  "Latin America & Caribbean": "#bd8ca6",
+  "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
+  "North America": "#82d8d5",
+  "South Asia": "#5ec8e5",
+  "Sub-Saharan Africa": "#62c2b1",
 };
 const DEFAULT_COLOR = "#5fe39a";
 
 const INCOME_GROUP_COLORS = {
-  "High-income countries": "#4EA8FF",
-  "Middle-income countries": "#FFB454",
-  "Low-income countries": "#FF6B6B",
+  "High-income countries": "#00a95c",
+  "Middle-income countries": "#765ba7",
+  "Low-income countries": "#ff6c2f",
 };
 const UNCLASSIFIED_INCOME = "Not classified";
 const UNCLASSIFIED_COLOR = "#999999";
@@ -303,7 +303,10 @@ function updateSliderProgress() {
 function renderLegend() {
   const entries =
     colorMode === "income"
-      ? [...Object.entries(INCOME_GROUP_COLORS), [UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]]
+      ? [
+          ...Object.entries(INCOME_GROUP_COLORS),
+          [UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR],
+        ]
       : Object.entries(REGION_COLORS);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
@@ -325,7 +328,9 @@ function setColorMode(mode) {
   colorMode = mode;
   elements.colorMode
     .querySelectorAll("button")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === mode));
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.mode === mode),
+    );
   recolor();
 }
 

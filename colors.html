@@ -1,0 +1,317 @@
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Colors</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 24px;
+                background: #f2f2f2;
+                font-family: ui-monospace, monospace;
+                font-size: 14px;
+            }
+            h1 {
+                font-size: 14px;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+                margin: 0 0 16px;
+            }
+            #palettes {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+                margin-bottom: 32px;
+            }
+            .palette-card {
+                background: #fff;
+                border-radius: 6px;
+                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            }
+            .palette-name {
+                padding: 10px 12px;
+                color: #222;
+            }
+            .palette-strip {
+                display: flex;
+                height: 48px;
+            }
+            .palette-swatch {
+                flex: 1;
+                cursor: pointer;
+            }
+            .swatch-container {
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 12px;
+                cursor: pointer;
+            }
+            #swatches {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .swatch {
+                flex: 1;
+                display: flex;
+                align-items: flex-end;
+                padding: 8px;
+                box-sizing: border-box;
+                height: 80px;
+            }
+            .swatch-label,
+            .swatch-hex {
+                color: #222;
+                width: 160px;
+            }
+            .swatch-hex {
+                width: 80px;
+                text-align: right;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Curated palettes</h1>
+        <div id="palettes"></div>
+
+        <h1>All colors</h1>
+        <div id="swatches"></div>
+
+        <script type="module">
+            const colors = await fetch("./data/riso-colors.json").then((r) =>
+                r.json(),
+            );
+            const colorsByName = new Map(colors.map((c) => [c.name, c]));
+
+            const CURATED_PALETTES = [
+                {
+                    name: "Fluorescent",
+                    colorNames: [
+                        "Fluorescent Pink",
+                        "Fluorescent Orange",
+                        "Fluorescent Yellow",
+                        "Fluorescent Red",
+                        "Fluorescent Green",
+                        "Bubble Gum",
+                        "Light Lime",
+                        "Scarlet",
+                    ],
+                },
+                {
+                    name: "Pastel",
+                    colorNames: [
+                        "Bisque",
+                        "Light Mauve",
+                        "Dark Mauve",
+                        "Mist",
+                        "Mint",
+                        "Aqua",
+                        "Sea Foam",
+                        "Granite",
+                    ],
+                },
+                {
+                    name: "Earthy",
+                    colorNames: [
+                        "Brown",
+                        "Hunter Green",
+                        "Moss",
+                        "Forest",
+                        "Copper",
+                        "Flat Gold",
+                        "Slate",
+                        "Mahogany",
+                    ],
+                },
+                {
+                    name: "Jewel Tones",
+                    colorNames: [
+                        "Emerald",
+                        "Lake",
+                        "Indigo",
+                        "Plum",
+                        "Burgundy",
+                        "Maroon",
+                        "Violet",
+                        "Orchid",
+                    ],
+                },
+                {
+                    name: "Ocean",
+                    colorNames: [
+                        "Cornflower",
+                        "Sky Blue",
+                        "Sea Blue",
+                        "Teal",
+                        "Turquoise",
+                        "Lagoon",
+                        "Steel",
+                        "Smoky Teal",
+                    ],
+                },
+                {
+                    name: "Sunset",
+                    colorNames: [
+                        "Sunflower",
+                        "Apricot",
+                        "Paprika",
+                        "Pumpkin",
+                        "Tomato",
+                        "Crimson",
+                        "Melon",
+                        "Cranberry",
+                    ],
+                },
+                {
+                    name: "Primary",
+                    colorNames: [
+                        "Blue",
+                        "Green",
+                        "Bright Red",
+                        "Yellow",
+                        "Orange",
+                        "Purple",
+                        "Red",
+                        "Medium Blue",
+                    ],
+                },
+                {
+                    name: "Monochrome",
+                    colorNames: [
+                        "Black",
+                        "White",
+                        "Gray",
+                        "Light Gray",
+                        "Charcoal",
+                        "Midnight",
+                        "Metallic Gold",
+                        "RisoFederal Blue",
+                    ],
+                },
+                {
+                    name: "Woodland",
+                    colorNames: [
+                        "Grass",
+                        "Spruce",
+                        "Kelly Green",
+                        "Light Teal",
+                        "Ivy",
+                        "Pine",
+                        "Bright Olive Green",
+                        "Moss",
+                    ],
+                },
+                {
+                    name: "Berry",
+                    colorNames: [
+                        "Marine Red",
+                        "Raisin",
+                        "Grape",
+                        "Raspberry Red",
+                        "Brick",
+                        "Wine",
+                        "Plum",
+                        "Maroon",
+                    ],
+                },
+                {
+                    name: "Dusty",
+                    colorNames: [
+                        "Slate",
+                        "Smoky Teal",
+                        "Granite",
+                        "Mist",
+                        "Dark Mauve",
+                        "Charcoal",
+                        "Light Gray",
+                        "Steel",
+                    ],
+                },
+                {
+                    name: "Desert",
+                    colorNames: [
+                        "Flat Gold",
+                        "Bright Gold",
+                        "Metallic Gold",
+                        "Copper",
+                        "Mahogany",
+                        "Bisque",
+                        "Brick",
+                        "Apricot",
+                    ],
+                },
+            ];
+
+            async function copyHex(color, feedbackEl) {
+                const original = feedbackEl.textContent;
+                try {
+                    await navigator.clipboard.writeText(color.hex);
+                    feedbackEl.textContent = "Copied!";
+                } catch (error) {
+                    feedbackEl.textContent = "Copy failed";
+                }
+                setTimeout(() => {
+                    feedbackEl.textContent = original;
+                }, 800);
+            }
+
+            const palettesContainer = document.querySelector("#palettes");
+            CURATED_PALETTES.forEach((palette) => {
+                const card = document.createElement("div");
+                card.className = "palette-card";
+
+                const name = document.createElement("div");
+                name.className = "palette-name";
+                name.textContent = palette.name;
+
+                const strip = document.createElement("div");
+                strip.className = "palette-strip";
+
+                palette.colorNames.forEach((colorName) => {
+                    const color = colorsByName.get(colorName);
+                    if (!color) return;
+                    const swatch = document.createElement("div");
+                    swatch.className = "palette-swatch";
+                    swatch.style.backgroundColor = color.hex;
+                    swatch.title = `${color.name} — ${color.hex}`;
+                    swatch.addEventListener("click", () =>
+                        copyHex(color, name),
+                    );
+                    strip.append(swatch);
+                });
+
+                card.append(name);
+                card.append(strip);
+                palettesContainer.append(card);
+            });
+
+            const container = document.querySelector("#swatches");
+            colors.forEach((color) => {
+                const swatchContainer = document.createElement("div");
+                swatchContainer.className = "swatch-container";
+                const swatch = document.createElement("div");
+                swatch.className = "swatch";
+                swatch.style.backgroundColor = color.hex;
+
+                const label = document.createElement("div");
+                label.className = "swatch-label";
+                label.textContent = `${color.name}`;
+
+                const hex = document.createElement("div");
+                hex.className = "swatch-hex";
+                hex.textContent = `${color.hex}`;
+
+                swatchContainer.addEventListener("click", () =>
+                    copyHex(color, hex),
+                );
+
+                swatchContainer.append(label);
+                swatchContainer.append(hex);
+                swatchContainer.append(swatch);
+                container.append(swatchContainer);
+            });
+        </script>
+    </body>
+</html>
