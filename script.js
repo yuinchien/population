@@ -9,6 +9,9 @@ import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
 const DATA_URL = "./data/population-global.json";
+const LOCATION_DEFS_URL = "./data/location-definitions.json";
+const COUNTRY_INCOME_GROUPS_URL = "./data/country-income-groups.json";
+const TYPE_FILTER_CODES = ["1503", "1517", "1500"];
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2100;
@@ -20,7 +23,7 @@ const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
 const YEAR_LABEL_FRONT_OFFSET = 20;
 
-const GRADIENT_BASE = "95, 227, 154";
+const GRADIENT_BASE = "47, 97, 101";
 
 const SERIES_DEFS = [
   {
@@ -71,6 +74,9 @@ const elements = {
   startYearLabel: document.querySelector("#startYearLabel"),
   endYearLabel: document.querySelector("#endYearLabel"),
   yearRangeFill: document.querySelector("#yearRangeFill"),
+  typeSelect: document.querySelector("#typeSelect"),
+  regionSelect: document.querySelector("#regionSelect"),
+  countrySelect: document.querySelector("#countrySelect"),
   seriesSelect: document.querySelector("#seriesSelect"),
   status: document.querySelector("#status"),
   chartSubtitle: document.querySelector("#chartSubtitle"),
@@ -82,6 +88,15 @@ const elements = {
 
 const state = {
   data: null,
+  locationDefs: null,
+  incomeGroups: null,
+  locationIndex: new Map(),
+  childLocations: new Map(),
+  pendingLocationSelection: {
+    type: "",
+    region: "",
+    country: "",
+  },
 };
 
 const scene3d = {
@@ -158,6 +173,16 @@ function bindEvents() {
   elements.seriesSelect.addEventListener("change", () => {
     render();
   });
+  elements.typeSelect.addEventListener("change", () => {
+    updateRegionOptions();
+    updateCountryOptions();
+    updateUrl();
+  });
+  elements.regionSelect.addEventListener("change", () => {
+    updateCountryOptions();
+    updateUrl();
+  });
+  elements.countrySelect.addEventListener("change", updateUrl);
 
   window.addEventListener("resize", () => {
     render();
@@ -190,6 +215,11 @@ function restoreFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const start = params.get("start");
   const end = params.get("end");
+  state.pendingLocationSelection = {
+    type: params.get("type") || "",
+    region: params.get("region") || "",
+    country: params.get("country") || "",
+  };
   if (start) elements.startYear.value = start;
   if (end) elements.endYear.value = end;
 }
@@ -198,20 +228,168 @@ function updateUrl() {
   const params = new URLSearchParams();
   params.set("start", elements.startYear.value);
   params.set("end", elements.endYear.value);
+  if (elements.typeSelect.value) params.set("type", elements.typeSelect.value);
+  if (elements.regionSelect.value)
+    params.set("region", elements.regionSelect.value);
+  if (elements.countrySelect.value)
+    params.set("country", elements.countrySelect.value);
   history.replaceState(null, "", `${window.location.pathname}?${params}`);
 }
 
 async function loadData() {
   setStatus("Loading population data...");
   try {
-    const response = await fetch(DATA_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    state.data = await response.json();
+    const [dataResponse, defsResponse, incomeResponse] = await Promise.all([
+      fetch(DATA_URL),
+      fetch(LOCATION_DEFS_URL),
+      fetch(COUNTRY_INCOME_GROUPS_URL),
+    ]);
+    if (!dataResponse.ok) throw new Error(`HTTP ${dataResponse.status}`);
+    if (!defsResponse.ok) throw new Error(`HTTP ${defsResponse.status}`);
+    if (!incomeResponse.ok) throw new Error(`HTTP ${incomeResponse.status}`);
+    state.data = await dataResponse.json();
+    state.locationDefs = await defsResponse.json();
+    state.incomeGroups = await incomeResponse.json();
+    prepareLocationDefinitions();
+    populateTypeOptions();
+    updateRegionOptions();
+    updateCountryOptions();
     setStatus("Ready.");
+    updateUrl();
     render();
   } catch (error) {
     setStatus(`Could not load data: ${error.message}`);
   }
+}
+
+function prepareLocationDefinitions() {
+  state.locationIndex = new Map();
+  state.childLocations = new Map();
+  state.locationDefs.locations.forEach((location) => {
+    const code = String(location.code);
+    const parentCode = String(location.parentCode || "");
+    state.locationIndex.set(code, location);
+    if (!state.childLocations.has(parentCode)) {
+      state.childLocations.set(parentCode, []);
+    }
+    state.childLocations.get(parentCode).push(location);
+  });
+}
+
+function populateTypeOptions() {
+  const options = [
+    makeOption("", "ALL"),
+    ...TYPE_FILTER_CODES.map((code) => {
+      const location = state.locationIndex.get(code);
+      return makeOption(code, location ? location.name : code);
+    }),
+  ];
+  elements.typeSelect.replaceChildren(...options);
+  if (hasOption(elements.typeSelect, state.pendingLocationSelection.type)) {
+    elements.typeSelect.value = state.pendingLocationSelection.type;
+  }
+}
+
+function updateRegionOptions() {
+  const selectedType = elements.typeSelect.value;
+  const regions = getRegionOptions(selectedType);
+  elements.regionSelect.replaceChildren(
+    makeOption("", "ALL"),
+    ...regions.map((location) => makeOption(String(location.code), location.name)),
+  );
+
+  const pendingRegion = state.pendingLocationSelection.region;
+  if (hasOption(elements.regionSelect, pendingRegion)) {
+    elements.regionSelect.value = pendingRegion;
+  }
+  state.pendingLocationSelection.region = "";
+}
+
+function updateCountryOptions() {
+  const selectedType = elements.typeSelect.value;
+  const selectedRegion = elements.regionSelect.value;
+  const countries = getCountryOptions(selectedType, selectedRegion);
+  elements.countrySelect.replaceChildren(
+    makeOption("", "ALL"),
+    ...countries.map((location) => makeOption(String(location.code), location.name)),
+  );
+
+  const pendingCountry = state.pendingLocationSelection.country;
+  if (hasOption(elements.countrySelect, pendingCountry)) {
+    elements.countrySelect.value = pendingCountry;
+  }
+  state.pendingLocationSelection.country = "";
+}
+
+function getRegionOptions(selectedType) {
+  if (!state.locationDefs) return [];
+  if (
+    !selectedType ||
+    TYPE_FILTER_CODES.includes(selectedType) ||
+    selectedType === "Country/Area"
+  ) {
+    return locationsByType("Region");
+  }
+  return state.locationDefs.locations.filter(
+    (location) =>
+      location.type === selectedType && location.type !== "Country/Area",
+  );
+}
+
+function getCountryOptions(selectedType, selectedRegion) {
+  if (!state.locationDefs) return [];
+  let countries;
+  if (selectedRegion) {
+    countries = descendantCountries(selectedRegion);
+  } else if (
+    selectedType === "Country/Area" ||
+    TYPE_FILTER_CODES.includes(selectedType)
+  ) {
+    countries = locationsByType("Country/Area");
+  } else {
+    countries = getRegionOptions(selectedType).flatMap((location) =>
+      descendantCountries(String(location.code)),
+    );
+  }
+  return filterCountriesByIncomeGroup(countries, selectedType);
+}
+
+function locationsByType(type) {
+  return state.locationDefs.locations.filter((location) => location.type === type);
+}
+
+function filterCountriesByIncomeGroup(countries, selectedType) {
+  if (!TYPE_FILTER_CODES.includes(selectedType)) return countries;
+  return countries.filter(
+    (country) =>
+      country.iso3 &&
+      state.incomeGroups.countryIncomeCodes[country.iso3] === selectedType,
+  );
+}
+
+function descendantCountries(rootCode) {
+  const countries = [];
+  const queue = [...(state.childLocations.get(String(rootCode)) || [])];
+  while (queue.length) {
+    const location = queue.shift();
+    if (location.type === "Country/Area") {
+      countries.push(location);
+    } else {
+      queue.push(...(state.childLocations.get(String(location.code)) || []));
+    }
+  }
+  return countries;
+}
+
+function makeOption(value, label) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  return option;
+}
+
+function hasOption(select, value) {
+  return Array.from(select.options).some((option) => option.value === value);
 }
 
 function setStatus(message) {
@@ -743,8 +921,8 @@ function verticalGradientTexture() {
   canvas.height = 256;
   const ctx = canvas.getContext("2d");
   const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
-  gradient.addColorStop(0, `rgba(${GRADIENT_BASE}, 0.5)`);
-  gradient.addColorStop(0.2, `rgba(${GRADIENT_BASE}, 0.2)`);
+  gradient.addColorStop(0, `rgba(${GRADIENT_BASE}, 0.4)`);
+  gradient.addColorStop(0.2, `rgba(${GRADIENT_BASE}, 0.1)`);
   gradient.addColorStop(0.9, `rgba(${GRADIENT_BASE}, 0)`);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);

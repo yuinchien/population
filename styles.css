@@ -141,7 +141,8 @@ button[hidden] {
     gap: 18px;
     padding: 16px 18px;
     height: auto;
-    width: 280px;
+    max-height: calc(100vh - 32px);
+    width: min(320px, calc(100vw - 32px));
     overflow-y: auto;
     /*border-right: 1px solid var(--cp-line);*/
     /*background: var(--cp-bg);*/
@@ -182,7 +183,8 @@ button[hidden] {
     border-color: var(--cp-text-dim);
 }
 
-.control-panel select:not([multiple]) {
+.control-panel select:not([multiple]):not([size]),
+.control-panel select[size="1"] {
     appearance: none;
     -webkit-appearance: none;
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'><path d='M2 4l3 3 3-3' fill='none' stroke='%233a8f5e' stroke-width='1.5'/></svg>");
@@ -197,14 +199,16 @@ button[hidden] {
     letter-spacing: 0.06em;
 }
 
-.control-panel select[multiple] {
+.control-panel select[multiple],
+.control-panel select[size]:not([size="1"]) {
     background-image: none;
     padding: 0;
     background: none;
     border: none;
 }
 
-.control-panel select[multiple] option {
+.control-panel select[multiple] option,
+.control-panel select[size]:not([size="1"]) option {
     padding: 4px 6px;
     color: var(--cp-text-dim);
     text-transform: uppercase;
@@ -213,7 +217,21 @@ button[hidden] {
     margin-bottom: 2px;
 }
 
-.control-panel select[multiple] option:checked {
+#typeSelect {
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+#typeSelect::-webkit-scrollbar {
+    display: none;
+}
+
+#typeSelect option {
+    margin-bottom: 0;
+}
+
+.control-panel select[multiple] option:checked,
+.control-panel select[size]:not([size="1"]) option:checked {
     background: var(--cp-accent)
         linear-gradient(0deg, var(--cp-accent), var(--cp-accent));
     color: var(--cp-accent-ink);
@@ -286,7 +304,7 @@ input {
     border: 1px solid var(--line);
     color: var(--text);
     background: #fbfcfa;
-    overflow: hidden;
+    overflow: scroll;
     text-overflow: ellipsis;
 }
 
