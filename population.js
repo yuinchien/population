@@ -15,6 +15,7 @@ const MAX_YEAR = 2050;
 const LINE_WIDTH = 4.5;
 const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
+const YEAR_LABEL_FRONT_OFFSET = 20;
 
 const SERIES_DEFS = [
   {
@@ -229,8 +230,10 @@ function renderTrend3D() {
     Math.max(1, containerRect.height),
   );
   const rowZs = seriesList.map((_, index) => mapZ(index));
+  const yearTicks = makeYearTicks(start, end);
+  const yearXs = yearTicks.map(mapX);
 
-  addBaseGrid({ spanX, depth, rowZs });
+  addBaseGrid({ spanX, depth, rowZs, yearXs });
   addCurrentYearMarker({ start, end, spanX, depth, maxH });
 
   scene3d.seriesMeta = new Map();
@@ -317,7 +320,7 @@ function renderTrend3D() {
     scene3d.labelGroup.add(nameLabel);
   });
 
-  addYearAxisTicks({ start, end, spanX, depth });
+  addYearAxisTicks({ start, end, spanX, depth, yearTicks });
 
   if (!scene3d.framed) {
     scene3d.camera.position.set(
@@ -630,7 +633,7 @@ function setCurveCursor(isHovering) {
   elements.chart3d.classList.toggle("is-hovering-curve", isHovering);
 }
 
-function addBaseGrid({ spanX, depth, rowZs = [] }) {
+function addBaseGrid({ spanX, depth, rowZs = [], yearXs = [] }) {
   const width = spanX + BASE_GRID_PADDING;
   const depthSize = depth + BASE_GRID_PADDING;
 
@@ -647,12 +650,11 @@ function addBaseGrid({ spanX, depth, rowZs = [] }) {
   plane.rotation.x = -Math.PI / 2;
   scene3d.seriesGroup.add(plane);
 
-  const divisionsX = 12;
   const points = [];
-  for (let i = 0; i <= divisionsX; i++) {
-    const x = -width / 2 + (i / divisionsX) * width;
+  const xLines = [...yearXs, -width / 2, width / 2].sort((a, b) => a - b);
+  xLines.forEach((x) => {
     points.push(x, 0.02, -depthSize / 2, x, 0.02, depthSize / 2);
-  }
+  });
   const zLines = [...rowZs, -depthSize / 2, depthSize / 2].sort(
     (a, b) => a - b,
   );
@@ -743,13 +745,14 @@ function addCurrentYearMarker({ start, end, spanX, depth, maxH }) {
   // scene3d.labelGroup.add(obj);
 }
 
-function addYearAxisTicks({ start, end, spanX, depth }) {
-  const frontZ = depth / 2 + 20;
-  makeYearTicks(start, end).forEach((year) => {
+function addYearAxisTicks({ start, end, spanX, depth, yearTicks }) {
+  const frontZ = (depth + BASE_GRID_PADDING) / 2 + YEAR_LABEL_FRONT_OFFSET;
+  yearTicks.forEach((year) => {
     const div = document.createElement("div");
     div.className = "label-3d label-tick";
     div.textContent = year;
     const obj = new CSS2DObject(div);
+    obj.center.set(0.5, 0.5);
     obj.position.set(
       scale(year, [start, end], [-spanX / 2, spanX / 2]),
       0,
