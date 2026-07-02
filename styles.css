@@ -727,15 +727,15 @@ select[multiple] {
     }
 
     .app-shell {
-        grid-template-columns: 1fr;
+        /*grid-template-columns: 1fr;*/
     }
 
     .control-panel {
-        position: static;
+        /*position: static;*/
     }
 
     .viz-heading {
-        display: grid;
+        /*display: grid;*/
     }
 
     .meta {
