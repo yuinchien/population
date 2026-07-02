@@ -6,9 +6,10 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 8;
-const MAP_DOT_SIZE = 5;
-const PULSE_AMPLITUDE = 6;
+const DOT_SIZE = 6;
+const MAP_DOT_SIZE = 4;
+const DOT_OPACITY = 0.72;
+const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
 const MAP_WIDTH = 400;
@@ -16,15 +17,17 @@ const MAP_HEIGHT = 200;
 // A view-mode switch runs through three phases instead of a direct morph:
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
 // there for a beat, then fly into their final target formation.
-const SCRAMBLE_IN_MS = 1000;
+const SCRAMBLE_IN_MS = 1200;
 const SCRAMBLE_HOLD_MS = 500;
-const SCRAMBLE_OUT_MS = 1000;
+const SCRAMBLE_OUT_MS = 1200;
 // Contracting the scramble cloud to a smaller volume than the globe itself
 // keeps dots from having to travel all the way out to full radius and
 // back, so the fly-apart/fly-together motion reads as tighter, less
 // "stretchy" over the same duration.
-const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.4;
+const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.6;
 const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
+const GLOBE_AUTO_ROTATE_SPEED = 0.35;
+const SCRAMBLE_AUTO_ROTATE_SPEED = 3.0;
 const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
 const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 
@@ -84,7 +87,7 @@ controls.dampingFactor = 0.06;
 controls.minDistance = GLOBE_RADIUS * 1.3;
 controls.maxDistance = GLOBE_RADIUS * 8;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 0.35;
+controls.autoRotateSpeed = GLOBE_AUTO_ROTATE_SPEED;
 controls.enablePan = false;
 
 const raycaster = new THREE.Raycaster();
@@ -270,6 +273,7 @@ function setupScene(countries, incomeGroups) {
     map: createDotTexture(),
     vertexColors: true,
     transparent: true,
+    opacity: DOT_OPACITY,
     depthWrite: false,
     sizeAttenuation: true,
     blending: THREE.NormalBlending,
@@ -429,6 +433,14 @@ function computeTargetPositions(mode) {
   return target;
 }
 
+function currentGlobeCameraPosition(target = controls.target) {
+  return camera.position
+    .clone()
+    .sub(target)
+    .setLength(GLOBE_CAMERA_POS.length())
+    .add(target);
+}
+
 function setViewMode(mode) {
   if (mode === viewMode || !activeTotal) return;
 
@@ -445,6 +457,7 @@ function setViewMode(mode) {
       mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
     toTarget: new THREE.Vector3(0, 0, 0),
     toDotSize: mode === "map" ? MAP_DOT_SIZE : DOT_SIZE,
+    previousAutoRotateSpeed: controls.autoRotateSpeed,
     outCamCaptured: false,
     start: performance.now(),
   };
@@ -453,6 +466,8 @@ function setViewMode(mode) {
   // keep rotating through the scramble-in/hold phases, and only takes the
   // camera over once the fly-out phase begins.
   controls.enabled = false;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = SCRAMBLE_AUTO_ROTATE_SPEED;
 
   elements.viewMode
     .querySelectorAll("button")
@@ -499,9 +514,13 @@ function updateTransition() {
     if (!transition.outCamCaptured) {
       transition.outCamPos = camera.position.clone();
       transition.outTarget = controls.target.clone();
+      if (viewMode === "globe") {
+        transition.toCamPos = currentGlobeCameraPosition(transition.toTarget);
+      }
       transition.outDotSize = pointsMesh.material.size;
       transition.outCamCaptured = true;
       controls.autoRotate = false;
+      controls.autoRotateSpeed = transition.previousAutoRotateSpeed;
     }
   }
   const e = ease(Math.min(1, localT));
@@ -537,6 +556,7 @@ function updateTransition() {
       controls.enableRotate = true;
       controls.enablePan = false;
       controls.autoRotate = true;
+      controls.autoRotateSpeed = GLOBE_AUTO_ROTATE_SPEED;
       controls.minDistance = GLOBE_RADIUS * 1.3;
       controls.maxDistance = GLOBE_RADIUS * 8;
     } else {
@@ -702,7 +722,7 @@ function animate(timestamp) {
   requestAnimationFrame(animate);
   timer.update(timestamp);
   updateTransition();
-  controls.update();
+  controls.update(timer.getDelta());
   pulseDots(timer.getElapsed());
   if (lastPointerEvent) updateTooltip(lastPointerEvent);
   renderer.render(scene, camera);
