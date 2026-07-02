@@ -8,7 +8,7 @@ import { Line2 } from "three/addons/lines/Line2.js";
 import { LineGeometry } from "three/addons/lines/LineGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
-const DATA_URL = "/data/population-global.json";
+const DATA_URL = "./data/population-global.json";
 const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2100;
