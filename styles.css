@@ -47,7 +47,7 @@ canvas {
     color: #222;
     font-size: 0.8rem;
     line-height: 1.5;
-    display: none;
+    /*display: none;*/
 }
 
 #yearControl {

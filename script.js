@@ -189,7 +189,8 @@ let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
 let isHoldPhase = false;
-const clock = new THREE.Clock();
+const timer = new THREE.Timer();
+timer.connect(document);
 
 function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -697,11 +698,12 @@ renderer.domElement.addEventListener("pointermove", (event) => {
   lastPointerEvent = event;
 });
 
-function animate() {
+function animate(timestamp) {
   requestAnimationFrame(animate);
+  timer.update(timestamp);
   updateTransition();
   controls.update();
-  pulseDots(clock.getElapsedTime());
+  pulseDots(timer.getElapsed());
   if (lastPointerEvent) updateTooltip(lastPointerEvent);
   renderer.render(scene, camera);
 }
