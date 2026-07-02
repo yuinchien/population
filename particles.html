@@ -15,7 +15,13 @@
             body {
                 margin: 0;
                 height: 100%;
-                background: #07090a;
+                /*background: #07090a;*/
+                background: linear-gradient(
+                    180deg,
+                    rgba(242, 242, 242, 1) 0%,
+                    rgba(222, 222, 222, 1) 100%
+                );
+
                 overflow: hidden;
                 font-family: "DM Mono", ui-monospace, monospace;
             }
@@ -24,11 +30,12 @@
             }
             #overlay {
                 position: fixed;
-                top: 24px;
-                left: 24px;
-                color: #5fe39a;
-                max-width: 320px;
+                top: 16px;
+                left: 16px;
+                color: #222;
+                max-width: 280px;
                 pointer-events: none;
+                padding: 16px;
             }
             #overlay h1 {
                 margin: 0 0 6px;
@@ -38,7 +45,7 @@
             }
             #overlay p {
                 margin: 0;
-                color: #3a8f5e;
+                color: #222;
                 font-size: 0.8rem;
                 line-height: 1.5;
             }
@@ -47,7 +54,7 @@
                 pointer-events: auto;
             }
             #yearControl .year-value {
-                color: #5fe39a;
+                color: #222;
                 font-size: 1.1rem;
                 margin-bottom: 6px;
             }
@@ -71,10 +78,24 @@
             #tooltip[hidden] {
                 display: none;
             }
+            .glass {
+                background: rgba(255, 255, 255, 0.1);
+
+                /* The core frosted glass blur effect */
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px); /* Safari support */
+
+                /* Crisp border simulating light catching the edge */
+                border: 1px solid rgba(255, 255, 255, 0.25);
+
+                /* Smooth curves and depth shadow */
+                /*border-radius: 16px;*/
+                box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);
+            }
         </style>
     </head>
     <body>
-        <div id="overlay">
+        <div id="overlay" class="glass">
             <h1>Global Population</h1>
             <p id="status">Loading population data…</p>
             <div id="yearControl" hidden>

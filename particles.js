@@ -4,7 +4,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const DATA_URL = "./data/population-dots.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 2.2;
+const DOT_SIZE = 4.4;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
@@ -12,10 +12,10 @@ const PULSE_FREQ_RANGE = 2.0;
 const REGION_COLORS = {
   "East Asia & Pacific": "#FF48B0",
   "Europe & Central Asia": "#4EA8FF",
-  "Latin America & Caribbean": "#E3ED55",
+  "Latin America & Caribbean": "#00838A",
   "Middle East, North Africa, Afghanistan & Pakistan": "#FF8E91",
-  "North America": "#00A95C",
-  "South Asia": "#B18CFF",
+  "North America": "#F6A04D",
+  "South Asia": "#00AA93",
   "Sub-Saharan Africa": "#FFB454",
 };
 const DEFAULT_COLOR = "#5fe39a";
@@ -99,6 +99,7 @@ let activeTotal = 0;
 let countriesData = [];
 let yearsData = [];
 let currentYearIndex = -1;
+let historicalCutoffYear = Infinity;
 const clock = new THREE.Clock();
 
 // Allocates buffers sized to each country's maximum dot count (the most
@@ -141,7 +142,7 @@ function setupScene(countries) {
     transparent: true,
     depthWrite: false,
     sizeAttenuation: true,
-    blending: THREE.AdditiveBlending,
+    blending: THREE.NormalBlending,
   });
 
   pointsMesh = new THREE.Points(geometry, material);
@@ -199,7 +200,8 @@ function applyYear(year) {
   posAttr.needsUpdate = true;
   colorAttr.needsUpdate = true;
 
-  elements.yearValue.textContent = `${year}`;
+  const isProjected = year > historicalCutoffYear;
+  elements.yearValue.textContent = `${year}${isProjected ? " (projected)" : ""}`;
   elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${countriesData.length} countries · ${formatCount(totalPop)} total`;
 }
 
@@ -210,21 +212,26 @@ async function init() {
     const data = await response.json();
     countriesData = data.countries;
     yearsData = data.years;
+    historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
 
     setupScene(countriesData);
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
+    const defaultYear = Math.min(
+      Math.max(new Date().getFullYear(), minYear),
+      maxYear,
+    );
     elements.yearSlider.min = minYear;
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
-    elements.yearSlider.value = maxYear;
+    elements.yearSlider.value = defaultYear;
     elements.yearControl.hidden = false;
     elements.yearSlider.addEventListener("input", () => {
       applyYear(Number(elements.yearSlider.value));
     });
 
-    applyYear(maxYear);
+    applyYear(defaultYear);
   } catch (error) {
     elements.status.textContent = `Could not load data: ${error.message}`;
   }
