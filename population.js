@@ -224,8 +224,9 @@ function renderTrend3D() {
     Math.max(1, containerRect.width),
     Math.max(1, containerRect.height),
   );
+  const rowZs = seriesList.map((_, index) => mapZ(index));
 
-  addBaseGrid({ spanX, depth });
+  addBaseGrid({ spanX, depth, rowZs });
   addCurrentYearMarker({ start, end, spanX, depth, maxH });
 
   scene3d.seriesMeta = new Map();
@@ -570,7 +571,7 @@ function clearHoverAxis() {
   scene3d.hoverSeriesLabel = null;
 }
 
-function addBaseGrid({ spanX, depth }) {
+function addBaseGrid({ spanX, depth, rowZs = [] }) {
   const width = spanX + BASE_GRID_PADDING;
   const depthSize = depth + BASE_GRID_PADDING;
 
@@ -588,16 +589,17 @@ function addBaseGrid({ spanX, depth }) {
   scene3d.seriesGroup.add(plane);
 
   const divisionsX = 12;
-  const divisionsZ = 6;
   const points = [];
   for (let i = 0; i <= divisionsX; i++) {
     const x = -width / 2 + (i / divisionsX) * width;
     points.push(x, 0.02, -depthSize / 2, x, 0.02, depthSize / 2);
   }
-  for (let i = 0; i <= divisionsZ; i++) {
-    const z = -depthSize / 2 + (i / divisionsZ) * depthSize;
+  const zLines = [...rowZs, -depthSize / 2, depthSize / 2].sort(
+    (a, b) => a - b,
+  );
+  zLines.forEach((z) => {
     points.push(-width / 2, 0.02, z, width / 2, 0.02, z);
-  }
+  });
   const gridGeom = new THREE.BufferGeometry();
   gridGeom.setAttribute(
     "position",
