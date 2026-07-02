@@ -6,9 +6,9 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 6;
-const MAP_DOT_SIZE = 2.8;
-const PULSE_AMPLITUDE = 5;
+const DOT_SIZE = 8;
+const MAP_DOT_SIZE = 5;
+const PULSE_AMPLITUDE = 6;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
 const MAP_WIDTH = 400;
@@ -669,8 +669,25 @@ function updateTooltip(event) {
   const pop = country.populations[currentYearIndex] ?? country.population;
   const groupLabel =
     colorMode === "income" ? country._incomeLabel : country.region;
+  const groupColor = colorFor(country);
+
+  const line1 = document.createElement("div");
+  line1.className = "tooltip-line1";
+  line1.textContent = `${country.name}: ${pop.toLocaleString()}`;
+
+  const swatch = document.createElement("span");
+  swatch.className = "legend-swatch";
+  swatch.style.background = `#${groupColor.getHexString()}`;
+
+  const groupText = document.createElement("span");
+  groupText.textContent = groupLabel;
+
+  const line2 = document.createElement("div");
+  line2.className = "tooltip-line2";
+  line2.append(swatch, groupText);
+
   elements.tooltip.hidden = false;
-  elements.tooltip.textContent = `${country.name} — ${pop.toLocaleString()} (${groupLabel})`;
+  elements.tooltip.replaceChildren(line1, line2);
   elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
   elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
 }
