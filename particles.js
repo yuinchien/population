@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-const DATA_URL = "./data/country-population.json";
+const DATA_URL = "./data/population-dots.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 2.2;
@@ -88,24 +88,20 @@ function buildDots(countries) {
   const phases = [];
 
   countries.forEach((country) => {
-    const dotCount = Math.max(1, Math.round(country.population / PEOPLE_PER_DOT));
-    // Spread dots around the country's anchor point so dense countries
-    // don't render as a single stacked point; spread scales gently with
-    // dot count so small nations stay tight and large ones fan out.
-    const spreadDeg = Math.min(9, 0.9 + Math.sqrt(dotCount) * 0.35);
     const color = regionColor(country.region);
 
-    for (let i = 0; i < dotCount; i++) {
-      const jitterLat = country.lat + (Math.random() - 0.5) * 2 * spreadDeg;
-      const jitterLon = country.lon + (Math.random() - 0.5) * 2 * spreadDeg;
-      const clampedLat = Math.max(-89, Math.min(89, jitterLat));
-      const point = latLonToVector3(clampedLat, jitterLon, GLOBE_RADIUS);
+    // Dot coordinates are precomputed (data/population-dots.json) by
+    // randomly sampling points inside each country's real polygon
+    // boundary, so population spreads across its actual landmass instead
+    // of clustering around a single lat/lon anchor.
+    country.dots.forEach(([lat, lon]) => {
+      const point = latLonToVector3(lat, lon, GLOBE_RADIUS);
       positions.push(point.x, point.y, point.z);
       colors.push(color.r, color.g, color.b);
       dotCountry.push(country);
       frequencies.push(PULSE_FREQ_MIN + Math.random() * PULSE_FREQ_RANGE);
       phases.push(Math.random() * Math.PI * 2);
-    }
+    });
   });
 
   const geometry = new THREE.BufferGeometry();
