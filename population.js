@@ -13,6 +13,7 @@ const CURRENT_YEAR = new Date().getFullYear();
 const MIN_YEAR = 1960;
 const MAX_YEAR = 2050;
 const LINE_WIDTH = 4.5;
+const BASE_GRID_PADDING = 100;
 
 const SERIES_DEFS = [
   {
@@ -20,24 +21,32 @@ const SERIES_DEFS = [
     label: "Global Population",
     color: "#FF48B0",
     format: formatCount,
+    axisSubtitle: "people",
+    axisFormat: formatCount,
   },
   {
     id: "lifeExpectancy",
     label: "Life Expectancy at Birth",
     color: "#00A95C",
     format: (value) => `${value.toFixed(1)} yrs`,
+    axisSubtitle: "years",
+    axisFormat: (value) => value.toFixed(1),
   },
   {
     id: "fertility",
     label: "Fertility Rate",
     color: "#E3ED55",
     format: (value) => `${value.toFixed(2)} births/woman`,
+    axisSubtitle: "births / woman",
+    axisFormat: (value) => value.toFixed(2),
   },
   {
     id: "oldAgeDependency",
     label: "Old-Age Dependency Ratio",
     color: "#FF8E91",
     format: (value) => `${value.toFixed(1)}%`,
+    axisSubtitle: "%",
+    axisFormat: (value) => value.toFixed(1),
   },
 ];
 
@@ -67,6 +76,13 @@ const scene3d = {
   controls: null,
   seriesGroup: null,
   labelGroup: null,
+  hoverAxisGroup: null,
+  hoverAxisLabels: [],
+  hoverSeriesLabel: null,
+  seriesMeta: null,
+  currentSpanX: 0,
+  currentMaxH: 0,
+  isDragging: false,
   raf: null,
   raycaster: null,
   pointer: null,
@@ -212,10 +228,22 @@ function renderTrend3D() {
   addBaseGrid({ spanX, depth });
   addCurrentYearMarker({ start, end, spanX, depth, maxH });
 
+  scene3d.seriesMeta = new Map();
+  scene3d.currentSpanX = spanX;
+  scene3d.currentMaxH = maxH;
+
   seriesList.forEach((series, index) => {
     const z = mapZ(index);
     const yDomain = paddedDomain(series.points.map((point) => point.value));
     const mapY = (value) => scale(value, yDomain, [0, maxH]);
+    scene3d.seriesMeta.set(series.label, {
+      z,
+      yDomain,
+      color: series.color,
+      format: series.format,
+      axisFormat: series.axisFormat,
+      axisSubtitle: series.axisSubtitle,
+    });
     const plotted = series.points.map((point) => ({
       ...point,
       _plotX: mapX(point.year),
@@ -270,15 +298,15 @@ function renderTrend3D() {
       scene3d.seriesGroup.add(line);
     }
 
-    const first = plotted[0];
-    const firstVec = toVec(first);
+    const last = plotted[plotted.length - 1];
+    const lastVec = toVec(last);
     const nameDiv = document.createElement("div");
     nameDiv.className = "label-3d label-pill";
     nameDiv.textContent = series.label;
     nameDiv.style.background = series.color;
     const nameLabel = new CSS2DObject(nameDiv);
-    nameLabel.center.set(1, 0.5);
-    nameLabel.position.set(firstVec.x - 14, firstVec.y, firstVec.z);
+    nameLabel.center.set(0, 0.5);
+    nameLabel.position.set(lastVec.x + 14, lastVec.y, lastVec.z);
     scene3d.labelGroup.add(nameLabel);
   });
 
@@ -370,18 +398,22 @@ function ensureThreeScene() {
   controls.maxPolarAngle = Math.PI / 2 - 0.04;
   controls.minPolarAngle = 0.15;
   controls.enablePan = false;
-  controls.addEventListener("start", () =>
-    container.classList.add("is-grabbing"),
-  );
-  controls.addEventListener("end", () =>
-    container.classList.remove("is-grabbing"),
-  );
+  controls.addEventListener("start", () => {
+    scene3d.isDragging = true;
+    container.classList.add("is-grabbing");
+  });
+  controls.addEventListener("end", () => {
+    scene3d.isDragging = false;
+    container.classList.remove("is-grabbing");
+  });
   controls.update();
 
   const seriesGroup = new THREE.Group();
   scene.add(seriesGroup);
   const labelGroup = new THREE.Group();
   scene.add(labelGroup);
+  const hoverAxisGroup = new THREE.Group();
+  scene.add(hoverAxisGroup);
 
   scene3d.scene = scene;
   scene3d.camera = camera;
@@ -390,6 +422,7 @@ function ensureThreeScene() {
   scene3d.controls = controls;
   scene3d.seriesGroup = seriesGroup;
   scene3d.labelGroup = labelGroup;
+  scene3d.hoverAxisGroup = hoverAxisGroup;
   scene3d.raycaster = new THREE.Raycaster();
   scene3d.raycaster.params.Line2 = { threshold: 6 };
   scene3d.pointer = new THREE.Vector2();
@@ -441,6 +474,7 @@ function disposeObject3D(object) {
 
 function clearSeriesGroup() {
   if (!scene3d.seriesGroup) return;
+  clearHoverAxis();
   while (scene3d.seriesGroup.children.length) {
     const child = scene3d.seriesGroup.children[0];
     scene3d.seriesGroup.remove(child);
@@ -455,9 +489,90 @@ function clearSeriesGroup() {
   }
 }
 
+// Shows a per-curve value axis (in the same Z plane as that curve, to its
+// left) while hovering over it.
+function showHoverAxis(seriesLabel) {
+  if (!seriesLabel || scene3d.hoverSeriesLabel === seriesLabel) return;
+  const meta = scene3d.seriesMeta && scene3d.seriesMeta.get(seriesLabel);
+  if (!meta) return;
+  clearHoverAxis();
+  scene3d.hoverSeriesLabel = seriesLabel;
+
+  const axisX = -(scene3d.currentSpanX + BASE_GRID_PADDING) / 2;
+  const maxH = scene3d.currentMaxH;
+  const z = meta.z;
+  const axisMaterial = new THREE.LineBasicMaterial({
+    color: meta.color,
+    transparent: true,
+    opacity: 0.9,
+  });
+
+  const axisGeom = new THREE.BufferGeometry();
+  axisGeom.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute([axisX, 0, z, axisX, maxH, z], 3),
+  );
+  scene3d.hoverAxisGroup.add(new THREE.Line(axisGeom, axisMaterial));
+
+  const titleDiv = document.createElement("div");
+  titleDiv.className = "label-3d label-axis-title";
+  titleDiv.textContent = meta.axisSubtitle;
+  titleDiv.style.color = meta.color;
+  const titleObj = new CSS2DObject(titleDiv);
+  titleObj.center.set(0.5, 1);
+  titleObj.position.set(axisX, maxH + 14, z);
+  scene3d.labelGroup.add(titleObj);
+  scene3d.hoverAxisLabels.push(titleObj);
+
+  const tickCount = 5;
+  for (let i = 0; i < tickCount; i++) {
+    const t = i / (tickCount - 1);
+    const y = t * maxH;
+    const value = meta.yDomain[0] + t * (meta.yDomain[1] - meta.yDomain[0]);
+
+    const tickGeom = new THREE.BufferGeometry();
+    tickGeom.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        [axisX - 4, y, z, axisX + 4, y, z],
+        3,
+      ),
+    );
+    scene3d.hoverAxisGroup.add(new THREE.Line(tickGeom, axisMaterial));
+
+    const div = document.createElement("div");
+    div.className = "label-3d label-tick";
+    div.textContent = meta.axisFormat(value);
+    div.style.color = meta.color;
+    const obj = new CSS2DObject(div);
+    obj.center.set(1, 0.5);
+    obj.position.set(axisX - 14, y, z);
+    scene3d.labelGroup.add(obj);
+    scene3d.hoverAxisLabels.push(obj);
+  }
+}
+
+function clearHoverAxis() {
+  if (scene3d.hoverAxisGroup) {
+    while (scene3d.hoverAxisGroup.children.length) {
+      const child = scene3d.hoverAxisGroup.children[0];
+      scene3d.hoverAxisGroup.remove(child);
+      disposeObject3D(child);
+    }
+  }
+  scene3d.hoverAxisLabels.forEach((obj) => {
+    scene3d.labelGroup.remove(obj);
+    if (obj.element && obj.element.parentNode) {
+      obj.element.parentNode.removeChild(obj.element);
+    }
+  });
+  scene3d.hoverAxisLabels = [];
+  scene3d.hoverSeriesLabel = null;
+}
+
 function addBaseGrid({ spanX, depth }) {
-  const width = spanX + 100;
-  const depthSize = depth + 100;
+  const width = spanX + BASE_GRID_PADDING;
+  const depthSize = depth + BASE_GRID_PADDING;
 
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depthSize),
@@ -586,6 +701,11 @@ function addYearAxisTicks({ start, end, spanX, depth }) {
 function bindRaycasterTooltip() {
   const canvas = scene3d.renderer.domElement;
   canvas.addEventListener("mousemove", (event) => {
+    if (scene3d.isDragging) {
+      clearTooltip();
+      return;
+    }
+
     const rect = canvas.getBoundingClientRect();
     scene3d.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     scene3d.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -596,11 +716,13 @@ function bindRaycasterTooltip() {
     );
     if (!hits.length) {
       clearTooltip();
+      if (!scene3d.isDragging) clearHoverAxis();
       return;
     }
     const hit = hits[0];
     if (hit.object.userData.point) {
       showTrendTooltip(event, hit.object.userData.point);
+      showHoverAxis(hit.object.userData.point.seriesLabel);
     } else if (hit.object.userData.series) {
       const nearest = nearestSeriesPoint(
         hit.object.userData.series,
@@ -608,14 +730,20 @@ function bindRaycasterTooltip() {
       );
       if (nearest) {
         showTrendTooltip(event, nearest);
+        showHoverAxis(nearest.seriesLabel);
       } else {
         clearTooltip();
+        if (!scene3d.isDragging) clearHoverAxis();
       }
     } else {
       clearTooltip();
+      if (!scene3d.isDragging) clearHoverAxis();
     }
   });
-  canvas.addEventListener("mouseleave", clearTooltip);
+  canvas.addEventListener("mouseleave", () => {
+    clearTooltip();
+    if (!scene3d.isDragging) clearHoverAxis();
+  });
 }
 
 function nearestSeriesPoint(series, x) {
