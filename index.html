@@ -19,7 +19,7 @@
     <body>
         <div id="overlay" class="glass">
             <div class="topbar">
-                <h1 class="all-caps">Global Population</h1>
+                <h1>Global Population</h1>
             </div>
 
             <div id="viewMode" class="toggle-icon-button" hidden>
@@ -75,12 +75,26 @@
                 </div>
             </div>
 
-            <div id="colorMode" hidden>
-                <button type="button" data-mode="region" class="active">
+            <div id="colorMode" class="tabs" hidden>
+                <button
+                    type="button"
+                    data-mode="region"
+                    class="active"
+                    aria-label="region"
+                    title="Region"
+                >
                     Region
                 </button>
-                <button type="button" data-mode="income">Income group</button>
+                <button
+                    type="button"
+                    data-mode="income"
+                    aria-label="Income group"
+                    title="Income group"
+                >
+                    Income group
+                </button>
             </div>
+
             <div id="legend"></div>
 
             <hr />

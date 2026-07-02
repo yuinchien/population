@@ -6,8 +6,8 @@
 }
 html,
 body {
-    font-size: 14px;
-    line-height: 16px;
+    font-size: 12px;
+    line-height: 14px;
     letter-spacing: -0.01em;
     margin: 0;
     height: 100%;
@@ -42,14 +42,13 @@ canvas {
 }
 #overlay h1 {
     margin: 0;
-    font-size: 1rem;
+    font-size: 1.2rem;
     font-weight: 500;
     letter-spacing: 0.01em;
+    text-transform: uppercase;
 }
 #overlay p {
     margin: 0;
-    font-size: 0.8rem;
-    line-height: 1.5;
 }
 #yearControl .year-value {
     font-weight: 500;
@@ -117,7 +116,6 @@ canvas {
     position: fixed;
     transform: translate(-50%, -130%);
     padding: 6px 10px;
-    font-size: 0.8rem;
     border-radius: 2px;
     pointer-events: none;
     white-space: nowrap;
@@ -140,7 +138,7 @@ hr {
     border: none;
     height: 1px; /* Control thickness here */
     background-color: var(--border-color); /* Your custom color */
-    margin: 10px 0;
+    margin: 12px 0;
 }
 .glass {
     background: rgba(255, 255, 255, 0.1);
@@ -162,13 +160,13 @@ hr {
     align-items: center;
     padding: 12px 0;
 }
-.all-caps {
-    text-transform: uppercase;
-}
+
 #metrics {
     margin-top: 8px;
     display: grid;
     pointer-events: none;
+    border-bottom: var(--border);
+    margin-bottom: 8px;
 }
 .metric {
     display: flex;
@@ -180,13 +178,13 @@ hr {
 }
 .metric-label {
     color: #666;
-    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.01em;
+    font-size: 0.9rem;
 }
 .metric-value {
     color: var(--color-text);
-    font-size: 0.84rem;
+    /*font-size: 0.84rem;*/
     font-weight: 500;
     white-space: nowrap;
 }
@@ -225,44 +223,58 @@ hr {
     justify-content: center;
     padding: 0;
     cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
 }
 .toggle-icon-button button.active {
     color: #fff;
     background: var(--color-text);
 }
-#colorMode {
-    margin-top: 12px;
+
+.tabs {
     display: flex;
-    gap: 6px;
-    pointer-events: auto;
+    gap: 0px;
+    border-bottom: var(--border);
+    margin-bottom: 12px;
 }
-#colorMode button {
-    font-family: inherit;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: #666;
+.tabs button {
+    padding: 8px 12px;
     background: transparent;
-    border: var(--border);
-    border-radius: 999px;
-    padding: 4px 12px;
+    border: none;
     cursor: pointer;
+    font-size: 1rem;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--color-text);
+    opacity: 0.5;
+    position: relative;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
 }
-#colorMode button.active {
-    color: #fff;
-    background: #222;
-    border-color: #222;
+.tabs button.active {
+    opacity: 1;
 }
+.tabs button.active:after {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--color-text);
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    z-index: 100;
+}
+
 #legend {
     margin-top: 12px;
     display: grid;
-    gap: 6px;
+    gap: 8px;
 }
 .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 0.8rem;
     color: #444;
 }
 .legend-swatch {
