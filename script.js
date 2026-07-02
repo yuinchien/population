@@ -4,9 +4,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
-const PEOPLE_PER_DOT = 1_000_000;
+const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 5;
+const DOT_SIZE = 6;
 const MAP_DOT_SIZE = 2.8;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
@@ -347,7 +347,7 @@ function applyYear(year) {
   // territories/dependencies and would otherwise show a slightly lower,
   // inconsistent number here.
   const worldPop = globalMetricsByYear.get(year)?.population ?? totalPop;
-  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ 1M people`;
+  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people`;
   updateMetricsPanel(year);
 }
 
