@@ -71,6 +71,7 @@ const elements = {
   startYearLabel: document.querySelector("#startYearLabel"),
   endYearLabel: document.querySelector("#endYearLabel"),
   yearRangeFill: document.querySelector("#yearRangeFill"),
+  seriesSelect: document.querySelector("#seriesSelect"),
   status: document.querySelector("#status"),
   chartSubtitle: document.querySelector("#chartSubtitle"),
   chart3d: document.querySelector("#chart3d"),
@@ -117,6 +118,19 @@ function init() {
   elements.startYear.value = MIN_YEAR;
   elements.endYear.value = MAX_YEAR;
 
+  elements.seriesSelect.innerHTML = "";
+  SERIES_DEFS.forEach((def) => {
+    const option = document.createElement("option");
+    option.value = def.id;
+    option.textContent = def.label;
+    option.selected = true;
+    elements.seriesSelect.append(option);
+  });
+
+  // const select = elements.seriesSelect;
+  // select.size = select.options.length;
+  // console.log(select.size, select.options.length);
+
   restoreFromUrl();
   bindEvents();
   syncYearLabels();
@@ -141,10 +155,22 @@ function bindEvents() {
   elements.startYear.addEventListener("change", updateUrl);
   elements.endYear.addEventListener("change", updateUrl);
 
+  elements.seriesSelect.addEventListener("change", () => {
+    render();
+  });
+
   window.addEventListener("resize", () => {
     render();
     resizeThree();
   });
+}
+
+function getSelectedSeriesIds() {
+  return new Set(
+    Array.from(elements.seriesSelect.selectedOptions).map(
+      (option) => option.value,
+    ),
+  );
 }
 
 function syncYearLabels() {
@@ -204,18 +230,21 @@ function renderTrend3D() {
 
   const start = Number(elements.startYear.value);
   const end = Number(elements.endYear.value);
+  const selectedIds = getSelectedSeriesIds();
 
-  const seriesList = SERIES_DEFS.map((def) => {
-    const rows = state.data[def.id] || [];
-    const points = rows
-      .filter((row) => row.year >= start && row.year <= end)
-      .map((row) => ({
-        ...row,
-        projected: row.year > HISTORICAL_CUTOFF_YEAR,
-      }))
-      .sort((a, b) => a.year - b.year);
-    return { ...def, points };
-  }).filter((series) => series.points.length > 1);
+  const seriesList = SERIES_DEFS.filter((def) => selectedIds.has(def.id))
+    .map((def) => {
+      const rows = state.data[def.id] || [];
+      const points = rows
+        .filter((row) => row.year >= start && row.year <= end)
+        .map((row) => ({
+          ...row,
+          projected: row.year > HISTORICAL_CUTOFF_YEAR,
+        }))
+        .sort((a, b) => a.year - b.year);
+      return { ...def, points };
+    })
+    .filter((series) => series.points.length > 1);
 
   renderTrendLegend(seriesList);
 
@@ -542,7 +571,7 @@ function showHoverAxis(seriesLabel) {
   clearHoverAxis();
   scene3d.hoverSeriesLabel = seriesLabel;
 
-  const axisX = -(scene3d.currentSpanX + BASE_GRID_PADDING) / 2;
+  const axisX = -scene3d.currentSpanX / 2;
   const maxH = scene3d.currentMaxH;
   const z = meta.z;
   const axisMaterial = new THREE.LineBasicMaterial({

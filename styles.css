@@ -172,10 +172,7 @@ button[hidden] {
     background: var(--cp-row);
     color: var(--cp-text);
     border: 1px solid var(--cp-line);
-    border-radius: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 
 .control-panel select:focus,
@@ -202,17 +199,18 @@ button[hidden] {
 
 .control-panel select[multiple] {
     background-image: none;
-    padding: 4px 0;
-    height: 260px;
-    border-radius: 4px;
+    padding: 0;
+    background: none;
+    border: none;
 }
 
 .control-panel select[multiple] option {
-    padding: 7px 14px;
+    padding: 4px 6px;
     color: var(--cp-text-dim);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    /*letter-spacing: 0.06em;*/
     background: transparent;
+    margin-bottom: 2px;
 }
 
 .control-panel select[multiple] option:checked {
@@ -257,12 +255,6 @@ button[hidden] {
 .control-panel .status {
     background: transparent;
     color: var(--cp-text-muted);
-    border: 1px dashed var(--cp-line);
-    border-radius: 4px;
-    text-transform: none;
-    letter-spacing: 0.02em;
-    font-size: 0.78rem;
-    padding: 10px 12px;
 }
 
 .control-panel::-webkit-scrollbar,
@@ -292,7 +284,6 @@ input {
     width: 100%;
     min-width: 0;
     border: 1px solid var(--line);
-    border-radius: 8px;
     color: var(--text);
     background: #fbfcfa;
     overflow: hidden;
@@ -309,11 +300,10 @@ input {
 }
 
 select[multiple] {
-    height: 220px;
     min-height: 0;
     padding: 8px 10px;
     overflow-x: hidden;
-    overflow-y: auto;
+    overflow-y: hidden;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
 }
@@ -478,15 +468,12 @@ select[multiple] {
 .meta,
 .app-footer {
     color: var(--muted);
-    font-size: 0.88rem;
 }
 
 .status {
     min-height: 42px;
     margin: 0;
-    padding: 10px;
-    border-radius: 8px;
-    background: var(--panel-strong);
+    padding: 0px;
 }
 
 .viz-panel {
@@ -627,7 +614,7 @@ select[multiple] {
     font-size: 12.5px;
     font-weight: 600;
     letter-spacing: 0.01em;
-    text-transform: none;
+    text-transform: uppercase;
     text-align: center;
     text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
 }
