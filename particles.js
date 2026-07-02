@@ -23,6 +23,9 @@ const DEFAULT_COLOR = "#5fe39a";
 const elements = {
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
+  yearControl: document.querySelector("#yearControl"),
+  yearSlider: document.querySelector("#yearSlider"),
+  yearValue: document.querySelector("#yearValue"),
 };
 
 const scene = new THREE.Scene();
@@ -80,36 +83,56 @@ function createDotTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-function buildDots(countries) {
-  const positions = [];
-  const colors = [];
-  const dotCountry = [];
-  const frequencies = [];
-  const phases = [];
+function formatCount(value) {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
+  return `${value}`;
+}
 
+let pointsMesh = null;
+let basePositions = null; // pre-pulse baseline, rebuilt whenever the year changes
+let frequencies = null;
+let phases = null;
+let dotCountry = [];
+let activeTotal = 0;
+let countriesData = [];
+let yearsData = [];
+let currentYearIndex = -1;
+const clock = new THREE.Clock();
+
+// Allocates buffers sized to each country's maximum dot count (the most
+// people it ever had across the whole time series), and precomputes each
+// dot's fixed screen position + pulse identity so scrubbing the year slider
+// only changes how many dots per country are drawn, not where they sit.
+function setupScene(countries) {
   countries.forEach((country) => {
-    const color = regionColor(country.region);
-
-    // Dot coordinates are precomputed (data/population-dots.json) by
-    // randomly sampling points inside each country's real polygon
-    // boundary, so population spreads across its actual landmass instead
-    // of clustering around a single lat/lon anchor.
-    country.dots.forEach(([lat, lon]) => {
-      const point = latLonToVector3(lat, lon, GLOBE_RADIUS);
-      positions.push(point.x, point.y, point.z);
-      colors.push(color.r, color.g, color.b);
-      dotCountry.push(country);
-      frequencies.push(PULSE_FREQ_MIN + Math.random() * PULSE_FREQ_RANGE);
-      phases.push(Math.random() * Math.PI * 2);
+    country._color = regionColor(country.region);
+    country._xyz = new Float32Array(country.dots.length * 3);
+    country._freqs = new Float32Array(country.dots.length);
+    country._phases = new Float32Array(country.dots.length);
+    country.dots.forEach(([lat, lon], i) => {
+      const p = latLonToVector3(lat, lon, GLOBE_RADIUS);
+      country._xyz[i * 3] = p.x;
+      country._xyz[i * 3 + 1] = p.y;
+      country._xyz[i * 3 + 2] = p.z;
+      country._freqs[i] = PULSE_FREQ_MIN + Math.random() * PULSE_FREQ_RANGE;
+      country._phases[i] = Math.random() * Math.PI * 2;
     });
   });
+
+  const maxTotal = countries.reduce((sum, c) => sum + c.dots.length, 0);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute(
     "position",
-    new THREE.Float32BufferAttribute(positions, 3),
+    new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
   );
-  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute(
+    "color",
+    new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
+  );
+  geometry.setDrawRange(0, 0);
 
   const material = new THREE.PointsMaterial({
     size: DOT_SIZE,
@@ -121,59 +144,101 @@ function buildDots(countries) {
     blending: THREE.AdditiveBlending,
   });
 
-  const points = new THREE.Points(geometry, material);
-  scene.add(points);
-  return {
-    points,
-    dotCountry,
-    originalPositions: Float32Array.from(positions),
-    frequencies: Float32Array.from(frequencies),
-    phases: Float32Array.from(phases),
-  };
+  pointsMesh = new THREE.Points(geometry, material);
+  scene.add(pointsMesh);
+
+  basePositions = new Float32Array(maxTotal * 3);
+  frequencies = new Float32Array(maxTotal);
+  phases = new Float32Array(maxTotal);
+  dotCountry = new Array(maxTotal);
 }
 
-function formatCount(value) {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return `${value}`;
-}
+function applyYear(year) {
+  const yearIndex = yearsData.indexOf(year);
+  if (yearIndex === -1 || !pointsMesh) return;
+  currentYearIndex = yearIndex;
 
-let pointsMesh = null;
-let dotCountry = [];
-let originalPositions = null;
-let frequencies = null;
-let phases = null;
-const clock = new THREE.Clock();
+  const posAttr = pointsMesh.geometry.getAttribute("position");
+  const colorAttr = pointsMesh.geometry.getAttribute("color");
+  let cursor = 0;
+  let totalPop = 0;
+
+  countriesData.forEach((country) => {
+    const pop = country.populations[yearIndex];
+    if (pop == null) return;
+    totalPop += pop;
+    const activeCount = Math.min(
+      country.dots.length,
+      Math.max(1, Math.round(pop / PEOPLE_PER_DOT)),
+    );
+    const color = country._color;
+    for (let i = 0; i < activeCount; i++) {
+      const i3 = cursor * 3;
+      const src3 = i * 3;
+      const x = country._xyz[src3];
+      const y = country._xyz[src3 + 1];
+      const z = country._xyz[src3 + 2];
+      basePositions[i3] = x;
+      basePositions[i3 + 1] = y;
+      basePositions[i3 + 2] = z;
+      posAttr.array[i3] = x;
+      posAttr.array[i3 + 1] = y;
+      posAttr.array[i3 + 2] = z;
+      colorAttr.array[i3] = color.r;
+      colorAttr.array[i3 + 1] = color.g;
+      colorAttr.array[i3 + 2] = color.b;
+      frequencies[cursor] = country._freqs[i];
+      phases[cursor] = country._phases[i];
+      dotCountry[cursor] = country;
+      cursor++;
+    }
+  });
+
+  activeTotal = cursor;
+  pointsMesh.geometry.setDrawRange(0, activeTotal);
+  posAttr.needsUpdate = true;
+  colorAttr.needsUpdate = true;
+
+  elements.yearValue.textContent = `${year}`;
+  elements.status.textContent = `${activeTotal.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${countriesData.length} countries · ${formatCount(totalPop)} total`;
+}
 
 async function init() {
   try {
     const response = await fetch(DATA_URL);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    const built = buildDots(data.countries);
-    pointsMesh = built.points;
-    dotCountry = built.dotCountry;
-    originalPositions = built.originalPositions;
-    frequencies = built.frequencies;
-    phases = built.phases;
+    countriesData = data.countries;
+    yearsData = data.years;
 
-    const totalPop = data.countries.reduce((sum, c) => sum + c.population, 0);
-    elements.status.textContent = `${dotCountry.length.toLocaleString()} dots · 1 dot ≈ ${formatCount(PEOPLE_PER_DOT)} people · ${data.countries.length} countries · ${formatCount(totalPop)} total (${data.year})`;
+    setupScene(countriesData);
+
+    const minYear = yearsData[0];
+    const maxYear = yearsData[yearsData.length - 1];
+    elements.yearSlider.min = minYear;
+    elements.yearSlider.max = maxYear;
+    elements.yearSlider.step = 1;
+    elements.yearSlider.value = maxYear;
+    elements.yearControl.hidden = false;
+    elements.yearSlider.addEventListener("input", () => {
+      applyYear(Number(elements.yearSlider.value));
+    });
+
+    applyYear(maxYear);
   } catch (error) {
     elements.status.textContent = `Could not load data: ${error.message}`;
   }
 }
 
 function pulseDots(elapsedTime) {
-  if (!pointsMesh) return;
+  if (!pointsMesh || !activeTotal) return;
   const positionAttribute = pointsMesh.geometry.getAttribute("position");
   const array = positionAttribute.array;
-  for (let i = 0; i < frequencies.length; i++) {
+  for (let i = 0; i < activeTotal; i++) {
     const i3 = i * 3;
-    const ox = originalPositions[i3];
-    const oy = originalPositions[i3 + 1];
-    const oz = originalPositions[i3 + 2];
+    const ox = basePositions[i3];
+    const oy = basePositions[i3 + 1];
+    const oz = basePositions[i3 + 2];
     const wave =
       Math.sin(elapsedTime * frequencies[i] + phases[i]) * PULSE_AMPLITUDE;
     const scale = 1 + wave / GLOBE_RADIUS;
@@ -194,7 +259,7 @@ renderer.domElement.addEventListener("pointerleave", () => {
 });
 
 function updateTooltip(event) {
-  if (!pointsMesh) return;
+  if (!pointsMesh || !activeTotal) return;
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObject(pointsMesh);
   if (!hits.length) {
@@ -206,8 +271,9 @@ function updateTooltip(event) {
     elements.tooltip.hidden = true;
     return;
   }
+  const pop = country.populations[currentYearIndex] ?? country.population;
   elements.tooltip.hidden = false;
-  elements.tooltip.textContent = `${country.name} — ${country.population.toLocaleString()}`;
+  elements.tooltip.textContent = `${country.name} — ${pop.toLocaleString()}`;
   elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
   elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
 }

@@ -42,6 +42,20 @@
                 font-size: 0.8rem;
                 line-height: 1.5;
             }
+            #yearControl {
+                margin-top: 16px;
+                pointer-events: auto;
+            }
+            #yearControl .year-value {
+                color: #5fe39a;
+                font-size: 1.1rem;
+                margin-bottom: 6px;
+            }
+            #yearSlider {
+                width: 280px;
+                accent-color: #5fe39a;
+                background: transparent;
+            }
             #tooltip {
                 position: fixed;
                 transform: translate(-50%, -130%);
@@ -63,6 +77,10 @@
         <div id="overlay">
             <h1>Global Population</h1>
             <p id="status">Loading population data…</p>
+            <div id="yearControl" hidden>
+                <div class="year-value"><span id="yearValue"></span></div>
+                <input id="yearSlider" type="range" autocomplete="off" />
+            </div>
         </div>
         <div id="tooltip" hidden></div>
 
