@@ -15,9 +15,10 @@
             body {
                 font-size: 14px;
                 line-height: 16px;
+                letter-spacing: -0.01em;
                 margin: 0;
                 height: 100%;
-                /*background: #07090a;*/
+                /*background: #eee;*/
                 background: linear-gradient(
                     180deg,
                     rgba(242, 242, 242, 1) 0%,
@@ -41,9 +42,9 @@
                 left: 0px;
                 bottom: 0;
                 color: #222;
-                max-width: 280px;
+                max-width: 320px;
                 pointer-events: none;
-                padding: 16px;
+                padding: 12px;
             }
             #overlay h1 {
                 margin: 0 0 6px;
@@ -68,9 +69,62 @@
                 line-height: 1em;
             }
             #yearSlider {
-                width: 280px;
-                accent-color: #222;
+                --progress: 0%;
+                -webkit-appearance: none;
+                appearance: none;
+                width: stretch;
+                height: 16px;
+                margin: 0;
+                border-radius: 999px;
+                /*rgba(34, 34, 34) 0%,*/
+                /*rgba(34, 34, 34, 0.2) 100%*/
+                background:
+                    linear-gradient(
+                            to right,
+                            rgba(34, 34, 34) 0%,
+                            rgba(34, 34, 34, 0.1) 100%
+                        )
+                        0 / var(--progress) 100% no-repeat,
+                    rgba(34, 34, 34, 0.1);
+                outline: none;
+                cursor: pointer;
+            }
+            #yearSlider::-webkit-slider-runnable-track {
+                -webkit-appearance: none;
+                height: 16px;
                 background: transparent;
+                border-radius: 999px;
+            }
+            #yearSlider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                background-color: #222;
+                cursor: pointer;
+                box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+            }
+            #yearSlider::-moz-range-track {
+                height: 16px;
+                background: rgba(34, 34, 34, 0.12);
+                border-radius: 999px;
+            }
+            #yearSlider::-moz-range-progress {
+                height: 16px;
+                background: linear-gradient(
+                    to right,
+                    rgba(34, 34, 34) 0%,
+                    rgba(34, 34, 34, 0.2) 100%
+                );
+                border-radius: 999px 0 0 999px;
+            }
+            #yearSlider::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+                border: none;
+                background-color: #222;
+                cursor: pointer;
             }
             #tooltip {
                 position: fixed;
@@ -120,7 +174,7 @@
             }
             .metric-label {
                 color: #666;
-                font-size: 0.78rem;
+                font-size: 0.72rem;
                 text-transform: uppercase;
                 letter-spacing: 0.02em;
             }

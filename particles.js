@@ -292,6 +292,14 @@ function recolor() {
   renderLegend();
 }
 
+function updateSliderProgress() {
+  const slider = elements.yearSlider;
+  const min = Number(slider.min);
+  const max = Number(slider.max);
+  const pct = ((Number(slider.value) - min) / (max - min)) * 100;
+  slider.style.setProperty("--progress", `${pct}%`);
+}
+
 function renderLegend() {
   const entries =
     colorMode === "income"
@@ -353,6 +361,7 @@ async function init() {
     elements.yearSlider.value = defaultYear;
     elements.yearControl.hidden = false;
     elements.yearSlider.addEventListener("input", () => {
+      updateSliderProgress();
       applyYear(Number(elements.yearSlider.value));
     });
 
@@ -361,6 +370,7 @@ async function init() {
       btn.addEventListener("click", () => setColorMode(btn.dataset.mode));
     });
 
+    updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();
   } catch (error) {
