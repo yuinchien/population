@@ -49,12 +49,12 @@
                 left: 0px;
                 bottom: 0;
                 color: #222;
-                max-width: 320px;
+                width: 320px;
                 pointer-events: none;
                 padding: 12px;
             }
             #overlay h1 {
-                margin: 0 0 6px;
+                margin: 0;
                 font-size: 1.2rem;
                 font-weight: 500;
                 letter-spacing: 0.015em;
@@ -163,6 +163,11 @@
                 /*border-radius: 16px;*/
                 /*box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);*/
             }
+            .topbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
             .all-caps {
                 text-transform: uppercase;
             }
@@ -201,19 +206,23 @@
                 line-height: 1;
             }
             #viewMode {
-                margin-top: 18px;
                 display: flex;
-                gap: 6px;
+                gap: 0px;
                 pointer-events: auto;
+                border: none;
+                background-color: rgba(34, 34, 34, 0.1);
+                width: fit-content;
+                border-radius: 40px;
             }
             #viewMode button {
                 font-family: inherit;
                 color: #666;
                 background: transparent;
-                border: 1px solid rgba(34, 34, 34, 0.25);
+                /*border: 1px solid rgba(34, 34, 34, 0.25);*/
+                border: none;
                 border-radius: 999px;
-                width: 32px;
-                height: 32px;
+                width: 28px;
+                height: 28px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -270,8 +279,29 @@
     </head>
     <body>
         <div id="overlay" class="glass">
-            <h1 class="all-caps">Global Population</h1>
-            <p id="status">Loading population data…</p>
+            <div class="topbar">
+                <h1 class="all-caps">Global Population</h1>
+                <div id="viewMode" hidden>
+                    <button
+                        type="button"
+                        data-mode="globe"
+                        class="active"
+                        aria-label="Globe view"
+                        title="Globe"
+                    >
+                        <span class="material-symbols-outlined">globe</span>
+                    </button>
+                    <button
+                        type="button"
+                        data-mode="map"
+                        aria-label="Map view"
+                        title="Map"
+                    >
+                        <span class="material-symbols-outlined">map</span>
+                    </button>
+                </div>
+                <p id="status">Loading population data…</p>
+            </div>
             <div id="yearControl" hidden>
                 <div class="year-value">
                     <span id="yearValue" class="font-sans"></span>
@@ -303,25 +333,7 @@
                     ></span>
                 </div>
             </div>
-            <div id="viewMode" hidden>
-                <button
-                    type="button"
-                    data-mode="globe"
-                    class="active"
-                    aria-label="Globe view"
-                    title="Globe"
-                >
-                    <span class="material-symbols-outlined">globe</span>
-                </button>
-                <button
-                    type="button"
-                    data-mode="map"
-                    aria-label="Map view"
-                    title="Map"
-                >
-                    <span class="material-symbols-outlined">map</span>
-                </button>
-            </div>
+
             <div id="colorMode" hidden>
                 <button type="button" data-mode="region" class="active">
                     Region

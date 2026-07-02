@@ -7,6 +7,7 @@ const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 5;
+const MAP_DOT_SIZE = 2.8;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
@@ -16,7 +17,7 @@ const MAP_HEIGHT = 200;
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
 // there for a beat, then fly into their final target formation.
 const SCRAMBLE_IN_MS = 1000;
-const SCRAMBLE_HOLD_MS = 300;
+const SCRAMBLE_HOLD_MS = 500;
 const SCRAMBLE_OUT_MS = 1000;
 // Contracting the scramble cloud to a smaller volume than the globe itself
 // keeps dots from having to travel all the way out to full radius and
@@ -442,6 +443,7 @@ function setViewMode(mode) {
     toCamPos:
       mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
     toTarget: new THREE.Vector3(0, 0, 0),
+    toDotSize: mode === "map" ? MAP_DOT_SIZE : DOT_SIZE,
     outCamCaptured: false,
     start: performance.now(),
   };
@@ -496,6 +498,7 @@ function updateTransition() {
     if (!transition.outCamCaptured) {
       transition.outCamPos = camera.position.clone();
       transition.outTarget = controls.target.clone();
+      transition.outDotSize = pointsMesh.material.size;
       transition.outCamCaptured = true;
       controls.autoRotate = false;
     }
@@ -519,6 +522,10 @@ function updateTransition() {
       transition.toTarget,
       camE,
     );
+    pointsMesh.material.size =
+      transition.outDotSize +
+      (transition.toDotSize - transition.outDotSize) * camE;
+    raycaster.params.Points.threshold = pointsMesh.material.size * 1.5;
   }
 
   if (overallT >= 1) {
