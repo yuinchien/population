@@ -36,6 +36,10 @@ body {
     overflow: hidden;
 }
 
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
 h1,
 h2,
 h3,
@@ -116,14 +120,6 @@ button[hidden] {
     align-items: stretch;
 }
 
-/*.control-panel,
-.viz-panel {
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: var(--panel);
-    box-shadow: var(--shadow);
-}*/
-
 .control-panel {
     --cp-bg: #07090a;
     --cp-row: #0d1411;
@@ -139,7 +135,7 @@ button[hidden] {
     display: grid;
     grid-auto-rows: max-content;
     gap: 18px;
-    padding: 22px 18px;
+    padding: 16px 18px;
     height: auto;
     width: 280px;
     overflow-y: auto;

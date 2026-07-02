@@ -6,7 +6,7 @@
         <title>Global Population Trends — World Bank Explorer</title>
         <meta
             name="description"
-            content="Global population, life expectancy, and fertility rate over time (1960-2050), sourced from the World Bank Population Estimates and Projections dataset."
+            content="Global population, growth rate, life expectancy, fertility rate, and median age over time (1950-2100), sourced from the UN World Population Prospects 2024 dataset."
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,6 +20,13 @@
     <body>
         <main class="app-shell">
             <section class="control-panel" aria-label="Population controls">
+                <div class="title">
+                    World Population Prospects
+                    <!--<a
+                        href="https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=Most%20used"
+                        >World Population Prospects
+                    </a>-->
+                </div>
                 <div class="field year-range-field">
                     <div class="year-range-header">
                         <label>Year range</label>
@@ -58,9 +65,7 @@
             <section class="viz-panel" aria-label="Global population trends">
                 <div class="viz-heading">
                     <div>
-                        <h2 id="chartTitle">
-                            Global Population, Life Expectancy &amp; Fertility
-                        </h2>
+                        <h2 id="chartTitle">Global Population Trends</h2>
                         <p id="chartSubtitle" class="chart-subtitle"></p>
                     </div>
                 </div>

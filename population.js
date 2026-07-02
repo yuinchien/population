@@ -10,8 +10,11 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 
 const DATA_URL = "/data/population-global.json";
 const CURRENT_YEAR = new Date().getFullYear();
-const MIN_YEAR = 1960;
-const MAX_YEAR = 2050;
+const MIN_YEAR = 1950;
+const MAX_YEAR = 2100;
+// Last year covered by the UN WPP "Estimates" sheet; years after this come
+// from the "Medium variant" projection sheet.
+const HISTORICAL_CUTOFF_YEAR = 2023;
 const LINE_WIDTH = 4.5;
 const BASE_GRID_PADDING = 100;
 const TOOLTIP_CONNECTOR_SCALE = 2 / 3;
@@ -45,11 +48,19 @@ const SERIES_DEFS = [
     axisFormat: (value) => value.toFixed(2),
   },
   {
-    id: "oldAgeDependency",
-    label: "Old-Age Dependency Ratio",
-    color: "#FF8E91",
-    format: (value) => `${value.toFixed(1)}%`,
+    id: "populationGrowth",
+    label: "Population Growth Rate",
+    color: "#4EA8FF",
+    format: (value) => `${value.toFixed(2)}%`,
     axisSubtitle: "%",
+    axisFormat: (value) => value.toFixed(2),
+  },
+  {
+    id: "medianAge",
+    label: "Median Age",
+    color: "#FF8E91",
+    format: (value) => `${value.toFixed(1)} yrs`,
+    axisSubtitle: "years",
     axisFormat: (value) => value.toFixed(1),
   },
 ];
@@ -198,7 +209,10 @@ function renderTrend3D() {
     const rows = state.data[def.id] || [];
     const points = rows
       .filter((row) => row.year >= start && row.year <= end)
-      .map((row) => ({ ...row, projected: row.year > CURRENT_YEAR }))
+      .map((row) => ({
+        ...row,
+        projected: row.year > HISTORICAL_CUTOFF_YEAR,
+      }))
       .sort((a, b) => a.year - b.year);
     return { ...def, points };
   }).filter((series) => series.points.length > 1);
@@ -209,7 +223,7 @@ function renderTrend3D() {
     series.points.some((point) => point.projected),
   );
   elements.chartSubtitle.textContent = seriesList.length
-    ? `World Bank population estimates and projections, ${start}–${end}${isProjected ? " (includes projection)" : ""}`
+    ? `UN World Population Prospects (2024 revision), ${start}–${end}${isProjected ? " (includes medium-variant projection)" : ""}`
     : `No data available for ${start}–${end}`;
 
   if (!seriesList.length) {
@@ -244,7 +258,7 @@ function renderTrend3D() {
 
   seriesList.forEach((series, index) => {
     const z = mapZ(index);
-    const yDomain = zeroBasedDomain(series.points.map((point) => point.value));
+    const yDomain = valueDomain(series.points.map((point) => point.value));
     const mapY = (value) => scale(value, yDomain, [0, maxH]);
     scene3d.seriesMeta.set(series.label, {
       z,
@@ -910,9 +924,18 @@ function scale(value, domain, range) {
   return range[0] + percent * (range[1] - range[0]);
 }
 
-function zeroBasedDomain(values) {
+// Zero-based domain for always-positive series (population, life
+// expectancy, fertility, median age). Falls back to a padded min/max domain
+// for series that can go negative (e.g. population growth rate late in the
+// century) so the curve doesn't dip through the base plane.
+function valueDomain(values) {
   const max = Math.max(...values);
-  return [0, max * 1.08 || 1];
+  const min = Math.min(...values);
+  if (min >= 0) {
+    return [0, max * 1.08 || 1];
+  }
+  const pad = (max - min) * 0.08 || 1;
+  return [min - pad, max + pad];
 }
 
 function makeYearTicks(start, end) {
