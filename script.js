@@ -671,7 +671,7 @@ function makeOptionCountry(value, label, iso3) {
   option.value = value;
   option.textContent = label;
   option.dataset.iso3 = iso3;
-  const iso2 = convertAlpha3ToAlpha2(iso3).toLowerCase();
+  const iso2 = convertAlpha3ToAlpha2(iso3);
   option.style.setProperty(
     "--flag",
     `url("node_modules/flag-icons/flags/1x1/${iso2}.svg")`,

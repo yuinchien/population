@@ -58,7 +58,7 @@ select {
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .app-header,
@@ -219,7 +219,7 @@ button[hidden] {
 
 .control-panel select[multiple] option,
 .control-panel select[size]:not([size="1"]) option {
-    padding: 4px 6px;
+    padding: 0px 6px;
     color: var(--cp-text-dim);
     text-transform: uppercase;
     /*letter-spacing: 0.06em;*/
@@ -228,7 +228,6 @@ button[hidden] {
 }
 
 #typeSelect {
-    overflow-y: hidden;
     scrollbar-width: none;
 }
 
