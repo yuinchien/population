@@ -6,13 +6,24 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 1_000_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 5.5;
+const DOT_SIZE = 5;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
 const MAP_WIDTH = 400;
 const MAP_HEIGHT = 200;
-const VIEW_TRANSITION_MS = 1200;
+// A view-mode switch runs through three phases instead of a direct morph:
+// dots fly apart into a scrambled cloud filling the globe's volume, hang
+// there for a beat, then fly into their final target formation.
+const SCRAMBLE_IN_MS = 1000;
+const SCRAMBLE_HOLD_MS = 300;
+const SCRAMBLE_OUT_MS = 1000;
+// Contracting the scramble cloud to a smaller volume than the globe itself
+// keeps dots from having to travel all the way out to full radius and
+// back, so the fly-apart/fly-together motion reads as tighter, less
+// "stretchy" over the same duration.
+const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.4;
+const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
 const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 
@@ -175,14 +186,41 @@ let colorMode = "region";
 let viewMode = "globe";
 let dotLocalIndex = null;
 let transition = null;
+let isScrambledPhase = false;
+let isHoldPhase = false;
 const clock = new THREE.Clock();
 
 function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
+// Arrives at the scramble point already moving (no decel-to-a-stop), so
+// it can flow straight into easeOutCubic's departure without a stall.
+function easeInCubic(t) {
+  return t * t * t;
+}
+// Leaves the scramble point at full speed and decelerates into rest.
+function easeOutCubic(t) {
+  return 1 - Math.pow(1 - t, 3);
+}
 
 function colorFor(country) {
   return colorMode === "income" ? country._incomeColor : country._regionColor;
+}
+
+// Uniformly-distributed random points inside a sphere a bit smaller than
+// the globe itself — the "scrambled" mid-transition cloud.
+function computeScramblePositions(count) {
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = SCRAMBLE_RADIUS * Math.cbrt(Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const i3 = i * 3;
+    positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+    positions[i3 + 1] = r * Math.cos(phi);
+    positions[i3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  return positions;
 }
 
 // Allocates buffers sized to each country's maximum dot count (the most
@@ -393,44 +431,99 @@ function setViewMode(mode) {
   if (mode === viewMode || !activeTotal) return;
 
   const fromPositions = basePositions.slice(0, activeTotal * 3);
+  const scramblePositions = computeScramblePositions(activeTotal);
   const toPositions = computeTargetPositions(mode);
   viewMode = mode;
 
   transition = {
     fromPositions,
+    scramblePositions,
     toPositions,
-    fromCamPos: camera.position.clone(),
-    toCamPos: mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
-    fromTarget: controls.target.clone(),
+    toCamPos:
+      mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
     toTarget: new THREE.Vector3(0, 0, 0),
+    outCamCaptured: false,
     start: performance.now(),
   };
+  // Leave autoRotate as-is (still spinning if we're leaving globe mode) and
+  // block user drag input only — updateTransition() lets controls.update()
+  // keep rotating through the scramble-in/hold phases, and only takes the
+  // camera over once the fly-out phase begins.
   controls.enabled = false;
-  controls.autoRotate = false;
 
   elements.viewMode
     .querySelectorAll("button")
-    .forEach((btn) => btn.classList.toggle("active", btn.dataset.mode === mode));
+    .forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.mode === mode),
+    );
 }
 
+// Three-phase morph: current formation -> scrambled cloud filling the
+// globe's volume -> final formation. The scramble is regenerated fresh
+// each call (setViewMode), so consecutive toggles never repeat the same
+// "explosion" pattern. The camera is left alone (still auto-rotating, if
+// it already was) through the fly-apart/hold phases, and only takes over
+// to glide toward the final view once the fly-out phase starts — so a
+// globe->map switch keeps spinning right up until it commits to flattening.
 function updateTransition() {
   if (!transition) return;
-  const t = Math.min(
-    1,
-    (performance.now() - transition.start) / VIEW_TRANSITION_MS,
-  );
-  const e = easeInOutCubic(t);
+  const elapsed = performance.now() - transition.start;
+  const overallT = Math.min(1, elapsed / VIEW_TRANSITION_MS);
+  const outPhaseStart = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS;
+
+  let from, to, localT, ease;
+  isHoldPhase = false;
+  if (elapsed < SCRAMBLE_IN_MS) {
+    from = transition.fromPositions;
+    to = transition.scramblePositions;
+    localT = elapsed / SCRAMBLE_IN_MS;
+    ease = easeInCubic;
+    isScrambledPhase = true;
+  } else if (elapsed < outPhaseStart) {
+    from = transition.scramblePositions;
+    to = transition.scramblePositions;
+    localT = 0;
+    ease = easeInCubic;
+    isScrambledPhase = true;
+    isHoldPhase = true;
+  } else {
+    from = transition.scramblePositions;
+    to = transition.toPositions;
+    localT = (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS;
+    ease = easeOutCubic;
+    isScrambledPhase = false;
+
+    if (!transition.outCamCaptured) {
+      transition.outCamPos = camera.position.clone();
+      transition.outTarget = controls.target.clone();
+      transition.outCamCaptured = true;
+      controls.autoRotate = false;
+    }
+  }
+  const e = ease(Math.min(1, localT));
 
   for (let k = 0; k < transition.toPositions.length; k++) {
-    basePositions[k] =
-      transition.fromPositions[k] +
-      (transition.toPositions[k] - transition.fromPositions[k]) * e;
+    basePositions[k] = from[k] + (to[k] - from[k]) * e;
   }
-  camera.position.lerpVectors(transition.fromCamPos, transition.toCamPos, e);
-  controls.target.lerpVectors(transition.fromTarget, transition.toTarget, e);
 
-  if (t >= 1) {
+  if (transition.outCamCaptured) {
+    const outT = Math.min(1, (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS);
+    const camE = easeInOutCubic(outT);
+    camera.position.lerpVectors(
+      transition.outCamPos,
+      transition.toCamPos,
+      camE,
+    );
+    controls.target.lerpVectors(
+      transition.outTarget,
+      transition.toTarget,
+      camE,
+    );
+  }
+
+  if (overallT >= 1) {
     transition = null;
+    isScrambledPhase = false;
     controls.enabled = true;
     if (viewMode === "globe") {
       controls.enableRotate = true;
@@ -508,18 +601,28 @@ async function init() {
 // origin). On the flat map there's no "outward" direction shared with the
 // origin, so dots instead pulse toward/away from the camera along Z —
 // same twinkle feel, without the map-center dots barely moving.
+// During the (brief) hold at the scramble cloud, dots pulse faster and
+// harder than the ambient shimmer — reads as "the system is computing"
+// rather than a freeze-frame — before flying out to their final shape.
+const HOLD_FREQ_MULTIPLIER = 7;
+const HOLD_AMPLITUDE_MULTIPLIER = 2.5;
+
 function pulseDots(elapsedTime) {
   if (!pointsMesh || !activeTotal) return;
   const positionAttribute = pointsMesh.geometry.getAttribute("position");
   const array = positionAttribute.array;
-  const isMap = viewMode === "map";
+  const isMap = viewMode === "map" && !isScrambledPhase;
+  const freqMul = isHoldPhase ? HOLD_FREQ_MULTIPLIER : 1;
+  const ampMul = isHoldPhase ? HOLD_AMPLITUDE_MULTIPLIER : 1;
   for (let i = 0; i < activeTotal; i++) {
     const i3 = i * 3;
     const ox = basePositions[i3];
     const oy = basePositions[i3 + 1];
     const oz = basePositions[i3 + 2];
     const wave =
-      Math.sin(elapsedTime * frequencies[i] + phases[i]) * PULSE_AMPLITUDE;
+      Math.sin(elapsedTime * frequencies[i] * freqMul + phases[i]) *
+      PULSE_AMPLITUDE *
+      ampMul;
     if (isMap) {
       array[i3] = ox;
       array[i3 + 1] = oy;
