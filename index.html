@@ -3,109 +3,346 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Global Population Trends — World Bank Explorer</title>
-        <meta
-            name="description"
-            content="Global population, growth rate, life expectancy, fertility rate, and median age over time (1950-2100), sourced from the UN World Population Prospects 2024 dataset."
-        />
+        <title>Global Population — 1 Dot = 1M People</title>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
-            href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap"
+            href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
             rel="stylesheet"
         />
-        <link rel="stylesheet" href="styles.css" />
         <link
+            href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.3.2/css/flag-icons.min.css"
         />
+        <style>
+            :root {
+                --slider-size: 12px;
+            }
+            html,
+            body {
+                font-size: 14px;
+                line-height: 16px;
+                letter-spacing: -0.01em;
+                margin: 0;
+                height: 100%;
+                /*background: #eee;*/
+                background: linear-gradient(
+                    180deg,
+                    rgba(240, 240, 240, 1) 0%,
+                    rgba(222, 222, 222, 1) 100%
+                );
+
+                overflow: hidden;
+                font-family: "DM Mono", ui-monospace, monospace;
+            }
+            .font-sans {
+                font-family: "DM Sans", sans-serif;
+                font-weight: 400;
+                font-style: normal;
+            }
+            canvas {
+                display: block;
+            }
+            #overlay {
+                position: fixed;
+                top: 0px;
+                left: 0px;
+                bottom: 0;
+                color: #222;
+                width: 320px;
+                pointer-events: none;
+                padding: 12px;
+            }
+            #overlay h1 {
+                margin: 0;
+                font-size: 1.2rem;
+                font-weight: 500;
+                letter-spacing: 0.015em;
+            }
+            #overlay p {
+                margin: 0;
+                color: #222;
+                font-size: 0.8rem;
+                line-height: 1.5;
+                display: none;
+            }
+
+            #yearControl {
+                margin-top: 16px;
+                pointer-events: auto;
+            }
+            #yearControl .year-value {
+                color: #222;
+                font-size: 2rem;
+                font-weight: 500;
+                line-height: 1em;
+                margin-bottom: 8px;
+            }
+            #yearSlider {
+                --progress: 0%;
+                -webkit-appearance: none;
+                appearance: none;
+                width: stretch;
+                height: var(--slider-size);
+                margin: 0;
+                border-radius: 999px;
+                /*rgba(34, 34, 34) 0%,*/
+                /*rgba(34, 34, 34, 0.2) 100%*/
+                background:
+                    linear-gradient(
+                            to right,
+                            rgba(34, 34, 34) 0%,
+                            rgba(34, 34, 34, 0.4) 100%
+                        )
+                        0 / var(--progress) 100% no-repeat,
+                    rgba(34, 34, 34, 0.1);
+                outline: none;
+                cursor: pointer;
+            }
+            #yearSlider::-webkit-slider-runnable-track {
+                -webkit-appearance: none;
+                height: var(--slider-size);
+                background: transparent;
+                border-radius: 999px;
+            }
+            #yearSlider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: var(--slider-size);
+                height: var(--slider-size);
+                border-radius: 50%;
+                background-color: #222;
+                cursor: pointer;
+                box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+            }
+            #yearSlider::-moz-range-track {
+                height: var(--slider-size);
+                background: rgba(34, 34, 34, 0.05);
+                border-radius: 999px;
+            }
+            #yearSlider::-moz-range-progress {
+                height: var(--slider-size);
+                background: linear-gradient(
+                    to right,
+                    rgba(34, 34, 34) 0%,
+                    rgba(34, 34, 34, 0.4) 100%
+                );
+                border-radius: 999px 0 0 999px;
+            }
+            #yearSlider::-moz-range-thumb {
+                width: var(--slider-size);
+                height: var(--slider-size);
+                border-radius: 50%;
+                border: none;
+                background-color: #222;
+                cursor: pointer;
+            }
+            #tooltip {
+                position: fixed;
+                transform: translate(-50%, -130%);
+                color: #222;
+                padding: 6px 10px;
+                font-size: 0.8rem;
+                border-radius: 2px;
+                pointer-events: none;
+                white-space: nowrap;
+            }
+            #tooltip[hidden] {
+                display: none;
+            }
+            .glass {
+                background: rgba(255, 255, 255, 0.1);
+
+                /* The core frosted glass blur effect */
+                backdrop-filter: blur(16px);
+                -webkit-backdrop-filter: blur(16px); /* Safari support */
+
+                /* Crisp border simulating light catching the edge */
+                border: 1px solid rgba(255, 255, 255, 0.25);
+
+                /* Smooth curves and depth shadow */
+                /*border-radius: 16px;*/
+                /*box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15);*/
+            }
+            .topbar {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .all-caps {
+                text-transform: uppercase;
+            }
+            #metrics {
+                margin-top: 12px;
+                display: grid;
+                pointer-events: none;
+            }
+            .metric {
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                gap: 16px;
+                border-top: 1px solid rgba(34, 34, 34, 0.12);
+                padding: 6px 0;
+            }
+            .metric-label {
+                color: #666;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+            }
+            .metric-value {
+                color: #222;
+                font-size: 0.84rem;
+                font-weight: 500;
+                white-space: nowrap;
+            }
+            .material-symbols-outlined {
+                font-variation-settings:
+                    "FILL" 0,
+                    "wght" 400,
+                    "GRAD" 0,
+                    "opsz" 20;
+                font-size: 18px;
+                line-height: 1;
+            }
+            #viewMode {
+                display: flex;
+                gap: 0px;
+                pointer-events: auto;
+                border: none;
+                background-color: rgba(34, 34, 34, 0.1);
+                width: fit-content;
+                border-radius: 40px;
+            }
+            #viewMode button {
+                font-family: inherit;
+                color: #666;
+                background: transparent;
+                /*border: 1px solid rgba(34, 34, 34, 0.25);*/
+                border: none;
+                border-radius: 999px;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 0;
+                cursor: pointer;
+            }
+            #viewMode button.active {
+                color: #fff;
+                background: #222;
+                border-color: #222;
+            }
+            #colorMode {
+                margin-top: 12px;
+                display: flex;
+                gap: 6px;
+                pointer-events: auto;
+            }
+            #colorMode button {
+                font-family: inherit;
+                font-size: 0.72rem;
+                text-transform: uppercase;
+                letter-spacing: 0.02em;
+                color: #666;
+                background: transparent;
+                border: 1px solid rgba(34, 34, 34, 0.25);
+                border-radius: 999px;
+                padding: 4px 12px;
+                cursor: pointer;
+            }
+            #colorMode button.active {
+                color: #fff;
+                background: #222;
+                border-color: #222;
+            }
+            #legend {
+                margin-top: 12px;
+                display: grid;
+                gap: 6px;
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.72rem;
+                color: #444;
+            }
+            .legend-swatch {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                flex: none;
+            }
+        </style>
     </head>
     <body>
-        <main class="app-shell">
-            <section class="control-panel" aria-label="Population controls">
-                <div class="title">
-                    World Population Prospects
-                    <!--<a
-                        href="https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=Most%20used"
-                        >World Population Prospects
-                    </a>-->
+        <div id="overlay" class="glass">
+            <div class="topbar">
+                <h1 class="all-caps">Global Population</h1>
+                <div id="viewMode" hidden>
+                    <button
+                        type="button"
+                        data-mode="globe"
+                        class="active"
+                        aria-label="Globe view"
+                        title="Globe"
+                    >
+                        <span class="material-symbols-outlined">globe</span>
+                    </button>
+                    <button
+                        type="button"
+                        data-mode="map"
+                        aria-label="Map view"
+                        title="Map"
+                    >
+                        <span class="material-symbols-outlined">map</span>
+                    </button>
                 </div>
-
-                <div class="field">
-                    <label for="typeSelect">Type</label>
-                    <select id="typeSelect" size="4"></select>
+                <p id="status">Loading population data…</p>
+            </div>
+            <div id="yearControl" hidden>
+                <div class="year-value">
+                    <span id="yearValue" class="font-sans"></span>
                 </div>
-
-                <div class="field">
-                    <label for="regionSelect">Region</label>
-                    <select id="regionSelect" size="8"></select>
+                <input id="yearSlider" type="range" autocomplete="off" />
+            </div>
+            <div id="metrics" hidden>
+                <div class="metric">
+                    <span class="metric-label">Population</span>
+                    <span class="metric-value" id="metricPopulation"></span>
                 </div>
-
-                <div class="field">
-                    <label for="countrySelect">Countries</label>
-                    <select id="countrySelect" size="10"></select>
+                <div class="metric">
+                    <span class="metric-label">Fertility rate</span>
+                    <span class="metric-value" id="metricFertility"></span>
                 </div>
-
-                <div class="field hidden">
-                    <label for="seriesSelect">Indicators</label>
-                    <select id="seriesSelect" multiple size="6"></select>
+                <div class="metric">
+                    <span class="metric-label">Life expectancy</span>
+                    <span class="metric-value" id="metricLifeExpectancy"></span>
                 </div>
-
-                <div class="field year-range-field">
-                    <div class="year-range-header">
-                        <label>Year range</label>
-                        <span class="year-range-value">
-                            <span id="startYearLabel"></span> –
-                            <span id="endYearLabel"></span>
-                        </span>
-                    </div>
-                    <div class="year-range-slider">
-                        <div class="year-range-track">
-                            <div
-                                class="year-range-fill"
-                                id="yearRangeFill"
-                            ></div>
-                        </div>
-                        <input
-                            id="startYear"
-                            class="range-input range-start"
-                            type="range"
-                            aria-label="Start year"
-                        />
-                        <input
-                            id="endYear"
-                            class="range-input range-end"
-                            type="range"
-                            aria-label="End year"
-                        />
-                    </div>
+                <div class="metric">
+                    <span class="metric-label">Median age</span>
+                    <span class="metric-value" id="metricMedianAge"></span>
                 </div>
-
-                <p id="status" class="status" role="status">
-                    Loading population data...
-                </p>
-            </section>
-
-            <section class="viz-panel" aria-label="Global population trends">
-                <div class="viz-heading">
-                    <div>
-                        <h2 id="chartTitle">Global Population Trends</h2>
-                        <p id="chartSubtitle" class="chart-subtitle"></p>
-                    </div>
+                <div class="metric">
+                    <span class="metric-label">Population growth</span>
+                    <span
+                        class="metric-value"
+                        id="metricPopulationGrowth"
+                    ></span>
                 </div>
+            </div>
 
-                <div class="chart-wrap">
-                    <div id="chart3d" class="chart-3d"></div>
-                    <div
-                        id="chartLegend"
-                        class="chart-legend"
-                        aria-label="Series legend"
-                        hidden
-                    ></div>
-                    <div id="tooltip" class="tooltip" hidden></div>
-                </div>
-            </section>
-        </main>
+            <div id="colorMode" hidden>
+                <button type="button" data-mode="region" class="active">
+                    Region
+                </button>
+                <button type="button" data-mode="income">Income group</button>
+            </div>
+            <div id="legend"></div>
+        </div>
+        <div id="tooltip" class="glass" hidden></div>
 
         <script type="importmap">
             {
@@ -115,6 +352,7 @@
                 }
             }
         </script>
+
         <script type="module" src="./script.js"></script>
     </body>
 </html>
