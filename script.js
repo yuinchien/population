@@ -708,11 +708,14 @@ function updateSliderProgress() {
 }
 
 function renderLegend() {
+  const hasUnclassified = countriesData.some(
+    (country) => country._incomeLabel === UNCLASSIFIED_INCOME,
+  );
   const entries =
     colorMode === "income"
       ? [
           ...Object.entries(INCOME_GROUP_COLORS),
-          [UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR],
+          ...(hasUnclassified ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]] : []),
         ]
       : Object.entries(REGION_COLORS);
   elements.legend.replaceChildren(
