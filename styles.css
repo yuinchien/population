@@ -116,19 +116,30 @@ body.detail #overlay .hide-for-detail {
 }
 
 .peak-flags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: grid;
+    gap: 8px;
     margin-top: 8px;
 }
 
+.peak-flag-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .peak-flag {
-    width: 22px;
-    height: 16.5px;
-    border-radius: 2px;
-    box-shadow: 0 0 0 1px var(--color-border);
+    width: 20px;
+    aspect-ratio: 4 / 3;
     object-fit: cover;
     flex: none;
+    outline: var(--border);
+    outline-offset: -1px;
+}
+
+.peak-flag-population {
+    font-weight: 500;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
 }
 
 .status-cursor {

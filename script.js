@@ -268,6 +268,14 @@ function formatCount(value) {
   return `${value}`;
 }
 
+function formatPeakPopulation(value) {
+  if (value == null) return "N/A";
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
+  return Math.round(value).toLocaleString();
+}
+
 // data/population-global.json holds one series per indicator, each an
 // array of {year, value} rows; index by year so applyYear() can look up
 // all five in O(1) as the slider moves. "variants" (High/Low UN scenarios)
@@ -646,17 +654,9 @@ function updateCalloutLabels() {
   });
 }
 
-const PEAK_LIST_FORMATTER = new Intl.ListFormat("en", {
-  style: "long",
-  type: "conjunction",
-});
-
 // Picks a phrasing for the peak-year status line based on how many countries
-// peak in the given year — a flat "N countries peaked in Y: A, B, C..." reads
-// as a data dump once N gets past a handful, so 4+ countries get a short
-// preview list ("A, B, and 5 others") instead of the full roster, and each
-// bucket has a few interchangeable templates so revisiting a year doesn't
-// always show identical copy.
+// peak in the given year. Country names live in the detail rows below the
+// status, so the copy stays focused on the year and count.
 // isProjected distinguishes an observed peak (year <= historicalCutoffYear)
 // from a modeled one (year > historicalCutoffYear) — without it, a
 // projected-year copy like "France's population peaks in 2061" reads as a
@@ -665,7 +665,6 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   const pick = (variants) =>
     variants[Math.floor(Math.random() * variants.length)];
   const count = peakCountries.length;
-  const names = peakCountries.map((c) => c.name);
 
   if (count === 0) {
     return pick(
@@ -684,73 +683,81 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   }
 
   if (count === 1) {
-    const [name] = names;
     return pick(
       isProjected
         ? [
-            `${name}'s population is projected to peak in ${year}.`,
-            `${year} is projected to be ${name}'s population high-water mark.`,
-            `One country's population is projected to top out in ${year}: ${name}.`,
+            `One country is projected to reach its population peak in ${year}.`,
+            `${year} is projected to be a population high point for one country.`,
+            `A single country is projected to top out in ${year}.`,
           ]
         : [
-            `${name}'s population peaked in ${year}.`,
-            `${year} was ${name}'s population high-water mark.`,
-            `One country's population topped out in ${year}: ${name}.`,
+            `One country reached its population peak in ${year}.`,
+            `${year} was the population high point for one country.`,
+            `A single country topped out in ${year}.`,
           ],
     );
   }
 
   if (count <= 3) {
-    const list = PEAK_LIST_FORMATTER.format(names);
     return pick(
       isProjected
         ? [
-            `${list} are all projected to see their population peak in ${year}.`,
-            `${year} is projected to mark the population high point for ${list}.`,
-            `${count} countries are projected to hit peak population in ${year}: ${list}.`,
+            `${count} countries are projected to reach their population peak in ${year}.`,
+            `${year} is projected to mark the population high point for ${count} countries.`,
+            `${count} countries are projected to top out in ${year}.`,
           ]
         : [
-            `${list} all saw their population peak in ${year}.`,
-            `${year} marked the population high point for ${list}.`,
-            `${count} countries hit peak population in ${year}: ${list}.`,
+            `${count} countries reached their population peak in ${year}.`,
+            `${year} marked the population high point for ${count} countries.`,
+            `${count} countries topped out in ${year}.`,
           ],
     );
   }
 
-  const previewCount = 2;
-  const preview = PEAK_LIST_FORMATTER.format(names.slice(0, previewCount));
-  const remaining = count - previewCount;
   return pick(
     isProjected
       ? [
-          `${count} countries are projected to hit peak population in ${year}, including ${preview} and ${remaining} others.`,
-          `${year} is projected to be a big one — ${count} countries' populations are expected to top out, among them ${preview}.`,
-          `A wave of projected population peaks in ${year}: ${preview} and ${remaining} more.`,
+          `${count} countries are projected to reach their population peak in ${year}.`,
+          `${year} is projected to be a busy peak year, with ${count} countries topping out.`,
+          `A wave of projected population peaks lands in ${year}: ${count} countries in all.`,
         ]
       : [
-          `${count} countries hit peak population in ${year}, including ${preview} and ${remaining} others.`,
-          `${year} was a big one — ${count} countries' populations topped out, among them ${preview}.`,
-          `A wave of population peaks in ${year}: ${preview} and ${remaining} more.`,
+          `${count} countries reached their population peak in ${year}.`,
+          `${year} was a busy peak year, with ${count} countries topping out.`,
+          `A wave of population peaks landed in ${year}: ${count} countries in all.`,
         ],
   );
 }
 
-// Shows every peak country's flag, not just the couple named in the status
-// text's 4+-country preview — a row of flags stays readable even when the
-// text itself falls back to "and N others".
+// Shows every peak country's flag and peak-year population, not just the
+// couple named in the status text's 4+-country preview.
 function renderPeakFlags(peakCountries) {
   elements.peakFlags.replaceChildren(
     ...peakCountries
       .map((country) => {
         const iso2 = countryIso2[country.iso3];
         if (!iso2) return null;
+        const row = document.createElement("div");
+        row.className = "peak-flag-row";
+
         const img = document.createElement("img");
         img.className = "peak-flag";
         img.src = FLAG_URL(iso2);
         img.alt = country.name;
         img.title = country.name;
         img.loading = "lazy";
-        return img;
+
+        const value = document.createElement("span");
+        value.className = "peak-flag-population";
+        value.textContent = `${country.name}: ${formatPeakPopulation(
+          country.populations[currentYearIndex],
+        )}`;
+        value.title = `${country.name}: ${formatPopulation(
+          country.populations[currentYearIndex],
+        )}`;
+
+        row.append(img, value);
+        return row;
       })
       .filter(Boolean),
   );
