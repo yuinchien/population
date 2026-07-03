@@ -1,8 +1,8 @@
 :root {
     --slider-size: 12px;
-    --border-color: rgba(0, 0, 0, 0.1);
-    --border: 1px solid var(--border-color);
     --color-text: #222;
+    --color-border: rgba(0, 0, 0, 0.1);
+    --border: 1px solid var(--color-border);
 }
 html,
 body {
@@ -38,7 +38,10 @@ canvas {
     left: 0px;
     bottom: 0;
     width: 240px;
-    padding: 0 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 #overlay h1 {
     margin: 0;
@@ -158,8 +161,8 @@ canvas {
 hr {
     border: none;
     height: 1px; /* Control thickness here */
-    background-color: var(--border-color); /* Your custom color */
-    margin: 12px 0;
+    background-color: var(--color-border); /* Your custom color */
+    margin: 0;
 }
 .glass {
     background: rgba(255, 255, 255, 0.1);
@@ -179,15 +182,13 @@ hr {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
 }
 
 #metrics {
-    margin-top: 8px;
     display: grid;
     pointer-events: none;
     border-bottom: var(--border);
-    margin-bottom: 8px;
+    margin-top: -4px;
 }
 .metric {
     display: flex;
@@ -195,7 +196,7 @@ hr {
     align-items: flex-start;
     gap: 16px;
     border-top: var(--border);
-    padding: 6px 0;
+    padding: 8px 0;
 }
 .metric-label {
     color: #666;
@@ -299,7 +300,6 @@ hr {
 }
 
 .tab-group {
-    margin-top: 12px;
     display: flex;
     gap: 8px;
 }
@@ -336,25 +336,18 @@ hr {
     border-radius: 40px;
 }
 
-#viewMode {
-    border-top: var(--border);
-    padding: 12px 0;
-    margin-top: 0;
-}
-
 #legend {
-    margin-top: 8px;
     display: grid;
-    padding-left: 8px;
+    margin-top: 8px;
 }
 .legend-item {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 0;
+    padding: 4px;
 }
 .legend-item:hover {
-    background-color: color-mix(in hsl, var(--color-legend) 40%, white);
+    background-color: var(--color-border);
 }
 
 .legend-swatch {

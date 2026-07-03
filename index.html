@@ -21,7 +21,7 @@
             <div class="topbar">
                 <h1>Global Population</h1>
             </div>
-
+            <hr />
             <div id="viewMode" class="tab-group full-width" hidden>
                 <button
                     type="button"
@@ -74,34 +74,34 @@
                     ></span>
                 </div>
             </div>
+            <div>
+                <div id="colorMode" class="tab-group" hidden>
+                    <button
+                        type="button"
+                        data-mode="region"
+                        class="active"
+                        aria-label="region"
+                        title="Region"
+                    >
+                        Region
+                    </button>
+                    <button
+                        type="button"
+                        data-mode="income"
+                        aria-label="Income group"
+                        title="Income group"
+                    >
+                        Income group
+                    </button>
+                </div>
 
-            <div id="colorMode" class="tab-group" hidden>
-                <button
-                    type="button"
-                    data-mode="region"
-                    class="active"
-                    aria-label="region"
-                    title="Region"
-                >
-                    Region
-                </button>
-                <button
-                    type="button"
-                    data-mode="income"
-                    aria-label="Income group"
-                    title="Income group"
-                >
-                    Income group
-                </button>
+                <div id="legend"></div>
             </div>
-
-            <div id="legend"></div>
-
             <hr />
-            <p id="status">Loading population data…</p>
-            <p>
+            <div>
+                <p id="status">Loading population data…</p>
                 <a href="https://population.un.org/wpp/">Data source</a>
-            </p>
+            </div>
         </div>
         <div id="tooltip" class="glass" hidden></div>
         <div id="calloutLayer"></div>
