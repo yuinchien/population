@@ -8,7 +8,7 @@ const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
 const MAP_DOT_SIZE = 1.5;
-const DOT_OPACITY = 1;
+const DOT_OPACITY = 0.9;
 const PULSE_AMPLITUDE = 7;
 const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
@@ -39,7 +39,7 @@ const CALLOUT_GLOBE_EXTEND = GLOBE_RADIUS * 1.35;
 const CALLOUT_MAP_EXTEND = 60;
 
 const REGION_COLORS = {
-  "East Asia & Pacific": "#ac936e",
+  "East Asia & Pacific": "#a5aaa8",
   "Europe & Central Asia": "#e6b5c9",
   "Latin America & Caribbean": "#bd8ca6",
   "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
