@@ -14,6 +14,10 @@ const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
 const MAP_WIDTH = 400;
 const MAP_HEIGHT = 200;
+// Starting values for the projected-year Bayer dither; live-tunable via the
+// temporary #ditherDebugPanel slider UI (see setupDitherDebugPanel below).
+const DITHER_THRESHOLD = 0.6;
+const DITHER_SCALE = 1;
 // A view-mode switch runs through three phases instead of a direct morph:
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
 // there for a beat, then fly into their final target formation.
@@ -140,6 +144,57 @@ function createDotTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
+// Standard recursive Bayer-matrix construction: M(2) = [[0,2],[3,1]], and
+// M(2n) is built from four scaled/offset copies of M(n). Returns a 2D array
+// of integers in [0, size*size).
+function buildBayerMatrix(size) {
+  let matrix = [[0]];
+  let n = 1;
+  while (n < size) {
+    const next = n * 2;
+    const grown = Array.from({ length: next }, () => new Array(next).fill(0));
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const v = matrix[y][x] * 4;
+        grown[y][x] = v;
+        grown[y][x + n] = v + 2;
+        grown[y + n][x] = v + 3;
+        grown[y + n][x + n] = v + 1;
+      }
+    }
+    matrix = grown;
+    n = next;
+  }
+  return matrix;
+}
+
+// Bakes the Bayer matrix into a single-channel, nearest-filtered, repeating
+// texture so the fragment shader can look up a threshold per screen pixel
+// with a plain texture2D() call — sidesteps GLSL ES 1.00's lack of reliable
+// dynamic array/matrix indexing that a literal in-shader lookup would need.
+function createBayerTexture(size = 8) {
+  const matrix = buildBayerMatrix(size);
+  const data = new Uint8Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      data[y * size + x] = Math.round((matrix[y][x] / (size * size)) * 255);
+    }
+  }
+  const texture = new THREE.DataTexture(
+    data,
+    size,
+    size,
+    THREE.RedFormat,
+    THREE.UnsignedByteType,
+  );
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
 // The pulse (and the globe/map position blend) used to be recomputed on the
 // CPU for every active dot, every frame — the single most expensive thing
 // in the render loop once dot counts climbed into the tens of thousands.
@@ -190,12 +245,33 @@ const DOT_VERTEX_SHADER = `
 
 const DOT_FRAGMENT_SHADER = `
   uniform sampler2D map;
+  uniform sampler2D ditherMap;
   uniform float uOpacity;
+  uniform float uIsProjected;
+  uniform float uDitherThreshold;
+  uniform float uDitherScale;
 
   varying vec3 vColor;
 
   void main() {
     vec4 texColor = texture2D(map, gl_PointCoord);
+
+    // Every active dot shares one selected year, so "is this a projected
+    // year" is scene-wide, not per-dot — an ordered (Bayer) dither knocks
+    // a threshold-controlled fraction of fragments away in a screen-space
+    // grid pattern, reading as a grainy, less-solid texture instead of the
+    // clean fill used for historical (actual) years. ditherMap is an 8x8
+    // Bayer matrix baked to a repeating texture (see createBayerTexture) —
+    // sampling it avoids the dynamic array/matrix indexing a literal Bayer
+    // lookup would need, which GLSL ES 1.00 (WebGL1) doesn't reliably support.
+    if (uIsProjected > 0.5) {
+      float threshold = texture2D(
+        ditherMap,
+        gl_FragCoord.xy / (8.0 * uDitherScale)
+      ).r;
+      if (threshold > uDitherThreshold) discard;
+    }
+
     gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * texColor.a);
     // Three's THREE.Color stores values in linear space (color management
     // is on by default since r152) and built-in materials convert back to
@@ -324,6 +400,7 @@ let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
 let isHoldPhase = false;
+let isProjectedYear = false;
 const timer = new THREE.Timer();
 timer.connect(document);
 
@@ -411,6 +488,7 @@ function setupScene(countries, incomeGroups) {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       map: { value: createDotTexture() },
+      ditherMap: { value: createBayerTexture(8) },
       uTime: { value: 0 },
       uSize: { value: DOT_SIZE * renderer.getPixelRatio() },
       uScale: { value: renderer.domElement.height * 0.5 },
@@ -420,6 +498,9 @@ function setupScene(countries, incomeGroups) {
       uAmpMul: { value: 1 },
       uGlobeRadius: { value: GLOBE_RADIUS },
       uIsMap: { value: 0 },
+      uIsProjected: { value: 0 },
+      uDitherThreshold: { value: DITHER_THRESHOLD },
+      uDitherScale: { value: DITHER_SCALE },
     },
     vertexShader: DOT_VERTEX_SHADER,
     fragmentShader: DOT_FRAGMENT_SHADER,
@@ -504,6 +585,7 @@ function applyYear(year) {
   pointsMesh.geometry.getAttribute("aPhase").needsUpdate = true;
 
   const isProjected = year > historicalCutoffYear;
+  isProjectedYear = isProjected;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
   // Use the UN "World" total (same figure shown in the metrics panel)
   // rather than summing our 211-country subset, which excludes ~26 small
@@ -739,6 +821,74 @@ function updateTransition() {
   }
 }
 
+// ---------------------------------------------------------------------
+// TEMP DEBUG UI — remove this whole function (and its call in init()) once
+// the Bayer dither threshold/scale for projected years is dialed in.
+// ---------------------------------------------------------------------
+function setupDitherDebugPanel() {
+  const panel = document.createElement("div");
+  panel.id = "ditherDebugPanel";
+  panel.style.cssText = `
+    position: fixed;
+    bottom: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: rgba(20, 0, 0, 0.85);
+    border: 1px solid #f55;
+    color: #fdd;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    width: 220px;
+  `;
+
+  const title = document.createElement("div");
+  title.textContent = "⚠ TEMP: Dither Tuning";
+  title.style.cssText = "font-weight: bold; margin-bottom: 8px;";
+  panel.append(title);
+
+  function makeSlider(label, min, max, step, value, onInput) {
+    const row = document.createElement("div");
+    row.style.marginBottom = "8px";
+
+    const labelRow = document.createElement("div");
+    labelRow.style.cssText = "display: flex; justify-content: space-between;";
+    const nameEl = document.createElement("span");
+    nameEl.textContent = label;
+    const valueEl = document.createElement("span");
+    valueEl.textContent = value;
+    labelRow.append(nameEl, valueEl);
+
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = String(min);
+    input.max = String(max);
+    input.step = String(step);
+    input.value = String(value);
+    input.style.width = "100%";
+    input.addEventListener("input", () => {
+      const v = Number(input.value);
+      valueEl.textContent = v;
+      onInput(v);
+    });
+
+    row.append(labelRow, input);
+    return row;
+  }
+
+  panel.append(
+    makeSlider("Threshold", 0, 1, 0.01, DITHER_THRESHOLD, (v) => {
+      if (pointsMesh) pointsMesh.material.uniforms.uDitherThreshold.value = v;
+    }),
+    makeSlider("Scale (px per cell)", 1, 8, 1, DITHER_SCALE, (v) => {
+      if (pointsMesh) pointsMesh.material.uniforms.uDitherScale.value = v;
+    }),
+  );
+
+  document.body.append(panel);
+}
+
 async function init() {
   try {
     const [dotsResponse, globalResponse, incomeResponse] = await Promise.all([
@@ -762,6 +912,7 @@ async function init() {
     }
 
     setupScene(countriesData, incomeGroups);
+    setupDitherDebugPanel();
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
@@ -814,6 +965,7 @@ function updateDotUniforms(elapsedTime) {
   u.uIsMap.value = viewMode === "map" && !isScrambledPhase ? 1 : 0;
   u.uFreqMul.value = isHoldPhase ? HOLD_FREQ_MULTIPLIER : 1;
   u.uAmpMul.value = isHoldPhase ? HOLD_AMPLITUDE_MULTIPLIER : 1;
+  u.uIsProjected.value = isProjectedYear ? 1 : 0;
 }
 
 renderer.domElement.addEventListener("pointermove", (event) => {
