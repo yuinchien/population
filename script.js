@@ -29,7 +29,6 @@ const SCRAMBLE_OUT_MS = 1200;
 const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.6;
 const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 const GLOBE_AUTO_ROTATE_SPEED = 0.35;
-const SCRAMBLE_AUTO_ROTATE_SPEED = 5.0;
 const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
 const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 
@@ -1099,25 +1098,40 @@ function setViewMode(mode) {
   // its own rebuild even though the selected year hasn't changed.
   updatePeakCallouts(yearsData[currentYearIndex]);
 
+  const fromTarget = controls.target.clone();
+  const toTarget = new THREE.Vector3(0, 0, 0);
+  // Globe-bound transitions preserve the camera's current heading (extended
+  // out to globe viewing distance) rather than snapping to a canonical
+  // angle, so returning from a panned map view lands roughly where you were
+  // looking. Map-bound transitions always end at the same fixed front-on
+  // position, since that's the only angle a flat 2D layout reads correctly
+  // from.
+  const toCamPos =
+    mode === "map"
+      ? MAP_CAMERA_POS.clone()
+      : currentGlobeCameraPosition(fromTarget);
+
   transition = {
     fromPositions,
     scramblePositions,
     toPositions,
-    toCamPos:
-      mode === "map" ? MAP_CAMERA_POS.clone() : GLOBE_CAMERA_POS.clone(),
-    toTarget: new THREE.Vector3(0, 0, 0),
+    fromCamPos: camera.position.clone(),
+    fromTarget,
+    toCamPos,
+    toTarget,
+    fromDotSize: currentDotSize,
     toDotSize: mode === "map" ? MAP_DOT_SIZE : DOT_SIZE,
-    previousAutoRotateSpeed: controls.autoRotateSpeed,
-    outCamCaptured: false,
     start: performance.now(),
   };
-  // Leave autoRotate as-is (still spinning if we're leaving globe mode) and
-  // block user drag input only — updateTransition() lets controls.update()
-  // keep rotating through the scramble-in/hold phases, and only takes the
-  // camera over once the fly-out phase begins.
+  // Auto-rotate is stopped immediately (rather than only once the fly-out
+  // phase begins) and the camera glides toward its final position across
+  // the whole transition below — letting it keep spinning through the
+  // scramble made the final heading unpredictable, which meant the camera
+  // sometimes had to cover a large arc in a hurry after the dots had
+  // already settled into place. That mismatch read as a jarring, delayed
+  // "snap" rather than the two animating together.
   controls.enabled = false;
-  controls.autoRotate = true;
-  controls.autoRotateSpeed = SCRAMBLE_AUTO_ROTATE_SPEED;
+  controls.autoRotate = false;
 
   elements.viewMode
     .querySelectorAll("button")
@@ -1129,10 +1143,10 @@ function setViewMode(mode) {
 // Three-phase morph: current formation -> scrambled cloud filling the
 // globe's volume -> final formation. The scramble is regenerated fresh
 // each call (setViewMode), so consecutive toggles never repeat the same
-// "explosion" pattern. The camera is left alone (still auto-rotating, if
-// it already was) through the fly-apart/hold phases, and only takes over
-// to glide toward the final view once the fly-out phase starts — so a
-// globe->map switch keeps spinning right up until it commits to flattening.
+// "explosion" pattern. The camera glides toward its final position across
+// the *entire* transition (see setViewMode) in step with this same overall
+// progress, so it always settles into its final angle at the same moment
+// the dots settle into their final formation.
 function updateTransition() {
   if (!transition) return;
   const elapsed = performance.now() - transition.start;
@@ -1160,18 +1174,6 @@ function updateTransition() {
     localT = (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS;
     ease = easeOutCubic;
     isScrambledPhase = false;
-
-    if (!transition.outCamCaptured) {
-      transition.outCamPos = camera.position.clone();
-      transition.outTarget = controls.target.clone();
-      if (viewMode === "globe") {
-        transition.toCamPos = currentGlobeCameraPosition(transition.toTarget);
-      }
-      transition.outDotSize = currentDotSize;
-      transition.outCamCaptured = true;
-      controls.autoRotate = false;
-      controls.autoRotateSpeed = transition.previousAutoRotateSpeed;
-    }
   }
   const e = ease(Math.min(1, localT));
 
@@ -1187,24 +1189,13 @@ function updateTransition() {
   posAttr.array.set(basePositions.subarray(0, transition.toPositions.length));
   posAttr.needsUpdate = true;
 
-  if (transition.outCamCaptured) {
-    const outT = Math.min(1, (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS);
-    const camE = easeInOutCubic(outT);
-    camera.position.lerpVectors(
-      transition.outCamPos,
-      transition.toCamPos,
-      camE,
-    );
-    controls.target.lerpVectors(
-      transition.outTarget,
-      transition.toTarget,
-      camE,
-    );
-    setDotSize(
-      transition.outDotSize +
-        (transition.toDotSize - transition.outDotSize) * camE,
-    );
-  }
+  const camE = easeInOutCubic(overallT);
+  camera.position.lerpVectors(transition.fromCamPos, transition.toCamPos, camE);
+  controls.target.lerpVectors(transition.fromTarget, transition.toTarget, camE);
+  setDotSize(
+    transition.fromDotSize +
+      (transition.toDotSize - transition.fromDotSize) * camE,
+  );
 
   if (overallT >= 1) {
     transition = null;
@@ -1279,8 +1270,14 @@ async function init() {
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
     elements.yearControl.hidden = false;
-    elements.yearSlider.addEventListener("input", () => {
-      updateSliderProgress();
+    // "input" fires continuously while dragging — kept cheap (just the
+    // thumb/fill tracking) so the slider itself still feels responsive.
+    // The actual content update (dot repositioning, status line, metrics,
+    // detail panel, callouts) is real work, so it's deferred to "change",
+    // which only fires once the drag is released (or after a keyboard
+    // step), instead of re-running on every intermediate value.
+    elements.yearSlider.addEventListener("input", updateSliderProgress);
+    elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
     });
 

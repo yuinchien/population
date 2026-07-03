@@ -107,6 +107,7 @@ body.detail #overlay .hide-for-detail {
 .title-year {
     color: var(--color-muted);
     font-weight: 400;
+    opacity: 0;
 }
 
 #overlay p {
