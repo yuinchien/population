@@ -257,6 +257,7 @@ hr {
     white-space: nowrap;
     pointer-events: none;
     transform: translate(-50%, -130%);
+    display: none;
 }
 
 .tooltip-line1 {
@@ -332,7 +333,7 @@ hr {
 
 .detail-row {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 160px 150px 130px;
+    grid-template-columns: minmax(220px, 1fr) 160px 150px 130px 110px;
     align-items: stretch;
     min-height: 34px;
 }
@@ -395,10 +396,10 @@ hr {
 .peak-callout-label {
     position: fixed;
     padding: 2px 4px;
-    border: 1.5px solid var(--color-callout, #e0447a);
+    /*border: 1.5px solid var(--color-callout, #e0447a);*/
     border-radius: 3px;
     color: var(--color-text);
-    background: #fff;
+    background: color-mix(in srgb, var(--color-callout) 50%, white);
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;

@@ -1690,6 +1690,14 @@
    "lon": 179.089567,
    "region": "East Asia & Pacific",
    "population": 9816
+  },
+  {
+   "iso3": "TWN",
+   "name": "Taiwan",
+   "lat": 25.033,
+   "lon": 121.5654,
+   "region": "East Asia & Pacific",
+   "population": 23317145
   }
  ]
 }

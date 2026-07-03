@@ -37,7 +37,7 @@ const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 // normal at a country's location, from a country whose modeled population
 // peaks in the currently selected year.
 const CALLOUT_GLOBE_EXTEND = GLOBE_RADIUS * 1.12;
-const CALLOUT_MAP_EXTEND = 60;
+const CALLOUT_MAP_EXTEND = 80;
 // Keep callout labels clear of the fixed sidebar (#overlay is 240px wide).
 const CALLOUT_LEFT_CLEARANCE = 260;
 
@@ -151,11 +151,6 @@ function displayGroupLabel(label) {
     return "Middle East & North Africa";
   }
   return label.replace(" countries", "");
-}
-
-function formatMoney(value) {
-  if (value == null) return "N/A";
-  return `$${Math.round(value).toLocaleString()}`;
 }
 
 function formatYears(value) {
@@ -580,9 +575,12 @@ function updatePeakCallouts(year) {
       calloutGroup.add(line);
 
       const labelEl = document.createElement("div");
-      labelEl.className = "peak-callout-label";
+      labelEl.className = "peak-callout-label glass";
       labelEl.textContent = country.name;
-      labelEl.style.setProperty("--color-callout", `#${dotColor.getHexString()}`);
+      labelEl.style.setProperty(
+        "--color-callout",
+        `#${dotColor.getHexString()}`,
+      );
       elements.calloutLayer.append(labelEl);
 
       peakCallouts.push({ country, anchor, outward, line, labelEl });
@@ -742,19 +740,15 @@ function selectedCountries() {
   const countries = countriesData.filter((country) =>
     selectedLegend.mode === "income"
       ? country._incomeLabel === selectedLegend.label
-      : country.region === selectedLegend.label,
+      : country.region.trim() === selectedLegend.label,
   );
 
-  if (selectedLegend.mode === "income") {
-    return countries.sort((a, b) => {
-      const aValue = countryGni[a.iso3]?.value ?? -Infinity;
-      const bValue = countryGni[b.iso3]?.value ?? -Infinity;
-      if (bValue !== aValue) return bValue - aValue;
-      return a.name.localeCompare(b.name);
-    });
-  }
-
-  return countries.sort((a, b) => a.name.localeCompare(b.name));
+  return countries.sort((a, b) => {
+    const aValue = a.populations[currentYearIndex] ?? -Infinity;
+    const bValue = b.populations[currentYearIndex] ?? -Infinity;
+    if (bValue !== aValue) return bValue - aValue;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 function metricFor(country, key) {
@@ -778,14 +772,11 @@ function renderDetailPanel() {
 
   const countries = selectedCountries();
   const year = yearsData[currentYearIndex];
-  const isIncome = selectedLegend.mode === "income";
   elements.detailPanel.style.setProperty(
     "--detail-color",
     selectedLegend.color,
   );
-  elements.detailTitle.textContent = isIncome
-    ? "Gross National Income per capita"
-    : displayGroupLabel(selectedLegend.label);
+  elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${displayGroupLabel(
     selectedLegend.label,
   )} · ${countries.length} countries · ${year}`;
@@ -794,34 +785,33 @@ function renderDetailPanel() {
   header.className = "detail-row header";
   header.append(
     createDetailCell("Country", "country"),
-    createDetailCell(isIncome ? "GNI / capita" : "Population", "number"),
+    createDetailCell("Population", "number"),
     createDetailCell("Life expectancy", "number"),
     createDetailCell("Median age", "number"),
+    createDetailCell("Peak year", "number"),
   );
 
-  const highestGni = countryGni[countries[0].iso3]?.value;
-  console.log("highestGni", highestGni);
+  // Ratio bars are always population-based, so they stay accurate (and
+  // re-normalize live) as the year slider changes each country's population.
+  const primaryValue = (country) => country.populations[currentYearIndex];
+  const highestValue = Math.max(...countries.map(primaryValue).filter(Number.isFinite));
 
-  const rows = countries.map((country, index) => {
+  const rows = countries.map((country) => {
     const row = document.createElement("div");
 
-    const ratio = countryGni[country.iso3]?.value / highestGni;
-    row.style.setProperty("--ratio", ratio);
+    const ratio = primaryValue(country) / highestValue;
+    row.style.setProperty("--ratio", Number.isFinite(ratio) ? ratio : 0);
 
     row.className = "detail-row";
     row.append(
       createDetailCell(country.name, "country"),
-      createDetailCell(
-        isIncome
-          ? formatMoney(countryGni[country.iso3]?.value)
-          : formatPopulation(country.populations[currentYearIndex]),
-        "number",
-      ),
+      createDetailCell(formatPopulation(country.populations[currentYearIndex]), "number"),
       createDetailCell(
         formatYears(metricFor(country, "lifeExpectancy")),
         "number",
       ),
       createDetailCell(formatYears(metricFor(country, "medianAge")), "number"),
+      createDetailCell(country.peakYear ?? "N/A", "number"),
     );
     return row;
   });
