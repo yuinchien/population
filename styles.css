@@ -65,10 +65,7 @@ canvas {
     overflow: hidden;
     max-height: 300px;
     opacity: 1;
-    transition:
-        max-height 0.25s ease,
-        opacity 0.2s ease,
-        margin-bottom 0.25s ease;
+    transition: all 0.15s;
 }
 
 /* Specificity note: the base spacing rule above includes #overlay (an ID),
@@ -372,7 +369,7 @@ body.detail #overlay .hide-for-detail {
     left: 264px;
     z-index: 20;
     display: grid;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto 1fr;
     gap: 0;
     padding: 12px;
     overflow: hidden;
@@ -423,11 +420,14 @@ body.detail #overlay .hide-for-detail {
     color: var(--color-text);
     line-height: 1.4em;
     font-size: 2rem;
-    max-width: 1080px;
-    min-height: 120px;
+    max-width: 960px;
     font-family: var(--font-sans);
     letter-spacing: 0em;
     margin-top: 4px;
+    display: flex;
+    align-items: flex-end;
+    min-height: 120px;
+    padding: 12px 0;
 }
 
 .detail-close {

@@ -83,6 +83,7 @@ const elements = {
   detailTitle: document.querySelector("#detailTitle"),
   detailSubtitle: document.querySelector("#detailSubtitle"),
   detailSummary: document.querySelector("#detailSummary"),
+  detailHeader: document.querySelector("#detailHeader"),
   detailRows: document.querySelector("#detailRows"),
   detailClose: document.querySelector("#detailClose"),
 };
@@ -1003,6 +1004,7 @@ function updateStatusPanel(year) {
     typeStatus(
       buildDetailStatus(year, selectedCountries(), isProjected, selectedLegend),
       elements.detailSummary,
+      { instant: true },
     );
     return;
   }
@@ -1066,8 +1068,13 @@ function renderPeakFlags(peakCountries) {
 // #detailSummary is ever being typed into at a time (they're mutually
 // exclusive with the detail panel's visibility), so a new call anywhere
 // should still invalidate whatever was previously in flight.
-function typeStatus(text, el = elements.status) {
+function typeStatus(text, el = elements.status, { instant = false } = {}) {
   const token = ++statusTypingToken;
+  if (instant) {
+    el.replaceChildren(document.createTextNode(text));
+    return;
+  }
+
   const textNode = document.createTextNode("");
   const cursor = document.createElement("span");
   cursor.className = "status-cursor";
@@ -1349,9 +1356,7 @@ function renderDetailPanel() {
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
-  const header = document.createElement("div");
-  header.className = "detail-row header";
-  header.append(
+  elements.detailHeader.replaceChildren(
     ...DETAIL_COLUMNS.map((column) => {
       const arrow =
         detailSort.key === column.key
@@ -1394,7 +1399,7 @@ function renderDetailPanel() {
     return row;
   });
 
-  elements.detailRows.replaceChildren(header, ...rows);
+  elements.detailRows.replaceChildren(...rows);
   elements.detailPanel.hidden = false;
   updateViewModeAvailability();
   updateStatusPanel(year);
