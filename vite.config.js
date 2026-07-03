@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 // app, which exist for the same reason.
 export default defineConfig({
   base: "./",
+  server: {
+    hmr: false,
+  },
   build: {
     rollupOptions: {
       input: {

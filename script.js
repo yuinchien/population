@@ -168,6 +168,11 @@ function formatPercent(value) {
   return `${Number(value).toFixed(2)}%`;
 }
 
+function formatFertility(value) {
+  if (value == null) return "N/A";
+  return Number(value).toFixed(2);
+}
+
 function createDotTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 64;
@@ -774,6 +779,14 @@ const DETAIL_COLUMNS = [
     defaultDirection: "desc",
     value: (country) => metricFor(country, "populationGrowth"),
     format: formatPercent,
+  },
+  {
+    key: "fertility",
+    label: "Fertility rate",
+    className: "number",
+    defaultDirection: "desc",
+    value: (country) => metricFor(country, "fertility"),
+    format: formatFertility,
   },
   {
     key: "lifeExpectancy",
