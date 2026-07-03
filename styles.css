@@ -263,6 +263,7 @@ body.detail #overlay .hide-for-detail {
     color: var(--color-subtle);
     font-weight: 400;
     white-space: normal;
+    display: none;
 }
 
 .tab-group {

@@ -261,19 +261,36 @@ const DOT_FRAGMENT_SHADER = `
   }
 `;
 
-function formatCount(value) {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K`;
-  return `${value}`;
+// Single B/M/K abbreviator behind both the metrics-panel population figure
+// and the smaller peak-population numbers shown per flag — they used to be
+// near-identical copies differing only in decimal precision and null
+// handling, which the options below make explicit instead of duplicated.
+function formatCount(value, options = {}) {
+  const {
+    billionsDecimals = 2,
+    millionsDecimals = 1,
+    thousandsDecimals = 0,
+    nullFallback = null,
+    roundWholeNumbers = false,
+  } = options;
+  if (value == null) return nullFallback ?? `${value}`;
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(billionsDecimals)}B`;
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(millionsDecimals)}M`;
+  }
+  if (value >= 1_000) return `${(value / 1_000).toFixed(thousandsDecimals)}K`;
+  return roundWholeNumbers ? Math.round(value).toLocaleString() : `${value}`;
 }
 
 function formatPeakPopulation(value) {
-  if (value == null) return "N/A";
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return Math.round(value).toLocaleString();
+  return formatCount(value, {
+    billionsDecimals: 1,
+    thousandsDecimals: 1,
+    nullFallback: "N/A",
+    roundWholeNumbers: true,
+  });
 }
 
 // data/population-global.json holds one series per indicator, each an
@@ -846,6 +863,26 @@ function averageValue(entries) {
   return entries.reduce((sum, entry) => sum + entry.value, 0) / entries.length;
 }
 
+// buildDetailStatus() needs this same entries/otherEntries/average/max/min
+// bundle for growth, fertility, life expectancy, and median age alike — one
+// call per metric here instead of four hand-copied variable groups.
+function computeMetricStats(countries, otherCountries, key) {
+  const entries = countriesWithNumericValue(countries, (country) =>
+    metricFor(country, key),
+  );
+  const otherEntries = countriesWithNumericValue(otherCountries, (country) =>
+    metricFor(country, key),
+  );
+  return {
+    entries,
+    otherEntries,
+    average: averageValue(entries),
+    otherAverage: averageValue(otherEntries),
+    max: maxEntry(entries),
+    min: minEntry(entries),
+  };
+}
+
 function formatAverageYears(value) {
   return `${Number(value).toFixed(1)} yrs`;
 }
@@ -863,113 +900,97 @@ function buildDetailStatus(year, countries, isProjected, legend) {
     return `No ${projected}country population data is available for ${label} in ${year}.`;
   }
 
-  const growthEntries = countriesWithNumericValue(countries, (country) =>
-    metricFor(country, "populationGrowth"),
-  );
   const otherCountries = countriesData.filter((country) =>
     legend.mode === "income"
       ? country._incomeLabel !== legend.label
       : country.region.trim() !== legend.label,
   );
-  const otherGrowthEntries = countriesWithNumericValue(
+
+  const growth = computeMetricStats(
+    countries,
     otherCountries,
-    (country) => metricFor(country, "populationGrowth"),
+    "populationGrowth",
   );
-  const averageGrowth = averageValue(growthEntries);
-  const otherAverageGrowth = averageValue(otherGrowthEntries);
-  const decliningCount = growthEntries.filter(
+  const decliningCount = growth.entries.filter(
     (entry) => entry.value < 0,
   ).length;
-  const growingCount = growthEntries.filter((entry) => entry.value > 0).length;
-  const fastestGrowth = maxEntry(growthEntries);
-  const steepestDecline = minEntry(growthEntries);
-  const fertilityEntries = countriesWithNumericValue(countries, (country) =>
-    metricFor(country, "fertility"),
-  );
-  const otherFertilityEntries = countriesWithNumericValue(
-    otherCountries,
-    (country) => metricFor(country, "fertility"),
-  );
-  const averageFertility = averageValue(fertilityEntries);
-  const otherAverageFertility = averageValue(otherFertilityEntries);
-  const belowReplacementCount = fertilityEntries.filter(
+  const growingCount = growth.entries.filter((entry) => entry.value > 0).length;
+  const fastestGrowth = growth.max;
+  const steepestDecline = growth.min;
+
+  const fertility = computeMetricStats(countries, otherCountries, "fertility");
+  const belowReplacementCount = fertility.entries.filter(
     (entry) => entry.value < 2.1,
   ).length;
-  const belowReplacementShare = belowReplacementCount / fertilityEntries.length;
-  const fertilityContext = fertilityEntries.length
-    ? ` ${belowReplacementCount} of ${fertilityEntries.length} countries are below replacement fertility.`
+  const belowReplacementShare =
+    belowReplacementCount / fertility.entries.length;
+  const fertilityContext = fertility.entries.length
+    ? ` ${belowReplacementCount} of ${fertility.entries.length} countries are below replacement fertility.`
     : "";
   const growthComparison =
-    Number.isFinite(averageGrowth) && Number.isFinite(otherAverageGrowth)
-      ? ` average growth is ${formatPercent(averageGrowth)}, versus ${formatPercent(otherAverageGrowth)} outside this group.`
+    Number.isFinite(growth.average) && Number.isFinite(growth.otherAverage)
+      ? ` average growth is ${formatPercent(growth.average)}, versus ${formatPercent(growth.otherAverage)} outside this group.`
       : "";
   const fertilityComparison =
-    Number.isFinite(averageFertility) && Number.isFinite(otherAverageFertility)
-      ? ` Average fertility is ${formatFertility(averageFertility)}, versus ${formatFertility(otherAverageFertility)} outside this group.`
+    Number.isFinite(fertility.average) &&
+    Number.isFinite(fertility.otherAverage)
+      ? ` Average fertility is ${formatFertility(fertility.average)}, versus ${formatFertility(fertility.otherAverage)} outside this group.`
       : "";
 
   if (legend.mode === "income") {
-    const lifeEntries = countriesWithNumericValue(countries, (country) =>
-      metricFor(country, "lifeExpectancy"),
-    );
-    const otherLifeEntries = countriesWithNumericValue(
+    const life = computeMetricStats(
+      countries,
       otherCountries,
-      (country) => metricFor(country, "lifeExpectancy"),
+      "lifeExpectancy",
     );
-    const medianAgeEntries = countriesWithNumericValue(countries, (country) =>
-      metricFor(country, "medianAge"),
-    );
-    const otherMedianAgeEntries = countriesWithNumericValue(
+    const medianAge = computeMetricStats(
+      countries,
       otherCountries,
-      (country) => metricFor(country, "medianAge"),
+      "medianAge",
     );
-    const averageLife = averageValue(lifeEntries);
-    const otherAverageLife = averageValue(otherLifeEntries);
-    const averageMedianAge = averageValue(medianAgeEntries);
-    const otherAverageMedianAge = averageValue(otherMedianAgeEntries);
-    const oldest = maxEntry(medianAgeEntries);
-    const youngest = minEntry(medianAgeEntries);
-    const longestLived = maxEntry(lifeEntries);
-    const shortestLived = minEntry(lifeEntries);
+    const oldest = medianAge.max;
+    const youngest = medianAge.min;
+    const longestLived = life.max;
+    const shortestLived = life.min;
 
     if (
-      Number.isFinite(averageMedianAge) &&
-      Number.isFinite(otherAverageMedianAge) &&
-      averageMedianAge - otherAverageMedianAge >= 4
+      Number.isFinite(medianAge.average) &&
+      Number.isFinite(medianAge.otherAverage) &&
+      medianAge.average - medianAge.otherAverage >= 4
     ) {
-      return `${yearLead} ${label} has the oldest age profile among income groups. Median age averages ${formatAverageYears(averageMedianAge)}, versus ${formatAverageYears(otherAverageMedianAge)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.`;
+      return `${yearLead} ${label} has the oldest age profile among income groups. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.`;
     }
 
     if (
-      Number.isFinite(averageMedianAge) &&
-      Number.isFinite(otherAverageMedianAge) &&
-      otherAverageMedianAge - averageMedianAge >= 4
+      Number.isFinite(medianAge.average) &&
+      Number.isFinite(medianAge.otherAverage) &&
+      medianAge.otherAverage - medianAge.average >= 4
     ) {
-      return `${yearLead} ${label} has the youngest age profile among income groups. Median age averages ${formatAverageYears(averageMedianAge)}, versus ${formatAverageYears(otherAverageMedianAge)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.`;
+      return `${yearLead} ${label} has the youngest age profile among income groups. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.`;
     }
 
     if (
-      Number.isFinite(averageLife) &&
-      Number.isFinite(otherAverageLife) &&
-      Math.abs(averageLife - otherAverageLife) >= 2
+      Number.isFinite(life.average) &&
+      Number.isFinite(life.otherAverage) &&
+      Math.abs(life.average - life.otherAverage) >= 2
     ) {
-      const direction = averageLife > otherAverageLife ? "higher" : "lower";
+      const direction = life.average > life.otherAverage ? "higher" : "lower";
       const edgeCountry =
-        averageLife > otherAverageLife ? longestLived : shortestLived;
-      return `${yearLead} life expectancy is ${direction} in ${label}. The group averages ${formatAverageYears(averageLife)}, versus ${formatAverageYears(otherAverageLife)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.`;
+        life.average > life.otherAverage ? longestLived : shortestLived;
+      return `${yearLead} life expectancy is ${direction} in ${label}. The group averages ${formatAverageYears(life.average)}, versus ${formatAverageYears(life.otherAverage)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.`;
     }
   }
 
-  if (fertilityEntries.length && belowReplacementShare >= 0.6) {
+  if (fertility.entries.length && belowReplacementShare >= 0.6) {
     return `${yearLead} low fertility is the standout pattern in ${label};${fertilityContext}${fertilityComparison}`;
   }
 
-  if (growthEntries.length && decliningCount > growingCount) {
-    return `${yearLead} population decline is the stronger signal in ${label}; ${decliningCount} of ${growthEntries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}`;
+  if (growth.entries.length && decliningCount > growingCount) {
+    return `${yearLead} population decline is the stronger signal in ${label}; ${decliningCount} of ${growth.entries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}`;
   }
 
-  if (growthEntries.length && growingCount > decliningCount) {
-    return `${yearLead} ${label} still leans toward growth, with ${growingCount} of ${growthEntries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}`;
+  if (growth.entries.length && growingCount > decliningCount) {
+    return `${yearLead} ${label} still leans toward growth, with ${growingCount} of ${growth.entries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}`;
   }
 
   return `${yearLead} ${label} is balanced between growth and decline.${growthComparison}${fertilityContext}`;
