@@ -118,7 +118,7 @@ body.detail #overlay .hide-for-detail {
 .peak-flags {
     display: grid;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .peak-flag-row {
