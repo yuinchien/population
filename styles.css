@@ -28,13 +28,6 @@ canvas {
     display: block;
 }
 
-hr {
-    height: 1px;
-    margin: 0;
-    border: 0;
-    background: var(--color-border);
-}
-
 [hidden] {
     display: none !important;
 }
@@ -52,10 +45,8 @@ hr {
     top: 0;
     bottom: 0;
     left: 0;
-    display: flex;
-    flex-direction: column;
     width: 240px;
-    padding: 12px;
+    padding: 0 12px;
 }
 
 /* Spacing between #overlay's direct children is margin-bottom rather than
@@ -65,14 +56,13 @@ hr {
    to each other. A child's own margin-bottom has no such cross-item
    interaction, so zeroing it while collapsing always closes exactly the
    space that child contributed — no more, no less. */
-#overlay > *:not(:last-child) {
+/*#overlay > *:not(:last-child) {
     margin-bottom: 12px;
-}
+}*/
 
 .hide-for-detail {
     overflow: hidden;
     max-height: 300px;
-    margin-bottom: 12px;
     opacity: 1;
     transition:
         max-height 0.25s ease,
@@ -89,12 +79,14 @@ body.detail #overlay .hide-for-detail {
     margin-bottom: 0;
     opacity: 0;
     pointer-events: none;
+    padding: 0;
 }
 
 .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 12px 0;
 }
 
 #overlay h1 {
@@ -115,10 +107,16 @@ body.detail #overlay .hide-for-detail {
     line-height: 1.5em;
 }
 
+.status-wrapper {
+    margin-top: 12px;
+    border-top: var(--border);
+    padding: 12px 0;
+}
+
 .peak-flags {
     display: grid;
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .peak-flag-row {
@@ -265,10 +263,15 @@ body.detail #overlay .hide-for-detail {
     white-space: normal;
     display: none;
 }
+#yearControl {
+    margin-bottom: 8px;
+}
 
 .tab-group {
     display: flex;
     gap: 8px;
+    border-top: var(--border);
+    padding: 12px 0;
 }
 
 .tab-group button {
@@ -305,11 +308,6 @@ body.detail #overlay .hide-for-detail {
 
 .tab-group.full-width button.active {
     border-radius: 40px;
-}
-
-#legend {
-    display: grid;
-    margin-top: 12px;
 }
 
 .legend-item {
