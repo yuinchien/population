@@ -678,10 +678,13 @@ function applyYear(year) {
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
-  const peakCount = countriesData.filter(
+  const peakCountries = countriesData.filter(
     (country) => country.peakYear === year,
-  ).length;
-  elements.status.textContent = `Note: ${peakCount} ${peakCount === 1 ? "country" : "countries"} saw population peak in ${year}`;
+  );
+  const peakNames = peakCountries.length
+    ? `: ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(peakCountries.map((c) => c.name))}`
+    : "";
+  elements.status.textContent = `${peakCountries.length} ${peakCountries.length === 1 ? "country" : "countries"} saw population peak in ${year}${peakNames}`;
   updateMetricsPanel(year);
   renderDetailPanel();
   updatePeakCallouts(year);
@@ -720,7 +723,9 @@ function renderLegend() {
     colorMode === "income"
       ? [
           ...Object.entries(INCOME_GROUP_COLORS),
-          ...(hasUnclassified ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]] : []),
+          ...(hasUnclassified
+            ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]]
+            : []),
         ]
       : Object.entries(REGION_COLORS);
   elements.legend.replaceChildren(
@@ -853,6 +858,16 @@ function setDetailSort(key) {
   renderDetailPanel();
 }
 
+// Switching view mode while the detail panel is open would rebuild the
+// active dot set out from under the panel's population-ratio bars and
+// callout anchors mid-read, so the toggle is disabled whenever the panel
+// is visible.
+function updateViewModeAvailability() {
+  elements.viewMode.querySelectorAll("button").forEach((btn) => {
+    btn.disabled = !elements.detailPanel.hidden;
+  });
+}
+
 function renderDetailPanel() {
   if (!selectedLegend || currentYearIndex < 0) return;
 
@@ -914,11 +929,13 @@ function renderDetailPanel() {
 
   elements.detailRows.replaceChildren(header, ...rows);
   elements.detailPanel.hidden = false;
+  updateViewModeAvailability();
 }
 
 function closeDetailPanel() {
   selectedLegend = null;
   elements.detailPanel.hidden = true;
+  updateViewModeAvailability();
   renderLegend();
 }
 
@@ -937,6 +954,7 @@ function setColorMode(mode) {
   colorMode = mode;
   selectedLegend = null;
   elements.detailPanel.hidden = true;
+  updateViewModeAvailability();
   elements.colorMode
     .querySelectorAll("button")
     .forEach((btn) =>

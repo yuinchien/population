@@ -75,6 +75,7 @@ hr {
 
 #overlay p {
     margin: 0 0 4px;
+    line-height: 1.5em;
 }
 
 #yearSlider {
@@ -202,6 +203,11 @@ hr {
 .tab-group button.active {
     color: #fff;
     background: var(--color-text);
+}
+
+.tab-group button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
 }
 
 .tab-group.full-width button {
@@ -342,6 +348,10 @@ hr {
     min-height: 28px;
     color: var(--color-muted);
     text-transform: uppercase;
+    border-bottom: var(--border);
+    /*position: sticky;*/
+    /*top: 0;*/
+    /*background-color: rgba(255, 255, 255, 0.5);*/
 }
 
 .detail-cell.sortable {
@@ -362,11 +372,14 @@ hr {
     display: flex;
     align-items: center;
     min-width: 0;
-    padding: 8px 12px;
+    padding: 0;
     position: relative;
-    /*background: rgba(255, 255, 255, 0.45);*/
 }
-.detail-cell:first-child:before {
+
+.detail-cell.country:not(.sortable) .detail-name {
+    padding-left: 12px;
+}
+.detail-cell.country:before {
     content: "";
     position: absolute;
     left: 0;
@@ -380,10 +393,6 @@ hr {
     );
     z-index: -1;
 }
-
-/*.detail-cell.country {
-    background: color-mix(in srgb, var(--detail-color, #82d8d5) 45%, white);
-}*/
 
 .detail-cell.number {
     justify-content: flex-end;
