@@ -14,6 +14,13 @@
       "runtimeArgs": ["-m", "http.server", "8901"],
       "port": 8901,
       "autoPort": true
+    },
+    {
+      "name": "built-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "8902"],
+      "port": 8902,
+      "autoPort": true
     }
   ]
 }
