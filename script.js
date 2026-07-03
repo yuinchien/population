@@ -729,6 +729,174 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   );
 }
 
+function countriesWithNumericValue(countries, value) {
+  return countries
+    .map((country) => ({ country, value: value(country) }))
+    .filter((entry) => Number.isFinite(entry.value));
+}
+
+function maxEntry(entries) {
+  return entries.reduce(
+    (best, entry) => (!best || entry.value > best.value ? entry : best),
+    null,
+  );
+}
+
+function minEntry(entries) {
+  return entries.reduce(
+    (best, entry) => (!best || entry.value < best.value ? entry : best),
+    null,
+  );
+}
+
+function averageValue(entries) {
+  if (!entries.length) return null;
+  return entries.reduce((sum, entry) => sum + entry.value, 0) / entries.length;
+}
+
+function formatAverageYears(value) {
+  return `${Number(value).toFixed(1)} yrs`;
+}
+
+function buildDetailStatus(year, countries, isProjected, legend) {
+  const label = displayGroupLabel(legend.label);
+  const projected = isProjected ? "projected " : "";
+  const yearLead = isProjected ? `${year} projection:` : `${year}:`;
+  const populationEntries = countriesWithNumericValue(
+    countries,
+    (country) => country.populations[currentYearIndex],
+  );
+
+  if (!populationEntries.length) {
+    return `No ${projected}country population data is available for ${label} in ${year}.`;
+  }
+
+  const growthEntries = countriesWithNumericValue(countries, (country) =>
+    metricFor(country, "populationGrowth"),
+  );
+  const otherCountries = countriesData.filter((country) =>
+    legend.mode === "income"
+      ? country._incomeLabel !== legend.label
+      : country.region.trim() !== legend.label,
+  );
+  const otherGrowthEntries = countriesWithNumericValue(otherCountries, (country) =>
+    metricFor(country, "populationGrowth"),
+  );
+  const averageGrowth = averageValue(growthEntries);
+  const otherAverageGrowth = averageValue(otherGrowthEntries);
+  const decliningCount = growthEntries.filter((entry) => entry.value < 0).length;
+  const growingCount = growthEntries.filter((entry) => entry.value > 0).length;
+  const fastestGrowth = maxEntry(growthEntries);
+  const steepestDecline = minEntry(growthEntries);
+  const fertilityEntries = countriesWithNumericValue(countries, (country) =>
+    metricFor(country, "fertility"),
+  );
+  const otherFertilityEntries = countriesWithNumericValue(
+    otherCountries,
+    (country) => metricFor(country, "fertility"),
+  );
+  const averageFertility = averageValue(fertilityEntries);
+  const otherAverageFertility = averageValue(otherFertilityEntries);
+  const belowReplacementCount = fertilityEntries.filter(
+    (entry) => entry.value < 2.1,
+  ).length;
+  const belowReplacementShare = belowReplacementCount / fertilityEntries.length;
+  const fertilityContext = fertilityEntries.length
+    ? ` ${belowReplacementCount} of ${fertilityEntries.length} countries are below replacement fertility.`
+    : "";
+  const growthComparison =
+    Number.isFinite(averageGrowth) && Number.isFinite(otherAverageGrowth)
+      ? ` average growth is ${formatPercent(averageGrowth)}, versus ${formatPercent(otherAverageGrowth)} outside this group.`
+      : "";
+  const fertilityComparison =
+    Number.isFinite(averageFertility) && Number.isFinite(otherAverageFertility)
+      ? ` Average fertility is ${formatFertility(averageFertility)}, versus ${formatFertility(otherAverageFertility)} outside this group.`
+      : "";
+
+  if (legend.mode === "income") {
+    const lifeEntries = countriesWithNumericValue(countries, (country) =>
+      metricFor(country, "lifeExpectancy"),
+    );
+    const otherLifeEntries = countriesWithNumericValue(otherCountries, (country) =>
+      metricFor(country, "lifeExpectancy"),
+    );
+    const medianAgeEntries = countriesWithNumericValue(countries, (country) =>
+      metricFor(country, "medianAge"),
+    );
+    const otherMedianAgeEntries = countriesWithNumericValue(
+      otherCountries,
+      (country) => metricFor(country, "medianAge"),
+    );
+    const averageLife = averageValue(lifeEntries);
+    const otherAverageLife = averageValue(otherLifeEntries);
+    const averageMedianAge = averageValue(medianAgeEntries);
+    const otherAverageMedianAge = averageValue(otherMedianAgeEntries);
+    const oldest = maxEntry(medianAgeEntries);
+    const youngest = minEntry(medianAgeEntries);
+    const longestLived = maxEntry(lifeEntries);
+    const shortestLived = minEntry(lifeEntries);
+
+    if (
+      Number.isFinite(averageMedianAge) &&
+      Number.isFinite(otherAverageMedianAge) &&
+      averageMedianAge - otherAverageMedianAge >= 4
+    ) {
+      return `${yearLead} ${label} has the oldest age profile among income groups. Median age averages ${formatAverageYears(averageMedianAge)}, versus ${formatAverageYears(otherAverageMedianAge)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.`;
+    }
+
+    if (
+      Number.isFinite(averageMedianAge) &&
+      Number.isFinite(otherAverageMedianAge) &&
+      otherAverageMedianAge - averageMedianAge >= 4
+    ) {
+      return `${yearLead} ${label} has the youngest age profile among income groups. Median age averages ${formatAverageYears(averageMedianAge)}, versus ${formatAverageYears(otherAverageMedianAge)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.`;
+    }
+
+    if (
+      Number.isFinite(averageLife) &&
+      Number.isFinite(otherAverageLife) &&
+      Math.abs(averageLife - otherAverageLife) >= 2
+    ) {
+      const direction =
+        averageLife > otherAverageLife ? "higher" : "lower";
+      const edgeCountry =
+        averageLife > otherAverageLife ? longestLived : shortestLived;
+      return `${yearLead} life expectancy is ${direction} in ${label}. The group averages ${formatAverageYears(averageLife)}, versus ${formatAverageYears(otherAverageLife)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.`;
+    }
+  }
+
+  if (fertilityEntries.length && belowReplacementShare >= 0.6) {
+    return `${yearLead} low fertility is the standout pattern in ${label};${fertilityContext}${fertilityComparison}`;
+  }
+
+  if (growthEntries.length && decliningCount > growingCount) {
+    return `${yearLead} population decline is the stronger signal in ${label}; ${decliningCount} of ${growthEntries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}`;
+  }
+
+  if (growthEntries.length && growingCount > decliningCount) {
+    return `${yearLead} ${label} still leans toward growth, with ${growingCount} of ${growthEntries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}`;
+  }
+
+  return `${yearLead} ${label} is balanced between growth and decline.${growthComparison}${fertilityContext}`;
+}
+
+function updateStatusPanel(year) {
+  const isProjected = year > historicalCutoffYear;
+  if (selectedLegend && !elements.detailPanel.hidden) {
+    typeStatus(
+      buildDetailStatus(year, selectedCountries(), isProjected, selectedLegend),
+    );
+    elements.peakFlags.replaceChildren();
+    return;
+  }
+
+  const peakCountries = countriesData.filter(
+    (country) => country.peakYear === year,
+  );
+  typeStatus(buildPeakStatus(year, peakCountries, isProjected));
+  renderPeakFlags(peakCountries);
+}
+
 // Shows every peak country's flag and peak-year population, not just the
 // couple named in the status text's 4+-country preview.
 function renderPeakFlags(peakCountries) {
@@ -843,13 +1011,9 @@ function applyYear(year) {
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
   updateYearLabels(year);
-  const peakCountries = countriesData.filter(
-    (country) => country.peakYear === year,
-  );
-  typeStatus(buildPeakStatus(year, peakCountries, isProjected));
-  renderPeakFlags(peakCountries);
   updateMetricsPanel(year);
   renderDetailPanel();
+  if (!selectedLegend) updateStatusPanel(year);
   updatePeakCallouts(year);
 }
 
@@ -1104,6 +1268,7 @@ function renderDetailPanel() {
   elements.detailRows.replaceChildren(header, ...rows);
   elements.detailPanel.hidden = false;
   updateViewModeAvailability();
+  updateStatusPanel(year);
 }
 
 function closeDetailPanel() {
@@ -1111,6 +1276,7 @@ function closeDetailPanel() {
   elements.detailPanel.hidden = true;
   updateViewModeAvailability();
   renderLegend();
+  if (currentYearIndex >= 0) updateStatusPanel(yearsData[currentYearIndex]);
 }
 
 function selectLegendItem(label, color) {
