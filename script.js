@@ -306,6 +306,97 @@ function buildVariantIndex(variantSeries) {
   return byYear;
 }
 
+function metricRows(globalData, key) {
+  return [...(globalData[key] || [])].sort((a, b) => a.year - b.year);
+}
+
+function firstMetricYear(globalData, key, predicate) {
+  return metricRows(globalData, key).find(({ value }) => predicate(value));
+}
+
+function addMilestone(milestones, year, text, priority = 0) {
+  if (!Number.isFinite(year)) return;
+  const current = milestones.get(year);
+  if (!current || priority > current.priority) {
+    milestones.set(year, { text, priority });
+  }
+}
+
+function computeGlobalTrendMilestones(globalData) {
+  const milestones = new Map();
+  const populationRows = metricRows(globalData, "population");
+  const peakPopulation = populationRows.reduce(
+    (best, row) => (!best || row.value > best.value ? row : best),
+    null,
+  );
+  if (peakPopulation) {
+    addMilestone(
+      milestones,
+      peakPopulation.year,
+      `${peakPopulation.year} is the projected turning point for global population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
+      5,
+    );
+  }
+
+  const tenBillion = firstMetricYear(
+    globalData,
+    "population",
+    (value) => value >= 10_000_000_000,
+  );
+  if (tenBillion) {
+    addMilestone(
+      milestones,
+      tenBillion.year,
+      `${tenBillion.year} is the first year the medium projection puts the world above 10B people.`,
+      4,
+    );
+  }
+
+  const replacementFertility = firstMetricYear(
+    globalData,
+    "fertility",
+    (value) => value < 2.1,
+  );
+  if (replacementFertility) {
+    addMilestone(
+      milestones,
+      replacementFertility.year,
+      `${replacementFertility.year} is when global fertility is projected to slip below replacement, at ${replacementFertility.value.toFixed(3)} births per woman.`,
+      4,
+    );
+  }
+
+  const slowGrowth = firstMetricYear(
+    globalData,
+    "populationGrowth",
+    (value) => value < 0.5,
+  );
+  if (slowGrowth) {
+    addMilestone(
+      milestones,
+      slowGrowth.year,
+      `${slowGrowth.year} marks a slower-growth world: global population growth falls below 0.5% for the first time in the projection.`,
+      3,
+    );
+  }
+
+  const life80 = firstMetricYear(
+    globalData,
+    "lifeExpectancy",
+    (value) => value >= 80,
+  );
+  if (life80) {
+    addMilestone(
+      milestones,
+      life80.year,
+      `${life80.year} is the first projected year global life expectancy reaches 80 years.`,
+      3,
+    );
+  }
+
+  return milestones;
+}
+
 // Writes a metric's headline value, plus — for projected years — a
 // smaller "Low – High" range line sourced from the UN's Low/High variant
 // scenarios, so the further out the slider goes, the more visibly
@@ -386,6 +477,7 @@ let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
 let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
+let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
 let countryGni = {};
 let countryIso2 = {};
@@ -779,12 +871,15 @@ function buildDetailStatus(year, countries, isProjected, legend) {
       ? country._incomeLabel !== legend.label
       : country.region.trim() !== legend.label,
   );
-  const otherGrowthEntries = countriesWithNumericValue(otherCountries, (country) =>
-    metricFor(country, "populationGrowth"),
+  const otherGrowthEntries = countriesWithNumericValue(
+    otherCountries,
+    (country) => metricFor(country, "populationGrowth"),
   );
   const averageGrowth = averageValue(growthEntries);
   const otherAverageGrowth = averageValue(otherGrowthEntries);
-  const decliningCount = growthEntries.filter((entry) => entry.value < 0).length;
+  const decliningCount = growthEntries.filter(
+    (entry) => entry.value < 0,
+  ).length;
   const growingCount = growthEntries.filter((entry) => entry.value > 0).length;
   const fastestGrowth = maxEntry(growthEntries);
   const steepestDecline = minEntry(growthEntries);
@@ -817,8 +912,9 @@ function buildDetailStatus(year, countries, isProjected, legend) {
     const lifeEntries = countriesWithNumericValue(countries, (country) =>
       metricFor(country, "lifeExpectancy"),
     );
-    const otherLifeEntries = countriesWithNumericValue(otherCountries, (country) =>
-      metricFor(country, "lifeExpectancy"),
+    const otherLifeEntries = countriesWithNumericValue(
+      otherCountries,
+      (country) => metricFor(country, "lifeExpectancy"),
     );
     const medianAgeEntries = countriesWithNumericValue(countries, (country) =>
       metricFor(country, "medianAge"),
@@ -857,8 +953,7 @@ function buildDetailStatus(year, countries, isProjected, legend) {
       Number.isFinite(otherAverageLife) &&
       Math.abs(averageLife - otherAverageLife) >= 2
     ) {
-      const direction =
-        averageLife > otherAverageLife ? "higher" : "lower";
+      const direction = averageLife > otherAverageLife ? "higher" : "lower";
       const edgeCountry =
         averageLife > otherAverageLife ? longestLived : shortestLived;
       return `${yearLead} life expectancy is ${direction} in ${label}. The group averages ${formatAverageYears(averageLife)}, versus ${formatAverageYears(otherAverageLife)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.`;
@@ -893,7 +988,16 @@ function updateStatusPanel(year) {
   const peakCountries = countriesData.filter(
     (country) => country.peakYear === year,
   );
-  typeStatus(buildPeakStatus(year, peakCountries, isProjected));
+  const milestone = globalTrendMilestones.get(year);
+  typeStatus(
+    milestone
+      ? `${milestone.text}${
+          peakCountries.length
+            ? ` ${buildPeakStatus(year, peakCountries, isProjected)}`
+            : ""
+        }`
+      : buildPeakStatus(year, peakCountries, isProjected),
+  );
   renderPeakFlags(peakCountries);
 }
 
@@ -1501,6 +1605,7 @@ async function init() {
     });
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
     globalMetricsByYear = buildGlobalMetricsIndex(globalData);
+    globalTrendMilestones = computeGlobalTrendMilestones(globalData);
     if (globalData.variants) {
       highMetricsByYear = buildVariantIndex(globalData.variants.high);
       lowMetricsByYear = buildVariantIndex(globalData.variants.low);
@@ -1510,9 +1615,15 @@ async function init() {
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
-    // Randomized per page load (rather than pinned to the current year) so
-    // the app doesn't show the same static snapshot every visit.
-    const defaultYear = yearsData[Math.floor(Math.random() * yearsData.length)];
+    const defaultYears = [2047, 2050, 2061, 2081, 2084];
+    // Randomized per page load (rather than pinned to the current year) to show a different snapshot from a curated set each time.
+    // 2047: global growth falls below 0.5%
+    // 2050: fertility slips below replacement
+    // 2061: world population crosses 10B
+    // 2081: global life expectancy reaches 80 years
+    // 2084: projected global population peak/turning point
+    const defaultYear =
+      defaultYears[Math.floor(Math.random() * defaultYears.length)];
     elements.yearSlider.min = minYear;
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
