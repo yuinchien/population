@@ -115,6 +115,22 @@ body.detail #overlay .hide-for-detail {
     line-height: 1.5em;
 }
 
+.peak-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.peak-flag {
+    width: 22px;
+    height: 16.5px;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px var(--color-border);
+    object-fit: cover;
+    flex: none;
+}
+
 .status-cursor {
     display: inline-block;
     width: 0.6em;

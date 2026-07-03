@@ -6,6 +6,8 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
 const COUNTRY_GNI_URL = "./data/country-gni.json";
+const COUNTRY_ISO2_URL = "./data/country-iso2.json";
+const FLAG_URL = (iso2) => `./flags/${iso2}.svg`;
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
@@ -62,6 +64,7 @@ const UNCLASSIFIED_COLOR = "#999999";
 const elements = {
   titleYear: document.querySelector("#titleYear"),
   status: document.querySelector("#status"),
+  peakFlags: document.querySelector("#peakFlags"),
   tooltip: document.querySelector("#tooltip"),
   yearControl: document.querySelector("#yearControl"),
   yearSlider: document.querySelector("#yearSlider"),
@@ -377,6 +380,7 @@ let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
 let countryDemographicMetrics = null;
 let countryGni = {};
+let countryIso2 = {};
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
@@ -653,46 +657,103 @@ const PEAK_LIST_FORMATTER = new Intl.ListFormat("en", {
 // preview list ("A, B, and 5 others") instead of the full roster, and each
 // bucket has a few interchangeable templates so revisiting a year doesn't
 // always show identical copy.
-function buildPeakStatus(year, peakCountries) {
+// isProjected distinguishes an observed peak (year <= historicalCutoffYear)
+// from a modeled one (year > historicalCutoffYear) — without it, a
+// projected-year copy like "France's population peaks in 2061" reads as a
+// stated fact rather than the UN Medium-variant projection it actually is.
+function buildPeakStatus(year, peakCountries, isProjected) {
   const pick = (variants) =>
     variants[Math.floor(Math.random() * variants.length)];
   const count = peakCountries.length;
   const names = peakCountries.map((c) => c.name);
 
   if (count === 0) {
-    return pick([
-      `No country's population peaks in ${year}.`,
-      `${year} passes quietly — no country's population hits its peak.`,
-      `Not a single population peak this year. Try another spot on the timeline.`,
-    ]);
+    return pick(
+      isProjected
+        ? [
+            `No country's population is projected to peak in ${year}.`,
+            `${year} is projected to pass quietly — no country's population is expected to hit its peak.`,
+            `No population peaks are projected for ${year}. Try another spot on the timeline.`,
+          ]
+        : [
+            `No country's population peaked in ${year}.`,
+            `${year} passed quietly — no country's population hit its peak.`,
+            `Not a single population peak that year. Try another spot on the timeline.`,
+          ],
+    );
   }
 
   if (count === 1) {
     const [name] = names;
-    return pick([
-      `${name}'s population peaks in ${year}.`,
-      `${year} is ${name}'s population high-water mark.`,
-      `One country's population tops out in ${year}: ${name}.`,
-    ]);
+    return pick(
+      isProjected
+        ? [
+            `${name}'s population is projected to peak in ${year}.`,
+            `${year} is projected to be ${name}'s population high-water mark.`,
+            `One country's population is projected to top out in ${year}: ${name}.`,
+          ]
+        : [
+            `${name}'s population peaked in ${year}.`,
+            `${year} was ${name}'s population high-water mark.`,
+            `One country's population topped out in ${year}: ${name}.`,
+          ],
+    );
   }
 
   if (count <= 3) {
     const list = PEAK_LIST_FORMATTER.format(names);
-    return pick([
-      `${list} all see their population peak in ${year}.`,
-      `${year} marks the population high point for ${list}.`,
-      `${count} countries hit peak population in ${year}: ${list}.`,
-    ]);
+    return pick(
+      isProjected
+        ? [
+            `${list} are all projected to see their population peak in ${year}.`,
+            `${year} is projected to mark the population high point for ${list}.`,
+            `${count} countries are projected to hit peak population in ${year}: ${list}.`,
+          ]
+        : [
+            `${list} all saw their population peak in ${year}.`,
+            `${year} marked the population high point for ${list}.`,
+            `${count} countries hit peak population in ${year}: ${list}.`,
+          ],
+    );
   }
 
   const previewCount = 2;
   const preview = PEAK_LIST_FORMATTER.format(names.slice(0, previewCount));
   const remaining = count - previewCount;
-  return pick([
-    `${count} countries hit peak population in ${year}, including ${preview} and ${remaining} others.`,
-    `${year} is a big one — ${count} countries' populations top out, among them ${preview}.`,
-    `A wave of population peaks in ${year}: ${preview} and ${remaining} more.`,
-  ]);
+  return pick(
+    isProjected
+      ? [
+          `${count} countries are projected to hit peak population in ${year}, including ${preview} and ${remaining} others.`,
+          `${year} is projected to be a big one — ${count} countries' populations are expected to top out, among them ${preview}.`,
+          `A wave of projected population peaks in ${year}: ${preview} and ${remaining} more.`,
+        ]
+      : [
+          `${count} countries hit peak population in ${year}, including ${preview} and ${remaining} others.`,
+          `${year} was a big one — ${count} countries' populations topped out, among them ${preview}.`,
+          `A wave of population peaks in ${year}: ${preview} and ${remaining} more.`,
+        ],
+  );
+}
+
+// Shows every peak country's flag, not just the couple named in the status
+// text's 4+-country preview — a row of flags stays readable even when the
+// text itself falls back to "and N others".
+function renderPeakFlags(peakCountries) {
+  elements.peakFlags.replaceChildren(
+    ...peakCountries
+      .map((country) => {
+        const iso2 = countryIso2[country.iso3];
+        if (!iso2) return null;
+        const img = document.createElement("img");
+        img.className = "peak-flag";
+        img.src = FLAG_URL(iso2);
+        img.alt = country.name;
+        img.title = country.name;
+        img.loading = "lazy";
+        return img;
+      })
+      .filter(Boolean),
+  );
 }
 
 // Types the status line out character-by-character with a blinking cursor,
@@ -774,12 +835,12 @@ function applyYear(year) {
 
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
-  elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
-  elements.titleYear.textContent = year;
+  updateYearLabels(year);
   const peakCountries = countriesData.filter(
     (country) => country.peakYear === year,
   );
-  typeStatus(buildPeakStatus(year, peakCountries));
+  typeStatus(buildPeakStatus(year, peakCountries, isProjected));
+  renderPeakFlags(peakCountries);
   updateMetricsPanel(year);
   renderDetailPanel();
   updatePeakCallouts(year);
@@ -808,6 +869,15 @@ function updateSliderProgress() {
   const max = Number(slider.max);
   const pct = ((Number(slider.value) - min) / (max - min)) * 100;
   slider.style.setProperty("--progress", `${pct}%`);
+}
+
+// Cheap enough to run on every "input" tick while dragging, unlike
+// applyYear()'s full rebuild — so the year figure still tracks the thumb
+// live, even though the rest of the content waits for "change".
+function updateYearLabels(year) {
+  const isProjected = year > historicalCutoffYear;
+  elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
+  elements.titleYear.textContent = year;
 }
 
 function renderLegend() {
@@ -1226,12 +1296,14 @@ async function init() {
       incomeResponse,
       countryDemographicsResponse,
       countryGniResponse,
+      countryIso2Response,
     ] = await Promise.all([
       fetch(DATA_URL),
       fetch(GLOBAL_METRICS_URL),
       fetch(INCOME_GROUPS_URL),
       fetch(COUNTRY_DEMOGRAPHICS_URL),
       fetch(COUNTRY_GNI_URL),
+      fetch(COUNTRY_ISO2_URL),
     ]);
     if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
     if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
@@ -1241,11 +1313,14 @@ async function init() {
     }
     if (!countryGniResponse.ok)
       throw new Error(`HTTP ${countryGniResponse.status}`);
+    if (!countryIso2Response.ok)
+      throw new Error(`HTTP ${countryIso2Response.status}`);
     const data = await dotsResponse.json();
     const globalData = await globalResponse.json();
     const incomeGroups = await incomeResponse.json();
     countryDemographicMetrics = await countryDemographicsResponse.json();
     countryGni = (await countryGniResponse.json()).countries || {};
+    countryIso2 = await countryIso2Response.json();
     countriesData = data.countries;
     yearsData = data.years;
     countriesData.forEach((country) => {
@@ -1270,13 +1345,17 @@ async function init() {
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
     elements.yearControl.hidden = false;
-    // "input" fires continuously while dragging — kept cheap (just the
-    // thumb/fill tracking) so the slider itself still feels responsive.
-    // The actual content update (dot repositioning, status line, metrics,
-    // detail panel, callouts) is real work, so it's deferred to "change",
-    // which only fires once the drag is released (or after a keyboard
-    // step), instead of re-running on every intermediate value.
-    elements.yearSlider.addEventListener("input", updateSliderProgress);
+    // "input" fires continuously while dragging — kept cheap (thumb/fill
+    // tracking plus the year figure itself, so there's still feedback on
+    // what year you'd land on) so the slider stays responsive. The actual
+    // content update (dot repositioning, status line, metrics, detail
+    // panel, callouts) is real work, so it's deferred to "change", which
+    // only fires once the drag is released (or after a keyboard step),
+    // instead of re-running on every intermediate value.
+    elements.yearSlider.addEventListener("input", () => {
+      updateSliderProgress();
+      updateYearLabels(Number(elements.yearSlider.value));
+    });
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
     });
