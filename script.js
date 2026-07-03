@@ -954,14 +954,18 @@ function setDetailSort(key) {
   renderDetailPanel();
 }
 
-// Switching view mode while the detail panel is open would rebuild the
-// active dot set out from under the panel's population-ratio bars and
-// callout anchors mid-read, so the toggle is disabled whenever the panel
-// is visible.
+// Keeps other UI in sync with the detail panel's visibility. Switching view
+// mode while the panel is open would rebuild the active dot set out from
+// under the panel's population-ratio bars and callout anchors mid-read, so
+// the toggle is disabled whenever the panel is visible; the body class lets
+// stylesheets target "detail panel open" state generally (layout, canvas
+// dimming, etc.) without every consumer re-deriving it from #detailPanel.
 function updateViewModeAvailability() {
+  const isOpen = !elements.detailPanel.hidden;
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
-    btn.disabled = !elements.detailPanel.hidden;
+    btn.disabled = isOpen;
   });
+  document.body.classList.toggle("detail", isOpen);
 }
 
 function renderDetailPanel() {
@@ -974,9 +978,7 @@ function renderDetailPanel() {
     selectedLegend.color,
   );
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
-  elements.detailSubtitle.textContent = `${displayGroupLabel(
-    selectedLegend.label,
-  )} · ${countries.length} countries · ${year}`;
+  elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
   const header = document.createElement("div");
   header.className = "detail-row header";

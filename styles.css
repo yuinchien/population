@@ -54,9 +54,41 @@ hr {
     left: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
     width: 240px;
     padding: 12px;
+}
+
+/* Spacing between #overlay's direct children is margin-bottom rather than
+   flex `gap` on purpose: a flex `gap` reserves its space regardless of a
+   collapsed (max-height: 0) child's own size, and canceling it back out
+   with a negative margin compounds when two collapsing children sit next
+   to each other. A child's own margin-bottom has no such cross-item
+   interaction, so zeroing it while collapsing always closes exactly the
+   space that child contributed — no more, no less. */
+#overlay > *:not(:last-child) {
+    margin-bottom: 12px;
+}
+
+.hide-for-detail {
+    overflow: hidden;
+    max-height: 300px;
+    margin-bottom: 12px;
+    opacity: 1;
+    transition:
+        max-height 0.25s ease,
+        opacity 0.2s ease,
+        margin-bottom 0.25s ease;
+}
+
+/* Specificity note: the base spacing rule above includes #overlay (an ID),
+   so this override needs at least as much specificity to actually win the
+   margin-bottom cascade — a bare ".hide-for-detail" class selector alone
+   would lose to it and silently keep the 12px margin. */
+body.detail #overlay .hide-for-detail {
+    max-height: 0;
+    margin-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .topbar {
@@ -91,6 +123,10 @@ hr {
     vertical-align: -0.15em;
     animation: status-cursor-blink 1s steps(1) infinite;
 }
+
+/*body.detail .hide-for-detail {
+    display: none !important;
+}*/
 
 @keyframes status-cursor-blink {
     0%,
@@ -168,7 +204,6 @@ hr {
 #metrics {
     display: grid;
     margin-top: -4px;
-    border-bottom: var(--border);
 }
 
 .metric {

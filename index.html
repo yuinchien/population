@@ -24,8 +24,12 @@
                     <span id="titleYear" class="title-year"></span>
                 </h1>
             </div>
-            <hr />
-            <div id="viewMode" class="tab-group full-width" hidden>
+            <hr class="hide-for-detail" />
+            <div
+                id="viewMode"
+                class="tab-group full-width hide-for-detail"
+                hidden
+            >
                 <button
                     type="button"
                     data-mode="globe"
@@ -57,7 +61,7 @@
                     step="1"
                 />
             </div>
-            <div id="metrics" hidden>
+            <div id="metrics" class="hide-for-detail" hidden>
                 <div class="metric">
                     <span class="metric-label">Population</span>
                     <span class="metric-value" id="metricPopulation"></span>
@@ -82,6 +86,7 @@
                     ></span>
                 </div>
             </div>
+            <hr />
             <div>
                 <div id="colorMode" class="tab-group" hidden>
                     <button
