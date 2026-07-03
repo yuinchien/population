@@ -137,6 +137,24 @@ canvas {
     color: #888;
     font-size: 0.85em;
 }
+#calloutLayer {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+.peak-callout-label {
+    position: fixed;
+    transform: translate(-50%, -100%);
+    background: #fff;
+    border: 1.5px solid var(--color-callout, #e0447a);
+    color: #222;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+}
 hr {
     border: none;
     height: 1px; /* Control thickness here */
