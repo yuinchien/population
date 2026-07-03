@@ -336,6 +336,7 @@ hr {
     grid-template-columns: minmax(220px, 1fr) 160px 150px 130px 110px;
     align-items: stretch;
     min-height: 34px;
+    position: relative;
 }
 
 .detail-row.header {
@@ -350,9 +351,8 @@ hr {
     min-width: 0;
     padding: 8px 12px;
     /*background: rgba(255, 255, 255, 0.45);*/
-    position: relative;
 }
-.detail-cell:first-child:before {
+.detail-row:before {
     content: "";
     position: absolute;
     left: 0;

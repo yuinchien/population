@@ -624,12 +624,10 @@ function applyYear(year) {
   const posAttr = pointsMesh.geometry.getAttribute("position");
   const colorAttr = pointsMesh.geometry.getAttribute("color");
   let cursor = 0;
-  let totalPop = 0;
 
   countriesData.forEach((country) => {
     const pop = country.populations[yearIndex];
     if (pop == null) return;
-    totalPop += pop;
     const activeCount = Math.min(
       country.dots.length,
       Math.max(1, Math.round(pop / PEOPLE_PER_DOT)),
@@ -669,12 +667,10 @@ function applyYear(year) {
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
-  // Use the UN "World" total (same figure shown in the metrics panel)
-  // rather than summing our 211-country subset, which excludes ~26 small
-  // territories/dependencies and would otherwise show a slightly lower,
-  // inconsistent number here.
-  const worldPop = globalMetricsByYear.get(year)?.population ?? totalPop;
-  elements.status.textContent = `${activeTotal.toLocaleString()} dots · ${formatCount(PEOPLE_PER_DOT)} ppl/dot`;
+  const peakCount = countriesData.filter(
+    (country) => country.peakYear === year,
+  ).length;
+  elements.status.textContent = `Note: ${peakCount} ${peakCount === 1 ? "country" : "countries"} saw population peak in ${year}`;
   updateMetricsPanel(year);
   renderDetailPanel();
   updatePeakCallouts(year);
@@ -794,7 +790,9 @@ function renderDetailPanel() {
   // Ratio bars are always population-based, so they stay accurate (and
   // re-normalize live) as the year slider changes each country's population.
   const primaryValue = (country) => country.populations[currentYearIndex];
-  const highestValue = Math.max(...countries.map(primaryValue).filter(Number.isFinite));
+  const highestValue = Math.max(
+    ...countries.map(primaryValue).filter(Number.isFinite),
+  );
 
   const rows = countries.map((country) => {
     const row = document.createElement("div");
@@ -805,7 +803,10 @@ function renderDetailPanel() {
     row.className = "detail-row";
     row.append(
       createDetailCell(country.name, "country"),
-      createDetailCell(formatPopulation(country.populations[currentYearIndex]), "number"),
+      createDetailCell(
+        formatPopulation(country.populations[currentYearIndex]),
+        "number",
+      ),
       createDetailCell(
         formatYears(metricFor(country, "lifeExpectancy")),
         "number",
