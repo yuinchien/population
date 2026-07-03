@@ -140,6 +140,66 @@ function createDotTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
+// The pulse (and the globe/map position blend) used to be recomputed on the
+// CPU for every active dot, every frame — the single most expensive thing
+// in the render loop once dot counts climbed into the tens of thousands.
+// Moving it into the vertex shader means the CPU only writes the *base*
+// (unpulsed) position when the year or view mode actually changes; the GPU
+// displaces every vertex in parallel on every frame for free. The size
+// attenuation formula (uScale / -mvPosition.z) is copied from Three.js's
+// own PointsMaterial shader chunk so dot sizing looks identical to before.
+const DOT_VERTEX_SHADER = `
+  uniform float uTime;
+  uniform float uSize;
+  uniform float uScale;
+  uniform float uPulseAmplitude;
+  uniform float uFreqMul;
+  uniform float uAmpMul;
+  uniform float uGlobeRadius;
+  uniform float uIsMap;
+
+  attribute vec3 color;
+  attribute float aFrequency;
+  attribute float aPhase;
+
+  varying vec3 vColor;
+
+  void main() {
+    vColor = color;
+
+    float wave = sin(uTime * aFrequency * uFreqMul + aPhase) * uPulseAmplitude * uAmpMul;
+
+    vec3 pulsed;
+    if (uIsMap > 0.5) {
+      // No shared "outward" direction on a flat map, so pulse toward/away
+      // from the camera along Z instead (matches the old CPU behavior).
+      pulsed = vec3(position.x, position.y, position.z + wave);
+    } else {
+      // Globe (and the scrambled cloud) points already sit at a fixed
+      // radius from the origin, so scaling the position vector is the
+      // same as displacing along the surface normal.
+      float scale = 1.0 + wave / uGlobeRadius;
+      pulsed = position * scale;
+    }
+
+    vec4 mvPosition = modelViewMatrix * vec4(pulsed, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
+    gl_PointSize = uSize * (uScale / -mvPosition.z);
+  }
+`;
+
+const DOT_FRAGMENT_SHADER = `
+  uniform sampler2D map;
+  uniform float uOpacity;
+
+  varying vec3 vColor;
+
+  void main() {
+    vec4 texColor = texture2D(map, gl_PointCoord);
+    gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * texColor.a);
+  }
+`;
+
 function formatCount(value) {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
@@ -179,6 +239,7 @@ let pointsMesh = null;
 let basePositions = null; // pre-pulse baseline, rebuilt whenever the year changes
 let frequencies = null;
 let phases = null;
+let currentDotSize = DOT_SIZE; // logical size (unscaled by pixelRatio)
 let dotCountry = [];
 let activeTotal = 0;
 let countriesData = [];
@@ -266,16 +327,33 @@ function setupScene(countries, incomeGroups) {
     "color",
     new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
   );
+  geometry.setAttribute(
+    "aFrequency",
+    new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
+  );
+  geometry.setAttribute(
+    "aPhase",
+    new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
+  );
   geometry.setDrawRange(0, 0);
 
-  const material = new THREE.PointsMaterial({
-    size: DOT_SIZE,
-    map: createDotTexture(),
-    vertexColors: true,
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      map: { value: createDotTexture() },
+      uTime: { value: 0 },
+      uSize: { value: DOT_SIZE * renderer.getPixelRatio() },
+      uScale: { value: renderer.domElement.height * 0.5 },
+      uOpacity: { value: DOT_OPACITY },
+      uPulseAmplitude: { value: PULSE_AMPLITUDE },
+      uFreqMul: { value: 1 },
+      uAmpMul: { value: 1 },
+      uGlobeRadius: { value: GLOBE_RADIUS },
+      uIsMap: { value: 0 },
+    },
+    vertexShader: DOT_VERTEX_SHADER,
+    fragmentShader: DOT_FRAGMENT_SHADER,
     transparent: true,
-    opacity: DOT_OPACITY,
     depthWrite: false,
-    sizeAttenuation: true,
     blending: THREE.NormalBlending,
   });
 
@@ -283,10 +361,17 @@ function setupScene(countries, incomeGroups) {
   scene.add(pointsMesh);
 
   basePositions = new Float32Array(maxTotal * 3);
-  frequencies = new Float32Array(maxTotal);
-  phases = new Float32Array(maxTotal);
+  frequencies = geometry.getAttribute("aFrequency").array;
+  phases = geometry.getAttribute("aPhase").array;
   dotCountry = new Array(maxTotal);
   dotLocalIndex = new Int32Array(maxTotal);
+  currentDotSize = DOT_SIZE;
+}
+
+function setDotSize(size) {
+  currentDotSize = size;
+  pointsMesh.material.uniforms.uSize.value = size * renderer.getPixelRatio();
+  raycaster.params.Points.threshold = size * 1.5;
 }
 
 function positionsFor(country) {
@@ -344,6 +429,8 @@ function applyYear(year) {
   pointsMesh.geometry.setDrawRange(0, activeTotal);
   posAttr.needsUpdate = true;
   colorAttr.needsUpdate = true;
+  pointsMesh.geometry.getAttribute("aFrequency").needsUpdate = true;
+  pointsMesh.geometry.getAttribute("aPhase").needsUpdate = true;
 
   const isProjected = year > historicalCutoffYear;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
@@ -521,7 +608,7 @@ function updateTransition() {
       if (viewMode === "globe") {
         transition.toCamPos = currentGlobeCameraPosition(transition.toTarget);
       }
-      transition.outDotSize = pointsMesh.material.size;
+      transition.outDotSize = currentDotSize;
       transition.outCamCaptured = true;
       controls.autoRotate = false;
       controls.autoRotateSpeed = transition.previousAutoRotateSpeed;
@@ -532,6 +619,14 @@ function updateTransition() {
   for (let k = 0; k < transition.toPositions.length; k++) {
     basePositions[k] = from[k] + (to[k] - from[k]) * e;
   }
+  // The GPU shader only displaces whatever is currently in the position
+  // buffer, so the interpolated (unpulsed) base positions still need to
+  // reach the GPU each frame while a transition is in flight — this is
+  // the one per-frame CPU cost the shader migration couldn't remove,
+  // since the morph target itself changes every frame, not just the pulse.
+  const posAttr = pointsMesh.geometry.getAttribute("position");
+  posAttr.array.set(basePositions.subarray(0, transition.toPositions.length));
+  posAttr.needsUpdate = true;
 
   if (transition.outCamCaptured) {
     const outT = Math.min(1, (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS);
@@ -546,10 +641,10 @@ function updateTransition() {
       transition.toTarget,
       camE,
     );
-    pointsMesh.material.size =
+    setDotSize(
       transition.outDotSize +
-      (transition.toDotSize - transition.outDotSize) * camE;
-    raycaster.params.Points.threshold = pointsMesh.material.size * 1.5;
+        (transition.toDotSize - transition.outDotSize) * camE,
+    );
   }
 
   if (overallT >= 1) {
@@ -627,46 +722,23 @@ async function init() {
   }
 }
 
-// On the globe, each dot pulses outward along its own surface normal
-// (equivalent to scaling the position vector from the sphere's center,
-// since every base position already sits exactly GLOBE_RADIUS from
-// origin). On the flat map there's no "outward" direction shared with the
-// origin, so dots instead pulse toward/away from the camera along Z —
-// same twinkle feel, without the map-center dots barely moving.
+// The pulse itself now runs in DOT_VERTEX_SHADER (see createDotTexture
+// above) — this just pushes the handful of uniforms it depends on once per
+// frame, an O(1) cost regardless of dot count, instead of the O(activeTotal)
+// CPU loop this replaced.
 // During the (brief) hold at the scramble cloud, dots pulse faster and
 // harder than the ambient shimmer — reads as "the system is computing"
 // rather than a freeze-frame — before flying out to their final shape.
 const HOLD_FREQ_MULTIPLIER = 7;
 const HOLD_AMPLITUDE_MULTIPLIER = 2.5;
 
-function pulseDots(elapsedTime) {
-  if (!pointsMesh || !activeTotal) return;
-  const positionAttribute = pointsMesh.geometry.getAttribute("position");
-  const array = positionAttribute.array;
-  const isMap = viewMode === "map" && !isScrambledPhase;
-  const freqMul = isHoldPhase ? HOLD_FREQ_MULTIPLIER : 1;
-  const ampMul = isHoldPhase ? HOLD_AMPLITUDE_MULTIPLIER : 1;
-  for (let i = 0; i < activeTotal; i++) {
-    const i3 = i * 3;
-    const ox = basePositions[i3];
-    const oy = basePositions[i3 + 1];
-    const oz = basePositions[i3 + 2];
-    const wave =
-      Math.sin(elapsedTime * frequencies[i] * freqMul + phases[i]) *
-      PULSE_AMPLITUDE *
-      ampMul;
-    if (isMap) {
-      array[i3] = ox;
-      array[i3 + 1] = oy;
-      array[i3 + 2] = oz + wave;
-    } else {
-      const scale = 1 + wave / GLOBE_RADIUS;
-      array[i3] = ox * scale;
-      array[i3 + 1] = oy * scale;
-      array[i3 + 2] = oz * scale;
-    }
-  }
-  positionAttribute.needsUpdate = true;
+function updateDotUniforms(elapsedTime) {
+  if (!pointsMesh) return;
+  const u = pointsMesh.material.uniforms;
+  u.uTime.value = elapsedTime;
+  u.uIsMap.value = viewMode === "map" && !isScrambledPhase ? 1 : 0;
+  u.uFreqMul.value = isHoldPhase ? HOLD_FREQ_MULTIPLIER : 1;
+  u.uAmpMul.value = isHoldPhase ? HOLD_AMPLITUDE_MULTIPLIER : 1;
 }
 
 renderer.domElement.addEventListener("pointermove", (event) => {
@@ -735,7 +807,7 @@ function animate(timestamp) {
   timer.update(timestamp);
   updateTransition();
   controls.update(timer.getDelta());
-  pulseDots(timer.getElapsed());
+  updateDotUniforms(timer.getElapsed());
   if (lastPointerEvent && timestamp - lastTooltipUpdate >= TOOLTIP_UPDATE_INTERVAL_MS) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
@@ -747,6 +819,9 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (pointsMesh) {
+    pointsMesh.material.uniforms.uScale.value = renderer.domElement.height * 0.5;
+  }
 });
 
 init();
