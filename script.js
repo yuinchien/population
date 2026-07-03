@@ -675,6 +675,7 @@ renderer.domElement.addEventListener("pointermove", (event) => {
 });
 renderer.domElement.addEventListener("pointerleave", () => {
   pointer.set(Infinity, Infinity);
+  lastPointerEvent = null;
   elements.tooltip.hidden = true;
 });
 
@@ -722,13 +723,23 @@ renderer.domElement.addEventListener("pointermove", (event) => {
   lastPointerEvent = event;
 });
 
+// Raycasting activeTotal dots (up to ~33K) on every single animation frame
+// is the most expensive per-frame cost in the app, and pointermove fires
+// far more often than a tooltip needs to visibly update — so re-run the
+// hit test on a timer instead of every frame.
+const TOOLTIP_UPDATE_INTERVAL_MS = 100;
+let lastTooltipUpdate = 0;
+
 function animate(timestamp) {
   requestAnimationFrame(animate);
   timer.update(timestamp);
   updateTransition();
   controls.update(timer.getDelta());
   pulseDots(timer.getElapsed());
-  if (lastPointerEvent) updateTooltip(lastPointerEvent);
+  if (lastPointerEvent && timestamp - lastTooltipUpdate >= TOOLTIP_UPDATE_INTERVAL_MS) {
+    lastTooltipUpdate = timestamp;
+    updateTooltip(lastPointerEvent);
+  }
   renderer.render(scene, camera);
 }
 

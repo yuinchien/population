@@ -1,6 +1,6 @@
 :root {
     --slider-size: 12px;
-    --border-color: rgba(34, 34, 34, 0.12);
+    --border-color: rgba(0, 0, 0, 0.1);
     --border: 1px solid var(--border-color);
     --color-text: #222;
 }
@@ -276,6 +276,10 @@ hr {
     gap: 8px;
     color: #444;
 }
+.legend-item:hover {
+    background-color: var(--border-color);
+}
+
 .legend-swatch {
     width: 8px;
     height: 8px;
