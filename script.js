@@ -8,9 +8,9 @@ const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
 const MAP_DOT_SIZE = 1.5;
-const DOT_OPACITY = 0.8;
-const PULSE_AMPLITUDE = 5;
-const PULSE_FREQ_MIN = 0.5;
+const DOT_OPACITY = 1;
+const PULSE_AMPLITUDE = 7;
+const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
 const MAP_WIDTH = 400;
 const MAP_HEIGHT = 200;
@@ -216,16 +216,47 @@ function formatCount(value) {
 
 // data/population-global.json holds one series per indicator, each an
 // array of {year, value} rows; index by year so applyYear() can look up
-// all five in O(1) as the slider moves.
+// all five in O(1) as the slider moves. "variants" (High/Low UN scenarios)
+// is a nested object, not a flat series, so it's excluded here and indexed
+// separately by buildVariantIndex().
 function buildGlobalMetricsIndex(globalData) {
   const byYear = new Map();
   Object.entries(globalData).forEach(([series, rows]) => {
+    if (series === "variants") return;
     rows.forEach(({ year, value }) => {
       if (!byYear.has(year)) byYear.set(year, {});
       byYear.get(year)[series] = value;
     });
   });
   return byYear;
+}
+
+// Same shape as buildGlobalMetricsIndex, but for a single variant's series
+// object (globalData.variants.high or .low).
+function buildVariantIndex(variantSeries) {
+  const byYear = new Map();
+  Object.entries(variantSeries).forEach(([series, rows]) => {
+    rows.forEach(({ year, value }) => {
+      if (!byYear.has(year)) byYear.set(year, {});
+      byYear.get(year)[series] = value;
+    });
+  });
+  return byYear;
+}
+
+// Writes a metric's headline value, plus — for projected years — a
+// smaller "Low – High" range line sourced from the UN's Low/High variant
+// scenarios, so the further out the slider goes, the more visibly
+// uncertain the number becomes (instead of reading as a flat fact).
+function setMetricValue(el, mainText, rangeText) {
+  el.textContent = "";
+  el.append(document.createTextNode(mainText));
+  if (rangeText) {
+    const rangeEl = document.createElement("span");
+    rangeEl.className = "metric-range";
+    rangeEl.textContent = rangeText;
+    el.append(rangeEl);
+  }
 }
 
 function updateMetricsPanel(year) {
@@ -235,11 +266,42 @@ function updateMetricsPanel(year) {
     return;
   }
   elements.metrics.hidden = false;
-  elements.metricPopulation.textContent = formatCount(metrics.population);
-  elements.metricFertility.textContent = `${metrics.fertility.toFixed(2)} births/woman`;
-  elements.metricLifeExpectancy.textContent = `${metrics.lifeExpectancy.toFixed(1)} yrs`;
-  elements.metricMedianAge.textContent = `${metrics.medianAge.toFixed(1)} yrs`;
-  elements.metricPopulationGrowth.textContent = `${metrics.populationGrowth.toFixed(2)}%`;
+
+  const isProjected = year > historicalCutoffYear;
+  const hi = isProjected ? highMetricsByYear.get(year) : null;
+  const lo = isProjected ? lowMetricsByYear.get(year) : null;
+
+  // formatRangeNum lets a metric use a bare-number range (e.g. "1.98–2.48")
+  // instead of repeating the main value's unit on both ends of the range.
+  function apply(el, key, formatNum, formatRangeNum) {
+    const mainText = formatNum(metrics[key]);
+    let rangeText = "";
+    if (hi && lo && hi[key] != null && lo[key] != null) {
+      rangeText = formatRangeNum
+        ? `${formatRangeNum(lo[key])} — ${formatRangeNum(hi[key])}`
+        : `${formatNum(lo[key])} — ${formatNum(hi[key])}`;
+    }
+    setMetricValue(el, mainText, rangeText);
+  }
+
+  apply(elements.metricPopulation, "population", formatCount);
+  apply(
+    elements.metricFertility,
+    "fertility",
+    (v) => `${v.toFixed(2)} births/woman`,
+    (v) => v.toFixed(2),
+  );
+  apply(
+    elements.metricLifeExpectancy,
+    "lifeExpectancy",
+    (v) => `${v.toFixed(1)} yrs`,
+  );
+  apply(elements.metricMedianAge, "medianAge", (v) => `${v.toFixed(1)} yrs`);
+  apply(
+    elements.metricPopulationGrowth,
+    "populationGrowth",
+    (v) => `${v.toFixed(2)}%`,
+  );
 }
 
 let pointsMesh = null;
@@ -254,6 +316,8 @@ let yearsData = [];
 let currentYearIndex = -1;
 let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
+let highMetricsByYear = new Map();
+let lowMetricsByYear = new Map();
 let colorMode = "region";
 let viewMode = "globe";
 let dotLocalIndex = null;
@@ -489,7 +553,7 @@ function renderLegend() {
       item.className = "legend-item";
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
-      swatch.style.background = color;
+      item.style.setProperty("--color-legend", color);
       const text = document.createElement("span");
       if (label.includes("Afghanistan & Pakistan")) {
         text.textContent = "Middle East & North Africa";
@@ -692,6 +756,10 @@ async function init() {
     yearsData = data.years;
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
     globalMetricsByYear = buildGlobalMetricsIndex(globalData);
+    if (globalData.variants) {
+      highMetricsByYear = buildVariantIndex(globalData.variants.high);
+      lowMetricsByYear = buildVariantIndex(globalData.variants.low);
+    }
 
     setupScene(countriesData, incomeGroups);
 
@@ -776,23 +844,41 @@ function updateTooltip(event) {
     colorMode === "income" ? country._incomeLabel : country.region;
   const groupColor = colorFor(country);
 
-  const line1 = document.createElement("div");
-  line1.className = "tooltip-line1";
-  line1.textContent = `${country.name}: ${pop.toLocaleString()}`;
-
   const swatch = document.createElement("span");
   swatch.className = "legend-swatch";
   swatch.style.background = `#${groupColor.getHexString()}`;
 
-  const groupText = document.createElement("span");
-  groupText.textContent = groupLabel;
+  const countryText = document.createElement("span");
+  countryText.textContent = `${country.name}: ${pop.toLocaleString()}`;
 
-  const line2 = document.createElement("div");
-  line2.className = "tooltip-line2";
-  line2.append(swatch, groupText);
+  const line1 = document.createElement("div");
+  line1.className = "tooltip-line1";
+  line1.append(swatch, countryText);
+  // line1.textContent = `${country.name}: ${pop.toLocaleString()}`;
+
+  // const line2 = document.createElement("div");
+  // line2.className = "tooltip-line2";
+  // line2.append(swatch, groupText);
+
+  const lines = [line1];
+  const year = yearsData[currentYearIndex];
+  if (year > historicalCutoffYear) {
+    const hi = country.populationsHigh?.[currentYearIndex];
+    const lo = country.populationsLow?.[currentYearIndex];
+    if (hi != null && lo != null) {
+      const line3 = document.createElement("div");
+      line3.className = "tooltip-line2";
+      line3.textContent = `Range: ${lo.toLocaleString()} – ${hi.toLocaleString()}`;
+      lines.push(line3);
+    }
+  }
 
   elements.tooltip.hidden = false;
-  elements.tooltip.replaceChildren(line1, line2);
+  elements.tooltip.replaceChildren(...lines);
+  elements.tooltip.style.setProperty(
+    "--tooltip-color",
+    `#${groupColor.getHexString()}`,
+  );
   elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
   elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
 }

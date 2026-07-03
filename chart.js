@@ -704,6 +704,74 @@ function render() {
   renderTrend3D();
 }
 
+// A flat ribbon between the UN's Low and High variant scenarios for a
+// series' projected years, in the same X/Y/Z plot space as its line (same
+// mapX/mapY/z), so it lines up exactly. Starts at the last actual point
+// (where all three scenarios still agree) so the ribbon has zero width at
+// the historical cutoff and visibly widens toward 2100 — the uncertainty
+// growing the further out the projection reaches.
+function buildUncertaintyRibbon(
+  highByYear,
+  lowByYear,
+  seriesPoints,
+  color,
+  mapX,
+  mapY,
+  z,
+) {
+  const actual = seriesPoints.filter((p) => !p.projected);
+  const projected = seriesPoints.filter((p) => p.projected);
+  if (!projected.length) return null;
+
+  const anchor = actual[actual.length - 1];
+  const years = anchor ? [anchor.year, ...projected.map((p) => p.year)] : projected.map((p) => p.year);
+
+  const positions = [];
+  years.forEach((year) => {
+    const isAnchor = anchor && year === anchor.year;
+    const hi = isAnchor ? anchor.value : highByYear.get(year);
+    const lo = isAnchor ? anchor.value : lowByYear.get(year);
+    if (hi == null || lo == null) return;
+    const x = mapX(year);
+    positions.push(x, mapY(hi), z, x, mapY(lo), z);
+  });
+
+  const columns = positions.length / 6;
+  if (columns < 2) return null;
+
+  const indices = [];
+  for (let i = 0; i < columns - 1; i++) {
+    const topA = i * 2;
+    const botA = i * 2 + 1;
+    const topB = (i + 1) * 2;
+    const botB = (i + 1) * 2 + 1;
+    indices.push(topA, botA, topB, botA, botB, topB);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3),
+  );
+  geometry.setIndex(indices);
+
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.14,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.renderOrder = 0;
+  // The ribbon is a much larger raycast target than the thin line it sits
+  // behind, and intersectObjects() takes the closest hit regardless of
+  // type — without this it silently swallows hover/tooltip interaction
+  // for any point that has a ribbon in front of it.
+  mesh.raycast = () => {};
+  return mesh;
+}
+
 function renderTrend3D() {
   ensureThreeScene();
   clearSeriesGroup();
@@ -768,7 +836,27 @@ function renderTrend3D() {
 
   seriesList.forEach((series, index) => {
     const z = mapZ(index);
-    const yDomain = valueDomain(series.points.map((point) => point.value));
+
+    // Fold the Low/High variant values (where they fall within the
+    // selected year range) into the axis domain up front, so the
+    // uncertainty ribbon — drawn further down — fits the plotted area
+    // instead of extending past the grid the medium line alone would need.
+    const variants = state.data.variants;
+    const highByYear = new Map(
+      (variants?.high?.[series.id] || [])
+        .filter((r) => r.year >= start && r.year <= end)
+        .map((r) => [r.year, r.value]),
+    );
+    const lowByYear = new Map(
+      (variants?.low?.[series.id] || [])
+        .filter((r) => r.year >= start && r.year <= end)
+        .map((r) => [r.year, r.value]),
+    );
+    const yDomain = valueDomain([
+      ...series.points.map((point) => point.value),
+      ...highByYear.values(),
+      ...lowByYear.values(),
+    ]);
     const mapY = (value) => scale(value, yDomain, [0, maxH]);
     scene3d.seriesMeta.set(series.label, {
       z,
@@ -796,6 +884,17 @@ function renderTrend3D() {
         const v = toVec(point);
         return [v.x, v.y, v.z];
       });
+
+    const ribbon = buildUncertaintyRibbon(
+      highByYear,
+      lowByYear,
+      plotted,
+      series.color,
+      mapX,
+      mapY,
+      z,
+    );
+    if (ribbon) scene3d.seriesGroup.add(ribbon);
 
     if (actualPoints.length > 1) {
       const geometry = new LineGeometry();

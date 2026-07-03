@@ -65,7 +65,7 @@ canvas {
     background:
         linear-gradient(
                 to right,
-                rgba(34, 34, 34) 0%,
+                rgb(34, 34, 34) 0%,
                 rgba(34, 34, 34, 0.4) 100%
             )
             0 / var(--progress) 100% no-repeat,
@@ -132,6 +132,11 @@ canvas {
     margin-top: 2px;
     color: #555;
 }
+.tooltip-line3 {
+    margin-top: 2px;
+    color: #888;
+    font-size: 0.85em;
+}
 hr {
     border: none;
     height: 1px; /* Control thickness here */
@@ -169,7 +174,7 @@ hr {
 .metric {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: flex-start;
     gap: 16px;
     border-top: var(--border);
     padding: 6px 0;
@@ -185,6 +190,16 @@ hr {
     /*font-size: 0.84rem;*/
     font-weight: 500;
     white-space: nowrap;
+    text-align: right;
+    min-width: 0;
+}
+.metric-range {
+    display: block;
+    color: #888;
+    font-weight: 400;
+    font-size: 0.78rem;
+    white-space: normal;
+    margin-top: 1px;
 }
 .material-symbols-outlined {
     font-variation-settings:
@@ -268,16 +283,17 @@ hr {
 #legend {
     margin-top: 12px;
     display: grid;
-    gap: 8px;
+    /*gap: 8px;*/
 }
 .legend-item {
     display: flex;
     align-items: center;
     gap: 8px;
     color: #444;
+    padding: 4px 0;
 }
 .legend-item:hover {
-    background-color: var(--border-color);
+    background-color: color-mix(in hsl, var(--color-legend) 40%, white);
 }
 
 .legend-swatch {
@@ -285,4 +301,8 @@ hr {
     height: 8px;
     border-radius: 50%;
     flex: none;
+    margin-left: 0px;
+    background-color: var(--color-legend);
+    display: inline-block;
+    margin-right: 6px;
 }
