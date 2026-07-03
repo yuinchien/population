@@ -6,9 +6,9 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
-const DOT_SIZE = 6;
-const MAP_DOT_SIZE = 4;
-const DOT_OPACITY = 0.72;
+const DOT_SIZE = 3.2;
+const MAP_DOT_SIZE = 1.5;
+const DOT_OPACITY = 0.8;
 const PULSE_AMPLITUDE = 5;
 const PULSE_FREQ_MIN = 0.5;
 const PULSE_FREQ_RANGE = 2.0;
@@ -197,6 +197,13 @@ const DOT_FRAGMENT_SHADER = `
   void main() {
     vec4 texColor = texture2D(map, gl_PointCoord);
     gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * texColor.a);
+    // Three's THREE.Color stores values in linear space (color management
+    // is on by default since r152) and built-in materials convert back to
+    // the renderer's output color space via this exact chunk before
+    // writing gl_FragColor. A bare custom ShaderMaterial skips that unless
+    // asked, which is why colors came out darker/desaturated after moving
+    // off PointsMaterial — this restores the same conversion.
+    #include <colorspace_fragment>
   }
 `;
 
@@ -808,7 +815,10 @@ function animate(timestamp) {
   updateTransition();
   controls.update(timer.getDelta());
   updateDotUniforms(timer.getElapsed());
-  if (lastPointerEvent && timestamp - lastTooltipUpdate >= TOOLTIP_UPDATE_INTERVAL_MS) {
+  if (
+    lastPointerEvent &&
+    timestamp - lastTooltipUpdate >= TOOLTIP_UPDATE_INTERVAL_MS
+  ) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
   }
@@ -820,7 +830,8 @@ window.addEventListener("resize", () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (pointsMesh) {
-    pointsMesh.material.uniforms.uScale.value = renderer.domElement.height * 0.5;
+    pointsMesh.material.uniforms.uScale.value =
+      renderer.domElement.height * 0.5;
   }
 });
 
