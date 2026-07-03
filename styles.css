@@ -333,10 +333,9 @@ hr {
 
 .detail-row {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 160px 150px 130px 110px;
+    grid-template-columns: minmax(220px, 1fr) 160px 150px 150px 130px;
     align-items: stretch;
     min-height: 34px;
-    position: relative;
 }
 
 .detail-row.header {
@@ -345,14 +344,29 @@ hr {
     text-transform: uppercase;
 }
 
+.detail-cell.sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.detail-cell.sortable:hover {
+    color: var(--color-text);
+}
+
+.detail-cell.sortable.active {
+    color: var(--color-text);
+    font-weight: 500;
+}
+
 .detail-cell {
     display: flex;
     align-items: center;
     min-width: 0;
     padding: 8px 12px;
+    position: relative;
     /*background: rgba(255, 255, 255, 0.45);*/
 }
-.detail-row:before {
+.detail-cell:first-child:before {
     content: "";
     position: absolute;
     left: 0;

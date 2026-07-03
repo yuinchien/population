@@ -163,6 +163,11 @@ function formatPopulation(value) {
   return Math.round(value).toLocaleString();
 }
 
+function formatPercent(value) {
+  if (value == null) return "N/A";
+  return `${Number(value).toFixed(2)}%`;
+}
+
 function createDotTexture() {
   const canvas = document.createElement("canvas");
   canvas.width = 64;
@@ -364,6 +369,7 @@ let countryGni = {};
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
+let detailSort = { key: "population", direction: "desc" };
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -731,6 +737,59 @@ function renderLegend() {
   );
 }
 
+function metricFor(country, key) {
+  return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
+    currentYearIndex
+  ];
+}
+
+// Single source of truth for the detail-panel table: each column knows how
+// to read its own sort value (used both for sorting and for the population
+// ratio bar) and how to format it for display. Header cells are generated
+// from this list too, so clicking one always lines up with the right column.
+const DETAIL_COLUMNS = [
+  {
+    key: "name",
+    label: "Country",
+    className: "country",
+    defaultDirection: "asc",
+    value: (country) => country.name,
+    format: (value) => value,
+  },
+  {
+    key: "population",
+    label: "Population",
+    className: "number",
+    defaultDirection: "desc",
+    value: (country) => country.populations[currentYearIndex],
+    format: formatPopulation,
+  },
+  {
+    key: "populationGrowth",
+    label: "Growth rate",
+    className: "number",
+    defaultDirection: "desc",
+    value: (country) => metricFor(country, "populationGrowth"),
+    format: formatPercent,
+  },
+  {
+    key: "lifeExpectancy",
+    label: "Life expectancy",
+    className: "number",
+    defaultDirection: "desc",
+    value: (country) => metricFor(country, "lifeExpectancy"),
+    format: formatYears,
+  },
+  {
+    key: "medianAge",
+    label: "Median age",
+    className: "number",
+    defaultDirection: "desc",
+    value: (country) => metricFor(country, "medianAge"),
+    format: formatYears,
+  },
+];
+
 function selectedCountries() {
   if (!selectedLegend) return [];
   const countries = countriesData.filter((country) =>
@@ -739,18 +798,23 @@ function selectedCountries() {
       : country.region.trim() === selectedLegend.label,
   );
 
+  const column =
+    DETAIL_COLUMNS.find((c) => c.key === detailSort.key) ?? DETAIL_COLUMNS[1];
+  const sign = detailSort.direction === "asc" ? 1 : -1;
+
   return countries.sort((a, b) => {
-    const aValue = a.populations[currentYearIndex] ?? -Infinity;
-    const bValue = b.populations[currentYearIndex] ?? -Infinity;
-    if (bValue !== aValue) return bValue - aValue;
+    const aValue = column.value(a);
+    const bValue = column.value(b);
+    if (aValue == null && bValue == null) return a.name.localeCompare(b.name);
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+    if (aValue !== bValue) {
+      return typeof aValue === "string"
+        ? aValue.localeCompare(bValue) * sign
+        : (aValue - bValue) * sign;
+    }
     return a.name.localeCompare(b.name);
   });
-}
-
-function metricFor(country, key) {
-  return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
-    currentYearIndex
-  ];
 }
 
 function createDetailCell(text, className = "") {
@@ -761,6 +825,16 @@ function createDetailCell(text, className = "") {
   inner.textContent = text;
   cell.append(inner);
   return cell;
+}
+
+function setDetailSort(key) {
+  const column = DETAIL_COLUMNS.find((c) => c.key === key);
+  if (!column) return;
+  detailSort =
+    detailSort.key === key
+      ? { key, direction: detailSort.direction === "asc" ? "desc" : "asc" }
+      : { key, direction: column.defaultDirection };
+  renderDetailPanel();
 }
 
 function renderDetailPanel() {
@@ -780,39 +854,44 @@ function renderDetailPanel() {
   const header = document.createElement("div");
   header.className = "detail-row header";
   header.append(
-    createDetailCell("Country", "country"),
-    createDetailCell("Population", "number"),
-    createDetailCell("Life expectancy", "number"),
-    createDetailCell("Median age", "number"),
-    createDetailCell("Peak year", "number"),
+    ...DETAIL_COLUMNS.map((column) => {
+      const arrow =
+        detailSort.key === column.key
+          ? detailSort.direction === "asc"
+            ? " ↑"
+            : " ↓"
+          : "";
+      const cell = createDetailCell(
+        `${column.label}${arrow}`,
+        `${column.className} sortable`,
+      );
+      cell.classList.toggle("active", detailSort.key === column.key);
+      cell.addEventListener("click", () => setDetailSort(column.key));
+      return cell;
+    }),
   );
 
   // Ratio bars are always population-based, so they stay accurate (and
   // re-normalize live) as the year slider changes each country's population.
-  const primaryValue = (country) => country.populations[currentYearIndex];
+  const populationColumn = DETAIL_COLUMNS[1];
   const highestValue = Math.max(
-    ...countries.map(primaryValue).filter(Number.isFinite),
+    ...countries.map(populationColumn.value).filter(Number.isFinite),
   );
 
   const rows = countries.map((country) => {
     const row = document.createElement("div");
 
-    const ratio = primaryValue(country) / highestValue;
+    const ratio = populationColumn.value(country) / highestValue;
     row.style.setProperty("--ratio", Number.isFinite(ratio) ? ratio : 0);
 
     row.className = "detail-row";
     row.append(
-      createDetailCell(country.name, "country"),
-      createDetailCell(
-        formatPopulation(country.populations[currentYearIndex]),
-        "number",
+      ...DETAIL_COLUMNS.map((column) =>
+        createDetailCell(
+          column.format(column.value(country)),
+          column.className,
+        ),
       ),
-      createDetailCell(
-        formatYears(metricFor(country, "lifeExpectancy")),
-        "number",
-      ),
-      createDetailCell(formatYears(metricFor(country, "medianAge")), "number"),
-      createDetailCell(country.peakYear ?? "N/A", "number"),
     );
     return row;
   });
