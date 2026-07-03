@@ -36,9 +36,10 @@ const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
 // peaks in the currently selected year.
-const CALLOUT_COLOR = 0xe0447a;
-const CALLOUT_GLOBE_EXTEND = GLOBE_RADIUS * 1.35;
+const CALLOUT_GLOBE_EXTEND = GLOBE_RADIUS * 1.12;
 const CALLOUT_MAP_EXTEND = 60;
+// Keep callout labels clear of the fixed sidebar (#overlay is 240px wide).
+const CALLOUT_LEFT_CLEARANCE = 260;
 
 const REGION_COLORS = {
   "East Asia & Pacific": "#a5aaa8",
@@ -95,6 +96,10 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
+
+const calloutGroup = new THREE.Group();
+scene.add(calloutGroup);
+let peakCallouts = []; // { country, anchor, outward, line, labelEl }
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -494,6 +499,121 @@ function positionsFor(country) {
   return viewMode === "map" ? country._xyzMap : country._xyzGlobe;
 }
 
+// The year a country's modeled population is highest — i.e. where it
+// crests and starts declining. Boundary years (1950, 2100) are excluded:
+// a max at either edge of the series usually just means "still rising/
+// falling when the data runs out," not a genuine peak.
+function computePeakYear(populations, years) {
+  let maxIndex = -1;
+  let maxValue = -Infinity;
+  for (let i = 0; i < populations.length; i++) {
+    const v = populations[i];
+    if (v != null && v > maxValue) {
+      maxValue = v;
+      maxIndex = i;
+    }
+  }
+  if (maxIndex <= 0 || maxIndex >= populations.length - 1) return null;
+  return years[maxIndex];
+}
+
+// Centroid of a country's precomputed dot cloud in the current view basis,
+// re-projected onto the globe's surface (averaging points on a sphere
+// lands inside it, not on it) or left on the flat map plane as-is.
+function computeCountryAnchor(country) {
+  const src = viewMode === "map" ? country._xyzMap : country._xyzGlobe;
+  const n = src.length / 3;
+  let x = 0;
+  let y = 0;
+  let z = 0;
+  for (let i = 0; i < n; i++) {
+    x += src[i * 3];
+    y += src[i * 3 + 1];
+    z += src[i * 3 + 2];
+  }
+  const v = new THREE.Vector3(x / n, y / n, z / n);
+  if (viewMode !== "map") v.normalize().multiplyScalar(GLOBE_RADIUS);
+  return v;
+}
+
+function computeOutwardPoint(anchor) {
+  if (viewMode === "map") {
+    return anchor.clone().add(new THREE.Vector3(0, 0, CALLOUT_MAP_EXTEND));
+  }
+  return anchor.clone().normalize().multiplyScalar(CALLOUT_GLOBE_EXTEND);
+}
+
+function clearPeakCallouts() {
+  peakCallouts.forEach(({ line, labelEl }) => {
+    calloutGroup.remove(line);
+    line.geometry.dispose();
+    line.material.dispose();
+    labelEl.remove();
+  });
+  peakCallouts = [];
+}
+
+// Rebuilds the leader-line + label for every country whose peak year
+// matches the year currently on the slider. Also called from setViewMode()
+// since the anchor/outward points depend on the globe/map basis.
+function updatePeakCallouts(year) {
+  clearPeakCallouts();
+  if (!countriesData.length) return;
+
+  countriesData
+    .filter((country) => country.peakYear === year)
+    .forEach((country) => {
+      const anchor = computeCountryAnchor(country);
+      const outward = computeOutwardPoint(anchor);
+      const dotColor = colorFor(country);
+
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        anchor,
+        outward,
+      ]);
+      const material = new THREE.LineBasicMaterial({
+        color: dotColor,
+        transparent: true,
+        opacity: 0.9,
+      });
+      const line = new THREE.Line(geometry, material);
+      calloutGroup.add(line);
+
+      const labelEl = document.createElement("div");
+      labelEl.className = "peak-callout-label";
+      labelEl.textContent = country.name;
+      labelEl.style.setProperty("--color-callout", `#${dotColor.getHexString()}`);
+      elements.calloutLayer.append(labelEl);
+
+      peakCallouts.push({ country, anchor, outward, line, labelEl });
+    });
+}
+
+// Projects each callout's outward endpoint to screen space every frame
+// (the camera orbits continuously, so this can't be computed just once).
+// On the globe, a callout for a country currently on the far side is
+// hidden — its anchor direction points away from the camera direction.
+function updateCalloutLabels() {
+  if (!peakCallouts.length) return;
+  const camDir = camera.position.clone().normalize();
+  peakCallouts.forEach(({ anchor, outward, labelEl }) => {
+    if (viewMode !== "map") {
+      const facing = anchor.clone().normalize().dot(camDir);
+      if (facing < 0.1) {
+        labelEl.hidden = true;
+        return;
+      }
+    }
+    labelEl.hidden = false;
+    const projected = outward.clone().project(camera);
+    const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+    const margin = 12;
+    labelEl.style.left = `${Math.min(Math.max(x, CALLOUT_LEFT_CLEARANCE), window.innerWidth - margin)}px`;
+    labelEl.style.top = `${Math.min(Math.max(y, margin + 20), window.innerHeight - margin)}px`;
+  });
+}
+
 function applyYear(year) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1 || !pointsMesh) return;
@@ -559,6 +679,7 @@ function applyYear(year) {
   elements.status.textContent = `${activeTotal.toLocaleString()} dots · ${formatCount(PEOPLE_PER_DOT)} ppl/dot`;
   updateMetricsPanel(year);
   renderDetailPanel();
+  updatePeakCallouts(year);
 }
 
 // Cheap recolor for switching between Region/Income group modes: reuses
@@ -736,6 +857,7 @@ function setColorMode(mode) {
       btn.classList.toggle("active", btn.dataset.mode === mode),
     );
   recolor();
+  updatePeakCallouts(yearsData[currentYearIndex]);
 }
 
 // Reads target positions straight out of each active dot's precomputed
@@ -771,6 +893,9 @@ function setViewMode(mode) {
   const scramblePositions = computeScramblePositions(activeTotal);
   const toPositions = computeTargetPositions(mode);
   viewMode = mode;
+  // Anchors are computed from the globe/map basis, so a mode toggle needs
+  // its own rebuild even though the selected year hasn't changed.
+  updatePeakCallouts(yearsData[currentYearIndex]);
 
   transition = {
     fromPositions,
@@ -930,6 +1055,9 @@ async function init() {
     countryGni = (await countryGniResponse.json()).countries || {};
     countriesData = data.countries;
     yearsData = data.years;
+    countriesData.forEach((country) => {
+      country.peakYear = computePeakYear(country.populations, yearsData);
+    });
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
     globalMetricsByYear = buildGlobalMetricsIndex(globalData);
     if (globalData.variants) {
@@ -1085,6 +1213,7 @@ function animate(timestamp) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
   }
+  updateCalloutLabels();
   renderer.render(scene, camera);
 }
 

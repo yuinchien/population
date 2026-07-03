@@ -48,6 +48,7 @@ hr {
 
 #overlay {
     position: fixed;
+    z-index: 10000;
     top: 0;
     bottom: 0;
     left: 0;
@@ -393,7 +394,7 @@ hr {
 
 .peak-callout-label {
     position: fixed;
-    padding: 4px 10px;
+    padding: 2px 4px;
     border: 1.5px solid var(--color-callout, #e0447a);
     border-radius: 3px;
     color: var(--color-text);
