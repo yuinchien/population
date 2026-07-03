@@ -69,8 +69,12 @@ hr {
     margin: 0;
     font-size: 1.2rem;
     font-weight: 500;
-    letter-spacing: 0.01em;
     text-transform: uppercase;
+}
+
+.title-year {
+    color: var(--color-muted);
+    font-weight: 400;
 }
 
 #overlay p {
@@ -165,14 +169,12 @@ hr {
     display: grid;
     margin-top: -4px;
     border-bottom: var(--border);
-    pointer-events: none;
 }
 
 .metric {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
     padding: 8px 0;
     border-top: var(--border);
 }
@@ -196,7 +198,6 @@ hr {
     display: block;
     margin-top: 1px;
     color: var(--color-subtle);
-    font-size: 0.78rem;
     font-weight: 400;
     white-space: normal;
 }

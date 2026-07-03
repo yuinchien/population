@@ -61,6 +61,7 @@ const UNCLASSIFIED_INCOME = "Not classified";
 const UNCLASSIFIED_COLOR = "#999999";
 
 const elements = {
+  titleYear: document.querySelector("#titleYear"),
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
   yearControl: document.querySelector("#yearControl"),
@@ -346,8 +347,14 @@ function updateMetricsPanel(year) {
     elements.metricLifeExpectancy,
     "lifeExpectancy",
     (v) => `${v.toFixed(1)} yrs`,
+    (v) => v.toFixed(1),
   );
-  apply(elements.metricMedianAge, "medianAge", (v) => `${v.toFixed(1)} yrs`);
+  apply(
+    elements.metricMedianAge,
+    "medianAge",
+    (v) => `${v.toFixed(1)} yrs`,
+    (v) => v.toFixed(1),
+  );
   apply(
     elements.metricPopulationGrowth,
     "populationGrowth",
@@ -606,14 +613,26 @@ function updatePeakCallouts(year) {
 function updateCalloutLabels() {
   if (!peakCallouts.length) return;
   const camDir = camera.position.clone().normalize();
-  peakCallouts.forEach(({ anchor, outward, labelEl }) => {
+  // A callout's line/label are anchored to the resting globe/map position,
+  // which doesn't exist mid-transition (dots are off in the scrambled
+  // cloud) — so both are hidden together rather than left pointing at a
+  // now-stale spot, which reads as broken/frozen rather than "in motion".
+  const inTransition = !!transition;
+  peakCallouts.forEach(({ anchor, outward, line, labelEl }) => {
+    if (inTransition) {
+      line.visible = false;
+      labelEl.hidden = true;
+      return;
+    }
     if (viewMode !== "map") {
       const facing = anchor.clone().normalize().dot(camDir);
       if (facing < 0.1) {
+        line.visible = false;
         labelEl.hidden = true;
         return;
       }
     }
+    line.visible = true;
     labelEl.hidden = false;
     const projected = outward.clone().project(camera);
     const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
@@ -622,6 +641,59 @@ function updateCalloutLabels() {
     labelEl.style.left = `${Math.min(Math.max(x, CALLOUT_LEFT_CLEARANCE), window.innerWidth - margin)}px`;
     labelEl.style.top = `${Math.min(Math.max(y, margin + 20), window.innerHeight - margin)}px`;
   });
+}
+
+const PEAK_LIST_FORMATTER = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+});
+
+// Picks a phrasing for the peak-year status line based on how many countries
+// peak in the given year — a flat "N countries peaked in Y: A, B, C..." reads
+// as a data dump once N gets past a handful, so 4+ countries get a short
+// preview list ("A, B, and 5 others") instead of the full roster, and each
+// bucket has a few interchangeable templates so revisiting a year doesn't
+// always show identical copy.
+function buildPeakStatus(year, peakCountries) {
+  const pick = (variants) =>
+    variants[Math.floor(Math.random() * variants.length)];
+  const count = peakCountries.length;
+  const names = peakCountries.map((c) => c.name);
+
+  if (count === 0) {
+    return pick([
+      `No country's population peaks in ${year}.`,
+      `${year} passes quietly — no country's population hits its peak.`,
+      `Not a single population peak this year. Try another spot on the timeline.`,
+    ]);
+  }
+
+  if (count === 1) {
+    const [name] = names;
+    return pick([
+      `${name}'s population peaks in ${year}.`,
+      `${year} is ${name}'s population high-water mark.`,
+      `One country's population tops out in ${year}: ${name}.`,
+    ]);
+  }
+
+  if (count <= 3) {
+    const list = PEAK_LIST_FORMATTER.format(names);
+    return pick([
+      `${list} all see their population peak in ${year}.`,
+      `${year} marks the population high point for ${list}.`,
+      `${count} countries hit peak population in ${year}: ${list}.`,
+    ]);
+  }
+
+  const previewCount = 2;
+  const preview = PEAK_LIST_FORMATTER.format(names.slice(0, previewCount));
+  const remaining = count - previewCount;
+  return pick([
+    `${count} countries hit peak population in ${year}, including ${preview} and ${remaining} others.`,
+    `${year} is a big one — ${count} countries' populations top out, among them ${preview}.`,
+    `A wave of population peaks in ${year}: ${preview} and ${remaining} more.`,
+  ]);
 }
 
 // Types the status line out character-by-character with a blinking cursor,
@@ -704,15 +776,11 @@ function applyYear(year) {
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
+  elements.titleYear.textContent = year;
   const peakCountries = countriesData.filter(
     (country) => country.peakYear === year,
   );
-  const peakNames = peakCountries.length
-    ? `: ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(peakCountries.map((c) => c.name))}`
-    : "";
-  typeStatus(
-    `${peakCountries.length} ${peakCountries.length === 1 ? "country" : "countries"} saw population peak in ${year}${peakNames}`,
-  );
+  typeStatus(buildPeakStatus(year, peakCountries));
   updateMetricsPanel(year);
   renderDetailPanel();
   updatePeakCallouts(year);
@@ -1201,10 +1269,9 @@ async function init() {
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
-    const defaultYear = Math.min(
-      Math.max(new Date().getFullYear(), minYear),
-      maxYear,
-    );
+    // Randomized per page load (rather than pinned to the current year) so
+    // the app doesn't show the same static snapshot every visit.
+    const defaultYear = yearsData[Math.floor(Math.random() * yearsData.length)];
     elements.yearSlider.min = minYear;
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
