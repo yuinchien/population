@@ -375,6 +375,7 @@ let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
 let detailSort = { key: "population", direction: "desc" };
+let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -623,6 +624,31 @@ function updateCalloutLabels() {
   });
 }
 
+// Types the status line out character-by-character with a blinking cursor,
+// so the peak-year callout actually catches the eye instead of silently
+// swapping out as the year slider drags. Each call invalidates any typing
+// still in flight (via the token) so rapid slider drags don't leave stale
+// timers racing to finish an earlier, superseded string.
+function typeStatus(text) {
+  const token = ++statusTypingToken;
+  const el = elements.status;
+  const textNode = document.createTextNode("");
+  const cursor = document.createElement("span");
+  cursor.className = "status-cursor";
+  el.replaceChildren(textNode, cursor);
+
+  let i = 0;
+  const step = () => {
+    if (token !== statusTypingToken) return;
+    textNode.textContent = text.slice(0, i);
+    if (i < text.length) {
+      i++;
+      setTimeout(step, 15);
+    }
+  };
+  step();
+}
+
 function applyYear(year) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1 || !pointsMesh) return;
@@ -684,7 +710,9 @@ function applyYear(year) {
   const peakNames = peakCountries.length
     ? `: ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(peakCountries.map((c) => c.name))}`
     : "";
-  elements.status.textContent = `${peakCountries.length} ${peakCountries.length === 1 ? "country" : "countries"} saw population peak in ${year}${peakNames}`;
+  typeStatus(
+    `${peakCountries.length} ${peakCountries.length === 1 ? "country" : "countries"} saw population peak in ${year}${peakNames}`,
+  );
   updateMetricsPanel(year);
   renderDetailPanel();
   updatePeakCallouts(year);

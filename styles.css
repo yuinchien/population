@@ -78,6 +78,27 @@ hr {
     line-height: 1.5em;
 }
 
+.status-cursor {
+    display: inline-block;
+    width: 0.6em;
+    height: 1em;
+    margin-left: 1px;
+    background: var(--color-text);
+    vertical-align: -0.15em;
+    animation: status-cursor-blink 1s steps(1) infinite;
+}
+
+@keyframes status-cursor-blink {
+    0%,
+    50% {
+        opacity: 1;
+    }
+    50.01%,
+    100% {
+        opacity: 0;
+    }
+}
+
 #yearSlider {
     --progress: 0%;
     width: 100%;
