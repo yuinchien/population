@@ -43,20 +43,20 @@ const CALLOUT_MAP_EXTEND = 80;
 const CALLOUT_LEFT_CLEARANCE = 260;
 
 const REGION_COLORS = {
-  "East Asia & Pacific": "#a5aaa8",
+  "East Asia & Pacific": "#88898a",
   "Europe & Central Asia": "#e6b5c9",
-  "Latin America & Caribbean": "#bd8ca6",
+  "Latin America & Caribbean": "#ac936e",
   "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
-  "North America": "#82d8d5",
+  "North America": "#D7BDFF",
   "South Asia": "#5ec8e5",
   "Sub-Saharan Africa": "#62c2b1",
 };
 const DEFAULT_COLOR = "#5fe39a";
 
 const INCOME_GROUP_COLORS = {
-  "High-income countries": "#00a95c",
-  "Middle-income countries": "#765ba7",
-  "Low-income countries": "#ff6c2f",
+  "High-income countries": "#62c2b1",
+  "Middle-income countries": "#ABBEF8",
+  "Low-income countries": "#E0DE70",
 };
 const UNCLASSIFIED_INCOME = "Not classified";
 const UNCLASSIFIED_COLOR = "#999999";
