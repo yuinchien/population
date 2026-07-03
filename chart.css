@@ -145,7 +145,7 @@ button[hidden] {
     width: min(320px, calc(100vw - 32px));
     overflow-y: auto;
     /*border-right: 1px solid var(--cp-line);*/
-    background: var(--cp-bg);
+    /*background: var(--cp-bg);*/
     color: var(--cp-text);
 
     position: fixed;
@@ -575,7 +575,7 @@ select[multiple] {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     overflow: hidden;
-    background: linear-gradient(180deg, #0c1310 0%, #05070a 100%);
+    /*background: linear-gradient(180deg, #0c1310 0%, #05070a 100%);*/
 }
 
 .chart-wrap[hidden] {
@@ -671,7 +671,7 @@ select[multiple] {
     letter-spacing: 0.01em;
     text-transform: uppercase;
     text-align: center;
-    text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    /*text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);*/
 }
 
 .chart-legend {

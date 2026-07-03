@@ -724,7 +724,9 @@ function buildUncertaintyRibbon(
   if (!projected.length) return null;
 
   const anchor = actual[actual.length - 1];
-  const years = anchor ? [anchor.year, ...projected.map((p) => p.year)] : projected.map((p) => p.year);
+  const years = anchor
+    ? [anchor.year, ...projected.map((p) => p.year)]
+    : projected.map((p) => p.year);
 
   const positions = [];
   years.forEach((year) => {
@@ -1267,11 +1269,11 @@ function addBaseGrid({ spanX, depth, rowZs = [], yearXs = [] }) {
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depthSize),
     new THREE.MeshStandardMaterial({
-      color: 0x0d1712,
+      color: 0xffffff,
       roughness: 0.95,
       metalness: 0,
       transparent: true,
-      opacity: 0.92,
+      opacity: 0.2,
     }),
   );
   plane.rotation.x = -Math.PI / 2;
@@ -1297,7 +1299,7 @@ function addBaseGrid({ spanX, depth, rowZs = [], yearXs = [] }) {
     new THREE.LineSegments(
       gridGeom,
       new THREE.LineBasicMaterial({
-        color: 0x2a3a30,
+        color: 0xeeeeee,
         transparent: true,
         opacity: 0.6,
       }),
@@ -1309,7 +1311,7 @@ function addBaseGrid({ spanX, depth, rowZs = [], yearXs = [] }) {
   );
   const border = new THREE.LineSegments(
     edgesGeom,
-    new THREE.LineBasicMaterial({ color: 0x4a6355 }),
+    new THREE.LineBasicMaterial({ color: 0xeeeeee }),
   );
   border.position.y = 0.03;
   scene3d.seriesGroup.add(border);

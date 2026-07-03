@@ -46,7 +46,7 @@ canvas {
     top: 0;
     bottom: 0;
     left: 0;
-    width: 260px;
+    width: 248px;
     padding: 0 12px;
 }
 
@@ -543,10 +543,9 @@ body.detail #overlay .hide-for-detail {
 .peak-callout-label {
     position: fixed;
     padding: 2px 4px;
-    /*border: 1.5px solid var(--color-callout, #e0447a);*/
     border-radius: 3px;
     color: var(--color-text);
-    background: color-mix(in srgb, var(--color-callout) 50%, white);
+    background: color-mix(in srgb, var(--color-callout) 70%, white);
     font-weight: 600;
     white-space: nowrap;
     pointer-events: none;

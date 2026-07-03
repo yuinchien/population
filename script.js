@@ -45,9 +45,9 @@ const CALLOUT_LEFT_CLEARANCE = 260;
 const REGION_COLORS = {
   "East Asia & Pacific": "#88898a",
   "Europe & Central Asia": "#e6b5c9",
-  "Latin America & Caribbean": "#ac936e",
+  "Latin America & Caribbean": "#D7BDFF",
   "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
-  "North America": "#D7BDFF",
+  "North America": "#ac936e",
   "South Asia": "#5ec8e5",
   "Sub-Saharan Africa": "#62c2b1",
 };
