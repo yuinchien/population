@@ -82,6 +82,7 @@ const elements = {
   detailPanel: document.querySelector("#detailPanel"),
   detailTitle: document.querySelector("#detailTitle"),
   detailSubtitle: document.querySelector("#detailSubtitle"),
+  detailSummary: document.querySelector("#detailSummary"),
   detailRows: document.querySelector("#detailRows"),
   detailClose: document.querySelector("#detailClose"),
 };
@@ -1001,8 +1002,8 @@ function updateStatusPanel(year) {
   if (selectedLegend && !elements.detailPanel.hidden) {
     typeStatus(
       buildDetailStatus(year, selectedCountries(), isProjected, selectedLegend),
+      elements.detailSummary,
     );
-    elements.peakFlags.replaceChildren();
     return;
   }
 
@@ -1060,10 +1061,13 @@ function renderPeakFlags(peakCountries) {
 // so the peak-year callout actually catches the eye instead of silently
 // swapping out as the year slider drags. Each call invalidates any typing
 // still in flight (via the token) so rapid slider drags don't leave stale
-// timers racing to finish an earlier, superseded string.
-function typeStatus(text) {
+// timers racing to finish an earlier, superseded string. The token is
+// shared across targets rather than per-element: only one of #status /
+// #detailSummary is ever being typed into at a time (they're mutually
+// exclusive with the detail panel's visibility), so a new call anywhere
+// should still invalidate whatever was previously in flight.
+function typeStatus(text, el = elements.status) {
   const token = ++statusTypingToken;
-  const el = elements.status;
   const textNode = document.createTextNode("");
   const cursor = document.createElement("span");
   cursor.className = "status-cursor";
@@ -1176,19 +1180,19 @@ function updateYearLabels(year) {
   elements.titleYear.textContent = year;
 }
 
-function renderLegend() {
+function legendEntriesFor(mode) {
+  if (mode !== "income") return Object.entries(REGION_COLORS);
   const hasUnclassified = countriesData.some(
     (country) => country._incomeLabel === UNCLASSIFIED_INCOME,
   );
-  const entries =
-    colorMode === "income"
-      ? [
-          ...Object.entries(INCOME_GROUP_COLORS),
-          ...(hasUnclassified
-            ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]]
-            : []),
-        ]
-      : Object.entries(REGION_COLORS);
+  return [
+    ...Object.entries(INCOME_GROUP_COLORS),
+    ...(hasUnclassified ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]] : []),
+  ];
+}
+
+function renderLegend() {
+  const entries = legendEntriesFor(colorMode);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
       const item = document.createElement("button");
@@ -1416,16 +1420,27 @@ function selectLegendItem(label, color) {
 
 function setColorMode(mode) {
   if (mode === colorMode) return;
+  const keepDetailOpen = selectedLegend && !elements.detailPanel.hidden;
   colorMode = mode;
-  selectedLegend = null;
-  elements.detailPanel.hidden = true;
-  updateViewModeAvailability();
   elements.colorMode
     .querySelectorAll("button")
     .forEach((btn) =>
       btn.classList.toggle("active", btn.dataset.mode === mode),
     );
+
+  if (keepDetailOpen) {
+    // Switching Region/Income while browsing a group's detail should let
+    // the user keep exploring, not boot them back to the globe — land on
+    // that mode's first legend entry instead of closing the panel.
+    const [label, color] = legendEntriesFor(mode)[0];
+    selectedLegend = { mode, label, color };
+  } else {
+    selectedLegend = null;
+    elements.detailPanel.hidden = true;
+    updateViewModeAvailability();
+  }
   recolor();
+  if (keepDetailOpen) renderDetailPanel();
   updatePeakCallouts(yearsData[currentYearIndex]);
 }
 
