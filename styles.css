@@ -6,6 +6,7 @@
     --color-border: rgba(0, 0, 0, 0.1);
     --border: 1px solid var(--color-border);
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
+    --overlay-width: 248px;
 }
 
 html,
@@ -21,6 +22,9 @@ body {
     background: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
 }
 
+* {
+    box-sizing: border-box;
+}
 a {
     color: var(--color-muted);
 }
@@ -46,7 +50,7 @@ canvas {
     top: 0;
     bottom: 0;
     left: 0;
-    width: 248px;
+    width: var(--overlay-width);
     padding: 0 12px;
 }
 
@@ -378,7 +382,7 @@ body.detail #overlay .hide-for-detail {
     top: 0;
     right: 0;
     bottom: 0;
-    left: 264px;
+    left: var(--overlay-width);
     z-index: 20;
     display: grid;
     grid-template-rows: auto auto auto 1fr;
