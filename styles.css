@@ -73,11 +73,11 @@ canvas {
    margin-bottom cascade — a bare ".hide-for-detail" class selector alone
    would lose to it and silently keep the 12px margin. */
 body.detail #overlay .hide-for-detail {
-    max-height: 0;
-    margin-bottom: 0;
+    /*max-height: 0;*/
+    /*margin-bottom: 0;*/
     opacity: 0;
     pointer-events: none;
-    padding: 0;
+    /*padding: 0;*/
 }
 
 .topbar {
@@ -133,7 +133,6 @@ body.detail #overlay .hide-for-detail {
 }
 
 .peak-flag-population {
-    font-weight: 500;
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
@@ -419,15 +418,11 @@ body.detail #overlay .hide-for-detail {
 #detailSummary.detail-summary {
     color: var(--color-text);
     line-height: 1.4em;
-    font-size: 2rem;
+    font-size: 1.6rem;
     max-width: 960px;
     font-family: var(--font-sans);
     letter-spacing: 0em;
-    margin-top: 4px;
-    display: flex;
-    align-items: flex-end;
-    min-height: 120px;
-    padding: 12px 0;
+    margin: 50px 0 16px 0;
 }
 
 .detail-close {
@@ -489,7 +484,9 @@ body.detail #overlay .hide-for-detail {
     padding: 0;
     position: relative;
 }
-
+.detail-cell.country .detail-name {
+    font-weight: 500;
+}
 .detail-cell.country:not(.sortable) .detail-name {
     padding-left: 12px;
 }
