@@ -46,7 +46,7 @@ canvas {
     top: 0;
     bottom: 0;
     left: 0;
-    width: 240px;
+    width: 260px;
     padding: 0 12px;
 }
 
@@ -121,6 +121,19 @@ body.detail #overlay .hide-for-detail {
     display: flex;
     align-items: center;
     gap: 8px;
+    /* Each row is a freshly-created element on every render (replaceChildren
+       swaps the whole set), so this always plays from scratch — no class
+       toggling needed to "restart" it. */
+    animation: peak-flag-fade-in 0.3s ease;
+}
+
+@keyframes peak-flag-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 .peak-flag {

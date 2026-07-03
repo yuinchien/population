@@ -1013,6 +1013,13 @@ function updateStatusPanel(year) {
     (country) => country.peakYear === year,
   );
   const milestone = globalTrendMilestones.get(year);
+  // Cleared immediately (rather than left showing the previous year's
+  // flags) so nothing mismatched lingers while the new line types out, and
+  // rendered only once typing finishes rather than alongside it — doing
+  // both at once meant the flags row popped in at its full height while
+  // #status was still just one short line, then kept getting shoved
+  // further down as more lines wrapped in underneath it.
+  elements.peakFlags.replaceChildren();
   typeStatus(
     milestone
       ? `${milestone.text}${
@@ -1021,8 +1028,9 @@ function updateStatusPanel(year) {
             : ""
         }`
       : buildPeakStatus(year, peakCountries, isProjected),
+    elements.status,
+    { onComplete: () => renderPeakFlags(peakCountries) },
   );
-  renderPeakFlags(peakCountries);
 }
 
 // Shows every peak country's flag and peak-year population, not just the
@@ -1068,10 +1076,15 @@ function renderPeakFlags(peakCountries) {
 // #detailSummary is ever being typed into at a time (they're mutually
 // exclusive with the detail panel's visibility), so a new call anywhere
 // should still invalidate whatever was previously in flight.
-function typeStatus(text, el = elements.status, { instant = false } = {}) {
+function typeStatus(
+  text,
+  el = elements.status,
+  { instant = false, onComplete } = {},
+) {
   const token = ++statusTypingToken;
   if (instant) {
     el.replaceChildren(document.createTextNode(text));
+    onComplete?.();
     return;
   }
 
@@ -1087,6 +1100,8 @@ function typeStatus(text, el = elements.status, { instant = false } = {}) {
     if (i < text.length) {
       i++;
       setTimeout(step, 15);
+    } else {
+      onComplete?.();
     }
   };
   step();
