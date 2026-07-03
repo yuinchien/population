@@ -4,6 +4,8 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
+const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
+const COUNTRY_GNI_URL = "./data/country-gni.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
@@ -73,6 +75,11 @@ const elements = {
   legend: document.querySelector("#legend"),
   viewMode: document.querySelector("#viewMode"),
   calloutLayer: document.querySelector("#calloutLayer"),
+  detailPanel: document.querySelector("#detailPanel"),
+  detailTitle: document.querySelector("#detailTitle"),
+  detailSubtitle: document.querySelector("#detailSubtitle"),
+  detailRows: document.querySelector("#detailRows"),
+  detailClose: document.querySelector("#detailClose"),
 };
 
 const scene = new THREE.Scene();
@@ -132,6 +139,28 @@ function incomeGroupLabel(iso3, incomeGroups) {
 
 function incomeColor(label) {
   return new THREE.Color(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR);
+}
+
+function displayGroupLabel(label) {
+  if (label.includes("Afghanistan & Pakistan")) {
+    return "Middle East & North Africa";
+  }
+  return label.replace(" countries", "");
+}
+
+function formatMoney(value) {
+  if (value == null) return "N/A";
+  return `$${Math.round(value).toLocaleString()}`;
+}
+
+function formatYears(value) {
+  if (value == null) return "N/A";
+  return `${Number(value).toFixed(1)} yrs`;
+}
+
+function formatPopulation(value) {
+  if (value == null) return "N/A";
+  return Math.round(value).toLocaleString();
 }
 
 function createDotTexture() {
@@ -330,8 +359,11 @@ let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
 let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
+let countryDemographicMetrics = null;
+let countryGni = {};
 let colorMode = "region";
 let viewMode = "globe";
+let selectedLegend = null;
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -526,6 +558,7 @@ function applyYear(year) {
   const worldPop = globalMetricsByYear.get(year)?.population ?? totalPop;
   elements.status.textContent = `${activeTotal.toLocaleString()} dots · ${formatCount(PEOPLE_PER_DOT)} ppl/dot`;
   updateMetricsPanel(year);
+  renderDetailPanel();
 }
 
 // Cheap recolor for switching between Region/Income group modes: reuses
@@ -563,26 +596,140 @@ function renderLegend() {
       : Object.entries(REGION_COLORS);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
-      const item = document.createElement("div");
+      const item = document.createElement("button");
+      item.type = "button";
       item.className = "legend-item";
+      item.dataset.label = label;
+      item.classList.toggle(
+        "active",
+        selectedLegend?.mode === colorMode && selectedLegend?.label === label,
+      );
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
       item.style.setProperty("--color-legend", color);
       const text = document.createElement("span");
-      if (label.includes("Afghanistan & Pakistan")) {
-        text.textContent = "Middle East & North Africa";
-      } else {
-        text.textContent = label.replace(" countries", "");
-      }
+      text.textContent = displayGroupLabel(label);
       item.append(swatch, text);
+      item.addEventListener("click", () => selectLegendItem(label, color));
       return item;
     }),
   );
 }
 
+function selectedCountries() {
+  if (!selectedLegend) return [];
+  const countries = countriesData.filter((country) =>
+    selectedLegend.mode === "income"
+      ? country._incomeLabel === selectedLegend.label
+      : country.region === selectedLegend.label,
+  );
+
+  if (selectedLegend.mode === "income") {
+    return countries.sort((a, b) => {
+      const aValue = countryGni[a.iso3]?.value ?? -Infinity;
+      const bValue = countryGni[b.iso3]?.value ?? -Infinity;
+      if (bValue !== aValue) return bValue - aValue;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return countries.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function metricFor(country, key) {
+  return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
+    currentYearIndex
+  ];
+}
+
+function createDetailCell(text, className = "") {
+  const cell = document.createElement("div");
+  cell.className = `detail-cell ${className}`.trim();
+  const inner = document.createElement("span");
+  inner.className = "detail-name";
+  inner.textContent = text;
+  cell.append(inner);
+  return cell;
+}
+
+function renderDetailPanel() {
+  if (!selectedLegend || currentYearIndex < 0) return;
+
+  const countries = selectedCountries();
+  const year = yearsData[currentYearIndex];
+  const isIncome = selectedLegend.mode === "income";
+  elements.detailPanel.style.setProperty(
+    "--detail-color",
+    selectedLegend.color,
+  );
+  elements.detailTitle.textContent = isIncome
+    ? "Gross National Income per capita"
+    : displayGroupLabel(selectedLegend.label);
+  elements.detailSubtitle.textContent = `${displayGroupLabel(
+    selectedLegend.label,
+  )} · ${countries.length} countries · ${year}`;
+
+  const header = document.createElement("div");
+  header.className = "detail-row header";
+  header.append(
+    createDetailCell("Country", "country"),
+    createDetailCell(isIncome ? "GNI / capita" : "Population", "number"),
+    createDetailCell("Life expectancy", "number"),
+    createDetailCell("Median age", "number"),
+  );
+
+  const highestGni = countryGni[countries[0].iso3]?.value;
+  console.log("highestGni", highestGni);
+
+  const rows = countries.map((country, index) => {
+    const row = document.createElement("div");
+
+    const ratio = countryGni[country.iso3]?.value / highestGni;
+    row.style.setProperty("--ratio", ratio);
+
+    row.className = "detail-row";
+    row.append(
+      createDetailCell(country.name, "country"),
+      createDetailCell(
+        isIncome
+          ? formatMoney(countryGni[country.iso3]?.value)
+          : formatPopulation(country.populations[currentYearIndex]),
+        "number",
+      ),
+      createDetailCell(
+        formatYears(metricFor(country, "lifeExpectancy")),
+        "number",
+      ),
+      createDetailCell(formatYears(metricFor(country, "medianAge")), "number"),
+    );
+    return row;
+  });
+
+  elements.detailRows.replaceChildren(header, ...rows);
+  elements.detailPanel.hidden = false;
+}
+
+function closeDetailPanel() {
+  selectedLegend = null;
+  elements.detailPanel.hidden = true;
+  renderLegend();
+}
+
+function selectLegendItem(label, color) {
+  if (selectedLegend?.mode === colorMode && selectedLegend?.label === label) {
+    closeDetailPanel();
+    return;
+  }
+  selectedLegend = { mode: colorMode, label, color };
+  renderLegend();
+  renderDetailPanel();
+}
+
 function setColorMode(mode) {
   if (mode === colorMode) return;
   colorMode = mode;
+  selectedLegend = null;
+  elements.detailPanel.hidden = true;
   elements.colorMode
     .querySelectorAll("button")
     .forEach((btn) =>
@@ -755,17 +902,32 @@ function updateTransition() {
 
 async function init() {
   try {
-    const [dotsResponse, globalResponse, incomeResponse] = await Promise.all([
+    const [
+      dotsResponse,
+      globalResponse,
+      incomeResponse,
+      countryDemographicsResponse,
+      countryGniResponse,
+    ] = await Promise.all([
       fetch(DATA_URL),
       fetch(GLOBAL_METRICS_URL),
       fetch(INCOME_GROUPS_URL),
+      fetch(COUNTRY_DEMOGRAPHICS_URL),
+      fetch(COUNTRY_GNI_URL),
     ]);
     if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
     if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
     if (!incomeResponse.ok) throw new Error(`HTTP ${incomeResponse.status}`);
+    if (!countryDemographicsResponse.ok) {
+      throw new Error(`HTTP ${countryDemographicsResponse.status}`);
+    }
+    if (!countryGniResponse.ok)
+      throw new Error(`HTTP ${countryGniResponse.status}`);
     const data = await dotsResponse.json();
     const globalData = await globalResponse.json();
     const incomeGroups = await incomeResponse.json();
+    countryDemographicMetrics = await countryDemographicsResponse.json();
+    countryGni = (await countryGniResponse.json()).countries || {};
     countriesData = data.countries;
     yearsData = data.years;
     historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
@@ -803,6 +965,7 @@ async function init() {
       btn.addEventListener("click", () => setViewMode(btn.dataset.mode));
     });
 
+    elements.detailClose.addEventListener("click", closeDetailPanel);
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();

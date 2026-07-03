@@ -1,0 +1,1011 @@
+{
+  "source": "https://api.worldbank.org/v2/country/all/indicator/NY.GNP.PCAP.CD?format=json&per_page=20000",
+  "generatedAt": "2026-07-03T04:28:14.167Z",
+  "indicator": {
+    "id": "NY.GNP.PCAP.CD",
+    "name": "GNI per capita, Atlas method (current US$)"
+  },
+  "lastUpdated": "2026-07-01",
+  "countries": {
+    "AFE": {
+      "value": 1642.69660513103,
+      "year": 2025
+    },
+    "AFW": {
+      "value": 1562.78533111396,
+      "year": 2025
+    },
+    "ARB": {
+      "value": 7800.34683109293,
+      "year": 2025
+    },
+    "CSS": {
+      "value": 19402.625422482,
+      "year": 2025
+    },
+    "CEB": {
+      "value": 25138.8171191048,
+      "year": 2025
+    },
+    "EAR": {
+      "value": 4547.43092706209,
+      "year": 2025
+    },
+    "EAS": {
+      "value": 14419.8860754843,
+      "year": 2025
+    },
+    "EAP": {
+      "value": 11093.2319621161,
+      "year": 2025
+    },
+    "TEA": {
+      "value": 11218.4732221589,
+      "year": 2025
+    },
+    "EMU": {
+      "value": 48230.1292607617,
+      "year": 2025
+    },
+    "ECS": {
+      "value": 32821.7594894453,
+      "year": 2025
+    },
+    "ECA": {
+      "value": 10036.2846378541,
+      "year": 2025
+    },
+    "TEC": {
+      "value": 13831.9053254866,
+      "year": 2025
+    },
+    "EUU": {
+      "value": 45063.6336279559,
+      "year": 2025
+    },
+    "HPC": {
+      "value": 1235.92917289166,
+      "year": 2025
+    },
+    "IBD": {
+      "value": 8558.5122095924,
+      "year": 2025
+    },
+    "IBT": {
+      "value": 6572.4417660501,
+      "year": 2025
+    },
+    "IDB": {
+      "value": 1789.02685025796,
+      "year": 2025
+    },
+    "IDX": {
+      "value": 1449.71442356455,
+      "year": 2025
+    },
+    "IDA": {
+      "value": 1567.51417857575,
+      "year": 2025
+    },
+    "LTE": {
+      "value": 13527.3133503063,
+      "year": 2025
+    },
+    "LCN": {
+      "value": 10633.9281708203,
+      "year": 2025
+    },
+    "LAC": {
+      "value": 10054.1191943276,
+      "year": 2025
+    },
+    "TLA": {
+      "value": 10483.7997976021,
+      "year": 2025
+    },
+    "LDC": {
+      "value": 1348.2212760289,
+      "year": 2025
+    },
+    "LMY": {
+      "value": 6129.26606377662,
+      "year": 2025
+    },
+    "MEA": {
+      "value": 6364.88796482909,
+      "year": 2025
+    },
+    "MNA": {
+      "value": 2891.43825495332,
+      "year": 2025
+    },
+    "TMN": {
+      "value": 2888.8432979091,
+      "year": 2025
+    },
+    "MIC": {
+      "value": 6806.7519473689,
+      "year": 2025
+    },
+    "NAC": {
+      "value": 85298.297883893,
+      "year": 2025
+    },
+    "OED": {
+      "value": 50696.9276545446,
+      "year": 2025
+    },
+    "OSS": {
+      "value": 16357.2875646698,
+      "year": 2025
+    },
+    "PSS": {
+      "value": 4738.19154420309,
+      "year": 2025
+    },
+    "PST": {
+      "value": 58705.4654369186,
+      "year": 2025
+    },
+    "PRE": {
+      "value": 1431.47228065603,
+      "year": 2025
+    },
+    "SST": {
+      "value": 15501.2598058092,
+      "year": 2025
+    },
+    "SAS": {
+      "value": 2773.79115608425,
+      "year": 2025
+    },
+    "TSA": {
+      "value": 2773.79115608425,
+      "year": 2025
+    },
+    "SSF": {
+      "value": 1610.48127981574,
+      "year": 2025
+    },
+    "SSA": {
+      "value": 1608.84775752566,
+      "year": 2025
+    },
+    "TSS": {
+      "value": 1610.48127981574,
+      "year": 2025
+    },
+    "WLD": {
+      "value": 14243.5411336657,
+      "year": 2025
+    },
+    "AFG": {
+      "value": 390,
+      "year": 2024
+    },
+    "ALB": {
+      "value": 12060,
+      "year": 2025
+    },
+    "DZA": {
+      "value": 5850,
+      "year": 2025
+    },
+    "AND": {
+      "value": 53230,
+      "year": 2025
+    },
+    "AGO": {
+      "value": 2860,
+      "year": 2025
+    },
+    "ATG": {
+      "value": 23790,
+      "year": 2025
+    },
+    "ARG": {
+      "value": 14650,
+      "year": 2025
+    },
+    "ARM": {
+      "value": 9020,
+      "year": 2025
+    },
+    "ABW": {
+      "value": 35200,
+      "year": 2024
+    },
+    "AUS": {
+      "value": 64120,
+      "year": 2025
+    },
+    "AUT": {
+      "value": 60360,
+      "year": 2025
+    },
+    "AZE": {
+      "value": 7360,
+      "year": 2025
+    },
+    "BHS": {
+      "value": 37020,
+      "year": 2024
+    },
+    "BHR": {
+      "value": 28790,
+      "year": 2025
+    },
+    "BGD": {
+      "value": 2840,
+      "year": 2025
+    },
+    "BRB": {
+      "value": 27080,
+      "year": 2025
+    },
+    "BLR": {
+      "value": 9160,
+      "year": 2025
+    },
+    "BEL": {
+      "value": 59500,
+      "year": 2025
+    },
+    "BLZ": {
+      "value": 7530,
+      "year": 2025
+    },
+    "BEN": {
+      "value": 1600,
+      "year": 2025
+    },
+    "BMU": {
+      "value": 139370,
+      "year": 2024
+    },
+    "BTN": {
+      "value": 4310,
+      "year": 2025
+    },
+    "BOL": {
+      "value": 4420,
+      "year": 2025
+    },
+    "BIH": {
+      "value": 9940,
+      "year": 2025
+    },
+    "BWA": {
+      "value": 7390,
+      "year": 2025
+    },
+    "BRA": {
+      "value": 10550,
+      "year": 2025
+    },
+    "BRN": {
+      "value": 34790,
+      "year": 2025
+    },
+    "BGR": {
+      "value": 17780,
+      "year": 2025
+    },
+    "BFA": {
+      "value": 980,
+      "year": 2025
+    },
+    "BDI": {
+      "value": 240,
+      "year": 2025
+    },
+    "CPV": {
+      "value": 5590,
+      "year": 2025
+    },
+    "KHM": {
+      "value": 2750,
+      "year": 2025
+    },
+    "CMR": {
+      "value": 1860,
+      "year": 2025
+    },
+    "CAN": {
+      "value": 56420,
+      "year": 2025
+    },
+    "CYM": {
+      "value": 81920,
+      "year": 2024
+    },
+    "CAF": {
+      "value": 560,
+      "year": 2025
+    },
+    "TCD": {
+      "value": 970,
+      "year": 2025
+    },
+    "CHL": {
+      "value": 16960,
+      "year": 2025
+    },
+    "CHN": {
+      "value": 14230,
+      "year": 2025
+    },
+    "COL": {
+      "value": 7900,
+      "year": 2025
+    },
+    "COM": {
+      "value": 1950,
+      "year": 2025
+    },
+    "COD": {
+      "value": 720,
+      "year": 2025
+    },
+    "COG": {
+      "value": 2280,
+      "year": 2025
+    },
+    "CRI": {
+      "value": 17930,
+      "year": 2025
+    },
+    "CIV": {
+      "value": 2780,
+      "year": 2025
+    },
+    "HRV": {
+      "value": 25360,
+      "year": 2025
+    },
+    "CUB": {
+      "value": 9010,
+      "year": 2019
+    },
+    "CUW": {
+      "value": 22570,
+      "year": 2024
+    },
+    "CYP": {
+      "value": 36110,
+      "year": 2025
+    },
+    "CZE": {
+      "value": 32960,
+      "year": 2025
+    },
+    "DNK": {
+      "value": 77190,
+      "year": 2025
+    },
+    "DJI": {
+      "value": 3960,
+      "year": 2025
+    },
+    "DMA": {
+      "value": 10690,
+      "year": 2025
+    },
+    "DOM": {
+      "value": 10620,
+      "year": 2025
+    },
+    "ECU": {
+      "value": 6890,
+      "year": 2025
+    },
+    "EGY": {
+      "value": 3260,
+      "year": 2025
+    },
+    "SLV": {
+      "value": 5410,
+      "year": 2025
+    },
+    "GNQ": {
+      "value": 5890,
+      "year": 2025
+    },
+    "ERI": {
+      "value": 650,
+      "year": 2011
+    },
+    "EST": {
+      "value": 32310,
+      "year": 2025
+    },
+    "SWZ": {
+      "value": 3730,
+      "year": 2025
+    },
+    "ETH": {
+      "value": 1110,
+      "year": 2025
+    },
+    "FRO": {
+      "value": 73120,
+      "year": 2024
+    },
+    "FJI": {
+      "value": 6230,
+      "year": 2025
+    },
+    "FIN": {
+      "value": 55250,
+      "year": 2025
+    },
+    "FRA": {
+      "value": 48630,
+      "year": 2025
+    },
+    "PYF": {
+      "value": 24100,
+      "year": 2024
+    },
+    "GAB": {
+      "value": 8090,
+      "year": 2025
+    },
+    "GMB": {
+      "value": 930,
+      "year": 2025
+    },
+    "GEO": {
+      "value": 8990,
+      "year": 2025
+    },
+    "DEU": {
+      "value": 60200,
+      "year": 2025
+    },
+    "GHA": {
+      "value": 2630,
+      "year": 2025
+    },
+    "GRC": {
+      "value": 25360,
+      "year": 2025
+    },
+    "GRL": {
+      "value": 34800,
+      "year": 2007
+    },
+    "GRD": {
+      "value": 11660,
+      "year": 2025
+    },
+    "GTM": {
+      "value": 6360,
+      "year": 2025
+    },
+    "GIN": {
+      "value": 1730,
+      "year": 2025
+    },
+    "GNB": {
+      "value": 1090,
+      "year": 2025
+    },
+    "GUY": {
+      "value": 28470,
+      "year": 2025
+    },
+    "HTI": {
+      "value": 2010,
+      "year": 2025
+    },
+    "HND": {
+      "value": 3270,
+      "year": 2025
+    },
+    "HKG": {
+      "value": 62500,
+      "year": 2025
+    },
+    "HUN": {
+      "value": 23850,
+      "year": 2025
+    },
+    "ISL": {
+      "value": 89220,
+      "year": 2025
+    },
+    "IND": {
+      "value": 2760,
+      "year": 2025
+    },
+    "IDN": {
+      "value": 5120,
+      "year": 2025
+    },
+    "IRN": {
+      "value": 4650,
+      "year": 2025
+    },
+    "IRQ": {
+      "value": 5690,
+      "year": 2025
+    },
+    "IRL": {
+      "value": 87360,
+      "year": 2025
+    },
+    "IMN": {
+      "value": 87030,
+      "year": 2023
+    },
+    "ISR": {
+      "value": 56180,
+      "year": 2025
+    },
+    "ITA": {
+      "value": 42080,
+      "year": 2025
+    },
+    "JAM": {
+      "value": 7790,
+      "year": 2025
+    },
+    "JPN": {
+      "value": 38340,
+      "year": 2025
+    },
+    "JOR": {
+      "value": 5260,
+      "year": 2025
+    },
+    "KAZ": {
+      "value": 13740,
+      "year": 2025
+    },
+    "KEN": {
+      "value": 2200,
+      "year": 2025
+    },
+    "KIR": {
+      "value": 3930,
+      "year": 2025
+    },
+    "KOR": {
+      "value": 37880,
+      "year": 2025
+    },
+    "XKX": {
+      "value": 7760,
+      "year": 2025
+    },
+    "KWT": {
+      "value": 41110,
+      "year": 2024
+    },
+    "KGZ": {
+      "value": 2800,
+      "year": 2025
+    },
+    "LAO": {
+      "value": 2150,
+      "year": 2025
+    },
+    "LVA": {
+      "value": 24980,
+      "year": 2025
+    },
+    "LBN": {
+      "value": 3560,
+      "year": 2024
+    },
+    "LSO": {
+      "value": 1280,
+      "year": 2025
+    },
+    "LBR": {
+      "value": 830,
+      "year": 2025
+    },
+    "LBY": {
+      "value": 7250,
+      "year": 2025
+    },
+    "LIE": {
+      "value": 116380,
+      "year": 2009
+    },
+    "LTU": {
+      "value": 30500,
+      "year": 2025
+    },
+    "LUX": {
+      "value": 95720,
+      "year": 2025
+    },
+    "MAC": {
+      "value": 69920,
+      "year": 2024
+    },
+    "MDG": {
+      "value": 560,
+      "year": 2025
+    },
+    "MWI": {
+      "value": 600,
+      "year": 2025
+    },
+    "MYS": {
+      "value": 12380,
+      "year": 2025
+    },
+    "MDV": {
+      "value": 12950,
+      "year": 2025
+    },
+    "MLI": {
+      "value": 1120,
+      "year": 2025
+    },
+    "MLT": {
+      "value": 41440,
+      "year": 2025
+    },
+    "MHL": {
+      "value": 9710,
+      "year": 2025
+    },
+    "MRT": {
+      "value": 2210,
+      "year": 2025
+    },
+    "MUS": {
+      "value": 14040,
+      "year": 2025
+    },
+    "MEX": {
+      "value": 13730,
+      "year": 2025
+    },
+    "FSM": {
+      "value": 4760,
+      "year": 2025
+    },
+    "MDA": {
+      "value": 8050,
+      "year": 2025
+    },
+    "MNG": {
+      "value": 6210,
+      "year": 2025
+    },
+    "MNE": {
+      "value": 14150,
+      "year": 2025
+    },
+    "MAR": {
+      "value": 4360,
+      "year": 2025
+    },
+    "MOZ": {
+      "value": 570,
+      "year": 2025
+    },
+    "MMR": {
+      "value": 1320,
+      "year": 2025
+    },
+    "NAM": {
+      "value": 4340,
+      "year": 2025
+    },
+    "NRU": {
+      "value": 20690,
+      "year": 2025
+    },
+    "NPL": {
+      "value": 1570,
+      "year": 2025
+    },
+    "NLD": {
+      "value": 68530,
+      "year": 2025
+    },
+    "NCL": {
+      "value": 30070,
+      "year": 2024
+    },
+    "NZL": {
+      "value": 46630,
+      "year": 2025
+    },
+    "NIC": {
+      "value": 2850,
+      "year": 2025
+    },
+    "NER": {
+      "value": 750,
+      "year": 2025
+    },
+    "NGA": {
+      "value": 1360,
+      "year": 2025
+    },
+    "MKD": {
+      "value": 9490,
+      "year": 2025
+    },
+    "NOR": {
+      "value": 97310,
+      "year": 2025
+    },
+    "OMN": {
+      "value": 19520,
+      "year": 2024
+    },
+    "PAK": {
+      "value": 1500,
+      "year": 2025
+    },
+    "PLW": {
+      "value": 19890,
+      "year": 2025
+    },
+    "PAN": {
+      "value": 19140,
+      "year": 2025
+    },
+    "PNG": {
+      "value": 2890,
+      "year": 2025
+    },
+    "PRY": {
+      "value": 6750,
+      "year": 2025
+    },
+    "PER": {
+      "value": 8430,
+      "year": 2025
+    },
+    "PHL": {
+      "value": 4850,
+      "year": 2025
+    },
+    "POL": {
+      "value": 25520,
+      "year": 2025
+    },
+    "PRT": {
+      "value": 29930,
+      "year": 2025
+    },
+    "PRI": {
+      "value": 27320,
+      "year": 2025
+    },
+    "QAT": {
+      "value": 74330,
+      "year": 2025
+    },
+    "ROU": {
+      "value": 20190,
+      "year": 2025
+    },
+    "RUS": {
+      "value": 15960,
+      "year": 2025
+    },
+    "RWA": {
+      "value": 1150,
+      "year": 2025
+    },
+    "WSM": {
+      "value": 5640,
+      "year": 2025
+    },
+    "SMR": {
+      "value": 53910,
+      "year": 2023
+    },
+    "STP": {
+      "value": 3800,
+      "year": 2025
+    },
+    "SAU": {
+      "value": 36070,
+      "year": 2025
+    },
+    "SEN": {
+      "value": 1780,
+      "year": 2025
+    },
+    "SRB": {
+      "value": 13480,
+      "year": 2025
+    },
+    "SYC": {
+      "value": 19200,
+      "year": 2025
+    },
+    "SLE": {
+      "value": 830,
+      "year": 2025
+    },
+    "SGP": {
+      "value": 81760,
+      "year": 2025
+    },
+    "SXM": {
+      "value": 38950,
+      "year": 2024
+    },
+    "SVK": {
+      "value": 26410,
+      "year": 2025
+    },
+    "SVN": {
+      "value": 35520,
+      "year": 2025
+    },
+    "SLB": {
+      "value": 2020,
+      "year": 2025
+    },
+    "SOM": {
+      "value": 640,
+      "year": 2025
+    },
+    "ZAF": {
+      "value": 6270,
+      "year": 2025
+    },
+    "SSD": {
+      "value": 1050,
+      "year": 2015
+    },
+    "ESP": {
+      "value": 37120,
+      "year": 2025
+    },
+    "LKA": {
+      "value": 4670,
+      "year": 2025
+    },
+    "KNA": {
+      "value": 24530,
+      "year": 2025
+    },
+    "LCA": {
+      "value": 13410,
+      "year": 2025
+    },
+    "VCT": {
+      "value": 12000,
+      "year": 2025
+    },
+    "SDN": {
+      "value": 900,
+      "year": 2025
+    },
+    "SUR": {
+      "value": 6140,
+      "year": 2025
+    },
+    "SWE": {
+      "value": 63010,
+      "year": 2025
+    },
+    "CHE": {
+      "value": 110330,
+      "year": 2025
+    },
+    "SYR": {
+      "value": 720,
+      "year": 2022
+    },
+    "TJK": {
+      "value": 2080,
+      "year": 2025
+    },
+    "TZA": {
+      "value": 1270,
+      "year": 2025
+    },
+    "THA": {
+      "value": 7690,
+      "year": 2025
+    },
+    "TLS": {
+      "value": 1510,
+      "year": 2025
+    },
+    "TGO": {
+      "value": 1350,
+      "year": 2025
+    },
+    "TON": {
+      "value": 6840,
+      "year": 2025
+    },
+    "TTO": {
+      "value": 18550,
+      "year": 2025
+    },
+    "TUN": {
+      "value": 4300,
+      "year": 2025
+    },
+    "TUR": {
+      "value": 16300,
+      "year": 2025
+    },
+    "TKM": {
+      "value": 6340,
+      "year": 2025
+    },
+    "TCA": {
+      "value": 36760,
+      "year": 2024
+    },
+    "TUV": {
+      "value": 8770,
+      "year": 2023
+    },
+    "UGA": {
+      "value": 1120,
+      "year": 2025
+    },
+    "UKR": {
+      "value": 5510,
+      "year": 2025
+    },
+    "ARE": {
+      "value": 51550,
+      "year": 2024
+    },
+    "GBR": {
+      "value": 54550,
+      "year": 2025
+    },
+    "USA": {
+      "value": 88810,
+      "year": 2025
+    },
+    "URY": {
+      "value": 24020,
+      "year": 2025
+    },
+    "UZB": {
+      "value": 3670,
+      "year": 2025
+    },
+    "VUT": {
+      "value": 4410,
+      "year": 2025
+    },
+    "VEN": {
+      "value": 3860,
+      "year": 2025
+    },
+    "VNM": {
+      "value": 4970,
+      "year": 2025
+    },
+    "PSE": {
+      "value": 3250,
+      "year": 2025
+    },
+    "YEM": {
+      "value": 740,
+      "year": 2018
+    },
+    "ZMB": {
+      "value": 1200,
+      "year": 2025
+    },
+    "ZWE": {
+      "value": 2660,
+      "year": 2025
+    }
+  }
+}

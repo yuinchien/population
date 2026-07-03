@@ -223,10 +223,19 @@ hr {
     display: flex;
     align-items: center;
     gap: 4px;
+    box-sizing: border-box;
+    width: 100%;
     padding: 4px;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
-.legend-item:hover {
+.legend-item:hover,
+.legend-item.active {
     background: var(--color-border);
 }
 
@@ -260,6 +269,119 @@ hr {
     gap: 6px;
     margin-top: 2px;
     color: #555;
+}
+
+.detail-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 264px;
+    z-index: 20;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 20px;
+    padding: 12px;
+    overflow: hidden;
+}
+
+.detail-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.detail-panel h2,
+.detail-panel p {
+    margin: 0;
+}
+
+.detail-panel h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+}
+
+.detail-panel p {
+    margin-top: 6px;
+    color: var(--color-muted);
+}
+
+.detail-close {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    color: var(--color-text);
+    background: transparent;
+    font: inherit;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.detail-rows {
+    display: grid;
+    align-content: start;
+    gap: 1px;
+    overflow: auto;
+}
+
+.detail-row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) 160px 150px 130px;
+    align-items: stretch;
+    min-height: 34px;
+}
+
+.detail-row.header {
+    min-height: 28px;
+    color: var(--color-muted);
+    text-transform: uppercase;
+}
+
+.detail-cell {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 8px 12px;
+    /*background: rgba(255, 255, 255, 0.45);*/
+    position: relative;
+}
+.detail-cell:first-child:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc(var(--ratio, 0) * 100%);
+    background-color: color-mix(
+        in srgb,
+        var(--detail-color, #82d8d5) 45%,
+        white
+    );
+    z-index: -1;
+}
+
+/*.detail-cell.country {
+    background: color-mix(in srgb, var(--detail-color, #82d8d5) 45%, white);
+}*/
+
+.detail-cell.number {
+    justify-content: flex-end;
+    font-variant-numeric: tabular-nums;
+}
+
+.detail-cell.empty {
+    background: transparent;
+}
+
+.detail-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #calloutLayer {
