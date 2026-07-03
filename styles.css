@@ -308,7 +308,7 @@ body.detail #overlay .hide-for-detail {
 
 #legend {
     display: grid;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
 .legend-item {

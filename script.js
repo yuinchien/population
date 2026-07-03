@@ -21,9 +21,9 @@ const MAP_HEIGHT = 200;
 // A view-mode switch runs through three phases instead of a direct morph:
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
 // there for a beat, then fly into their final target formation.
-const SCRAMBLE_IN_MS = 1200;
-const SCRAMBLE_HOLD_MS = 500;
-const SCRAMBLE_OUT_MS = 1200;
+const SCRAMBLE_IN_MS = 800;
+const SCRAMBLE_HOLD_MS = 400;
+const SCRAMBLE_OUT_MS = 800;
 // Contracting the scramble cloud to a smaller volume than the globe itself
 // keeps dots from having to travel all the way out to full radius and
 // back, so the fly-apart/fly-together motion reads as tighter, less
