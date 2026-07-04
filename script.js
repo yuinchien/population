@@ -69,6 +69,7 @@ const elements = {
   yearControl: document.querySelector("#yearControl"),
   yearSlider: document.querySelector("#yearSlider"),
   yearValue: document.querySelector("#yearValue"),
+  yearTimeline: document.querySelector("#yearTimeline"),
   metrics: document.querySelector("#metrics"),
   metricPopulation: document.querySelector("#metricPopulation"),
   metricFertility: document.querySelector("#metricFertility"),
@@ -1200,6 +1201,138 @@ function updateYearLabels(year) {
   const isProjected = year > historicalCutoffYear;
   elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
   elements.titleYear.textContent = year;
+  updateSelectedYearTick(year);
+}
+
+// --- Vertical year timeline -------------------------------------------
+// A secondary year-select control: one dash per year, evenly spaced by
+// index (not by any data-driven scale), with the selected year picked out
+// and a "magnify" preview under the cursor.
+let yearTickElements = [];
+let yearTimelineDragging = false;
+// Magnify falls off continuously (Gaussian, by tick *count* rather than
+// pixel distance) instead of a hard cutoff — every tick gets some scale,
+// even if negligible far from the cursor, so there's no visible "seam"
+// where the effect stops. YEAR_TIMELINE_MAGNIFY_COUNT is the falloff's
+// characteristic width in ticks (like a standard deviation): roughly the
+// closest ~2 ticks either side read as clearly magnified, and it tapers
+// out smoothly well beyond that.
+const YEAR_TIMELINE_MAGNIFY_COUNT = 2;
+const YEAR_TIMELINE_MAGNIFY_STRENGTH = 1.4; // extra scale at the epicenter
+// Like a macOS dock: magnified ticks also need room to grow into. Rather
+// than nudging only the immediate neighbors, each tick's offset is the
+// *cumulative* sum of every more-central tick's excess size between it and
+// the epicenter — so the "push" ripples all the way to both ends of the
+// timeline, just tapering to a near-constant residual once the magnify
+// falloff itself has decayed to ~0, instead of resetting sharply to 0 at
+// some fixed radius (which is what left a visible seam before).
+const YEAR_TIMELINE_MAGNIFY_SPACING = 4; // px of push per tick at full falloff
+
+function buildYearTimeline() {
+  const n = yearsData.length;
+  yearTickElements = yearsData.map((year, i) => {
+    const tick = document.createElement("div");
+    tick.className = "year-tick";
+    tick.style.top = `${(i / (n - 1)) * 100}%`;
+    tick.dataset.year = year;
+
+    const dash = document.createElement("span");
+    dash.className = "year-tick-dash";
+    const label = document.createElement("span");
+    label.className = "year-tick-label";
+    label.textContent = year;
+    tick.append(dash, label);
+    return tick;
+  });
+  elements.yearTimeline.replaceChildren(...yearTickElements);
+  elements.yearTimeline.hidden = false;
+}
+
+function updateSelectedYearTick(year) {
+  yearTickElements.forEach((tick) => {
+    tick.classList.toggle("selected", Number(tick.dataset.year) === year);
+  });
+}
+
+// Reads tick positions analytically (index / count, matching how they were
+// laid out in buildYearTimeline) instead of calling getBoundingClientRect()
+// per tick, so a mousemove handler touching all ~150 ticks stays a plain
+// arithmetic loop rather than 150 forced layout reads.
+function updateYearTimelineHover(clientY) {
+  const rect = elements.yearTimeline.getBoundingClientRect();
+  const n = yearTickElements.length;
+  let closestIndex = -1;
+  let closestDistance = Infinity;
+  yearTickElements.forEach((tick, i) => {
+    const tickY = rect.top + (i / (n - 1)) * rect.height;
+    const distance = Math.abs(clientY - tickY);
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestIndex = i;
+    }
+  });
+
+  // Gaussian falloff computed for every tick (no cutoff) — "extra" is how
+  // much bigger than baseline each tick is right now, in px, which is also
+  // exactly how much room it needs pushed open around it.
+  const sigma = YEAR_TIMELINE_MAGNIFY_COUNT;
+  const extra = yearTickElements.map((_, i) => {
+    const d = i - closestIndex;
+    const falloff = Math.exp(-(d * d) / (2 * sigma * sigma));
+    return (
+      YEAR_TIMELINE_MAGNIFY_STRENGTH ** 2 *
+      falloff *
+      YEAR_TIMELINE_MAGNIFY_SPACING
+    );
+  });
+
+  // Ripple the offset outward from the epicenter: each step away accumulates
+  // half of the extra space of both the tick just crossed and the one being
+  // entered, so the push is continuous rather than jumping in per-tick
+  // increments. The running sum naturally flattens out once `extra` has
+  // decayed near 0, instead of hard-stopping at a fixed radius.
+  const offset = new Array(n).fill(0);
+  for (let i = closestIndex - 1; i >= 0; i--) {
+    offset[i] = offset[i + 1] - (extra[i] + extra[i + 1]) / 2;
+  }
+  for (let i = closestIndex + 1; i < n; i++) {
+    offset[i] = offset[i - 1] + (extra[i] + extra[i - 1]) / 2;
+  }
+
+  yearTickElements.forEach((tick, i) => {
+    const scale = 1 + extra[i] / YEAR_TIMELINE_MAGNIFY_SPACING;
+    tick.style.setProperty("--magnify", scale.toFixed(3));
+    tick.style.setProperty("--offset", `${offset[i].toFixed(2)}px`);
+    tick.classList.toggle("hovered", i === closestIndex);
+  });
+}
+
+function clearYearTimelineHover() {
+  yearTickElements.forEach((tick) => {
+    tick.style.removeProperty("--magnify");
+    tick.style.removeProperty("--offset");
+    tick.classList.remove("hovered");
+  });
+}
+
+function yearFromClientY(clientY) {
+  const rect = elements.yearTimeline.getBoundingClientRect();
+  const pct = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+  const index = Math.round(pct * (yearsData.length - 1));
+  return yearsData[index];
+}
+
+// Mirrors the horizontal slider's input/change split: dragging along the
+// timeline only needs the cheap live update, and the real work waits for
+// the drag to actually end.
+function selectYearFromClientY(clientY, { commit }) {
+  const year = yearFromClientY(clientY);
+  if (Number(elements.yearSlider.value) === year && !commit) return;
+  elements.yearSlider.value = year;
+  elements.yearSlider.dispatchEvent(new Event("input", { bubbles: true }));
+  if (commit) {
+    elements.yearSlider.dispatchEvent(new Event("change", { bubbles: true }));
+  }
 }
 
 function legendEntriesFor(mode) {
@@ -1698,6 +1831,29 @@ async function init() {
     });
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
+    });
+
+    buildYearTimeline();
+    updateSelectedYearTick(defaultYear);
+    elements.yearTimeline.addEventListener("mousemove", (event) => {
+      updateYearTimelineHover(event.clientY);
+    });
+    elements.yearTimeline.addEventListener("mouseleave", () => {
+      if (!yearTimelineDragging) clearYearTimelineHover();
+    });
+    elements.yearTimeline.addEventListener("mousedown", (event) => {
+      yearTimelineDragging = true;
+      selectYearFromClientY(event.clientY, { commit: false });
+    });
+    window.addEventListener("mousemove", (event) => {
+      if (!yearTimelineDragging) return;
+      selectYearFromClientY(event.clientY, { commit: false });
+      updateYearTimelineHover(event.clientY);
+    });
+    window.addEventListener("mouseup", (event) => {
+      if (!yearTimelineDragging) return;
+      yearTimelineDragging = false;
+      selectYearFromClientY(event.clientY, { commit: true });
     });
 
     elements.colorMode.hidden = false;

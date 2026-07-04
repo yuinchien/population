@@ -7,6 +7,7 @@
     --border: 1px solid var(--color-border);
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --overlay-width: 248px;
+    --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
 }
 
 html,
@@ -19,7 +20,7 @@ body {
     font-size: 12px;
     line-height: 14px;
     letter-spacing: -0.01em;
-    background: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
+    background: var(--bg-gradient);
 }
 
 * {
@@ -352,6 +353,87 @@ body.detail #overlay .hide-for-detail {
     margin-right: 6px;
     border-radius: 50%;
     background: var(--color-legend);
+}
+
+/* Vertical year-select strip pinned just right of the sidebar. Ticks are
+   positioned by absolute `top` percentage (one per year, evenly spaced)
+   rather than flex/grid layout, because the hover "magnify" effect scales
+   ticks via transform only — a layout-based approach would reflow
+   neighboring ticks as each one scales, which is exactly the jitter this
+   avoids. */
+.year-timeline {
+    position: fixed;
+    top: 24px;
+    bottom: 24px;
+    left: calc(var(--overlay-width) + 8px);
+    width: 70px;
+    z-index: 9000;
+    cursor: pointer;
+}
+
+.year-tick {
+    position: absolute;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    /* --offset pushes magnified neighbors away from the epicenter (see
+       YEAR_TIMELINE_MAGNIFY_SPACING) so they have room to grow into
+       instead of crowding into each other; the transition smooths both
+       that push and the scale/font-size changes below between the
+       discrete values each mousemove tick sets, approximating the spring
+       feel of a dock magnify without needing a physics library. */
+    transform: translateY(calc(-50% + var(--offset, 0px)));
+    transition: transform 0.15s ease-out;
+}
+
+/* Magnify scales width/height/font-size directly (via calc()) rather than
+   `transform: scale()` on the whole tick. A scaled-up transform forces the
+   browser to rasterize the text at its base size and then stretch that
+   bitmap, which is what read as pixelated — growing the actual box and
+   font size instead means the glyphs get re-rendered at each size, same as
+   any other font-size change. */
+.year-tick-dash {
+    width: calc(10px * var(--magnify, 1));
+    height: 2px;
+    background: var(--color-subtle);
+    flex: none;
+    transition: width 0.15s ease-out;
+}
+
+.year-tick-label {
+    font-size: 16px;
+    /*font-size: calc(6px * var(--magnify, 1));*/
+    line-height: 1;
+    color: var(--color-muted);
+    white-space: nowrap;
+    position: absolute;
+    opacity: 0;
+    left: 50px;
+    transition: opacity 0s ease-out;
+    font-weight: 500;
+}
+
+.year-tick.selected .year-tick-dash {
+    width: 20px;
+    height: 2px;
+    background: var(--color-text);
+}
+.year-tick.hovered .year-tick-dash {
+    background: var(--color-text);
+    width: calc(14px * var(--magnify, 1));
+}
+
+.year-tick.selected .year-tick-label {
+    opacity: 1;
+    color: var(--color-text);
+    left: 24px;
+}
+
+.year-tick.hovered .year-tick-label {
+    opacity: 1;
+    color: var(--color-text);
+    left: 50px;
 }
 
 #tooltip {
