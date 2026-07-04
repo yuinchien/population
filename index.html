@@ -21,35 +21,31 @@
         <link rel="stylesheet" href="./styles.css" />
     </head>
     <body>
+        <div id="viewMode" class="tab-group full-width hide-for-detail" hidden>
+            <button
+                type="button"
+                data-mode="globe"
+                class="active"
+                aria-label="Globe view"
+                title="Globe"
+            >
+                Globe
+            </button>
+            <button
+                type="button"
+                data-mode="map"
+                aria-label="Map view"
+                title="Map"
+            >
+                Map
+            </button>
+        </div>
         <div id="overlay" class="glass">
             <div class="topbar">
                 <h1>
                     Global Population
                     <span id="titleYear" class="title-year"></span>
                 </h1>
-            </div>
-            <div
-                id="viewMode"
-                class="tab-group full-width hide-for-detail"
-                hidden
-            >
-                <button
-                    type="button"
-                    data-mode="globe"
-                    class="active"
-                    aria-label="Globe view"
-                    title="Globe"
-                >
-                    Globe
-                </button>
-                <button
-                    type="button"
-                    data-mode="map"
-                    aria-label="Map view"
-                    title="Map"
-                >
-                    Map
-                </button>
             </div>
 
             <div id="yearControl" hidden>

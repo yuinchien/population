@@ -1111,6 +1111,10 @@ function typeStatus(
 function applyYear(year) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1 || !pointsMesh) return;
+  // Skip the pulse on the very first call (initial page load) — there's no
+  // prior year for this one to visibly change *from*, so it would just
+  // read as an unexplained flash rather than communicating a change.
+  if (currentYearIndex !== -1) triggerYearChangePulse();
   currentYearIndex = yearIndex;
   // A slider move mid-transition invalidates the in-flight tween's index
   // mapping (activeTotal/dotCountry are about to be rebuilt), so just cut
@@ -1817,7 +1821,7 @@ async function init() {
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
-    elements.yearControl.hidden = false;
+    // elements.yearControl.hidden = false;
     // "input" fires continuously while dragging — kept cheap (thumb/fill
     // tracking plus the year figure itself, so there's still feedback on
     // what year you'd land on) so the slider stays responsive. The actual
@@ -1885,13 +1889,47 @@ async function init() {
 const HOLD_FREQ_MULTIPLIER = 7;
 const HOLD_AMPLITUDE_MULTIPLIER = 2.5;
 
+// A one-shot decaying burst (independent of the hold-phase boost above)
+// that fires whenever a year selection is actually committed — from the
+// slider, the vertical timeline, or a keyboard step — so a change reads as
+// a visible "beat" across every dot even if the new year's layout looks
+// similar to the last one. Tracked on the wall clock (performance.now())
+// rather than the shader's own elapsed-time uniform, since it just needs a
+// simple countdown, not continuity with the ambient sine wave.
+let yearChangePulseStart = -Infinity;
+const YEAR_CHANGE_PULSE_DURATION_MS = 1000;
+// Amplitude-only on purpose: the vertex shader's sine wave is
+// sin(uTime * aFrequency * uFreqMul + aPhase), and uTime is the *absolute*
+// elapsed session time, not something that resets per-pulse. Modulating
+// uFreqMul therefore jumps the wave's instantaneous phase rate by an
+// amount proportional to however long the page has been open — the same
+// pulse looked mild seconds into a session and increasingly chaotic
+// minutes in. uAmpMul is a plain linear scale on the output with no such
+// dependency, so it stays identical every time regardless of session age.
+const YEAR_CHANGE_PULSE_AMP_MULTIPLIER = 3;
+
+function triggerYearChangePulse() {
+  yearChangePulseStart = performance.now();
+}
+
 function updateDotUniforms(elapsedTime) {
   if (!pointsMesh) return;
   const u = pointsMesh.material.uniforms;
   u.uTime.value = elapsedTime;
   u.uIsMap.value = viewMode === "map" && !isScrambledPhase ? 1 : 0;
+
+  const pulseT = Math.min(
+    1,
+    (performance.now() - yearChangePulseStart) / YEAR_CHANGE_PULSE_DURATION_MS,
+  );
+  // Decays fast then tapers off, like a struck bell rather than a linear
+  // fade — most of the "snap" reads in the first couple frames.
+  const pulseBoost = pulseT < 1 ? (1 - pulseT) ** 2 : 0;
+
   u.uFreqMul.value = isHoldPhase ? HOLD_FREQ_MULTIPLIER : 1;
-  u.uAmpMul.value = isHoldPhase ? HOLD_AMPLITUDE_MULTIPLIER : 1;
+  u.uAmpMul.value = isHoldPhase
+    ? HOLD_AMPLITUDE_MULTIPLIER
+    : 1 + (YEAR_CHANGE_PULSE_AMP_MULTIPLIER - 1) * pulseBoost;
 }
 
 renderer.domElement.addEventListener("pointermove", (event) => {

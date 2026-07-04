@@ -8,6 +8,7 @@
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --overlay-width: 248px;
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
+    --dash-size: 8px;
 }
 
 html,
@@ -178,6 +179,13 @@ body.detail #overlay .hide-for-detail {
     100% {
         opacity: 0;
     }
+}
+
+#viewMode {
+    border: none;
+    position: fixed;
+    right: 12px;
+    top: 0;
 }
 
 #yearSlider {
@@ -394,46 +402,48 @@ body.detail #overlay .hide-for-detail {
    font size instead means the glyphs get re-rendered at each size, same as
    any other font-size change. */
 .year-tick-dash {
-    width: calc(10px * var(--magnify, 1));
+    width: calc(var(--dash-size) * var(--magnify, 1));
     height: 2px;
-    background: var(--color-subtle);
+    background: var(--color-text);
+    opacity: 0.2;
     flex: none;
-    transition: width 0.15s ease-out;
+    transition: width 0.15s ease;
 }
 
 .year-tick-label {
     font-size: 16px;
     /*font-size: calc(6px * var(--magnify, 1));*/
     line-height: 1;
-    color: var(--color-muted);
+    color: var(--color-text);
     white-space: nowrap;
     position: absolute;
     opacity: 0;
-    left: 50px;
-    transition: opacity 0s ease-out;
+    left: calc(var(--dash-size) * 5.6);
+    transition: opacity 0s ease;
     font-weight: 500;
 }
 
-.year-tick.selected .year-tick-dash {
-    width: 20px;
-    height: 2px;
-    background: var(--color-text);
-}
 .year-tick.hovered .year-tick-dash {
-    background: var(--color-text);
-    width: calc(14px * var(--magnify, 1));
+    opacity: 0.5;
+    width: calc(var(--dash-size) * 1.5 * var(--magnify, 1));
+}
+.year-tick.selected .year-tick-dash {
+    width: calc(var(--dash-size) * 2);
+    opacity: 1;
+}
+.year-tick.hovered.selected .year-tick-dash {
+    opacity: 1;
+    width: calc(var(--dash-size) * 1.5 * var(--magnify, 1));
 }
 
 .year-tick.selected .year-tick-label {
     opacity: 1;
-    color: var(--color-text);
-    left: 24px;
+    left: calc(var(--dash-size) * 3);
 }
 
 .year-tick.hovered .year-tick-label {
     opacity: 1;
-    color: var(--color-text);
-    left: 50px;
+    left: calc(var(--dash-size) * 5.6);
 }
 
 #tooltip {
