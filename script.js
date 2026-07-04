@@ -23,7 +23,7 @@ const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
 const MAP_DOT_SIZE = 2;
 const DOT_OPACITY = 0.9;
-const HOVER_FADE_ALPHA = 0.15;
+const HOVER_FADE_ALPHA = 0.2;
 const PULSE_AMPLITUDE = 7;
 const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
@@ -1661,7 +1661,7 @@ function updateTooltip(event) {
   swatch.style.background = `#${groupColor.getHexString()}`;
 
   const countryText = document.createElement("span");
-  countryText.textContent = `${country.name}: ${pop.toLocaleString()}`;
+  countryText.textContent = `${country.name}: ${formatPeakPopulation(pop)}`;
 
   const line1 = document.createElement("div");
   line1.className = "tooltip-line1";
@@ -1680,7 +1680,7 @@ function updateTooltip(event) {
     if (hi != null && lo != null) {
       const line3 = document.createElement("div");
       line3.className = "tooltip-line2";
-      line3.textContent = `Range: ${lo.toLocaleString()} – ${hi.toLocaleString()}`;
+      line3.textContent = `${formatPeakPopulation(lo)} – ${formatPeakPopulation(hi)}`;
       lines.push(line3);
     }
   }
