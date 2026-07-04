@@ -80,6 +80,7 @@ canvas {
 body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
+    max-height: 0;
 }
 
 .topbar {
@@ -291,7 +292,7 @@ body.detail .detail-back {
     display: none;
 }
 #yearControl {
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .tab-group {
@@ -366,6 +367,10 @@ body.detail .detail-back {
     margin-right: 6px;
     border-radius: 50%;
     background: var(--color-legend);
+}
+
+.legend-item.active {
+    background: color-mix(in srgb, white, var(--color-legend));
 }
 
 .no-scrollbar {
@@ -555,7 +560,7 @@ body.detail .year-timeline {
     max-width: 920px;
     font-family: var(--font-sans);
     letter-spacing: 0em;
-    margin: 50px 0 16px 0;
+    margin: 40px 0 8px 0;
 }
 
 .detail-close {
