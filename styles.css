@@ -363,6 +363,15 @@ body.detail #overlay .hide-for-detail {
     background: var(--color-legend);
 }
 
+.no-scrollbar {
+    scrollbar-width: none; /* Standard: Firefox */
+    -ms-overflow-style: none; /* Legacy: IE and Edge */
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none; /* Vendor-specific: Chrome, Safari, and Opera */
+}
+
 /* Vertical year-select strip pinned just right of the sidebar. Ticks are
    positioned by absolute `top` percentage (one per year, evenly spaced)
    rather than flex/grid layout, because the hover "magnify" effect scales

@@ -6,6 +6,13 @@ import {
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
+import {
+  DETAIL_METRIC_KEYS,
+  GLOBAL_METRIC_KEYS,
+  METRICS,
+  formatCount,
+  formatPopulation,
+} from "./metrics.mjs";
 
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
@@ -95,6 +102,14 @@ const elements = {
   detailClose: document.querySelector("#detailClose"),
 };
 
+const METRIC_VALUE_ELEMENTS = {
+  population: elements.metricPopulation,
+  fertility: elements.metricFertility,
+  lifeExpectancy: elements.metricLifeExpectancy,
+  medianAge: elements.metricMedianAge,
+  populationGrowth: elements.metricPopulationGrowth,
+};
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   40,
@@ -156,26 +171,6 @@ function incomeGroupLabel(iso3, incomeGroups) {
 
 function incomeColor(label) {
   return new THREE.Color(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR);
-}
-
-function formatYears(value) {
-  if (value == null) return "N/A";
-  return `${Number(value).toFixed(1)} yrs`;
-}
-
-function formatPopulation(value) {
-  if (value == null) return "N/A";
-  return Math.round(value).toLocaleString();
-}
-
-function formatPercent(value) {
-  if (value == null) return "N/A";
-  return `${Number(value).toFixed(2)}%`;
-}
-
-function formatFertility(value) {
-  if (value == null) return "N/A";
-  return Number(value).toFixed(2);
 }
 
 function createDotTexture() {
@@ -263,29 +258,6 @@ const DOT_FRAGMENT_SHADER = `
   }
 `;
 
-// Single B/M/K abbreviator behind both the metrics-panel population figure
-// and the smaller peak-population numbers shown per flag — they used to be
-// near-identical copies differing only in decimal precision and null
-// handling, which the options below make explicit instead of duplicated.
-function formatCount(value, options = {}) {
-  const {
-    billionsDecimals = 2,
-    millionsDecimals = 1,
-    thousandsDecimals = 0,
-    nullFallback = null,
-    roundWholeNumbers = false,
-  } = options;
-  if (value == null) return nullFallback ?? `${value}`;
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(billionsDecimals)}B`;
-  }
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(millionsDecimals)}M`;
-  }
-  if (value >= 1_000) return `${(value / 1_000).toFixed(thousandsDecimals)}K`;
-  return roundWholeNumbers ? Math.round(value).toLocaleString() : `${value}`;
-}
-
 function formatPeakPopulation(value) {
   return formatCount(value, {
     billionsDecimals: 1,
@@ -352,43 +324,20 @@ function updateMetricsPanel(year) {
   const hi = isProjected ? highMetricsByYear.get(year) : null;
   const lo = isProjected ? lowMetricsByYear.get(year) : null;
 
-  // formatRangeNum lets a metric use a bare-number range (e.g. "1.98–2.48")
-  // instead of repeating the main value's unit on both ends of the range.
-  function apply(el, key, formatNum, formatRangeNum) {
-    const mainText = formatNum(metrics[key]);
+  function apply(key) {
+    const definition = METRICS[key];
+    const el = METRIC_VALUE_ELEMENTS[key];
+    const formatMain = definition.formatPanel ?? definition.format;
+    const formatRange = definition.formatRange ?? formatMain;
+    const mainText = formatMain(metrics[key]);
     let rangeText = "";
     if (hi && lo && hi[key] != null && lo[key] != null) {
-      rangeText = formatRangeNum
-        ? `${formatRangeNum(lo[key])} — ${formatRangeNum(hi[key])}`
-        : `${formatNum(lo[key])} — ${formatNum(hi[key])}`;
+      rangeText = `${formatRange(lo[key])} — ${formatRange(hi[key])}`;
     }
     setMetricValue(el, mainText, rangeText);
   }
 
-  apply(elements.metricPopulation, "population", formatCount);
-  apply(
-    elements.metricFertility,
-    "fertility",
-    (v) => `${v.toFixed(2)} births/woman`,
-    (v) => v.toFixed(2),
-  );
-  apply(
-    elements.metricLifeExpectancy,
-    "lifeExpectancy",
-    (v) => `${v.toFixed(1)} yrs`,
-    (v) => v.toFixed(1),
-  );
-  apply(
-    elements.metricMedianAge,
-    "medianAge",
-    (v) => `${v.toFixed(1)} yrs`,
-    (v) => v.toFixed(1),
-  );
-  apply(
-    elements.metricPopulationGrowth,
-    "populationGrowth",
-    (v) => `${v.toFixed(2)}%`,
-  );
+  GLOBAL_METRIC_KEYS.forEach(apply);
 }
 
 let pointsMesh = null;
@@ -1151,46 +1100,20 @@ const DETAIL_COLUMNS = [
     value: (country) => country.name,
     format: (value) => value,
   },
-  {
-    key: "population",
-    label: "Population",
-    className: "number",
-    defaultDirection: "desc",
-    value: (country) => country.populations[currentYearIndex],
-    format: formatPopulation,
-  },
-  {
-    key: "populationGrowth",
-    label: "Growth rate",
-    className: "number",
-    defaultDirection: "desc",
-    value: (country) => metricFor(country, "populationGrowth"),
-    format: formatPercent,
-  },
-  {
-    key: "fertility",
-    label: "Fertility rate",
-    className: "number",
-    defaultDirection: "desc",
-    value: (country) => metricFor(country, "fertility"),
-    format: formatFertility,
-  },
-  {
-    key: "lifeExpectancy",
-    label: "Life expectancy",
-    className: "number",
-    defaultDirection: "desc",
-    value: (country) => metricFor(country, "lifeExpectancy"),
-    format: formatYears,
-  },
-  {
-    key: "medianAge",
-    label: "Median age",
-    className: "number",
-    defaultDirection: "desc",
-    value: (country) => metricFor(country, "medianAge"),
-    format: formatYears,
-  },
+  ...DETAIL_METRIC_KEYS.map((key) => {
+    const definition = METRICS[key];
+    return {
+      key,
+      label: definition.detailLabel,
+      className: "number",
+      defaultDirection: definition.defaultDirection,
+      value:
+        key === "population"
+          ? (country) => country.populations[currentYearIndex]
+          : (country) => metricFor(country, key),
+      format: definition.format,
+    };
+  }),
 ];
 
 function selectedCountries() {

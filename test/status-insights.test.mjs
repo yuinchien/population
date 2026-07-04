@@ -7,6 +7,11 @@ import {
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "../status-insights.mjs";
+import {
+  DETAIL_METRIC_KEYS,
+  GLOBAL_METRIC_KEYS,
+  METRICS,
+} from "../metrics.mjs";
 
 test("computeGlobalTrendMilestones finds the expected WPP global trend years", async () => {
   const globalData = JSON.parse(
@@ -138,6 +143,28 @@ test("displayGroupLabel removes income suffixes and shortens long MENA labels", 
     displayGroupLabel("Middle East, North Africa, Afghanistan & Pakistan"),
     "Middle East & North Africa",
   );
+});
+
+test("METRICS centralizes shared metric order, labels, and formatters", () => {
+  assert.deepEqual(GLOBAL_METRIC_KEYS, [
+    "population",
+    "fertility",
+    "lifeExpectancy",
+    "medianAge",
+    "populationGrowth",
+  ]);
+  assert.deepEqual(DETAIL_METRIC_KEYS, [
+    "population",
+    "populationGrowth",
+    "fertility",
+    "lifeExpectancy",
+    "medianAge",
+  ]);
+  assert.equal(METRICS.population.detailLabel, "Population");
+  assert.equal(METRICS.populationGrowth.detailLabel, "Growth rate");
+  assert.equal(METRICS.population.formatPanel(10_234_567_890), "10.23B");
+  assert.equal(METRICS.fertility.formatPanel(1.987), "1.99 births/woman");
+  assert.equal(METRICS.lifeExpectancy.format(80.123), "80.1 yrs");
 });
 
 function country(name, incomeLabel, region, metrics) {

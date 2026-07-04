@@ -1,3 +1,10 @@
+import {
+  formatCount,
+  formatFertility,
+  formatPercent,
+  formatYears,
+} from "./metrics.mjs";
+
 export function displayGroupLabel(label) {
   if (label.includes("Afghanistan & Pakistan")) {
     return "Middle East & North Africa";
@@ -5,42 +12,8 @@ export function displayGroupLabel(label) {
   return label.replace(" countries", "");
 }
 
-function formatYears(value) {
-  if (value == null) return "N/A";
-  return `${Number(value).toFixed(1)} yrs`;
-}
-
 function formatAverageYears(value) {
   return `${Number(value).toFixed(1)} yrs`;
-}
-
-function formatPercent(value) {
-  if (value == null) return "N/A";
-  return `${Number(value).toFixed(2)}%`;
-}
-
-function formatFertility(value) {
-  if (value == null) return "N/A";
-  return Number(value).toFixed(2);
-}
-
-function formatCount(value, options = {}) {
-  const {
-    billionsDecimals = 2,
-    millionsDecimals = 1,
-    thousandsDecimals = 0,
-    nullFallback = null,
-    roundWholeNumbers = false,
-  } = options;
-  if (value == null) return nullFallback ?? `${value}`;
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(billionsDecimals)}B`;
-  }
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(millionsDecimals)}M`;
-  }
-  if (value >= 1_000) return `${(value / 1_000).toFixed(thousandsDecimals)}K`;
-  return roundWholeNumbers ? Math.round(value).toLocaleString() : `${value}`;
 }
 
 function metricRows(globalData, key) {
