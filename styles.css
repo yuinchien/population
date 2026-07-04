@@ -442,6 +442,7 @@ body.detail .year-timeline {
     left: calc(var(--dash-size) * 5.6);
     transition: opacity 0s ease;
     font-weight: 500;
+    text-shadow: 0 0 1px #ffffff;
 }
 
 .year-tick.hovered .year-tick-dash {

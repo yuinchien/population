@@ -703,12 +703,12 @@ function buildPeakStatus(year, peakCountries, isProjected) {
         ? [
             `${peakCountries[0].name} is projected to reach its population peak in ${year}.`,
             `${year} is projected to be a population high point for ${peakCountries[0].name}.`,
-            `${peakCountries[0].name} is projected to top out in ${year}.`,
+            `${peakCountries[0].name} population is projected to top out in ${year}.`,
           ]
         : [
             `${peakCountries[0].name} reached its population peak in ${year}.`,
             `${year} was the population high point for ${peakCountries[0].name}.`,
-            `${peakCountries[0].name} topped out in ${year}.`,
+            `${peakCountries[0].name} population topped out in ${year}.`,
           ],
     );
   }
@@ -719,12 +719,12 @@ function buildPeakStatus(year, peakCountries, isProjected) {
         ? [
             `${getPeakCountryName(peakCountries)} are projected to reach their population peak in ${year}.`,
             `${year} is projected to mark the population high point for ${getPeakCountryName(peakCountries)}.`,
-            `${getPeakCountryName(peakCountries)} are projected to top out in ${year}.`,
+            `${getPeakCountryName(peakCountries)} population are projected to top out in ${year}.`,
           ]
         : [
             `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
             `${year} marked the population high point for ${getPeakCountryName(peakCountries)}.`,
-            `${getPeakCountryName(peakCountries)} topped out in ${year}.`,
+            `${getPeakCountryName(peakCountries)} populationtopped out in ${year}.`,
           ],
     );
   }
@@ -733,12 +733,12 @@ function buildPeakStatus(year, peakCountries, isProjected) {
     isProjected
       ? [
           `${getPeakCountryName(peakCountries)} countries are projected to reach their population peak in ${year}.`,
-          `${year} is projected to be a busy peak year, with ${getPeakCountryName(peakCountries)} topping out.`,
+          `${year} is projected to be a busy peak year, with ${getPeakCountryName(peakCountries)} population topping out.`,
           `A wave of projected population peaks lands in ${year}: ${getPeakCountryName(peakCountries)}.`,
         ]
       : [
           `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
-          `${year} was a busy peak year, with ${getPeakCountryName(peakCountries)} topping out.`,
+          `${year} was a busy peak year, with ${getPeakCountryName(peakCountries)} populationtopping out.`,
           `A wave of population peaks landed in ${year}: ${getPeakCountryName(peakCountries)}.`,
         ],
   );
