@@ -15,7 +15,6 @@ export default defineConfig({
         main: new URL("index.html", import.meta.url).pathname,
         chart: new URL("chart.html", import.meta.url).pathname,
         colors: new URL("colors.html", import.meta.url).pathname,
-        test: new URL("test.html", import.meta.url).pathname,
       },
     },
   },
