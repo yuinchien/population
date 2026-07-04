@@ -611,6 +611,12 @@ function updatePeakCallouts(year) {
         "--color-callout",
         `#${dotColor.getHexString()}`,
       );
+      labelEl.addEventListener("pointerenter", () =>
+        setHoverFocusCountry(country),
+      );
+      labelEl.addEventListener("pointerleave", () =>
+        setHoverFocusCountry(null),
+      );
       elements.calloutLayer.append(labelEl);
 
       peakCallouts.push({ country, anchor, outward, line, labelEl });

@@ -666,6 +666,6 @@ body.detail .detail-back {
     background: color-mix(in srgb, var(--color-callout) 70%, white);
     font-weight: 600;
     white-space: nowrap;
-    pointer-events: none;
+    pointer-events: auto;
     transform: translate(-50%, -100%);
 }
