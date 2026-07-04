@@ -392,6 +392,9 @@ body.detail .detail-back {
     z-index: 100;
     cursor: pointer;
 }
+body.detail .year-timeline {
+    display: none;
+}
 
 .year-tick {
     position: absolute;
