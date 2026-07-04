@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # expose the secret as an env var so the parser can see 'env' in expressions
+    env:
+      PAGES_CUSTOM_DOMAIN: ${{ secrets.PAGES_CUSTOM_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -25,6 +28,35 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+      # --- NEW: show build output so we can confirm what's being uploaded ---
+      - name: Show build output
+        run: |
+          echo "Working directory: $(pwd)"
+          echo "Node: $(node -v)  npm: $(npm -v)"
+          echo "dist exists: $( [ -d dist ] && echo yes || echo no )"
+          echo "Top-level contents of dist:"
+          ls -la dist || true
+          echo "Files (up to 3 levels):"
+          find dist -maxdepth 3 -type f -print || true
+
+      # --- NEW: fail early if no index.html in the artifact root ---
+      - name: Validate dist contains index.html
+        run: |
+          if [ ! -f dist/index.html ]; then
+            echo "ERROR: dist/index.html not found. GitHub Pages requires an index.html at the site root."
+            echo "Listing dist for debugging:"
+            ls -la dist || true
+            exit 1
+          fi
+
+      # --- NEW: optional CNAME management (only runs if the secret is set) ---
+      - name: Add CNAME for custom domain (optional)
+        if: ${{ env.PAGES_CUSTOM_DOMAIN != '' }}
+        run: |
+          echo "${{ env.PAGES_CUSTOM_DOMAIN }}" > dist/CNAME
+        # Set the secret PAGES_CUSTOM_DOMAIN in the repo if you want the Pages site to use a custom domain
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
