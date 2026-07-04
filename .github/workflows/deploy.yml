@@ -17,6 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # expose the secret as an env var so the parser can see 'env' in expressions
+    env:
+      PAGES_CUSTOM_DOMAIN: ${{ secrets.PAGES_CUSTOM_DOMAIN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,9 +52,9 @@ jobs:
 
       # --- NEW: optional CNAME management (only runs if the secret is set) ---
       - name: Add CNAME for custom domain (optional)
-        if: ${{ secrets.PAGES_CUSTOM_DOMAIN != '' }}
+        if: ${{ env.PAGES_CUSTOM_DOMAIN != '' }}
         run: |
-          echo "${{ secrets.PAGES_CUSTOM_DOMAIN }}" > dist/CNAME
+          echo "${{ env.PAGES_CUSTOM_DOMAIN }}" > dist/CNAME
         # Set the secret PAGES_CUSTOM_DOMAIN in the repo if you want the Pages site to use a custom domain
 
       - uses: actions/upload-pages-artifact@v3
