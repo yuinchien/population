@@ -74,6 +74,7 @@ const UNCLASSIFIED_COLOR = "#999999";
 
 const elements = {
   titleYear: document.querySelector("#titleYear"),
+  statusTitle: document.querySelector("#statusTitle"),
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
   yearControl: document.querySelector("#yearControl"),
@@ -730,6 +731,7 @@ function buildPeakStatus(year, peakCountries, isProjected) {
 function updateStatusPanel(year) {
   const isProjected = year > historicalCutoffYear;
   if (selectedLegend && !elements.detailPanel.hidden) {
+    setStatusTitle();
     typeStatus(
       buildDetailStatus({
         year,
@@ -750,6 +752,7 @@ function updateStatusPanel(year) {
     (country) => country.peakYear === year,
   );
   const milestone = globalTrendMilestones.get(year);
+  setStatusTitle(milestone?.title);
   typeStatus(
     milestone
       ? `${milestone.text}${
@@ -759,6 +762,11 @@ function updateStatusPanel(year) {
         }`
       : buildPeakStatus(year, peakCountries, isProjected),
   );
+}
+
+function setStatusTitle(title = "") {
+  elements.statusTitle.textContent = title;
+  elements.statusTitle.hidden = !title;
 }
 
 // Types the status line out character-by-character with a blinking cursor,

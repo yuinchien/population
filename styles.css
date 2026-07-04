@@ -10,6 +10,7 @@
     --overlay-width: 248px;
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
+    --font-size-year-tick-label: 18px;
 }
 
 html,
@@ -55,6 +56,7 @@ canvas {
     left: 0;
     width: var(--overlay-width);
     padding: 0 12px;
+    font-weight: 500;
 }
 
 /* Spacing between #overlay's direct children is margin-bottom rather than
@@ -110,10 +112,30 @@ body.detail .hide-for-detail {
        a shrink-to-fit box would still creep leftward as content grows even
        though the text itself is left-aligned, which defeats the point of
        switching away from right-align. */
-    width: 340px;
+    width: 360px;
     font-weight: 500;
     font-family: var(--font-sans);
     font-size: 16px;
+    overflow: initial;
+    /*border-left: var(--border);*/
+}
+.status-wrapper:before {
+    content: "";
+    position: absolute;
+    left: -14px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--color-text);
+}
+
+.status-wrapper h1 {
+    margin: 0 0 4px;
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+    font-weight: 500;
+    line-height: 1.1;
 }
 
 .status-wrapper p {
@@ -392,7 +414,7 @@ body.detail .hide-for-detail {
 }
 
 .year-tick-label {
-    font-size: 16px;
+    font-size: var(--font-size-year-tick-label);
     line-height: 1;
     color: var(--color-text);
     white-space: nowrap;

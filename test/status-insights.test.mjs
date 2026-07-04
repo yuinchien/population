@@ -23,22 +23,41 @@ test("computeGlobalTrendMilestones finds the expected WPP global trend years", a
   const milestones = computeGlobalTrendMilestones(globalData);
 
   assert.deepEqual([...milestones.keys()].sort((a, b) => a - b), [
-    2047, 2050, 2061, 2081, 2084,
+    2037, 2047, 2050, 2061, 2063, 2070, 2080, 2081, 2084,
   ]);
+  assert.equal(milestones.get(2037).title, "The Next Billion");
+  assert.match(milestones.get(2037).text, /crosses 9B/);
+  assert.equal(milestones.get(2047).title, "Slower Growth Era");
   assert.match(milestones.get(2047).text, /falls below 0\.5%/);
+  assert.equal(milestones.get(2050).title, "Below Replacement");
   assert.match(milestones.get(2050).text, /below replacement/);
+  assert.equal(milestones.get(2061).title, "Ten Billion World");
   assert.match(milestones.get(2061).text, /above 10B/);
+  assert.equal(milestones.get(2063).title, "The Great Age Inversion");
+  assert.match(
+    milestones.get(2063).text,
+    /65 and older outnumber children under 15/,
+  );
+  assert.equal(milestones.get(2070).title, "A Super-Aged Planet");
+  assert.match(milestones.get(2070).text, /super-aged society/);
+  assert.equal(milestones.get(2080).title, "Seniors Outnumber Youth");
+  assert.match(
+    milestones.get(2080).text,
+    /permanently outnumber all children and teenagers under 18/,
+  );
+  assert.equal(milestones.get(2081).title, "Longer Lives");
   assert.match(milestones.get(2081).text, /life expectancy reaches 80 years/);
+  assert.equal(milestones.get(2084).title, "Population Plateau");
   assert.match(milestones.get(2084).text, /turning point/);
   assert.deepEqual(prioritizedMilestoneYears(milestones), [
-    2084, 2050, 2061, 2047, 2081,
+    2084, 2037, 2050, 2061, 2063, 2070, 2080, 2047, 2081,
   ]);
   assert.deepEqual(prioritizedMilestoneYears(milestones, { limit: 3 }), [
-    2084, 2050, 2061,
+    2084, 2037, 2050,
   ]);
   assert.deepEqual(
     prioritizedMilestoneYears(milestones, { minYear: 2050, maxYear: 2081 }),
-    [2050, 2061, 2081],
+    [2050, 2061, 2063, 2070, 2080, 2081],
   );
 });
 

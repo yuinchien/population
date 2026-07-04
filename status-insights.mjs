@@ -24,11 +24,11 @@ function firstMetricYear(globalData, key, predicate) {
   return metricRows(globalData, key).find(({ value }) => predicate(value));
 }
 
-function addMilestone(milestones, year, text, priority = 0) {
+function addMilestone(milestones, year, title, text, priority = 0) {
   if (!Number.isFinite(year)) return;
   const current = milestones.get(year);
   if (!current || priority > current.priority) {
-    milestones.set(year, { text, priority });
+    milestones.set(year, { title, text, priority });
   }
 }
 
@@ -43,6 +43,7 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       peakPopulation.year,
+      "Population Plateau",
       `${peakPopulation.year} is the projected turning point for global population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
       5,
     );
@@ -57,10 +58,43 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       tenBillion.year,
+      "Ten Billion World",
       `${tenBillion.year} is the first year the medium projection puts the world above 10B people.`,
       4,
     );
   }
+
+  addMilestone(
+    milestones,
+    2037,
+    "The Next Billion",
+    "2037 is the projected year the global population crosses 9B, roughly 15 years after passing 8B in 2022.",
+    4,
+  );
+
+  addMilestone(
+    milestones,
+    2063,
+    "The Great Age Inversion",
+    "2063 is the projected age-structure tipping point when people aged 65 and older outnumber children under 15 for the first time.",
+    4,
+  );
+
+  addMilestone(
+    milestones,
+    2070,
+    "A Super-Aged Planet",
+    "2070 is when the world is projected to become a super-aged society, with more than 20% of the global population aged 65 or older.",
+    4,
+  );
+
+  addMilestone(
+    milestones,
+    2080,
+    "Seniors Outnumber Youth",
+    "2080 deepens the global age shift: adults aged 65 and older are projected to permanently outnumber all children and teenagers under 18.",
+    4,
+  );
 
   const replacementFertility = firstMetricYear(
     globalData,
@@ -71,6 +105,7 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       replacementFertility.year,
+      "Below Replacement",
       `${replacementFertility.year} is when global fertility is projected to slip below replacement, at ${replacementFertility.value.toFixed(3)} births per woman.`,
       4,
     );
@@ -85,6 +120,7 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       slowGrowth.year,
+      "Slower Growth Era",
       `${slowGrowth.year} marks a slower-growth world: global population growth falls below 0.5% for the first time in the projection.`,
       3,
     );
@@ -99,6 +135,7 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       life80.year,
+      "Longer Lives",
       `${life80.year} is the first projected year global life expectancy reaches 80 years.`,
       3,
     );
