@@ -926,9 +926,16 @@ function tickPositionRatio(i, n) {
 
 function buildYearTimeline() {
   const n = yearsData.length;
+  // Same data-driven milestones the status copy and the randomized default
+  // year draw from, so the timeline highlights exactly the years that are
+  // "interesting" rather than a separately-curated list.
+  const milestoneYears = new Set(
+    prioritizedMilestoneYears(globalTrendMilestones),
+  );
   yearTickElements = yearsData.map((year, i) => {
     const tick = document.createElement("div");
     tick.className = "year-tick";
+    tick.classList.toggle("milestone", milestoneYears.has(year));
     tick.style.top = `${tickPositionRatio(i, n) * 100}%`;
     tick.dataset.year = year;
 
@@ -1475,6 +1482,7 @@ async function init() {
       minYear,
       maxYear,
     });
+    console.log("defaultYears", defaultYears);
     const defaultYear =
       defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
     elements.yearSlider.min = minYear;

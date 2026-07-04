@@ -2,6 +2,7 @@
     --slider-size: 10px;
     --color-text: #222;
     --color-muted: #666;
+    --color-milestone: #ff48b0;
     --color-subtle: #888;
     --color-border: rgba(0, 0, 0, 0.1);
     --border: 1px solid var(--color-border);
@@ -380,6 +381,14 @@ body.detail .hide-for-detail {
     opacity: 0.2;
     flex: none;
     transition: width 0.15s ease;
+}
+
+/* Marks the same data-driven "interesting year" set the status copy and
+   randomized default year draw from (prioritizedMilestoneYears), so the
+   timeline visually points at years worth stopping on. */
+.year-tick.milestone .year-tick-dash {
+    background: var(--color-milestone);
+    opacity: 0.6;
 }
 
 .year-tick-label {
