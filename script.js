@@ -653,6 +653,16 @@ function updateCalloutLabels() {
   });
 }
 
+const formatter = new Intl.ListFormat("en", {
+  style: "long",
+  type: "conjunction",
+});
+
+function getPeakCountryName(peakCountries) {
+  const names = peakCountries.map((country) => country.name);
+  return formatter.format(names);
+}
+
 // Picks a phrasing for the peak-year status line based on how many countries
 // peak in the given year. Country names live in the detail rows below the
 // status, so the copy stays focused on the year and count.
@@ -664,7 +674,6 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   const pick = (variants) =>
     variants[Math.floor(Math.random() * variants.length)];
   const count = peakCountries.length;
-
   if (count === 0) {
     return pick(
       isProjected
@@ -685,14 +694,14 @@ function buildPeakStatus(year, peakCountries, isProjected) {
     return pick(
       isProjected
         ? [
-            `One country is projected to reach its population peak in ${year}.`,
-            `${year} is projected to be a population high point for one country.`,
-            `A single country is projected to top out in ${year}.`,
+            `${peakCountries[0].name} is projected to reach its population peak in ${year}.`,
+            `${year} is projected to be a population high point for ${peakCountries[0].name}.`,
+            `${peakCountries[0].name} is projected to top out in ${year}.`,
           ]
         : [
-            `One country reached its population peak in ${year}.`,
-            `${year} was the population high point for one country.`,
-            `A single country topped out in ${year}.`,
+            `${peakCountries[0].name} reached its population peak in ${year}.`,
+            `${year} was the population high point for ${peakCountries[0].name}.`,
+            `${peakCountries[0].name} topped out in ${year}.`,
           ],
     );
   }
@@ -701,14 +710,14 @@ function buildPeakStatus(year, peakCountries, isProjected) {
     return pick(
       isProjected
         ? [
-            `${count} countries are projected to reach their population peak in ${year}.`,
-            `${year} is projected to mark the population high point for ${count} countries.`,
-            `${count} countries are projected to top out in ${year}.`,
+            `${getPeakCountryName(peakCountries)} are projected to reach their population peak in ${year}.`,
+            `${year} is projected to mark the population high point for ${getPeakCountryName(peakCountries)}.`,
+            `${getPeakCountryName(peakCountries)} are projected to top out in ${year}.`,
           ]
         : [
-            `${count} countries reached their population peak in ${year}.`,
-            `${year} marked the population high point for ${count} countries.`,
-            `${count} countries topped out in ${year}.`,
+            `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
+            `${year} marked the population high point for ${getPeakCountryName(peakCountries)}.`,
+            `${getPeakCountryName(peakCountries)} topped out in ${year}.`,
           ],
     );
   }
@@ -716,14 +725,14 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   return pick(
     isProjected
       ? [
-          `${count} countries are projected to reach their population peak in ${year}.`,
-          `${year} is projected to be a busy peak year, with ${count} countries topping out.`,
-          `A wave of projected population peaks lands in ${year}: ${count} countries in all.`,
+          `${getPeakCountryName(peakCountries)} countries are projected to reach their population peak in ${year}.`,
+          `${year} is projected to be a busy peak year, with ${getPeakCountryName(peakCountries)} topping out.`,
+          `A wave of projected population peaks lands in ${year}: ${getPeakCountryName(peakCountries)}.`,
         ]
       : [
-          `${count} countries reached their population peak in ${year}.`,
-          `${year} was a busy peak year, with ${count} countries topping out.`,
-          `A wave of population peaks landed in ${year}: ${count} countries in all.`,
+          `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
+          `${year} was a busy peak year, with ${getPeakCountryName(peakCountries)} topping out.`,
+          `A wave of population peaks landed in ${year}: ${getPeakCountryName(peakCountries)}.`,
         ],
   );
 }
@@ -1490,7 +1499,6 @@ async function init() {
       minYear,
       maxYear,
     });
-    console.log("defaultYears", defaultYears);
     const defaultYear =
       defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
     elements.yearSlider.min = minYear;
