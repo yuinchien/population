@@ -462,7 +462,8 @@ body.detail #overlay .hide-for-detail {
     white-space: nowrap;
     pointer-events: none;
     transform: translate(-50%, -130%);
-    display: none;
+    z-index: 1000;
+    /*display: none;*/
 }
 
 .tooltip-line1 {

@@ -163,7 +163,7 @@ test("METRICS centralizes shared metric order, labels, and formatters", () => {
   assert.equal(METRICS.population.detailLabel, "Population");
   assert.equal(METRICS.populationGrowth.detailLabel, "Growth rate");
   assert.equal(METRICS.population.formatPanel(10_234_567_890), "10.23B");
-  assert.equal(METRICS.fertility.formatPanel(1.987), "1.99 births/woman");
+  assert.equal(METRICS.fertility.formatPanel(1.987), "2.0 births/woman");
   assert.equal(METRICS.lifeExpectancy.format(80.123), "80.1 yrs");
 });
 

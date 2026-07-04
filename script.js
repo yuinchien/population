@@ -26,6 +26,7 @@ const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
 const MAP_DOT_SIZE = 1.5;
 const DOT_OPACITY = 0.9;
+const HOVER_FADE_ALPHA = 0.4;
 const PULSE_AMPLITUDE = 7;
 const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
@@ -56,7 +57,7 @@ const CALLOUT_MAP_EXTEND = 80;
 const CALLOUT_LEFT_CLEARANCE = 260;
 
 const REGION_COLORS = {
-  "East Asia & Pacific": "#88898a",
+  "East Asia & Pacific": "#C0E08D",
   "Europe & Central Asia": "#e6b5c9",
   "Latin America & Caribbean": "#D7BDFF",
   "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
@@ -210,13 +211,16 @@ const DOT_VERTEX_SHADER = `
   uniform float uIsMap;
 
   attribute vec3 color;
+  attribute float aAlpha;
   attribute float aFrequency;
   attribute float aPhase;
 
   varying vec3 vColor;
+  varying float vAlpha;
 
   void main() {
     vColor = color;
+    vAlpha = aAlpha;
 
     float wave = sin(uTime * aFrequency * uFreqMul + aPhase) * uPulseAmplitude * uAmpMul;
 
@@ -244,10 +248,11 @@ const DOT_FRAGMENT_SHADER = `
   uniform float uOpacity;
 
   varying vec3 vColor;
+  varying float vAlpha;
 
   void main() {
     vec4 texColor = texture2D(map, gl_PointCoord);
-    gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * texColor.a);
+    gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * vAlpha * texColor.a);
     // Three's THREE.Color stores values in linear space (color management
     // is on by default since r152) and built-in materials convert back to
     // the renderer's output color space via this exact chunk before
@@ -342,11 +347,13 @@ function updateMetricsPanel(year) {
 
 let pointsMesh = null;
 let basePositions = null; // pre-pulse baseline, rebuilt whenever the year changes
+let alphas = null;
 let frequencies = null;
 let phases = null;
 let currentDotSize = DOT_SIZE; // logical size (unscaled by pixelRatio)
 let dotCountry = [];
 let activeTotal = 0;
+let hoverFocusCountry = null;
 let countriesData = [];
 let yearsData = [];
 let currentYearIndex = -1;
@@ -386,6 +393,26 @@ function easeOutCubic(t) {
 
 function colorFor(country) {
   return colorMode === "income" ? country._incomeColor : country._regionColor;
+}
+
+function writeDotColor(colorAttr, slot, country) {
+  const color = colorFor(country);
+  colorAttr.setXYZ(slot, color.r, color.g, color.b);
+}
+
+function writeDotAlpha(slot, country) {
+  alphas[slot] =
+    hoverFocusCountry && hoverFocusCountry !== country ? HOVER_FADE_ALPHA : 1;
+}
+
+function setHoverFocusCountry(country) {
+  if (hoverFocusCountry === country) return;
+  hoverFocusCountry = country;
+  if (!pointsMesh || !activeTotal) return;
+  for (let i = 0; i < activeTotal; i++) {
+    writeDotAlpha(i, dotCountry[i]);
+  }
+  pointsMesh.geometry.getAttribute("aAlpha").needsUpdate = true;
 }
 
 // Uniformly-distributed random points inside a sphere a bit smaller than
@@ -443,6 +470,10 @@ function setupScene(countries, incomeGroups) {
     new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
   );
   geometry.setAttribute(
+    "aAlpha",
+    new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
+  );
+  geometry.setAttribute(
     "aFrequency",
     new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
   );
@@ -476,6 +507,7 @@ function setupScene(countries, incomeGroups) {
   scene.add(pointsMesh);
 
   basePositions = new Float32Array(maxTotal * 3);
+  alphas = geometry.getAttribute("aAlpha").array;
   frequencies = geometry.getAttribute("aFrequency").array;
   phases = geometry.getAttribute("aPhase").array;
   dotCountry = new Array(maxTotal);
@@ -823,6 +855,8 @@ function applyYear(year) {
   // read as an unexplained flash rather than communicating a change.
   if (currentYearIndex !== -1) triggerYearChangePulse();
   currentYearIndex = yearIndex;
+  hoverFocusCountry = null;
+  elements.tooltip.hidden = true;
   // A slider move mid-transition invalidates the in-flight tween's index
   // mapping (activeTotal/dotCountry are about to be rebuilt), so just cut
   // straight to the target view's positions instead of finishing the morph.
@@ -839,7 +873,6 @@ function applyYear(year) {
       country.dots.length,
       Math.max(1, Math.round(pop / PEOPLE_PER_DOT)),
     );
-    const color = colorFor(country);
     const positions = positionsFor(country);
     for (let i = 0; i < activeCount; i++) {
       const i3 = cursor * 3;
@@ -853,9 +886,8 @@ function applyYear(year) {
       posAttr.array[i3] = x;
       posAttr.array[i3 + 1] = y;
       posAttr.array[i3 + 2] = z;
-      colorAttr.array[i3] = color.r;
-      colorAttr.array[i3 + 1] = color.g;
-      colorAttr.array[i3 + 2] = color.b;
+      writeDotColor(colorAttr, cursor, country);
+      writeDotAlpha(cursor, country);
       frequencies[cursor] = country._freqs[i];
       phases[cursor] = country._phases[i];
       dotCountry[cursor] = country;
@@ -868,6 +900,7 @@ function applyYear(year) {
   pointsMesh.geometry.setDrawRange(0, activeTotal);
   posAttr.needsUpdate = true;
   colorAttr.needsUpdate = true;
+  pointsMesh.geometry.getAttribute("aAlpha").needsUpdate = true;
   pointsMesh.geometry.getAttribute("aFrequency").needsUpdate = true;
   pointsMesh.geometry.getAttribute("aPhase").needsUpdate = true;
 
@@ -887,11 +920,7 @@ function recolor() {
   if (!pointsMesh || !activeTotal) return;
   const colorAttr = pointsMesh.geometry.getAttribute("color");
   for (let i = 0; i < activeTotal; i++) {
-    const color = colorFor(dotCountry[i]);
-    const i3 = i * 3;
-    colorAttr.array[i3] = color.r;
-    colorAttr.array[i3 + 1] = color.g;
-    colorAttr.array[i3 + 2] = color.b;
+    writeDotColor(colorAttr, i, dotCountry[i]);
   }
   colorAttr.needsUpdate = true;
   renderLegend();
@@ -1620,6 +1649,7 @@ renderer.domElement.addEventListener("pointerleave", () => {
   pointer.set(Infinity, Infinity);
   lastPointerEvent = null;
   elements.tooltip.hidden = true;
+  setHoverFocusCountry(null);
 });
 
 function updateTooltip(event) {
@@ -1628,13 +1658,16 @@ function updateTooltip(event) {
   const hits = raycaster.intersectObject(pointsMesh);
   if (!hits.length) {
     elements.tooltip.hidden = true;
+    setHoverFocusCountry(null);
     return;
   }
   const country = dotCountry[hits[0].index];
   if (!country) {
     elements.tooltip.hidden = true;
+    setHoverFocusCountry(null);
     return;
   }
+  setHoverFocusCountry(country);
   const pop = country.populations[currentYearIndex] ?? country.population;
   const groupLabel =
     colorMode === "income" ? country._incomeLabel : country.region;

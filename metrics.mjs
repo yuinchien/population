@@ -15,7 +15,7 @@ export function formatPercent(value) {
 
 export function formatFertility(value) {
   if (value == null) return "N/A";
-  return Number(value).toFixed(2);
+  return Number(value).toFixed(1);
 }
 
 export function formatCount(value, options = {}) {
@@ -52,8 +52,8 @@ export const METRICS = {
     detailLabel: "Fertility rate",
     defaultDirection: "desc",
     format: formatFertility,
-    formatPanel: (value) => `${Number(value).toFixed(2)} births/woman`,
-    formatRange: (value) => Number(value).toFixed(2),
+    formatPanel: (value) => `${formatFertility(value)} births/woman`,
+    formatRange: formatFertility,
   },
   lifeExpectancy: {
     key: "lifeExpectancy",
