@@ -968,12 +968,21 @@ const YEAR_TIMELINE_MAGNIFY_STRENGTH = 1.4; // extra scale at the epicenter
 // some fixed radius (which is what left a visible seam before).
 const YEAR_TIMELINE_MAGNIFY_SPACING = 4; // px of push per tick at full falloff
 
+// Ticks are laid out at even fractions of the timeline's height, indexed
+// by position rather than by year value — shared by buildYearTimeline()
+// (as a `top: %` string) and updateYearTimelineHover() (as a pixel offset
+// for cursor hit-testing), which both need to agree on exactly the same
+// mapping or hover would target the wrong tick.
+function tickPositionRatio(i, n) {
+  return i / (n - 1);
+}
+
 function buildYearTimeline() {
   const n = yearsData.length;
   yearTickElements = yearsData.map((year, i) => {
     const tick = document.createElement("div");
     tick.className = "year-tick";
-    tick.style.top = `${(i / (n - 1)) * 100}%`;
+    tick.style.top = `${tickPositionRatio(i, n) * 100}%`;
     tick.dataset.year = year;
 
     const dash = document.createElement("span");
@@ -1004,7 +1013,7 @@ function updateYearTimelineHover(clientY) {
   let closestIndex = -1;
   let closestDistance = Infinity;
   yearTickElements.forEach((tick, i) => {
-    const tickY = rect.top + (i / (n - 1)) * rect.height;
+    const tickY = rect.top + tickPositionRatio(i, n) * rect.height;
     const distance = Math.abs(clientY - tickY);
     if (distance < closestDistance) {
       closestDistance = distance;

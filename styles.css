@@ -279,7 +279,6 @@ body.detail #overlay .hide-for-detail {
 }
 
 .metric-range {
-    display: block;
     margin-top: 1px;
     color: var(--color-subtle);
     font-weight: 400;
@@ -421,7 +420,6 @@ body.detail #overlay .hide-for-detail {
 
 .year-tick-label {
     font-size: 16px;
-    /*font-size: calc(6px * var(--magnify, 1));*/
     line-height: 1;
     color: var(--color-text);
     white-space: nowrap;
