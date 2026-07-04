@@ -380,8 +380,8 @@ body.detail #overlay .hide-for-detail {
    avoids. */
 .year-timeline {
     position: fixed;
-    top: 24px;
-    bottom: 24px;
+    top: 40px;
+    bottom: 40px;
     left: calc(var(--overlay-width) + 8px);
     width: 70px;
     z-index: 100;
