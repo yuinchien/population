@@ -151,7 +151,7 @@ body.detail .detail-back {
     margin: 0 0 4px;
     color: var(--color-text);
     font-family: var(--font-sans);
-    font-size: clamp(1.6rem, 2.6vw, 2.6rem);
+    font-size: clamp(1.5rem, 2.5vw, 2.5rem);
     font-weight: 500;
     line-height: 1.1;
 }
@@ -550,7 +550,7 @@ body.detail .detail-back {
     color: var(--color-text);
     line-height: 1.4em;
     font-size: 1.6rem;
-    max-width: 960px;
+    max-width: 920px;
     font-family: var(--font-sans);
     letter-spacing: 0em;
     margin: 50px 0 16px 0;
