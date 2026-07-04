@@ -11,7 +11,6 @@ import {
   GLOBAL_METRIC_KEYS,
   METRICS,
   formatCount,
-  formatPopulation,
 } from "./metrics.mjs";
 
 const DATA_URL = "./data/population-dots.json";
@@ -19,8 +18,6 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
 const COUNTRY_GNI_URL = "./data/country-gni.json";
-const COUNTRY_ISO2_URL = "./data/country-iso2.json";
-const FLAG_URL = (iso2) => `./flags/${iso2}.svg`;
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
@@ -78,7 +75,6 @@ const UNCLASSIFIED_COLOR = "#999999";
 const elements = {
   titleYear: document.querySelector("#titleYear"),
   status: document.querySelector("#status"),
-  peakFlags: document.querySelector("#peakFlags"),
   tooltip: document.querySelector("#tooltip"),
   yearControl: document.querySelector("#yearControl"),
   yearSlider: document.querySelector("#yearSlider"),
@@ -364,7 +360,6 @@ let lowMetricsByYear = new Map();
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
 let countryGni = {};
-let countryIso2 = {};
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
@@ -607,7 +602,9 @@ function updatePeakCallouts(year) {
 
       const labelEl = document.createElement("div");
       labelEl.className = "peak-callout-label glass";
-      labelEl.textContent = country.name;
+      labelEl.textContent = `${country.name} ${formatPeakPopulation(
+        country.populations[currentYearIndex],
+      )}`;
       labelEl.style.setProperty(
         "--color-callout",
         `#${dotColor.getHexString()}`,
@@ -753,13 +750,6 @@ function updateStatusPanel(year) {
     (country) => country.peakYear === year,
   );
   const milestone = globalTrendMilestones.get(year);
-  // Cleared immediately (rather than left showing the previous year's
-  // flags) so nothing mismatched lingers while the new line types out, and
-  // rendered only once typing finishes rather than alongside it — doing
-  // both at once meant the flags row popped in at its full height while
-  // #status was still just one short line, then kept getting shoved
-  // further down as more lines wrapped in underneath it.
-  elements.peakFlags.replaceChildren();
   typeStatus(
     milestone
       ? `${milestone.text}${
@@ -768,42 +758,6 @@ function updateStatusPanel(year) {
             : ""
         }`
       : buildPeakStatus(year, peakCountries, isProjected),
-    elements.status,
-    { onComplete: () => renderPeakFlags(peakCountries) },
-  );
-}
-
-// Shows every peak country's flag and peak-year population, not just the
-// couple named in the status text's 4+-country preview.
-function renderPeakFlags(peakCountries) {
-  elements.peakFlags.replaceChildren(
-    ...peakCountries
-      .map((country) => {
-        const iso2 = countryIso2[country.iso3];
-        if (!iso2) return null;
-        const row = document.createElement("div");
-        row.className = "peak-flag-row";
-
-        const img = document.createElement("img");
-        img.className = "peak-flag";
-        img.src = FLAG_URL(iso2);
-        img.alt = country.name;
-        img.title = country.name;
-        img.loading = "lazy";
-
-        const value = document.createElement("span");
-        value.className = "peak-flag-population";
-        value.textContent = `${country.name}: ${formatPeakPopulation(
-          country.populations[currentYearIndex],
-        )}`;
-        value.title = `${country.name}: ${formatPopulation(
-          country.populations[currentYearIndex],
-        )}`;
-
-        row.append(img, value);
-        return row;
-      })
-      .filter(Boolean),
   );
 }
 
@@ -816,15 +770,10 @@ function renderPeakFlags(peakCountries) {
 // #detailSummary is ever being typed into at a time (they're mutually
 // exclusive with the detail panel's visibility), so a new call anywhere
 // should still invalidate whatever was previously in flight.
-function typeStatus(
-  text,
-  el = elements.status,
-  { instant = false, onComplete } = {},
-) {
+function typeStatus(text, el = elements.status, { instant = false } = {}) {
   const token = ++statusTypingToken;
   if (instant) {
     el.replaceChildren(document.createTextNode(text));
-    onComplete?.();
     return;
   }
 
@@ -840,8 +789,6 @@ function typeStatus(
     if (i < text.length) {
       i++;
       setTimeout(step, 15);
-    } else {
-      onComplete?.();
     }
   };
   step();
@@ -1485,14 +1432,12 @@ async function init() {
       incomeResponse,
       countryDemographicsResponse,
       countryGniResponse,
-      countryIso2Response,
     ] = await Promise.all([
       fetch(DATA_URL),
       fetch(GLOBAL_METRICS_URL),
       fetch(INCOME_GROUPS_URL),
       fetch(COUNTRY_DEMOGRAPHICS_URL),
       fetch(COUNTRY_GNI_URL),
-      fetch(COUNTRY_ISO2_URL),
     ]);
     if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
     if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
@@ -1502,14 +1447,11 @@ async function init() {
     }
     if (!countryGniResponse.ok)
       throw new Error(`HTTP ${countryGniResponse.status}`);
-    if (!countryIso2Response.ok)
-      throw new Error(`HTTP ${countryIso2Response.status}`);
     const data = await dotsResponse.json();
     const globalData = await globalResponse.json();
     const incomeGroups = await incomeResponse.json();
     countryDemographicMetrics = await countryDemographicsResponse.json();
     countryGni = (await countryGniResponse.json()).countries || {};
-    countryIso2 = await countryIso2Response.json();
     countriesData = data.countries;
     yearsData = data.years;
     countriesData.forEach((country) => {

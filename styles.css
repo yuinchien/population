@@ -74,16 +74,9 @@ canvas {
     transition: all 0.15s;
 }
 
-/* Specificity note: the base spacing rule above includes #overlay (an ID),
-   so this override needs at least as much specificity to actually win the
-   margin-bottom cascade — a bare ".hide-for-detail" class selector alone
-   would lose to it and silently keep the 12px margin. */
-body.detail #overlay .hide-for-detail {
-    /*max-height: 0;*/
-    /*margin-bottom: 0;*/
+body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
-    /*padding: 0;*/
 }
 
 .topbar {
@@ -106,54 +99,25 @@ body.detail #overlay .hide-for-detail {
     opacity: 0;
 }
 
-#overlay p {
+.status-wrapper {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 100;
+    /* A fixed width (not max-width) keeps the box's left edge stable as the
+       typewriter effect grows the text — with only `right` anchoring it,
+       a shrink-to-fit box would still creep leftward as content grows even
+       though the text itself is left-aligned, which defeats the point of
+       switching away from right-align. */
+    width: 340px;
+    font-weight: 500;
+    font-family: var(--font-sans);
+    font-size: 16px;
+}
+
+.status-wrapper p {
     margin: 0 0 4px;
     line-height: 1.5em;
-}
-
-.status-wrapper {
-    margin-top: 12px;
-    border-top: var(--border);
-    padding: 12px 0;
-}
-
-.peak-flags {
-    display: grid;
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.peak-flag-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    /* Each row is a freshly-created element on every render (replaceChildren
-       swaps the whole set), so this always plays from scratch — no class
-       toggling needed to "restart" it. */
-    animation: peak-flag-fade-in 0.3s ease;
-}
-
-@keyframes peak-flag-fade-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
-.peak-flag {
-    width: 20px;
-    aspect-ratio: 4 / 3;
-    object-fit: cover;
-    flex: none;
-    outline: var(--border);
-    outline-offset: -1px;
-}
-
-.peak-flag-population {
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
 }
 
 .status-cursor {
