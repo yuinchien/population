@@ -43,7 +43,7 @@ export function computeGlobalTrendMilestones(globalData) {
     addMilestone(
       milestones,
       peakPopulation.year,
-      "Population Plateau",
+      "Peak Humanity",
       `${peakPopulation.year} is the projected turning point for global population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
       5,
     );
