@@ -1,5 +1,5 @@
 :root {
-    --slider-size: 12px;
+    --slider-size: 10px;
     --color-text: #222;
     --color-muted: #666;
     --color-subtle: #888;
@@ -375,7 +375,7 @@ body.detail #overlay .hide-for-detail {
     bottom: 24px;
     left: calc(var(--overlay-width) + 8px);
     width: 70px;
-    z-index: 9000;
+    z-index: 100;
     cursor: pointer;
 }
 
@@ -475,7 +475,7 @@ body.detail #overlay .hide-for-detail {
     right: 0;
     bottom: 0;
     left: var(--overlay-width);
-    z-index: 20;
+    z-index: 999;
     display: grid;
     grid-template-rows: auto auto auto 1fr;
     gap: 0;

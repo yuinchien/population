@@ -1,5 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import {
+  buildDetailStatus,
+  computeGlobalTrendMilestones,
+  displayGroupLabel,
+  prioritizedMilestoneYears,
+} from "./status-insights.mjs";
 
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
@@ -150,13 +156,6 @@ function incomeGroupLabel(iso3, incomeGroups) {
 
 function incomeColor(label) {
   return new THREE.Color(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR);
-}
-
-function displayGroupLabel(label) {
-  if (label.includes("Afghanistan & Pakistan")) {
-    return "Middle East & North Africa";
-  }
-  return label.replace(" countries", "");
 }
 
 function formatYears(value) {
@@ -324,97 +323,6 @@ function buildVariantIndex(variantSeries) {
     });
   });
   return byYear;
-}
-
-function metricRows(globalData, key) {
-  return [...(globalData[key] || [])].sort((a, b) => a.year - b.year);
-}
-
-function firstMetricYear(globalData, key, predicate) {
-  return metricRows(globalData, key).find(({ value }) => predicate(value));
-}
-
-function addMilestone(milestones, year, text, priority = 0) {
-  if (!Number.isFinite(year)) return;
-  const current = milestones.get(year);
-  if (!current || priority > current.priority) {
-    milestones.set(year, { text, priority });
-  }
-}
-
-function computeGlobalTrendMilestones(globalData) {
-  const milestones = new Map();
-  const populationRows = metricRows(globalData, "population");
-  const peakPopulation = populationRows.reduce(
-    (best, row) => (!best || row.value > best.value ? row : best),
-    null,
-  );
-  if (peakPopulation) {
-    addMilestone(
-      milestones,
-      peakPopulation.year,
-      `${peakPopulation.year} is the projected turning point for global population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
-      5,
-    );
-  }
-
-  const tenBillion = firstMetricYear(
-    globalData,
-    "population",
-    (value) => value >= 10_000_000_000,
-  );
-  if (tenBillion) {
-    addMilestone(
-      milestones,
-      tenBillion.year,
-      `${tenBillion.year} is the first year the medium projection puts the world above 10B people.`,
-      4,
-    );
-  }
-
-  const replacementFertility = firstMetricYear(
-    globalData,
-    "fertility",
-    (value) => value < 2.1,
-  );
-  if (replacementFertility) {
-    addMilestone(
-      milestones,
-      replacementFertility.year,
-      `${replacementFertility.year} is when global fertility is projected to slip below replacement, at ${replacementFertility.value.toFixed(3)} births per woman.`,
-      4,
-    );
-  }
-
-  const slowGrowth = firstMetricYear(
-    globalData,
-    "populationGrowth",
-    (value) => value < 0.5,
-  );
-  if (slowGrowth) {
-    addMilestone(
-      milestones,
-      slowGrowth.year,
-      `${slowGrowth.year} marks a slower-growth world: global population growth falls below 0.5% for the first time in the projection.`,
-      3,
-    );
-  }
-
-  const life80 = firstMetricYear(
-    globalData,
-    "lifeExpectancy",
-    (value) => value >= 80,
-  );
-  if (life80) {
-    addMilestone(
-      milestones,
-      life80.year,
-      `${life80.year} is the first projected year global life expectancy reaches 80 years.`,
-      3,
-    );
-  }
-
-  return milestones;
 }
 
 // Writes a metric's headline value, plus — for projected years — a
@@ -841,169 +749,19 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   );
 }
 
-function countriesWithNumericValue(countries, value) {
-  return countries
-    .map((country) => ({ country, value: value(country) }))
-    .filter((entry) => Number.isFinite(entry.value));
-}
-
-function maxEntry(entries) {
-  return entries.reduce(
-    (best, entry) => (!best || entry.value > best.value ? entry : best),
-    null,
-  );
-}
-
-function minEntry(entries) {
-  return entries.reduce(
-    (best, entry) => (!best || entry.value < best.value ? entry : best),
-    null,
-  );
-}
-
-function averageValue(entries) {
-  if (!entries.length) return null;
-  return entries.reduce((sum, entry) => sum + entry.value, 0) / entries.length;
-}
-
-// buildDetailStatus() needs this same entries/otherEntries/average/max/min
-// bundle for growth, fertility, life expectancy, and median age alike — one
-// call per metric here instead of four hand-copied variable groups.
-function computeMetricStats(countries, otherCountries, key) {
-  const entries = countriesWithNumericValue(countries, (country) =>
-    metricFor(country, key),
-  );
-  const otherEntries = countriesWithNumericValue(otherCountries, (country) =>
-    metricFor(country, key),
-  );
-  return {
-    entries,
-    otherEntries,
-    average: averageValue(entries),
-    otherAverage: averageValue(otherEntries),
-    max: maxEntry(entries),
-    min: minEntry(entries),
-  };
-}
-
-function formatAverageYears(value) {
-  return `${Number(value).toFixed(1)} yrs`;
-}
-
-function buildDetailStatus(year, countries, isProjected, legend) {
-  const label = displayGroupLabel(legend.label);
-  const projected = isProjected ? "projected " : "";
-  const yearLead = isProjected ? `${year} projection:` : `${year}:`;
-  const populationEntries = countriesWithNumericValue(
-    countries,
-    (country) => country.populations[currentYearIndex],
-  );
-
-  if (!populationEntries.length) {
-    return `No ${projected}country population data is available for ${label} in ${year}.`;
-  }
-
-  const otherCountries = countriesData.filter((country) =>
-    legend.mode === "income"
-      ? country._incomeLabel !== legend.label
-      : country.region.trim() !== legend.label,
-  );
-
-  const growth = computeMetricStats(
-    countries,
-    otherCountries,
-    "populationGrowth",
-  );
-  const decliningCount = growth.entries.filter(
-    (entry) => entry.value < 0,
-  ).length;
-  const growingCount = growth.entries.filter((entry) => entry.value > 0).length;
-  const fastestGrowth = growth.max;
-  const steepestDecline = growth.min;
-
-  const fertility = computeMetricStats(countries, otherCountries, "fertility");
-  const belowReplacementCount = fertility.entries.filter(
-    (entry) => entry.value < 2.1,
-  ).length;
-  const belowReplacementShare =
-    belowReplacementCount / fertility.entries.length;
-  const fertilityContext = fertility.entries.length
-    ? ` ${belowReplacementCount} of ${fertility.entries.length} countries are below replacement fertility.`
-    : "";
-  const growthComparison =
-    Number.isFinite(growth.average) && Number.isFinite(growth.otherAverage)
-      ? ` average growth is ${formatPercent(growth.average)}, versus ${formatPercent(growth.otherAverage)} outside this group.`
-      : "";
-  const fertilityComparison =
-    Number.isFinite(fertility.average) &&
-    Number.isFinite(fertility.otherAverage)
-      ? ` Average fertility is ${formatFertility(fertility.average)}, versus ${formatFertility(fertility.otherAverage)} outside this group.`
-      : "";
-
-  if (legend.mode === "income") {
-    const life = computeMetricStats(
-      countries,
-      otherCountries,
-      "lifeExpectancy",
-    );
-    const medianAge = computeMetricStats(
-      countries,
-      otherCountries,
-      "medianAge",
-    );
-    const oldest = medianAge.max;
-    const youngest = medianAge.min;
-    const longestLived = life.max;
-    const shortestLived = life.min;
-
-    if (
-      Number.isFinite(medianAge.average) &&
-      Number.isFinite(medianAge.otherAverage) &&
-      medianAge.average - medianAge.otherAverage >= 4
-    ) {
-      return `${yearLead} ${label} has the oldest age profile among income groups. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.`;
-    }
-
-    if (
-      Number.isFinite(medianAge.average) &&
-      Number.isFinite(medianAge.otherAverage) &&
-      medianAge.otherAverage - medianAge.average >= 4
-    ) {
-      return `${yearLead} ${label} has the youngest age profile among income groups. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.`;
-    }
-
-    if (
-      Number.isFinite(life.average) &&
-      Number.isFinite(life.otherAverage) &&
-      Math.abs(life.average - life.otherAverage) >= 2
-    ) {
-      const direction = life.average > life.otherAverage ? "higher" : "lower";
-      const edgeCountry =
-        life.average > life.otherAverage ? longestLived : shortestLived;
-      return `${yearLead} life expectancy is ${direction} in ${label}. The group averages ${formatAverageYears(life.average)}, versus ${formatAverageYears(life.otherAverage)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.`;
-    }
-  }
-
-  if (fertility.entries.length && belowReplacementShare >= 0.6) {
-    return `${yearLead} low fertility is the standout pattern in ${label};${fertilityContext}${fertilityComparison}`;
-  }
-
-  if (growth.entries.length && decliningCount > growingCount) {
-    return `${yearLead} population decline is the stronger signal in ${label}; ${decliningCount} of ${growth.entries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}`;
-  }
-
-  if (growth.entries.length && growingCount > decliningCount) {
-    return `${yearLead} ${label} still leans toward growth, with ${growingCount} of ${growth.entries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}`;
-  }
-
-  return `${yearLead} ${label} is balanced between growth and decline.${growthComparison}${fertilityContext}`;
-}
-
 function updateStatusPanel(year) {
   const isProjected = year > historicalCutoffYear;
   if (selectedLegend && !elements.detailPanel.hidden) {
     typeStatus(
-      buildDetailStatus(year, selectedCountries(), isProjected, selectedLegend),
+      buildDetailStatus({
+        year,
+        countries: selectedCountries(),
+        allCountries: countriesData,
+        currentYearIndex,
+        isProjected,
+        legend: selectedLegend,
+        metricFor,
+      }),
       elements.detailSummary,
       { instant: true },
     );
@@ -1808,20 +1566,19 @@ async function init() {
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
-    const defaultYears = [2047, 2050, 2061, 2081, 2084];
-    // Randomized per page load (rather than pinned to the current year) to show a different snapshot from a curated set each time.
-    // 2047: global growth falls below 0.5%
-    // 2050: fertility slips below replacement
-    // 2061: world population crosses 10B
-    // 2081: global life expectancy reaches 80 years
-    // 2084: projected global population peak/turning point
+    // Randomized per page load from the same data-driven milestones used in
+    // the status copy, rather than maintaining a second hardcoded year list.
+    const defaultYears = prioritizedMilestoneYears(globalTrendMilestones, {
+      minYear,
+      maxYear,
+    });
     const defaultYear =
-      defaultYears[Math.floor(Math.random() * defaultYears.length)];
+      defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
     elements.yearSlider.min = minYear;
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
-    // elements.yearControl.hidden = false;
+    elements.yearControl.hidden = false;
     // "input" fires continuously while dragging — kept cheap (thumb/fill
     // tracking plus the year figure itself, so there's still feedback on
     // what year you'd land on) so the slider stays responsive. The actual
