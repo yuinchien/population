@@ -85,8 +85,26 @@ body.detail .hide-for-detail {
 .topbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 12px 0;
+    height: 40px;
+}
+
+.detail-back {
+    display: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    color: var(--color-text);
+    background: transparent;
+    font: inherit;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    margin-left: -8px;
+}
+
+body.detail .detail-back {
+    display: block;
 }
 
 #overlay h1 {
@@ -246,7 +264,7 @@ body.detail .hide-for-detail {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 10px 0;
     border-top: var(--border);
 }
 
@@ -325,13 +343,14 @@ body.detail .hide-for-detail {
     gap: 4px;
     box-sizing: border-box;
     width: 100%;
-    padding: 4px;
+    padding: 6px;
     border: 0;
     color: inherit;
     background: transparent;
     font: inherit;
     text-align: left;
     cursor: pointer;
+    text-transform: uppercase;
 }
 
 .legend-item:hover,
@@ -481,15 +500,16 @@ body.detail .hide-for-detail {
     display: grid;
     grid-template-rows: auto auto auto 1fr;
     gap: 0;
-    padding: 12px;
+    padding: 0 12px 12px 12px;
     overflow: hidden;
 }
 
 .detail-panel-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 24px;
+    height: 40px;
 }
 
 .detail-title-row {

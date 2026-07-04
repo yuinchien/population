@@ -98,6 +98,7 @@ const elements = {
   detailHeader: document.querySelector("#detailHeader"),
   detailRows: document.querySelector("#detailRows"),
   detailClose: document.querySelector("#detailClose"),
+  detailBack: document.querySelector("#detailBack"),
 };
 
 const METRIC_VALUE_ELEMENTS = {
@@ -1555,6 +1556,7 @@ async function init() {
     });
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
+    elements.detailBack.addEventListener("click", closeDetailPanel);
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();
