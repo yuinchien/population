@@ -57,12 +57,12 @@ const CALLOUT_MAP_EXTEND = 80;
 const CALLOUT_LEFT_CLEARANCE = 260;
 
 const REGION_COLORS = {
-  "East Asia & Pacific": "#C0E08D",
-  "Europe & Central Asia": "#e6b5c9",
+  "East Asia & Pacific": "#5ec8e5",
+  "Europe & Central Asia": "#FFBD91",
   "Latin America & Caribbean": "#D7BDFF",
-  "Middle East, North Africa, Afghanistan & Pakistan": "#a5aaa8",
-  "North America": "#ac936e",
-  "South Asia": "#5ec8e5",
+  "Middle East, North Africa, Afghanistan & Pakistan": "#e6b5c9",
+  "North America": "#E4E42F",
+  "South Asia": "#C0E08D",
   "Sub-Saharan Africa": "#62c2b1",
 };
 const DEFAULT_COLOR = "#5fe39a";
