@@ -21,7 +21,7 @@ const COUNTRY_GNI_URL = "./data/country-gni.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
-const MAP_DOT_SIZE = 1.5;
+const MAP_DOT_SIZE = 2;
 const DOT_OPACITY = 0.9;
 const HOVER_FADE_ALPHA = 0.15;
 const PULSE_AMPLITUDE = 7;
@@ -43,7 +43,7 @@ const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.6;
 const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 const GLOBE_AUTO_ROTATE_SPEED = 0.35;
 const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
-const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 480);
+const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 360);
 
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
