@@ -517,7 +517,8 @@ body.detail .year-timeline {
     left: var(--overlay-width);
     z-index: 999;
     display: grid;
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 0;
     padding: 0 12px 12px 12px;
     overflow: hidden;
@@ -589,11 +590,22 @@ body.detail .year-timeline {
     margin: -4px;
 }
 
+.detail-table {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
 .detail-rows {
     display: grid;
     align-content: start;
     gap: 1px;
-    overflow: auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .detail-row {
@@ -784,6 +796,11 @@ body.menu-open .menu-toggle-icon::after {
         transform: translateX(-120%);
         transition: transform 0.2s ease;
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .detail-panel {
+        left: 0;
+        z-index: 10001;
     }
 
     body.menu-open #overlay {
