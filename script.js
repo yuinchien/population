@@ -73,6 +73,8 @@ const UNCLASSIFIED_INCOME = "Not classified";
 const UNCLASSIFIED_COLOR = "#999999";
 
 const elements = {
+  menuToggle: document.querySelector("#menuToggle"),
+  menuShim: document.querySelector("#menuShim"),
   titleYear: document.querySelector("#titleYear"),
   statusTitle: document.querySelector("#statusTitle"),
   status: document.querySelector("#status"),
@@ -1563,6 +1565,14 @@ async function init() {
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
     elements.detailBack.addEventListener("click", closeDetailPanel);
+    elements.menuToggle.addEventListener("click", () => {
+      const isOpen = document.body.classList.toggle("menu-open");
+      elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+    elements.menuShim.addEventListener("click", () => {
+      document.body.classList.remove("menu-open");
+      elements.menuToggle.setAttribute("aria-expanded", "false");
+    });
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();

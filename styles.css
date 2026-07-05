@@ -688,3 +688,110 @@ body.detail .year-timeline {
     pointer-events: auto;
     transform: translate(-50%, -100%);
 }
+
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 10000;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 24px;
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+}
+
+.menu-toggle-icon,
+.menu-toggle-icon::before,
+.menu-toggle-icon::after {
+    display: block;
+    width: 16px;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+}
+
+.menu-toggle-icon {
+    position: relative;
+    margin: 0 auto;
+    transition: background 0.15s;
+}
+
+.menu-toggle-icon::before,
+.menu-toggle-icon::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    transition: transform 0.15s;
+}
+
+.menu-toggle-icon::before {
+    top: -5px;
+}
+
+.menu-toggle-icon::after {
+    top: 5px;
+}
+
+body.menu-open .menu-toggle-icon {
+    background: transparent;
+}
+
+body.menu-open .menu-toggle-icon::before {
+    top: 0;
+    transform: rotate(45deg);
+}
+
+body.menu-open .menu-toggle-icon::after {
+    top: 0;
+    transform: rotate(-45deg);
+}
+
+.menu-shim {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.3);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+@media (max-width: 720px) {
+    #yearTimeline {
+        display: none;
+    }
+    .status-wrapper {
+        width: auto;
+        left: 28px;
+        right: 16px;
+        bottom: 16px;
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+    #viewMode {
+        top: 5px;
+        right: 16px;
+    }
+    #overlay {
+        background: rgba(255, 255, 255, 0.8);
+        width: 288px;
+        transform: translateX(-120%);
+        transition: transform 0.2s ease;
+        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+    }
+
+    body.menu-open #overlay {
+        transform: translateX(0);
+    }
+
+    body.menu-open .menu-shim {
+        display: block;
+        opacity: 1;
+    }
+}

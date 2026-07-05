@@ -44,7 +44,7 @@ export function computeGlobalTrendMilestones(globalData) {
       milestones,
       peakPopulation.year,
       "Peak Humanity",
-      `${peakPopulation.year} is the projected turning point for global population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
+      `${peakPopulation.year} is the projected turning point for world population: it tops out near ${formatCount(peakPopulation.value)} before edging downward.`,
       5,
     );
   }
@@ -68,7 +68,7 @@ export function computeGlobalTrendMilestones(globalData) {
     milestones,
     2037,
     "The Next Billion",
-    "2037 is the projected year the global population crosses 9B, roughly 15 years after passing 8B in 2022.",
+    "2037 is the projected year the world population crosses 9B, roughly 15 years after passing 8B in 2022.",
     4,
   );
 
@@ -84,7 +84,7 @@ export function computeGlobalTrendMilestones(globalData) {
     milestones,
     2070,
     "A Super-Aged Planet",
-    "2070 is when the world is projected to become a super-aged society, with more than 20% of the global population aged 65 or older.",
+    "2070 is when the world is projected to become a super-aged society, with more than 20% of the world population aged 65 or older.",
     4,
   );
 
@@ -121,7 +121,7 @@ export function computeGlobalTrendMilestones(globalData) {
       milestones,
       slowGrowth.year,
       "Slower Growth Era",
-      `${slowGrowth.year} marks a slower-growth world: global population growth falls below 0.5% for the first time in the projection.`,
+      `${slowGrowth.year} marks a slower-growth world: world population growth falls below 0.5% for the first time in the projection.`,
       3,
     );
   }
