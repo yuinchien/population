@@ -13,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: new URL("index.html", import.meta.url).pathname,
+        chart: new URL("chart.html", import.meta.url).pathname,
         colors: new URL("colors.html", import.meta.url).pathname,
       },
     },
