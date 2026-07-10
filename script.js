@@ -1383,16 +1383,19 @@ function buildCountryCharts(country) {
     ...country.populationsHigh,
     ...country.populations,
   );
-  // Sized to the chart's actual rendered width (panel is already visible by
-  // this point) rather than a fixed constant — the SVG uses
+  // Sized to the chart's actual rendered box (panel is already visible by
+  // this point) rather than fixed constants — the SVG uses
   // preserveAspectRatio="none" to fill that box exactly, so a mismatched
-  // viewBox width is what stretches the chart non-uniformly.
+  // viewBox (width now, height since .country-chart switched to
+  // aspect-ratio: 4/1 instead of a fixed height) is what stretches it.
   const chartWidth = elements.countryChart.clientWidth || COUNTRY_CHART_WIDTH;
+  const chartHeight =
+    elements.countryChart.clientHeight || COUNTRY_CHART_HEIGHT;
   const svg = elements.countryChart;
-  svg.setAttribute("viewBox", `0 0 ${chartWidth} ${COUNTRY_CHART_HEIGHT}`);
+  svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
   const pad = COUNTRY_CHART_PADDING;
   const innerW = chartWidth - pad.left - pad.right;
-  const innerH = COUNTRY_CHART_HEIGHT - pad.top - pad.bottom;
+  const innerH = chartHeight - pad.top - pad.bottom;
 
   function xyFor(index, value) {
     const x = pad.left + (index / (n - 1)) * innerW;
@@ -1401,17 +1404,6 @@ function buildCountryCharts(country) {
       innerH -
       (maxPopulation > 0 ? value / maxPopulation : 0) * innerH;
     return [x, y];
-  }
-
-  function pathFor(series, from, to) {
-    let d = "";
-    for (let i = from; i <= to; i++) {
-      const value = series[i];
-      if (value == null) continue;
-      const [x, y] = xyFor(i, value);
-      d += `${d ? " L " : "M "}${x.toFixed(2)} ${y.toFixed(2)}`;
-    }
-    return d;
   }
 
   svg.replaceChildren();
@@ -1435,18 +1427,35 @@ function buildCountryCharts(country) {
     );
   }
 
-  svg.append(
-    svgEl("path", {
-      class: "country-chart-line historical",
-      d: pathFor(country.populations, 0, cutoffIndex),
-    }),
-  );
-  svg.append(
-    svgEl("path", {
-      class: "country-chart-line projected",
-      d: pathFor(country.populations, cutoffIndex, n - 1),
-    }),
-  );
+  // One vertical stroke per year (from the baseline up to that year's
+  // value) rather than a connected curve — historical years solid,
+  // projected years dashed, matching the sparklines' bar-code treatment.
+  const baselineY = pad.top + innerH;
+  const bars = document.createDocumentFragment();
+  for (let i = 0; i < n; i++) {
+    const value = country.populations[i];
+    if (value == null) continue;
+    const [x, y] = xyFor(i, value);
+    const isProjected = i >= cutoffIndex;
+    bars.append(
+      svgEl("line", {
+        class: `country-chart-bar${isProjected ? " projected" : ""}`,
+        x1: x.toFixed(2),
+        x2: x.toFixed(2),
+        y1: baselineY,
+        y2: y.toFixed(2),
+        // Every dashed bar shares the same baseline and dash pattern, so
+        // without a varying offset their gaps all line up at the same
+        // heights — which reads as horizontal stripes cutting across the
+        // chart rather than individually-dashed vertical bars, especially
+        // where the series is flat (adjacent bars near-identical length).
+        // Cycling the phase per bar (matching the 5px "2 3" dash period)
+        // scatters the gaps so each line reads as its own dashed stroke.
+        // ...(isProjected ? { "stroke-dashoffset": i % 5 } : {}),
+      }),
+    );
+  }
+  svg.append(bars);
 
   const peakIndex = yearsData.indexOf(country.peakYear);
   if (peakIndex !== -1) {
@@ -1469,7 +1478,7 @@ function buildCountryCharts(country) {
     svg.append(peakLabel);
   }
 
-  const axisY = COUNTRY_CHART_HEIGHT - 6;
+  const axisY = chartHeight - 6;
   const [x0] = xyFor(0, 0);
   const [x1] = xyFor(n - 1, 0);
   const labelFirst = svgEl("text", {
@@ -1530,7 +1539,7 @@ function buildCountryCharts(country) {
     // preserveAspectRatio="none" stretching from a mismatched viewBox.
     const instance = buildCountrySparklineCard(key);
     elements.countrySparklines.append(instance.card);
-    populateCountrySparkline(instance, series);
+    populateCountrySparkline(instance, series, cutoffIndex, key);
     return { key, series, ...instance };
   });
 }
@@ -1555,32 +1564,73 @@ function buildCountrySparklineCard(key) {
   return { card, svg, dot, valueEl: value };
 }
 
-function populateCountrySparkline(instance, series) {
+// Each year is its own vertical stroke from the baseline up to that year's
+// value (a "bar code" sparkline) rather than a connected curve — historical
+// years solid, projected years dashed, mirroring the main chart's
+// historical/projected line treatment. Metrics with a defined
+// referenceValue (currently just fertility, at the UN's 2.1
+// replacement-level threshold) bar from that line instead of the bottom
+// edge, so bars visibly flip below it once a country drops under
+// replacement rather than just shrinking toward a floor.
+function populateCountrySparkline(instance, series, cutoffIndex, key) {
   const { svg, dot } = instance;
   const width = svg.clientWidth || 160;
   const height = svg.clientHeight || 40;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
+  const referenceValue = METRICS[key]?.referenceValue;
   const values = series.filter((value) => Number.isFinite(value));
-  const min = values.length ? Math.min(...values) : 0;
-  const max = values.length ? Math.max(...values) : 1;
+  let min = values.length ? Math.min(...values) : 0;
+  let max = values.length ? Math.max(...values) : 1;
+  if (referenceValue != null) {
+    min = Math.min(min, referenceValue);
+    max = Math.max(max, referenceValue);
+  }
   const range = max - min || 1;
   const n = series.length;
 
+  function yFor(value) {
+    return height - ((value - min) / range) * height;
+  }
   function toXY(index, value) {
-    const x = (index / (n - 1)) * width;
-    const y = height - ((value - min) / range) * height;
-    return [x, y];
+    return [(index / (n - 1)) * width, yFor(value)];
   }
 
-  let d = "";
+  const baselineY = referenceValue != null ? yFor(referenceValue) : height;
+
+  const bars = document.createDocumentFragment();
+  if (referenceValue != null) {
+    bars.append(
+      svgEl("line", {
+        class: "sparkline-baseline",
+        x1: 0,
+        x2: width,
+        y1: baselineY.toFixed(1),
+        y2: baselineY.toFixed(1),
+      }),
+    );
+  }
   for (let i = 0; i < n; i++) {
     const value = series[i];
     if (value == null) continue;
     const [x, y] = toXY(i, value);
-    d += `${d ? " L " : "M "}${x.toFixed(1)} ${y.toFixed(1)}`;
+    const isProjected = i >= cutoffIndex;
+    bars.append(
+      svgEl("line", {
+        class: `sparkline-bar${isProjected ? " projected" : ""}`,
+        x1: x.toFixed(1),
+        x2: x.toFixed(1),
+        y1: baselineY.toFixed(1),
+        y2: y.toFixed(1),
+        // See the matching comment in buildCountryCharts() — without a
+        // per-bar phase offset, every dashed bar's gaps line up at the same
+        // heights and read as horizontal stripes instead of dashed
+        // verticals (3px "1 2" dash period).
+        // ...(isProjected ? { "stroke-dashoffset": i % 3 } : {}),
+      }),
+    );
   }
-  svg.append(svgEl("path", { class: "sparkline-path", d }), dot);
+  svg.append(bars, dot);
 
   instance.toXY = toXY;
 }

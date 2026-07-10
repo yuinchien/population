@@ -54,6 +54,9 @@ export const METRICS = {
     format: formatFertility,
     formatPanel: (value) => `${formatFertility(value)} births/woman`,
     formatRange: formatFertility,
+    // UN-defined global replacement-level fertility rate — charts for this
+    // metric plot deviation from this line rather than from zero/min.
+    referenceValue: 2.1,
   },
   lifeExpectancy: {
     key: "lifeExpectancy",
@@ -80,6 +83,9 @@ export const METRICS = {
     defaultDirection: "desc",
     format: formatPercent,
     formatPanel: formatPercent,
+    // Zero growth is the natural threshold — charts for this metric plot
+    // deviation from it so a country's shift into decline stands out.
+    referenceValue: 0,
   },
 };
 

@@ -613,6 +613,7 @@ body.detail .year-timeline {
 }
 
 .detail-panel {
+    --color-stroke: color-mix(in srgb, var(--detail-color) 40%, black);
     position: fixed;
     top: 0;
     right: 0;
@@ -812,7 +813,7 @@ body.detail .year-timeline {
 .country-chart {
     display: block;
     width: 100%;
-    height: 220px;
+    aspect-ratio: 4 / 1;
     overflow: visible;
 }
 
@@ -821,15 +822,15 @@ body.detail .year-timeline {
     stroke: none;
 }
 
-.country-chart-line {
-    fill: none;
-    stroke: var(--detail-color, var(--color-text));
+.country-chart-bar {
+    stroke: color-mix(in srgb, var(--detail-color) 40%, black);
     stroke-width: 2;
+    opacity: 0.8;
 }
 
-.country-chart-line.projected {
-    stroke-dasharray: 5 4;
-    opacity: 0.7;
+.country-chart-bar.projected {
+    /*stroke-dasharray: 2 3;*/
+    opacity: 0.3;
 }
 
 .country-chart-peak-dot {
@@ -869,8 +870,8 @@ body.detail .year-timeline {
 
 .country-sparklines {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
     flex: none;
 }
 
@@ -880,9 +881,10 @@ body.detail .year-timeline {
        the others — overriding it back to 0 is what makes the 4 columns
        actually equal instead of just nominally equal per the template. */
     min-width: 0;
-    border: var(--border);
+    /*border: 1px solid white;*/
     border-radius: 8px;
     padding: 10px 12px;
+    background: color-mix(in srgb, var(--detail-color) 20%, transparent);
 }
 
 .sparkline-label {
@@ -902,18 +904,29 @@ body.detail .year-timeline {
 .sparkline-svg {
     display: block;
     width: 100%;
-    height: 40px;
+    aspect-ratio: 4 / 1;
     overflow: visible;
 }
 
-.sparkline-path {
-    fill: none;
-    stroke: var(--detail-color, var(--color-text));
-    stroke-width: 1.5;
+.sparkline-baseline {
+    stroke: var(--color-stroke);
+    stroke-width: 1;
+    opacity: 0.3;
+}
+
+.sparkline-bar {
+    stroke: var(--color-stroke);
+    stroke-width: 1;
+    opacity: 1;
+}
+
+.sparkline-bar.projected {
+    /*stroke-dasharray: 3 3;*/
+    opacity: 0.2;
 }
 
 .sparkline-dot {
-    fill: var(--detail-color, var(--color-text));
+    fill: var(--color-stroke);
 }
 
 #calloutLayer {
@@ -1014,6 +1027,12 @@ body.menu-open .menu-toggle-icon::after {
 }
 
 @media (max-width: 720px) {
+    .country-sparklines {
+        grid-template-columns: repeat(1, 1fr);
+    }
+    .sparkline-svg {
+        aspect-ratio: 5 / 2;
+    }
     #yearTimeline {
         display: none;
     }
