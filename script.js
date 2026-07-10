@@ -17,7 +17,6 @@ const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
-const COUNTRY_GNI_URL = "./data/country-gni.json";
 const PEOPLE_PER_DOT = 500_000;
 const GLOBE_RADIUS = 200;
 const DOT_SIZE = 3.2;
@@ -145,6 +144,9 @@ controls.enablePan = false;
 const raycaster = new THREE.Raycaster();
 raycaster.params.Points = { threshold: DOT_SIZE * 1.5 };
 const pointer = new THREE.Vector2(Infinity, Infinity);
+// Latest pointermove event, consumed by animate()'s throttled tooltip
+// hit-test rather than raycasting on every single mousemove.
+let lastPointerEvent = null;
 
 function latLonToVector3(lat, lon, radius) {
   const phi = ((90 - lat) * Math.PI) / 180;
@@ -358,6 +360,9 @@ let currentDotSize = DOT_SIZE; // logical size (unscaled by pixelRatio)
 let dotCountry = [];
 let activeTotal = 0;
 let hoverFocusCountry = null;
+// Set once in setupScene() rather than rescanned on every legendEntriesFor()
+// call — the set of income labels present is fixed once countries load.
+let hasUnclassifiedIncome = false;
 let countriesData = [];
 let yearsData = [];
 let currentYearIndex = -1;
@@ -367,7 +372,6 @@ let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
-let countryGni = {};
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
@@ -439,10 +443,14 @@ function computeScramblePositions(count) {
 // dot's fixed screen position + pulse identity so scrubbing the year slider
 // only changes how many dots per country are drawn, not where they sit.
 function setupScene(countries, incomeGroups) {
+  hasUnclassifiedIncome = false;
   countries.forEach((country) => {
     country._regionColor = regionColor(country.region);
     country._incomeLabel = incomeGroupLabel(country.iso3, incomeGroups);
     country._incomeColor = incomeColor(country._incomeLabel);
+    if (country._incomeLabel === UNCLASSIFIED_INCOME) {
+      hasUnclassifiedIncome = true;
+    }
     country._xyzGlobe = new Float32Array(country.dots.length * 3);
     country._xyzMap = new Float32Array(country.dots.length * 3);
     country._freqs = new Float32Array(country.dots.length);
@@ -730,7 +738,7 @@ function buildPeakStatus(year, peakCountries, isProjected) {
         : [
             `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
             `${year} marked the population high point for ${getPeakCountryName(peakCountries)}.`,
-            `${getPeakCountryName(peakCountries)} populationtopped out in ${year}.`,
+            `${getPeakCountryName(peakCountries)} population topped out in ${year}.`,
           ],
     );
   }
@@ -744,7 +752,7 @@ function buildPeakStatus(year, peakCountries, isProjected) {
         ]
       : [
           `${getPeakCountryName(peakCountries)} reached their population peak in ${year}.`,
-          `${year} was a busy peak year, with ${getPeakCountryName(peakCountries)} populationtopping out.`,
+          `${year} was a busy peak year, with ${getPeakCountryName(peakCountries)} population topping out.`,
           `A wave of population peaks landed in ${year}: ${getPeakCountryName(peakCountries)}.`,
         ],
   );
@@ -952,8 +960,7 @@ function updateSliderProgress() {
 // applyYear()'s full rebuild — so the year figure still tracks the thumb
 // live, even though the rest of the content waits for "change".
 function updateYearLabels(year) {
-  const isProjected = year > historicalCutoffYear;
-  elements.yearValue.textContent = `${year}${isProjected ? "" : ""}`;
+  elements.yearValue.textContent = `${year}`;
   elements.titleYear.textContent = year;
   updateSelectedYearTick(year);
 }
@@ -1107,12 +1114,11 @@ function selectYearFromClientY(clientY, { commit }) {
 
 function legendEntriesFor(mode) {
   if (mode !== "income") return Object.entries(REGION_COLORS);
-  const hasUnclassified = countriesData.some(
-    (country) => country._incomeLabel === UNCLASSIFIED_INCOME,
-  );
   return [
     ...Object.entries(INCOME_GROUP_COLORS),
-    ...(hasUnclassified ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]] : []),
+    ...(hasUnclassifiedIncome
+      ? [[UNCLASSIFIED_INCOME, UNCLASSIFIED_COLOR]]
+      : []),
   ];
 }
 
@@ -1505,13 +1511,11 @@ async function init() {
       globalResponse,
       incomeResponse,
       countryDemographicsResponse,
-      countryGniResponse,
     ] = await Promise.all([
       fetch(DATA_URL),
       fetch(GLOBAL_METRICS_URL),
       fetch(INCOME_GROUPS_URL),
       fetch(COUNTRY_DEMOGRAPHICS_URL),
-      fetch(COUNTRY_GNI_URL),
     ]);
     if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
     if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
@@ -1519,13 +1523,10 @@ async function init() {
     if (!countryDemographicsResponse.ok) {
       throw new Error(`HTTP ${countryDemographicsResponse.status}`);
     }
-    if (!countryGniResponse.ok)
-      throw new Error(`HTTP ${countryGniResponse.status}`);
     const data = await dotsResponse.json();
     const globalData = await globalResponse.json();
     const incomeGroups = await incomeResponse.json();
     countryDemographicMetrics = await countryDemographicsResponse.json();
-    countryGni = (await countryGniResponse.json()).countries || {};
     countriesData = data.countries;
     yearsData = data.years;
     countriesData.forEach((country) => {
@@ -1680,6 +1681,7 @@ function updateDotUniforms(elapsedTime) {
 renderer.domElement.addEventListener("pointermove", (event) => {
   pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  lastPointerEvent = event;
 });
 renderer.domElement.addEventListener("pointerleave", () => {
   pointer.set(Infinity, Infinity);
@@ -1705,8 +1707,6 @@ function updateTooltip(event) {
   }
   setHoverFocusCountry(country);
   const pop = country.populations[currentYearIndex] ?? country.population;
-  const groupLabel =
-    colorMode === "income" ? country._incomeLabel : country.region;
   const groupColor = colorFor(country);
 
   const swatch = document.createElement("span");
@@ -1719,11 +1719,6 @@ function updateTooltip(event) {
   const line1 = document.createElement("div");
   line1.className = "tooltip-line1";
   line1.append(swatch, countryText);
-  // line1.textContent = `${country.name}: ${pop.toLocaleString()}`;
-
-  // const line2 = document.createElement("div");
-  // line2.className = "tooltip-line2";
-  // line2.append(swatch, groupText);
 
   const lines = [line1];
   const year = yearsData[currentYearIndex];
@@ -1747,11 +1742,6 @@ function updateTooltip(event) {
   elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
   elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
 }
-
-let lastPointerEvent = null;
-renderer.domElement.addEventListener("pointermove", (event) => {
-  lastPointerEvent = event;
-});
 
 // Raycasting activeTotal dots (up to ~33K) on every single animation frame
 // is the most expensive per-frame cost in the app, and pointermove fires

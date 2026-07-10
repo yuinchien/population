@@ -184,7 +184,7 @@ button.milestone-nav-btn {
     color: var(--color-text);
     background: transparent;
     font: inherit;
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
