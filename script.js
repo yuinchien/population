@@ -7,11 +7,15 @@ import {
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
 import {
-  DETAIL_METRIC_KEYS,
   GLOBAL_METRIC_KEYS,
   METRICS,
   formatCount,
 } from "./metrics.mjs";
+import {
+  buildDetailColumns,
+  buildDetailRows,
+  selectDetailCountries,
+} from "./detail-table.mjs";
 
 const DATA_URL = "./data/population-dots.json";
 const GLOBAL_METRICS_URL = "./data/population-global.json";
@@ -1257,60 +1261,22 @@ function metricFor(country, key) {
   ];
 }
 
+function selectedCountries() {
+  if (!selectedLegend) return [];
+  return selectDetailCountries({
+    countries: countriesData,
+    legend: selectedLegend,
+    columns: detailColumns(),
+    sort: detailSort,
+  });
+}
+
 // Single source of truth for the detail-panel table: each column knows how
 // to read its own sort value (used both for sorting and for the population
 // ratio bar) and how to format it for display. Header cells are generated
 // from this list too, so clicking one always lines up with the right column.
-const DETAIL_COLUMNS = [
-  {
-    key: "name",
-    label: "Country",
-    className: "country",
-    defaultDirection: "asc",
-    value: (country) => country.name,
-    format: (value) => value,
-  },
-  ...DETAIL_METRIC_KEYS.map((key) => {
-    const definition = METRICS[key];
-    return {
-      key,
-      label: definition.detailLabel,
-      className: "number",
-      defaultDirection: definition.defaultDirection,
-      value:
-        key === "population"
-          ? (country) => country.populations[currentYearIndex]
-          : (country) => metricFor(country, key),
-      format: definition.format,
-    };
-  }),
-];
-
-function selectedCountries() {
-  if (!selectedLegend) return [];
-  const countries = countriesData.filter((country) =>
-    selectedLegend.mode === "income"
-      ? country._incomeLabel === selectedLegend.label
-      : country.region.trim() === selectedLegend.label,
-  );
-
-  const column =
-    DETAIL_COLUMNS.find((c) => c.key === detailSort.key) ?? DETAIL_COLUMNS[1];
-  const sign = detailSort.direction === "asc" ? 1 : -1;
-
-  return countries.sort((a, b) => {
-    const aValue = column.value(a);
-    const bValue = column.value(b);
-    if (aValue == null && bValue == null) return a.name.localeCompare(b.name);
-    if (aValue == null) return 1;
-    if (bValue == null) return -1;
-    if (aValue !== bValue) {
-      return typeof aValue === "string"
-        ? aValue.localeCompare(bValue) * sign
-        : (aValue - bValue) * sign;
-    }
-    return a.name.localeCompare(b.name);
-  });
+function detailColumns() {
+  return buildDetailColumns({ currentYearIndex, metricFor });
 }
 
 function createDetailCell(text, className = "") {
@@ -1324,7 +1290,7 @@ function createDetailCell(text, className = "") {
 }
 
 function setDetailSort(key) {
-  const column = DETAIL_COLUMNS.find((c) => c.key === key);
+  const column = detailColumns().find((c) => c.key === key);
   if (!column) return;
   detailSort =
     detailSort.key === key
@@ -1350,6 +1316,7 @@ function updateViewModeAvailability() {
 function renderDetailPanel() {
   if (!selectedLegend || currentYearIndex < 0) return;
 
+  const columns = detailColumns();
   const countries = selectedCountries();
   const year = yearsData[currentYearIndex];
   elements.detailPanel.style.setProperty(
@@ -1360,7 +1327,7 @@ function renderDetailPanel() {
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
   elements.detailHeader.replaceChildren(
-    ...DETAIL_COLUMNS.map((column) => {
+    ...columns.map((column) => {
       const arrow =
         detailSort.key === column.key
           ? detailSort.direction === "asc"
@@ -1377,26 +1344,13 @@ function renderDetailPanel() {
     }),
   );
 
-  // Ratio bars are always population-based, so they stay accurate (and
-  // re-normalize live) as the year slider changes each country's population.
-  const populationColumn = DETAIL_COLUMNS[1];
-  const highestValue = Math.max(
-    ...countries.map(populationColumn.value).filter(Number.isFinite),
-  );
-
-  const rows = countries.map((country) => {
+  const rows = buildDetailRows(countries, columns).map((detailRow) => {
     const row = document.createElement("div");
-
-    const ratio = populationColumn.value(country) / highestValue;
-    row.style.setProperty("--ratio", Number.isFinite(ratio) ? ratio : 0);
-
+    row.style.setProperty("--ratio", detailRow.ratio);
     row.className = "detail-row";
     row.append(
-      ...DETAIL_COLUMNS.map((column) =>
-        createDetailCell(
-          column.format(column.value(country)),
-          column.className,
-        ),
+      ...detailRow.cells.map((cell) =>
+        createDetailCell(cell.text, cell.className),
       ),
     );
     return row;

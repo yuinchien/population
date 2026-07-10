@@ -121,25 +121,29 @@ body.detail .hide-for-detail {
     display: flex;
     align-items: center;
     height: 40px;
+    gap: 4px;
 }
 
 .detail-back {
     display: none;
+    align-items: center;
+    justify-content: center;
     width: 28px;
     height: 28px;
     padding: 0;
     border: 0;
     color: var(--color-text);
     background: transparent;
-    font: inherit;
-    font-size: 2rem;
-    line-height: 1;
     cursor: pointer;
     margin-left: -8px;
 }
 
+.detail-back .material-symbols-outlined {
+    font-size: 20px;
+}
+
 body.detail .detail-back {
-    display: block;
+    display: flex;
 }
 
 #overlay h1 {
@@ -672,17 +676,21 @@ body.detail .year-timeline {
 }
 
 .detail-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 28px;
     height: 28px;
     padding: 0;
     border: 0;
     color: var(--color-text);
     background: transparent;
-    font: inherit;
-    font-size: 28px;
-    line-height: 1;
     cursor: pointer;
     margin: -4px;
+}
+
+.detail-close .material-symbols-outlined {
+    font-size: 22px;
 }
 
 .detail-table {
