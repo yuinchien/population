@@ -728,6 +728,14 @@ body.detail .year-timeline {
     /*background-color: rgba(255, 255, 255, 0.5);*/
 }
 
+.detail-rows .detail-row {
+    cursor: pointer;
+}
+
+.detail-rows .detail-row:hover {
+    background: var(--color-border);
+}
+
 .detail-cell.sortable {
     cursor: pointer;
     user-select: none;
@@ -785,11 +793,137 @@ body.detail .year-timeline {
     white-space: nowrap;
 }
 
+.country-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-height: 0;
+    overflow: auto;
+}
+
+.country-chart-card {
+    flex: none;
+}
+
+.country-chart {
+    display: block;
+    width: 100%;
+    height: 220px;
+    overflow: visible;
+}
+
+.country-chart-band {
+    fill: color-mix(in srgb, var(--detail-color, #82d8d5) 25%, transparent);
+    stroke: none;
+}
+
+.country-chart-line {
+    fill: none;
+    stroke: var(--detail-color, var(--color-text));
+    stroke-width: 2;
+}
+
+.country-chart-line.projected {
+    stroke-dasharray: 5 4;
+    opacity: 0.7;
+}
+
+.country-chart-peak-dot {
+    fill: var(--color-text);
+}
+
+.country-chart-peak-label,
+.country-chart-axis-label {
+    font-size: 11px;
+    fill: var(--color-muted);
+    font-family: "DM Mono", ui-monospace, monospace;
+}
+
+.country-chart-axis-label.muted {
+    fill: var(--color-subtle);
+}
+
+.country-chart-marker-line {
+    stroke: var(--color-text);
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+}
+
+.country-chart-marker-dot {
+    fill: var(--color-text);
+    stroke: white;
+    stroke-width: 1.5;
+}
+
+.country-chart-marker-label {
+    font-size: 13px;
+    font-weight: 500;
+    fill: var(--color-text);
+    font-family: var(--font-sans);
+    text-anchor: middle;
+}
+
+.country-sparklines {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    flex: none;
+}
+
+.sparkline-card {
+    /* Grid items default to min-width: auto, which lets a card's own
+       content (e.g. "Fertility rate" label) push its 1fr column wider than
+       the others — overriding it back to 0 is what makes the 4 columns
+       actually equal instead of just nominally equal per the template. */
+    min-width: 0;
+    border: var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+}
+
+.sparkline-label {
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+}
+
+.sparkline-value {
+    color: var(--color-text);
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin: 2px 0 6px;
+}
+
+.sparkline-svg {
+    display: block;
+    width: 100%;
+    height: 40px;
+    overflow: visible;
+}
+
+.sparkline-path {
+    fill: none;
+    stroke: var(--detail-color, var(--color-text));
+    stroke-width: 1.5;
+}
+
+.sparkline-dot {
+    fill: var(--detail-color, var(--color-text));
+}
+
 #calloutLayer {
     position: fixed;
     inset: 0;
     z-index: 5;
     pointer-events: none;
+}
+
+/* The detail panel's glass background only dims/blurs what's behind it
+   rather than fully hiding it, so a peak-callout label sitting underneath
+   would otherwise still show (blurred) through the chart area. */
+body.detail #calloutLayer {
+    display: none;
 }
 
 .peak-callout-label {
