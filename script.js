@@ -1335,6 +1335,21 @@ const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "populationGrowth",
 ];
 
+// A dedicated tooltip (separate from #tooltip, which the 3D canvas's own
+// hover system clears on a 100ms timer even while this panel is open) for
+// hovering the main chart's marker dot or a sparkline's current-value dot.
+function showChartTooltip(event, text) {
+  if (!text) return;
+  elements.chartTooltip.hidden = false;
+  elements.chartTooltip.replaceChildren(document.createTextNode(text));
+  elements.chartTooltip.style.left = `${event.clientX}px`;
+  elements.chartTooltip.style.top = `${event.clientY}px`;
+}
+
+function hideChartTooltip() {
+  elements.chartTooltip.hidden = true;
+}
+
 function openCountryDetail(country) {
   if (!country || currentYearIndex < 0) return;
   stopTour();
@@ -1495,21 +1510,21 @@ function buildCountryCharts(country) {
     const peakLabel = svgEl("text", {
       class: "country-chart-peak-label",
       x: px,
-      y: axisY,
+      y: axisY-2,
       "text-anchor": peakTextAnchor,
     });
-    peakLabel.textContent = `${country.peakYear}`;
+    peakLabel.textContent = `PEAK`;
     svg.append(peakLabel);
 
-    const peakValueLabel = svgEl("text", {
-      class: "country-chart-peak-value-label",
-      x: px,
-      y: Math.max(py - peakDotSize / 2 - 9, COUNTRY_CHART_LABEL_MIN_Y),
-      "text-anchor": peakTextAnchor,
-    });
+    // const peakValueLabel = svgEl("text", {
+    //   class: "country-chart-peak-value-label",
+    //   x: px,
+    //   y: Math.max(py - peakDotSize / 2 - 9, COUNTRY_CHART_LABEL_MIN_Y),
+    //   "text-anchor": peakTextAnchor,
+    // });
     // peakValueLabel.textContent = `Peak ${formatPeakPopulation(country.populations[peakIndex])}`;
-    peakValueLabel.textContent = `Peak`;
-    svg.append(peakValueLabel);
+    // peakValueLabel.textContent = `Peak`;
+    // svg.append(peakValueLabel);
   }
 
   const [x0] = xyFor(0, 0);
@@ -1517,14 +1532,14 @@ function buildCountryCharts(country) {
   const labelFirst = svgEl("text", {
     class: "country-chart-axis-label",
     x: x0,
-    y: axisY,
+    y: axisY-2,
     "text-anchor": "start",
   });
   labelFirst.textContent = yearsData[0];
   const labelLast = svgEl("text", {
     class: "country-chart-axis-label",
     x: x1,
-    y: axisY,
+    y: axisY-2,
     "text-anchor": "end",
   });
   labelLast.textContent = yearsData[n - 1];
@@ -1542,6 +1557,25 @@ function buildCountryCharts(country) {
   //   svg.append(labelCutoff);
   // }
 
+  const markerDot = svgEl("circle", {
+    id: "countryChartMarkerDot",
+    class: "country-chart-marker-dot",
+    r: 4,
+  });
+  const markerLabel = svgEl("text", {
+    id: "countryChartMarkerLabel",
+    class: "country-chart-marker-label",
+  });
+  // markerLabel already holds the current year's formatted population
+  // (e.g. "149.6M"), so the tooltip just echoes it back.
+  markerDot.addEventListener("pointerenter", (event) =>
+    showChartTooltip(event, markerLabel.textContent),
+  );
+  markerDot.addEventListener("pointermove", (event) =>
+    showChartTooltip(event, markerLabel.textContent),
+  );
+  markerDot.addEventListener("pointerleave", hideChartTooltip);
+
   svg.append(
     svgEl("line", {
       id: "countryChartMarkerLine",
@@ -1549,15 +1583,8 @@ function buildCountryCharts(country) {
       // y1: pad.top,
       y2: baselineY,//pad.top + innerH,
     }),
-    svgEl("circle", {
-      id: "countryChartMarkerDot",
-      class: "country-chart-marker-dot",
-      r: 4,
-    }),
-    svgEl("text", {
-      id: "countryChartMarkerLabel",
-      class: "country-chart-marker-label",
-    }),
+    markerDot,
+    markerLabel,
   );
 
   countryChartLayout = { populations: country.populations, xyFor };
@@ -1592,10 +1619,20 @@ function buildCountrySparklineCard(key) {
   const card = document.createElement("div");
   card.className = "sparkline-card";
   const label = document.createElement("div");
-  label.className = "sparkline-label";
+  label.className = "sparkline-label mono-uppercase";
   label.textContent = definition.label;
   const value = document.createElement("div");
   value.className = "sparkline-value";
+  // value always holds the current year's already-formatted reading (e.g.
+  // "1.9 births/woman"), so the tooltip just echoes it back rather than
+  // reformatting the number a second time.
+  dot.addEventListener("pointerenter", (event) =>
+    showChartTooltip(event, value.textContent),
+  );
+  dot.addEventListener("pointermove", (event) =>
+    showChartTooltip(event, value.textContent),
+  );
+  dot.addEventListener("pointerleave", hideChartTooltip);
   titleCaption.append(label, value);
   card.append(titleCaption, svg);
 
@@ -1752,27 +1789,49 @@ function updateCountryDetailForYear(year) {
 function buildCountrySummary(country, year) {
   const isProjected = year > historicalCutoffYear;
   const index = yearsData.indexOf(year);
-  const population = country.populations[index];
+  const population = formatPeakPopulation(country.populations[index]);
   const peakYear = country.peakYear;
-  const yearLead = isProjected ? `${year} projection` : `${year}`;
+  const caption = isProjected ? "Projected" : "Historical";
+  // Tense follows isProjected rather than a single fixed "is" — a year
+  // that's already happened reads oddly described as a projection, and a
+  // future year reads oddly stated as settled fact.
+  const lead = isProjected
+    ? `${country.name} is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
+    : `${country.name} was home to <span class="underlined">${population}</span> people in ${year}.`;
 
   // computePeakYear() returns null when the max sits at either end of the
   // series — i.e. there's no interior peak, the population is still rising
   // (or was already falling) across the whole 1950-2100 window.
   let trend;
   if (peakYear == null) {
-    trend = `${country.name}'s population is projected to keep growing through the end of the modeled period, with no peak in sight.`;
+    const lastYear = yearsData[yearsData.length - 1];
+    trend = `Its population is projected to keep growing through ${lastYear}, with no peak yet in sight.`;
   } else if (peakYear === year) {
-    trend = `${year} is ${country.name}'s projected population peak.`;
+    // isProjected here is really "is peakYear projected", since they're
+    // the same year in this branch — a historical peak shouldn't still
+    // read as a future projection just because the lead sentence pattern
+    // does.
+    trend = isProjected
+      ? `This is projected to be its peak — the highest its population will reach.`
+      : `This was its peak — the highest its population reached.`;
   } else {
-    const peakPopulation = country.populations[yearsData.indexOf(peakYear)];
+    // Distinct from the selected year's own tense: the peak year can be
+    // historical even while browsing a later, still-projected year (or
+    // vice versa), and "a projected peak" is only accurate when the peak
+    // itself, not just the currently-selected year, falls after the cutoff.
+    const peakIsProjected = peakYear > historicalCutoffYear;
+    const peakPopulation = formatPeakPopulation(
+      country.populations[yearsData.indexOf(peakYear)],
+    );
     trend =
       year < peakYear
-        ? `${country.name}'s population is projected to keep growing until it peaks near ${formatPeakPopulation(peakPopulation)} in ${peakYear}.`
-        : `${country.name}'s population peaked near ${formatPeakPopulation(peakPopulation)} in <span class="underlined">${peakYear}</span> and has been declining since.`;
+        ? peakIsProjected
+          ? `That number is projected to keep climbing until it peaks near ${peakPopulation} in ${peakYear}.`
+          : `That number kept climbing until it peaked at ${peakPopulation} in ${peakYear}.`
+        : `That's down from ${peakIsProjected ? "a projected peak" : "a peak"} of ${peakPopulation} in <span class="underlined">${peakYear}</span>.`;
   }
 
-  return `${yearLead}: ${formatPeakPopulation(population)} people. ${trend}`;
+  return `<div class="caption mono-uppercase">${caption}</div> ${lead} ${trend}`;
 }
 
 function setColorMode(mode) {
@@ -2201,7 +2260,7 @@ function updateTooltip(event) {
   countryText.textContent = `${country.name}: ${formatPeakPopulation(pop)}`;
 
   const line1 = document.createElement("div");
-  line1.className = "tooltip-line1";
+  line1.className = "tooltip-line1 mono-uppercase";
   line1.append(swatch, countryText);
 
   const lines = [line1];

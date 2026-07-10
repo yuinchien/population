@@ -53,7 +53,7 @@
             <button
                 type="button"
                 data-mode="globe"
-                class="active"
+                class="active mono-uppercase"
                 aria-label="Globe view"
                 title="Globe"
             >
@@ -64,6 +64,7 @@
                 data-mode="map"
                 aria-label="Map view"
                 title="Map"
+                class="mono-uppercase"
             >
                 Map
             </button>
@@ -79,7 +80,7 @@
                 >
                     <span class="material-symbols-outlined">arrow_back</span>
                 </button>
-                <h1>
+                <h1 class="mono-uppercase">
                     World Population
                     <span id="titleYear" class="title-year"></span>
                 </h1>
@@ -87,7 +88,7 @@
 
             <div id="yearControl" hidden>
                 <div class="metric">
-                    <span class="metric-label">Year</span>
+                    <span class="metric-label mono-uppercase">Year</span>
                     <span id="yearValue" class="metric-value"></span>
                 </div>
                 <input
@@ -99,23 +100,23 @@
             </div>
             <div id="metrics" class="hide-for-detail" hidden>
                 <div class="metric">
-                    <span class="metric-label">Population</span>
+                    <span class="metric-label mono-uppercase">Population</span>
                     <span class="metric-value" id="metricPopulation"></span>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">Fertility rate</span>
+                    <span class="metric-label mono-uppercase">Fertility rate</span>
                     <span class="metric-value" id="metricFertility"></span>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">Life expectancy</span>
+                    <span class="metric-label mono-uppercase">Life expectancy</span>
                     <span class="metric-value" id="metricLifeExpectancy"></span>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">Median age</span>
+                    <span class="metric-label mono-uppercase">Median age</span>
                     <span class="metric-value" id="metricMedianAge"></span>
                 </div>
                 <div class="metric">
-                    <span class="metric-label">Population growth</span>
+                    <span class="metric-label mono-uppercase">Population growth</span>
                     <span
                         class="metric-value"
                         id="metricPopulationGrowth"
@@ -147,7 +148,7 @@
                 <div id="legend"></div>
             </div>
 
-            <div class="footer">
+            <div class="footer mono-uppercase">
                 <a href="https://population.un.org/wpp/" target="_blank"
                     >Data source</a
                 >
@@ -201,7 +202,7 @@
                     </div>
                     <span
                         id="milestoneCaption"
-                        class="milestone-caption"
+                        class="milestone-caption mono-uppercase"
                     ></span>
                 </div>
             </div>
@@ -210,8 +211,8 @@
         <section id="detailPanel" class="detail-panel glass" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">
-                    <h2 id="detailTitle"></h2>
-                    <p id="detailSubtitle"></p>
+                    <h2 id="detailTitle" class="mono-uppercase"></h2>
+                    <p id="detailSubtitle" class="mono-uppercase"></p>
                 </div>
                 <button
                     id="detailClose"
@@ -225,7 +226,7 @@
             </div>
             <p id="detailSummary" class="detail-summary"></p>
             <div id="detailTable" class="detail-table">
-                <div id="detailHeader" class="detail-row header"></div>
+                <div id="detailHeader" class="detail-row header mono-uppercase"></div>
                 <div id="detailRows" class="detail-rows no-scrollbar"></div>
             </div>
             <div id="countryDetail" class="country-detail" hidden>
@@ -241,6 +242,7 @@
             </div>
         </section>
         <div id="tooltip" class="glass" hidden></div>
+        <div id="chartTooltip" class="glass" hidden></div>
         <div id="calloutLayer"></div>
 
         <script type="module" src="./script.js"></script>
