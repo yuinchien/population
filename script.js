@@ -5,11 +5,7 @@ import {
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
-import {
-  GLOBAL_METRIC_KEYS,
-  METRICS,
-  formatCount,
-} from "./metrics.mjs";
+import { GLOBAL_METRIC_KEYS, METRICS, formatCount } from "./metrics.mjs";
 import {
   buildDetailColumns,
   buildDetailRows,
@@ -671,9 +667,13 @@ function updateStatusPanel(year) {
   if (selectedCountry && !elements.detailPanel.hidden) {
     setStatusTitle();
     updateMilestoneNav(null);
-    typeStatus(buildCountrySummary(selectedCountry, year), elements.detailSummary, {
-      instant: true,
-    });
+    typeStatus(
+      buildCountrySummary(selectedCountry, year),
+      elements.detailSummary,
+      {
+        instant: true,
+      },
+    );
     return;
   }
   if (selectedLegend && !elements.detailPanel.hidden) {
@@ -2006,8 +2006,7 @@ renderer.domElement.addEventListener("pointermove", (event) => {
 renderer.domElement.addEventListener("pointerleave", () => {
   pointer.set(Infinity, Infinity);
   lastPointerEvent = null;
-  elements.tooltip.hidden = true;
-  setHoverFocusCountry(null);
+  clearCanvasHover();
 });
 
 // Distinguishes an actual click from the end of an orbit-drag (OrbitControls
@@ -2036,6 +2035,15 @@ renderer.domElement.addEventListener("pointerup", (event) => {
   if (country) openCountryDetail(country);
 });
 
+// Dots are click-to-open-country-detail targets, so the cursor should read
+// as such only while actually over one — toggled here rather than for the
+// whole canvas, since most of it is just rotate/pan surface.
+function clearCanvasHover() {
+  elements.tooltip.hidden = true;
+  setHoverFocusCountry(null);
+  renderer.domElement.classList.remove("hovering-dot");
+}
+
 function updateTooltip(event) {
   if (!pointsMesh || !activeTotal) return;
   // The detail panel (group table or country chart) sits above the canvas
@@ -2043,24 +2051,22 @@ function updateTooltip(event) {
   // runs off whatever pointer position was last seen, so without this check
   // a tooltip from before the panel opened keeps reappearing underneath it.
   if (!elements.detailPanel.hidden) {
-    elements.tooltip.hidden = true;
-    setHoverFocusCountry(null);
+    clearCanvasHover();
     return;
   }
   raycaster.setFromCamera(pointer, camera);
   const hits = raycaster.intersectObject(pointsMesh);
   if (!hits.length) {
-    elements.tooltip.hidden = true;
-    setHoverFocusCountry(null);
+    clearCanvasHover();
     return;
   }
   const country = dotCountry[hits[0].index];
   if (!country) {
-    elements.tooltip.hidden = true;
-    setHoverFocusCountry(null);
+    clearCanvasHover();
     return;
   }
   setHoverFocusCountry(country);
+  renderer.domElement.classList.add("hovering-dot");
   const pop = country.populations[currentYearIndex] ?? country.population;
   const groupColor = colorFor(country);
 
@@ -2077,16 +2083,16 @@ function updateTooltip(event) {
 
   const lines = [line1];
   const year = yearsData[currentYearIndex];
-  if (year > historicalCutoffYear) {
-    const hi = country.populationsHigh?.[currentYearIndex];
-    const lo = country.populationsLow?.[currentYearIndex];
-    if (hi != null && lo != null) {
-      const line3 = document.createElement("div");
-      line3.className = "tooltip-line2";
-      line3.textContent = `${formatPeakPopulation(lo)} – ${formatPeakPopulation(hi)}`;
-      lines.push(line3);
-    }
-  }
+  // if (year > historicalCutoffYear) {
+  //   const hi = country.populationsHigh?.[currentYearIndex];
+  //   const lo = country.populationsLow?.[currentYearIndex];
+  //   // if (hi != null && lo != null) {
+  //   //   const line3 = document.createElement("div");
+  //   //   line3.className = "tooltip-line2";
+  //   //   line3.textContent = `${formatPeakPopulation(lo)} – ${formatPeakPopulation(hi)}`;
+  //   //   lines.push(line3);
+  //   // }
+  // }
 
   elements.tooltip.hidden = false;
   elements.tooltip.replaceChildren(...lines);

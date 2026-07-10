@@ -37,6 +37,10 @@ canvas {
     display: block;
 }
 
+canvas.hovering-dot {
+    cursor: pointer;
+}
+
 [hidden] {
     display: none !important;
 }
