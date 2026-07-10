@@ -732,7 +732,7 @@ select[multiple] {
     position: absolute;
     z-index: 1000;
     max-width: 360px;
-    padding: 2px 6px;
+    padding: 0px 2px;
     border: 0;
     border-radius: 0;
     color: #05070a;

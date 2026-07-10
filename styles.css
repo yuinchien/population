@@ -594,13 +594,13 @@ body.detail .year-timeline {
 #tooltip,
 #chartTooltip {
     position: fixed;
-    padding: 6px 10px;
+    padding: 4px 6px;
     border-radius: 2px;
     white-space: nowrap;
     pointer-events: none;
     transform: translate(-50%, -130%);
     z-index: 1000;
-    /*display: none;*/
+    font-weight: 500;
     display: flex;
     align-items: center;
     gap: 4px;
