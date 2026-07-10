@@ -1317,7 +1317,13 @@ function svgEl(tag, attrs = {}) {
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
-const COUNTRY_CHART_PADDING = { top: 16, right: 12, bottom: 24, left: 12 };
+// top padding is deliberately generous — both the peak-year label and the
+// current-year marker label float above their dot, and when that dot sits
+// near the series max (a very common case: the marker often *is* near the
+// peak) there needs to be real room for the label above y=0, not just a
+// tight clamp papering over too little space.
+const COUNTRY_CHART_PADDING = { top: 24, right: 12, bottom: 24, left: 12 };
+const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "fertility",
   "lifeExpectancy",
@@ -1456,7 +1462,7 @@ function buildCountryCharts(country) {
     const peakLabel = svgEl("text", {
       class: "country-chart-peak-label",
       x: px,
-      y: py - 10,
+      y: Math.max(py - 10, COUNTRY_CHART_LABEL_MIN_Y),
       "text-anchor": peakIndex > n * 0.85 ? "end" : "middle",
     });
     peakLabel.textContent = `Peak ${country.peakYear}`;
@@ -1605,7 +1611,7 @@ function updateCountryDetailForYear(year) {
     markerDot.setAttribute("cx", x);
     markerDot.setAttribute("cy", y);
     markerLabel.setAttribute("x", x);
-    markerLabel.setAttribute("y", Math.max(y - 12, 12));
+    markerLabel.setAttribute("y", Math.max(y - 12, COUNTRY_CHART_LABEL_MIN_Y));
     markerLabel.textContent =
       population != null ? formatPeakPopulation(population) : "";
   }
