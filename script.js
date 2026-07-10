@@ -1578,14 +1578,17 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
   const height = svg.clientHeight || 40;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  const referenceValue = METRICS[key]?.referenceValue;
   const values = series.filter((value) => Number.isFinite(value));
   let min = values.length ? Math.min(...values) : 0;
   let max = values.length ? Math.max(...values) : 1;
-  if (referenceValue != null) {
-    min = Math.min(min, referenceValue);
-    max = Math.max(max, referenceValue);
-  }
+  // Metrics without a meaningful universal threshold (life expectancy,
+  // median age — unlike fertility's 2.1 replacement line or growth's 0%)
+  // fall back to the series' own minimum, so every sparkline still draws a
+  // baseline for visual consistency even though it has nothing to flip
+  // below.
+  const referenceValue = METRICS[key]?.referenceValue ?? min;
+  min = Math.min(min, referenceValue);
+  max = Math.max(max, referenceValue);
   const range = max - min || 1;
   const n = series.length;
 
@@ -1596,11 +1599,21 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
     return [(index / (n - 1)) * width, yFor(value)];
   }
 
-  const baselineY = referenceValue != null ? yFor(referenceValue) : height;
+  function pathFor(from, to) {
+    let d = "";
+    for (let i = from; i <= to; i++) {
+      const value = series[i];
+      if (value == null) continue;
+      const [x, y] = toXY(i, value);
+      d += `${d ? " L " : "M "}${x.toFixed(1)} ${y.toFixed(1)}`;
+    }
+    return d;
+  }
 
-  const bars = document.createDocumentFragment();
+  const elementsToAppend = [];
   if (referenceValue != null) {
-    bars.append(
+    const baselineY = yFor(referenceValue);
+    elementsToAppend.push(
       svgEl("line", {
         class: "sparkline-baseline",
         x1: 0,
@@ -1609,28 +1622,33 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
         y2: baselineY.toFixed(1),
       }),
     );
+    const format = METRICS[key]?.format ?? ((value) => `${value}`);
+    const baselineLabel = svgEl("text", {
+      class: "sparkline-baseline-label",
+      x: 0,
+      // Clamped so a reference value sitting near the very top of the
+      // scale (label would float above it) doesn't get clipped by the
+      // SVG's own edge.
+      y: Math.max(baselineY - 4, 8).toFixed(1),
+      "text-anchor": "start",
+    });
+    // A bare "0" reads as the natural zero line; the formatted version
+    // ("0.0 yrs", "0.00%") adds precision and units that don't mean
+    // anything at exactly zero.
+    baselineLabel.textContent = referenceValue === 0 ? "0" : format(referenceValue);
+    elementsToAppend.push(baselineLabel);
   }
-  for (let i = 0; i < n; i++) {
-    const value = series[i];
-    if (value == null) continue;
-    const [x, y] = toXY(i, value);
-    const isProjected = i >= cutoffIndex;
-    bars.append(
-      svgEl("line", {
-        class: `sparkline-bar${isProjected ? " projected" : ""}`,
-        x1: x.toFixed(1),
-        x2: x.toFixed(1),
-        y1: baselineY.toFixed(1),
-        y2: y.toFixed(1),
-        // See the matching comment in buildCountryCharts() — without a
-        // per-bar phase offset, every dashed bar's gaps line up at the same
-        // heights and read as horizontal stripes instead of dashed
-        // verticals (3px "1 2" dash period).
-        // ...(isProjected ? { "stroke-dashoffset": i % 3 } : {}),
-      }),
-    );
-  }
-  svg.append(bars, dot);
+  elementsToAppend.push(
+    svgEl("path", {
+      class: "sparkline-path historical",
+      d: pathFor(0, cutoffIndex),
+    }),
+    svgEl("path", {
+      class: "sparkline-path projected",
+      d: pathFor(cutoffIndex, n - 1),
+    }),
+  );
+  svg.append(...elementsToAppend, dot);
 
   instance.toXY = toXY;
 }

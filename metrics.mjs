@@ -66,6 +66,7 @@ export const METRICS = {
     format: formatYears,
     formatPanel: formatYears,
     formatRange: (value) => Number(value).toFixed(1),
+    referenceValue: 0,
   },
   medianAge: {
     key: "medianAge",
@@ -75,6 +76,7 @@ export const METRICS = {
     format: formatYears,
     formatPanel: formatYears,
     formatRange: (value) => Number(value).toFixed(1),
+    referenceValue: 0,
   },
   populationGrowth: {
     key: "populationGrowth",

@@ -834,7 +834,7 @@ body.detail .year-timeline {
 }
 
 .country-chart-peak-dot {
-    fill: var(--color-text);
+    fill: var(--color-stroke);
 }
 
 .country-chart-peak-label,
@@ -855,7 +855,7 @@ body.detail .year-timeline {
 }
 
 .country-chart-marker-dot {
-    fill: var(--color-text);
+    fill: var(--color-stroke);
     stroke: white;
     stroke-width: 1.5;
 }
@@ -914,15 +914,22 @@ body.detail .year-timeline {
     opacity: 0.3;
 }
 
-.sparkline-bar {
-    stroke: var(--color-stroke);
-    stroke-width: 1;
-    opacity: 1;
+.sparkline-baseline-label {
+    font-size: 10px;
+    font-family: "DM Mono", ui-monospace, monospace;
+    fill: var(--color-muted);
 }
 
-.sparkline-bar.projected {
-    /*stroke-dasharray: 3 3;*/
-    opacity: 0.2;
+.sparkline-path {
+    fill: none;
+    stroke: var(--color-stroke);
+    stroke-width: 2;
+    opacity: 0.9;
+}
+
+.sparkline-path.projected {
+    stroke-dasharray: 2 4;
+    opacity: 0.4;
 }
 
 .sparkline-dot {
