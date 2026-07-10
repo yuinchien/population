@@ -157,24 +157,50 @@
             <h1 id="statusTitle" hidden></h1>
             <p id="status">Loading population data…</p>
             <div id="milestoneNav" class="milestone-nav" hidden>
-                <span class="subsitle flex">Milestones</span>
-                <button
-                    id="milestonePrev"
-                    class="milestone-nav-btn"
-                    type="button"
-                    aria-label="Previous milestone"
-                >
-                    ➜
-                </button>
-                <span id="milestoneCaption" class="milestone-caption"></span>
-                <button
-                    id="milestoneNext"
-                    class="milestone-nav-btn"
-                    type="button"
-                    aria-label="Next milestone"
-                >
-                    ➜
-                </button>
+                <div class="milestone-progress">
+                    <div
+                        id="milestoneProgressFill"
+                        class="milestone-progress-fill"
+                    ></div>
+                </div>
+                <div class="milestone-row">
+                    <div class="milestone-controls">
+                        <button
+                            id="milestoneTour"
+                            class="milestone-nav-btn"
+                            type="button"
+                            aria-label="Play milestone tour"
+                            title="Play tour"
+                        >
+                            <span
+                                id="milestoneTourIcon"
+                                class="material-symbols-outlined"
+                                >play_arrow</span
+                            >
+                        </button>
+                        <button
+                            id="milestonePrev"
+                            class="milestone-nav-btn"
+                            type="button"
+                            aria-label="Previous milestone"
+                        >
+                            <span class="material-symbols-outlined"
+                                >arrow_back</span
+                            >
+                        </button>
+                        <button
+                            id="milestoneNext"
+                            class="milestone-nav-btn"
+                            type="button"
+                            aria-label="Next milestone"
+                        >
+                            <span class="material-symbols-outlined"
+                                >arrow_forward</span
+                            >
+                        </button>
+                    </div>
+                    <span id="milestoneCaption" class="milestone-caption"></span>
+                </div>
             </div>
         </div>
         <div id="yearTimeline" class="year-timeline" hidden></div>

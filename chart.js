@@ -330,7 +330,7 @@ const SERIES_DEFS = [
   },
   {
     id: "population",
-    label: "Global Population",
+    label: "world population",
     color: "#FF48B0",
     format: formatCount,
     axisSubtitle: "people",
@@ -411,10 +411,6 @@ function init() {
     option.selected = true;
     elements.seriesSelect.append(option);
   });
-
-  // const select = elements.seriesSelect;
-  // select.size = select.options.length;
-  // console.log(select.size, select.options.length);
 
   restoreFromUrl();
   bindEvents();

@@ -76,9 +76,12 @@ const elements = {
   menuShim: document.querySelector("#menuShim"),
   titleYear: document.querySelector("#titleYear"),
   milestoneNav: document.querySelector("#milestoneNav"),
+  milestoneTour: document.querySelector("#milestoneTour"),
+  milestoneTourIcon: document.querySelector("#milestoneTourIcon"),
   milestonePrev: document.querySelector("#milestonePrev"),
   milestoneNext: document.querySelector("#milestoneNext"),
   milestoneCaption: document.querySelector("#milestoneCaption"),
+  milestoneProgressFill: document.querySelector("#milestoneProgressFill"),
   statusTitle: document.querySelector("#statusTitle"),
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
@@ -828,12 +831,98 @@ function goToYear(year) {
 }
 
 function stepMilestone(delta) {
+  stopTour();
   const years = sortedMilestoneYears();
   const index = years.indexOf(yearsData[currentYearIndex]);
   if (index === -1) return;
   const nextIndex = index + delta;
   if (nextIndex < 0 || nextIndex >= years.length) return;
   goToYear(years[nextIndex]);
+}
+
+// Guided "story mode": auto-advances through milestones one at a time,
+// dwelling on each long enough to read the status text before moving on.
+// A fixed dwell (rather than measuring text length) is simplest and the
+// milestone blurbs are all similar, short-paragraph lengths.
+const TOUR_STEP_DURATION_MS = 6000;
+let tourTimer = null;
+
+function isTourPlaying() {
+  return tourTimer !== null;
+}
+
+function setTourButtonState(playing) {
+  elements.milestoneTourIcon.textContent = playing ? "pause" : "play_arrow";
+  const label = playing ? "Pause milestone tour" : "Play milestone tour";
+  elements.milestoneTour.setAttribute("aria-label", label);
+  elements.milestoneTour.title = playing ? "Pause tour" : "Play tour";
+}
+
+// Resets the fill to empty with no transition (a mid-fade snap-back would
+// read as a glitch rather than "tour stopped").
+function resetTourProgress() {
+  const fill = elements.milestoneProgressFill;
+  fill.style.transition = "none";
+  fill.style.width = "0%";
+}
+
+// Restarts the fill-to-100% sweep timed to exactly one dwell period, so it
+// reads as "time remaining on this milestone" rather than decoration.
+function animateTourProgress() {
+  const fill = elements.milestoneProgressFill;
+  fill.style.transition = "none";
+  fill.style.width = "0%";
+  // Force a reflow so the 0%-width reset above is committed before the
+  // transition is re-enabled — otherwise the browser coalesces both style
+  // writes and the fill just jumps straight to 100% with no visible sweep.
+  void fill.offsetWidth;
+  fill.style.transition = `width ${TOUR_STEP_DURATION_MS}ms linear`;
+  fill.style.width = "100%";
+}
+
+function stopTour() {
+  if (tourTimer === null) return;
+  clearTimeout(tourTimer);
+  tourTimer = null;
+  setTourButtonState(false);
+  resetTourProgress();
+}
+
+function scheduleNextTourStep() {
+  animateTourProgress();
+  tourTimer = setTimeout(() => {
+    const years = sortedMilestoneYears();
+    const index = years.indexOf(yearsData[currentYearIndex]);
+    if (index === -1) {
+      stopTour();
+      return;
+    }
+    // Loop back to the first milestone after the last one, so the tour
+    // reads as a continuous rotation rather than something that "ends".
+    const nextIndex = (index + 1) % years.length;
+    goToYear(years[nextIndex]);
+    scheduleNextTourStep();
+  }, TOUR_STEP_DURATION_MS);
+}
+
+function startTour() {
+  const years = sortedMilestoneYears();
+  if (!years.length) return;
+  // Starting mid-tour from wherever the slider already sits reads as more
+  // natural than always resetting to the first milestone.
+  if (years.indexOf(yearsData[currentYearIndex]) === -1) {
+    goToYear(years[0]);
+  }
+  setTourButtonState(true);
+  scheduleNextTourStep();
+}
+
+function toggleTour() {
+  if (isTourPlaying()) {
+    stopTour();
+  } else {
+    startTour();
+  }
 }
 
 // Types the status line out character-by-character with a blinking cursor,
@@ -1316,6 +1405,7 @@ function selectLegendItem(label, color) {
     closeDetailPanel();
     return;
   }
+  stopTour();
   selectedLegend = { mode: colorMode, label, color };
   renderLegend();
   renderDetailPanel();
@@ -1571,6 +1661,10 @@ async function init() {
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
     });
+    // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
+    // goToYear() itself only dispatches "input"/"change" — using those to
+    // cancel would make the tour immediately cancel its own steps.
+    elements.yearSlider.addEventListener("pointerdown", stopTour);
 
     buildYearTimeline();
     updateSelectedYearTick(defaultYear);
@@ -1581,6 +1675,7 @@ async function init() {
       if (!yearTimelineDragging) clearYearTimelineHover();
     });
     elements.yearTimeline.addEventListener("mousedown", (event) => {
+      stopTour();
       yearTimelineDragging = true;
       selectYearFromClientY(event.clientY, { commit: false });
     });
@@ -1609,6 +1704,7 @@ async function init() {
     elements.detailBack.addEventListener("click", closeDetailPanel);
     elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
     elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
+    elements.milestoneTour.addEventListener("click", toggleTour);
     elements.menuToggle.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", String(isOpen));

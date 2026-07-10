@@ -41,6 +41,26 @@ canvas {
     display: none !important;
 }
 
+.material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-variation-settings:
+        "FILL" 1,
+        "wght" 400,
+        "GRAD" 0,
+        "opsz" 24;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-feature-settings: "liga";
+    -webkit-font-smoothing: antialiased;
+}
+
 .flex {
     flex: 1;
 }
@@ -162,32 +182,59 @@ body.detail .detail-back {
 }*/
 
 .milestone-nav {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
-    border-top: var(--border);
-    padding-top: 10px;
     margin-top: 12px;
+    margin-bottom: 4px;
     font-family: inherit;
 }
 
-#milestonePrev {
-    transform: scaleX(-1);
+/* Doubles as the plain divider line the row used to have via border-top:
+   the track alone (no fill) looks identical to that border when the tour
+   isn't playing. */
+.milestone-progress {
+    position: relative;
+    height: 1px;
+    background: var(--color-border);
+    overflow: hidden;
+}
+
+.milestone-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--color-text);
+}
+
+.milestone-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 10px;
+}
+
+.milestone-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 button.milestone-nav-btn {
-    width: 20px;
-    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
     padding: 0;
-    border: 0;
+    border: var(--border);
+    border-radius: 50%;
     color: var(--color-text);
     background: transparent;
-    font: inherit;
-    font-family: var(--font-sans);
-    font-size: 18px;
-    line-height: 1;
     cursor: pointer;
+}
+
+.milestone-nav-btn .material-symbols-outlined {
+    font-size: 18px;
 }
 
 .milestone-nav-btn:disabled {
@@ -200,7 +247,7 @@ button.milestone-nav-btn {
     font-family: "DM Mono", ui-monospace, monospace;
     font-size: 14px;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: -0.1em;
 }
 
 .status-wrapper h1 {
