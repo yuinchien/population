@@ -455,6 +455,10 @@ button.milestone-nav-btn {
     border-radius: 40px;
 }
 
+.legend-wrapper {
+
+}
+
 .legend-item {
     display: flex;
     align-items: center;
@@ -795,6 +799,20 @@ body.detail .year-timeline {
 }
 
 .detail-panel {
+    /*.country-capsule {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .country-capsule:before {
+        content: "";
+        font-family: 'DM Mono';
+        background-image: var(--flag-url);
+        background-repeat: no-repeat;
+        background-size: cover;
+        width: 24px;
+        height: 18px;
+    }*/
     .caption {
         display: table;
         font-family: 'DM Mono';
@@ -987,8 +1005,8 @@ body.detail .year-timeline {
 }
 
 .sparkline-path.projected {
-    stroke-dasharray: 2 4;
-    opacity: 0.4;
+    stroke-dasharray: 3 4;
+    opacity: 0.6;
 }
 
 .sparkline-dot-line {
@@ -1020,7 +1038,7 @@ body.detail #calloutLayer {
     border-radius: 3px;
     color: var(--color-text);
     background: color-mix(in srgb, var(--color-callout) 70%, white);
-    font-weight: 600;
+    font-weight: 500;
     white-space: nowrap;
     pointer-events: auto;
     transform: translate(-50%, -100%);

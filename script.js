@@ -11,7 +11,7 @@ import {
   buildDetailRows,
   selectDetailCountries,
 } from "./detail-table.mjs";
-import { loadPopulationData } from "./data-loader.mjs";
+import { loadPopulationData, ISO3_TO_ISO2 } from "./data-loader.mjs";
 import {
   DEFAULT_COLOR,
   DOT_CONFIG,
@@ -1568,13 +1568,13 @@ function buildCountryCharts(country) {
   });
   // markerLabel already holds the current year's formatted population
   // (e.g. "149.6M"), so the tooltip just echoes it back.
-  markerDot.addEventListener("pointerenter", (event) =>
-    showChartTooltip(event, markerLabel.textContent),
-  );
-  markerDot.addEventListener("pointermove", (event) =>
-    showChartTooltip(event, markerLabel.textContent),
-  );
-  markerDot.addEventListener("pointerleave", hideChartTooltip);
+  // markerDot.addEventListener("pointerenter", (event) =>
+  //   showChartTooltip(event, markerLabel.textContent),
+  // );
+  // markerDot.addEventListener("pointermove", (event) =>
+  //   showChartTooltip(event, markerLabel.textContent),
+  // );
+  // markerDot.addEventListener("pointerleave", hideChartTooltip);
 
   svg.append(
     svgEl("line", {
@@ -1786,18 +1786,25 @@ function updateCountryDetailForYear(year) {
   );
 }
 
+function convertAlpha3ToAlpha2(code) {
+  if (!code) return null;
+  return ISO3_TO_ISO2[code.toUpperCase()] || null;
+}
+
 function buildCountrySummary(country, year) {
   const isProjected = year > historicalCutoffYear;
   const index = yearsData.indexOf(year);
   const population = formatPeakPopulation(country.populations[index]);
   const peakYear = country.peakYear;
   const caption = isProjected ? "Projected" : "Historical";
+  const iso2 = convertAlpha3ToAlpha2(country.iso3);
+  const flagUrl = `node_modules/flag-icons/flags/4x3/${iso2}.svg`;
   // Tense follows isProjected rather than a single fixed "is" — a year
   // that's already happened reads oddly described as a projection, and a
   // future year reads oddly stated as settled fact.
   const lead = isProjected
-    ? `${country.name} is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
-    : `${country.name} was home to <span class="underlined">${population}</span> people in ${year}.`;
+    ? `<span class="country-capsule" style="--flag-url: url(${flagUrl})">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
+    : `<span class="country-capsule" style="--flag-url: url(${flagUrl})">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;
 
   // computePeakYear() returns null when the max sits at either end of the
   // series — i.e. there's no interior peak, the population is still rising
@@ -2249,6 +2256,15 @@ function updateTooltip(event) {
   }
   setHoverFocusCountry(country);
   renderer.domElement.classList.add("hovering-dot");
+
+  // A country with an active peak-year callout already shows its own
+  // "name: population" label on the globe — stacking the hover tooltip
+  // right next to it just duplicates the same text.
+  if (peakCallouts.some((callout) => callout.country === country)) {
+    elements.tooltip.hidden = true;
+    return;
+  }
+
   const pop = country.populations[currentYearIndex] ?? country.population;
   const groupColor = colorFor(country);
 
