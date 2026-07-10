@@ -41,6 +41,9 @@ canvas {
     display: none !important;
 }
 
+.flex {
+    flex: 1;
+}
 .glass {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.25);
@@ -144,12 +147,11 @@ body.detail .detail-back {
        switching away from right-align. */
     width: 360px;
     font-weight: 500;
-    font-family: var(--font-sans);
+    /*font-family: var(--font-sans);*/
     font-size: 16px;
     overflow: initial;
-    /*border-left: var(--border);*/
 }
-.status-wrapper:before {
+/*.status-wrapper:before {
     content: "";
     position: absolute;
     left: -14px;
@@ -157,12 +159,53 @@ body.detail .detail-back {
     bottom: 0;
     width: 1px;
     background: var(--color-text);
+}*/
+
+.milestone-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    border-top: var(--border);
+    padding-top: 10px;
+    margin-top: 12px;
+    font-family: inherit;
+}
+
+#milestonePrev {
+    transform: scaleX(-1);
+}
+
+button.milestone-nav-btn {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    color: var(--color-text);
+    background: transparent;
+    font: inherit;
+    font-family: var(--font-mono);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.milestone-nav-btn:disabled {
+    color: var(--color-subtle);
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.milestone-caption {
+    font-family: "DM Mono", ui-monospace, monospace;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .status-wrapper h1 {
     margin: 0 0 4px;
     color: var(--color-text);
-    font-family: var(--font-sans);
     font-size: clamp(1.5rem, 2.5vw, 2.5rem);
     font-weight: 500;
     line-height: 1.1;
@@ -171,6 +214,11 @@ body.detail .detail-back {
 .status-wrapper p {
     margin: 0 0 4px;
     line-height: 1.5em;
+}
+
+#statusTitle,
+#status {
+    font-family: var(--font-sans);
 }
 
 .status-cursor {
@@ -778,7 +826,7 @@ body.menu-open .menu-toggle-icon::after {
     }
     .status-wrapper {
         width: auto;
-        left: 28px;
+        left: 16px;
         right: 16px;
         bottom: 16px;
     }

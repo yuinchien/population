@@ -76,6 +76,10 @@ const elements = {
   menuToggle: document.querySelector("#menuToggle"),
   menuShim: document.querySelector("#menuShim"),
   titleYear: document.querySelector("#titleYear"),
+  milestoneNav: document.querySelector("#milestoneNav"),
+  milestonePrev: document.querySelector("#milestonePrev"),
+  milestoneNext: document.querySelector("#milestoneNext"),
+  milestoneCaption: document.querySelector("#milestoneCaption"),
   statusTitle: document.querySelector("#statusTitle"),
   status: document.querySelector("#status"),
   tooltip: document.querySelector("#tooltip"),
@@ -750,6 +754,7 @@ function updateStatusPanel(year) {
   const isProjected = year > historicalCutoffYear;
   if (selectedLegend && !elements.detailPanel.hidden) {
     setStatusTitle();
+    updateMilestoneNav(null);
     typeStatus(
       buildDetailStatus({
         year,
@@ -771,6 +776,7 @@ function updateStatusPanel(year) {
   );
   const milestone = globalTrendMilestones.get(year);
   setStatusTitle(milestone?.title);
+  updateMilestoneNav(milestone ? year : null);
   typeStatus(
     milestone
       ? `${milestone.text}${
@@ -785,6 +791,41 @@ function updateStatusPanel(year) {
 function setStatusTitle(title = "") {
   elements.statusTitle.textContent = title;
   elements.statusTitle.hidden = !title;
+}
+
+// Milestone years in chronological order, so "Milestone #N" counts forward
+// through history the same way the ‹/› buttons step through it.
+function sortedMilestoneYears() {
+  return [...globalTrendMilestones.keys()].sort((a, b) => a - b);
+}
+
+function updateMilestoneNav(year) {
+  const years = sortedMilestoneYears();
+  const index = years.indexOf(year);
+  const hasMilestone = index !== -1;
+  elements.milestoneNav.hidden = !hasMilestone;
+  if (!hasMilestone) return;
+  elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
+  elements.milestonePrev.disabled = index === 0;
+  elements.milestoneNext.disabled = index === years.length - 1;
+}
+
+// Mirrors selectYearFromClientY()'s slider-driven navigation, so jumping to
+// a milestone year keeps the slider/timeline/thumb in sync rather than
+// mutating currentYearIndex directly and leaving those controls stale.
+function goToYear(year) {
+  elements.yearSlider.value = year;
+  elements.yearSlider.dispatchEvent(new Event("input", { bubbles: true }));
+  elements.yearSlider.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function stepMilestone(delta) {
+  const years = sortedMilestoneYears();
+  const index = years.indexOf(yearsData[currentYearIndex]);
+  if (index === -1) return;
+  const nextIndex = index + delta;
+  if (nextIndex < 0 || nextIndex >= years.length) return;
+  goToYear(years[nextIndex]);
 }
 
 // Types the status line out character-by-character with a blinking cursor,
@@ -1565,6 +1606,8 @@ async function init() {
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
     elements.detailBack.addEventListener("click", closeDetailPanel);
+    elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
+    elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
     elements.menuToggle.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
