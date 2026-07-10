@@ -257,7 +257,7 @@ button[hidden] {
     background-size: contain;
     background-position: 50%;
     background-repeat: no-repeat;
-    background-image: var(--flag, url("default.jpg"));
+    background-image: var(--flag);
     margin-right: 2px;
 }
 
