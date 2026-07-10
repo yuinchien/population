@@ -1468,7 +1468,7 @@ function buildCountryCharts(country) {
 
   const axisY = chartHeight - 6;
   const peakIndex = yearsData.indexOf(country.peakYear);
-  const peakDotSize = 9;
+  const peakDotSize = 7;
   if (peakIndex !== -1) {
     const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
     svg.append(
@@ -1504,7 +1504,7 @@ function buildCountryCharts(country) {
     const peakValueLabel = svgEl("text", {
       class: "country-chart-peak-value-label",
       x: px,
-      y: Math.max(py - peakDotSize / 2 - 6, COUNTRY_CHART_LABEL_MIN_Y),
+      y: Math.max(py - peakDotSize / 2 - 9, COUNTRY_CHART_LABEL_MIN_Y),
       "text-anchor": peakTextAnchor,
     });
     // peakValueLabel.textContent = `Peak ${formatPeakPopulation(country.populations[peakIndex])}`;
@@ -1552,7 +1552,7 @@ function buildCountryCharts(country) {
     svgEl("circle", {
       id: "countryChartMarkerDot",
       class: "country-chart-marker-dot",
-      r: 5,
+      r: 4,
     }),
     svgEl("text", {
       id: "countryChartMarkerLabel",
@@ -1720,7 +1720,7 @@ function updateCountryDetailForYear(year) {
     markerDot.setAttribute("cx", x);
     markerDot.setAttribute("cy", y);
     markerLabel.setAttribute("x", x);
-    markerLabel.setAttribute("y", Math.max(y - 12, COUNTRY_CHART_LABEL_MIN_Y));
+    markerLabel.setAttribute("y", Math.max(y - 14, COUNTRY_CHART_LABEL_MIN_Y));
     markerLabel.textContent =
       population != null ? formatPeakPopulation(population) : "";
   }

@@ -880,7 +880,7 @@ body.detail .year-timeline {
 
 .country-chart-peak-label,
 .country-chart-axis-label {
-    font-size: 13px;
+    font-size: 10px;
     font-weight: 500;
     fill: var(--color-muted);
     font-family: "DM Mono", ui-monospace, monospace;
@@ -907,19 +907,12 @@ body.detail .year-timeline {
     /*stroke-width: 1.5;*/
 }
 
-.country-chart-marker-label {
-    font-size: 13px;
+.country-chart-marker-label,
+.country-chart-peak-value-label {
+    font-size: 12px;
     font-weight: 500;
     fill: var(--color-text);
     text-anchor: middle;
-
-}
-
-.country-chart-peak-value-label {
-    font-size: 13px;
-    font-weight: 500;
-    fill: var(--color-text);
-    text-transform: uppercase;
 }
 
 .country-sparklines {
@@ -997,7 +990,6 @@ body.detail .year-timeline {
 .sparkline-dot-line {
     stroke: var(--color-marker);
     stroke-width: 1.5;
-    /*opacity: 0.35;*/
 }
 
 .sparkline-dot {
