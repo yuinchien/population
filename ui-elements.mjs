@@ -1,0 +1,53 @@
+export function getAppElements(root = document) {
+  return {
+    menuToggle: root.querySelector("#menuToggle"),
+    menuShim: root.querySelector("#menuShim"),
+    titleYear: root.querySelector("#titleYear"),
+    milestoneNav: root.querySelector("#milestoneNav"),
+    milestoneTour: root.querySelector("#milestoneTour"),
+    milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
+    milestonePrev: root.querySelector("#milestonePrev"),
+    milestoneNext: root.querySelector("#milestoneNext"),
+    milestoneCaption: root.querySelector("#milestoneCaption"),
+    milestoneProgressFill: root.querySelector("#milestoneProgressFill"),
+    statusTitle: root.querySelector("#statusTitle"),
+    status: root.querySelector("#status"),
+    tooltip: root.querySelector("#tooltip"),
+    yearControl: root.querySelector("#yearControl"),
+    yearSlider: root.querySelector("#yearSlider"),
+    yearValue: root.querySelector("#yearValue"),
+    yearTimeline: root.querySelector("#yearTimeline"),
+    metrics: root.querySelector("#metrics"),
+    metricPopulation: root.querySelector("#metricPopulation"),
+    metricFertility: root.querySelector("#metricFertility"),
+    metricLifeExpectancy: root.querySelector("#metricLifeExpectancy"),
+    metricMedianAge: root.querySelector("#metricMedianAge"),
+    metricPopulationGrowth: root.querySelector("#metricPopulationGrowth"),
+    colorMode: root.querySelector("#colorMode"),
+    legend: root.querySelector("#legend"),
+    viewMode: root.querySelector("#viewMode"),
+    calloutLayer: root.querySelector("#calloutLayer"),
+    detailPanel: root.querySelector("#detailPanel"),
+    detailTitle: root.querySelector("#detailTitle"),
+    detailSubtitle: root.querySelector("#detailSubtitle"),
+    detailSummary: root.querySelector("#detailSummary"),
+    detailTable: root.querySelector("#detailTable"),
+    detailHeader: root.querySelector("#detailHeader"),
+    detailRows: root.querySelector("#detailRows"),
+    detailClose: root.querySelector("#detailClose"),
+    detailBack: root.querySelector("#detailBack"),
+    countryDetail: root.querySelector("#countryDetail"),
+    countryChart: root.querySelector("#countryChart"),
+    countrySparklines: root.querySelector("#countrySparklines"),
+  };
+}
+
+export function getMetricValueElements(elements) {
+  return {
+    population: elements.metricPopulation,
+    fertility: elements.metricFertility,
+    lifeExpectancy: elements.metricLifeExpectancy,
+    medianAge: elements.metricMedianAge,
+    populationGrowth: elements.metricPopulationGrowth,
+  };
+}

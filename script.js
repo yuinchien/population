@@ -2,7 +2,6 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import {
   buildDetailStatus,
-  computeGlobalTrendMilestones,
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
@@ -16,37 +15,19 @@ import {
   buildDetailRows,
   selectDetailCountries,
 } from "./detail-table.mjs";
+import { loadPopulationData } from "./data-loader.mjs";
+import {
+  DEFAULT_COLOR,
+  DOT_CONFIG,
+  INCOME_GROUP_COLORS,
+  PEOPLE_PER_DOT,
+  REGION_COLORS,
+  UNCLASSIFIED_COLOR,
+  UNCLASSIFIED_INCOME,
+  VIEW_CONFIG,
+} from "./view-config.mjs";
+import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
 
-const DATA_URL = "./data/population-dots.json";
-const GLOBAL_METRICS_URL = "./data/population-global.json";
-const INCOME_GROUPS_URL = "./data/country-income-groups.json";
-const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
-const PEOPLE_PER_DOT = 500_000;
-const DOT_OPACITY = 0.9;
-const HOVER_FADE_ALPHA = 0.2;
-const PULSE_AMPLITUDE = 7;
-const PULSE_FREQ_MIN = 0.8;
-const PULSE_FREQ_RANGE = 2.0;
-const VIEW_CONFIG = {
-  globe: {
-    radius: 200,
-    dotSize: 3.2,
-    cameraDistance: 200 * 3.1,
-    minDistance: 200 * 1.3,
-    maxDistance: 200 * 8,
-    autoRotateSpeed: 0.35,
-    calloutExtend: 200 * 1.12,
-  },
-  map: {
-    width: 400,
-    height: 200,
-    dotSize: 2,
-    cameraDistance: 360,
-    minDistance: 250,
-    maxDistance: 1200,
-    calloutExtend: 80,
-  },
-};
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
@@ -67,74 +48,8 @@ const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 // Keep callout labels clear of the fixed sidebar (#overlay is 240px wide).
 const CALLOUT_LEFT_CLEARANCE = 260;
 
-const REGION_COLORS = {
-  "East Asia & Pacific": "#5ec8e5",
-  "Europe & Central Asia": "#FFBD91",
-  "Latin America & Caribbean": "#D7BDFF",
-  "Middle East, North Africa, Afghanistan & Pakistan": "#e6b5c9",
-  "North America": "#E4E42F",
-  "South Asia": "#C0E08D",
-  "Sub-Saharan Africa": "#62c2b1",
-};
-const DEFAULT_COLOR = "#5fe39a";
-
-const INCOME_GROUP_COLORS = {
-  "High-income countries": "#62c2b1",
-  "Middle-income countries": "#ABBEF8",
-  "Low-income countries": "#E0DE70",
-};
-const UNCLASSIFIED_INCOME = "Not classified";
-const UNCLASSIFIED_COLOR = "#999999";
-
-const elements = {
-  menuToggle: document.querySelector("#menuToggle"),
-  menuShim: document.querySelector("#menuShim"),
-  titleYear: document.querySelector("#titleYear"),
-  milestoneNav: document.querySelector("#milestoneNav"),
-  milestoneTour: document.querySelector("#milestoneTour"),
-  milestoneTourIcon: document.querySelector("#milestoneTourIcon"),
-  milestonePrev: document.querySelector("#milestonePrev"),
-  milestoneNext: document.querySelector("#milestoneNext"),
-  milestoneCaption: document.querySelector("#milestoneCaption"),
-  milestoneProgressFill: document.querySelector("#milestoneProgressFill"),
-  statusTitle: document.querySelector("#statusTitle"),
-  status: document.querySelector("#status"),
-  tooltip: document.querySelector("#tooltip"),
-  yearControl: document.querySelector("#yearControl"),
-  yearSlider: document.querySelector("#yearSlider"),
-  yearValue: document.querySelector("#yearValue"),
-  yearTimeline: document.querySelector("#yearTimeline"),
-  metrics: document.querySelector("#metrics"),
-  metricPopulation: document.querySelector("#metricPopulation"),
-  metricFertility: document.querySelector("#metricFertility"),
-  metricLifeExpectancy: document.querySelector("#metricLifeExpectancy"),
-  metricMedianAge: document.querySelector("#metricMedianAge"),
-  metricPopulationGrowth: document.querySelector("#metricPopulationGrowth"),
-  colorMode: document.querySelector("#colorMode"),
-  legend: document.querySelector("#legend"),
-  viewMode: document.querySelector("#viewMode"),
-  calloutLayer: document.querySelector("#calloutLayer"),
-  detailPanel: document.querySelector("#detailPanel"),
-  detailTitle: document.querySelector("#detailTitle"),
-  detailSubtitle: document.querySelector("#detailSubtitle"),
-  detailSummary: document.querySelector("#detailSummary"),
-  detailTable: document.querySelector("#detailTable"),
-  detailHeader: document.querySelector("#detailHeader"),
-  detailRows: document.querySelector("#detailRows"),
-  detailClose: document.querySelector("#detailClose"),
-  detailBack: document.querySelector("#detailBack"),
-  countryDetail: document.querySelector("#countryDetail"),
-  countryChart: document.querySelector("#countryChart"),
-  countrySparklines: document.querySelector("#countrySparklines"),
-};
-
-const METRIC_VALUE_ELEMENTS = {
-  population: elements.metricPopulation,
-  fertility: elements.metricFertility,
-  lifeExpectancy: elements.metricLifeExpectancy,
-  medianAge: elements.metricMedianAge,
-  populationGrowth: elements.metricPopulationGrowth,
-};
+const elements = getAppElements();
+const METRIC_VALUE_ELEMENTS = getMetricValueElements(elements);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -300,36 +215,6 @@ function formatPeakPopulation(value) {
   });
 }
 
-// data/population-global.json holds one series per indicator, each an
-// array of {year, value} rows; index by year so applyYear() can look up
-// all five in O(1) as the slider moves. "variants" (High/Low UN scenarios)
-// is a nested object, not a flat series, so it's excluded here and indexed
-// separately by buildVariantIndex().
-function buildGlobalMetricsIndex(globalData) {
-  const byYear = new Map();
-  Object.entries(globalData).forEach(([series, rows]) => {
-    if (series === "variants") return;
-    rows.forEach(({ year, value }) => {
-      if (!byYear.has(year)) byYear.set(year, {});
-      byYear.get(year)[series] = value;
-    });
-  });
-  return byYear;
-}
-
-// Same shape as buildGlobalMetricsIndex, but for a single variant's series
-// object (globalData.variants.high or .low).
-function buildVariantIndex(variantSeries) {
-  const byYear = new Map();
-  Object.entries(variantSeries).forEach(([series, rows]) => {
-    rows.forEach(({ year, value }) => {
-      if (!byYear.has(year)) byYear.set(year, {});
-      byYear.get(year)[series] = value;
-    });
-  });
-  return byYear;
-}
-
 // Writes a metric's headline value, plus — for projected years — a
 // smaller "Low – High" range line sourced from the UN's Low/High variant
 // scenarios, so the further out the slider goes, the more visibly
@@ -441,7 +326,9 @@ function writeDotColor(colorAttr, slot, country) {
 
 function writeDotAlpha(slot, country) {
   alphas[slot] =
-    hoverFocusCountry && hoverFocusCountry !== country ? HOVER_FADE_ALPHA : 1;
+    hoverFocusCountry && hoverFocusCountry !== country
+      ? DOT_CONFIG.hoverFadeAlpha
+      : 1;
 }
 
 function setHoverFocusCountry(country) {
@@ -496,7 +383,9 @@ function setupScene(countries, incomeGroups) {
       country._xyzMap[i * 3] = mapPoint.x;
       country._xyzMap[i * 3 + 1] = mapPoint.y;
       country._xyzMap[i * 3 + 2] = mapPoint.z;
-      country._freqs[i] = PULSE_FREQ_MIN + Math.random() * PULSE_FREQ_RANGE;
+      country._freqs[i] =
+        DOT_CONFIG.pulseFrequencyMin +
+        Math.random() * DOT_CONFIG.pulseFrequencyRange;
       country._phases[i] = Math.random() * Math.PI * 2;
     });
   });
@@ -532,8 +421,8 @@ function setupScene(countries, incomeGroups) {
       uTime: { value: 0 },
       uSize: { value: VIEW_CONFIG.globe.dotSize * renderer.getPixelRatio() },
       uScale: { value: renderer.domElement.height * 0.5 },
-      uOpacity: { value: DOT_OPACITY },
-      uPulseAmplitude: { value: PULSE_AMPLITUDE },
+      uOpacity: { value: DOT_CONFIG.opacity },
+      uPulseAmplitude: { value: DOT_CONFIG.pulseAmplitude },
       uFreqMul: { value: 1 },
       uAmpMul: { value: 1 },
       uGlobeRadius: { value: GLOBE_RADIUS },
@@ -566,24 +455,6 @@ function setDotSize(size) {
 
 function positionsFor(country) {
   return viewMode === "map" ? country._xyzMap : country._xyzGlobe;
-}
-
-// The year a country's modeled population is highest — i.e. where it
-// crests and starts declining. Boundary years (1950, 2100) are excluded:
-// a max at either edge of the series usually just means "still rising/
-// falling when the data runs out," not a genuine peak.
-function computePeakYear(populations, years) {
-  let maxIndex = -1;
-  let maxValue = -Infinity;
-  for (let i = 0; i < populations.length; i++) {
-    const v = populations[i];
-    if (v != null && v > maxValue) {
-      maxValue = v;
-      maxIndex = i;
-    }
-  }
-  if (maxIndex <= 0 || maxIndex >= populations.length - 1) return null;
-  return years[maxIndex];
 }
 
 // Centroid of a country's precomputed dot cloud in the current view basis,
@@ -1967,41 +1838,17 @@ function updateTransition() {
 
 async function init() {
   try {
-    const [
-      dotsResponse,
-      globalResponse,
-      incomeResponse,
-      countryDemographicsResponse,
-    ] = await Promise.all([
-      fetch(DATA_URL),
-      fetch(GLOBAL_METRICS_URL),
-      fetch(INCOME_GROUPS_URL),
-      fetch(COUNTRY_DEMOGRAPHICS_URL),
-    ]);
-    if (!dotsResponse.ok) throw new Error(`HTTP ${dotsResponse.status}`);
-    if (!globalResponse.ok) throw new Error(`HTTP ${globalResponse.status}`);
-    if (!incomeResponse.ok) throw new Error(`HTTP ${incomeResponse.status}`);
-    if (!countryDemographicsResponse.ok) {
-      throw new Error(`HTTP ${countryDemographicsResponse.status}`);
-    }
-    const data = await dotsResponse.json();
-    const globalData = await globalResponse.json();
-    const incomeGroups = await incomeResponse.json();
-    countryDemographicMetrics = await countryDemographicsResponse.json();
-    countriesData = data.countries;
-    yearsData = data.years;
-    countriesData.forEach((country) => {
-      country.peakYear = computePeakYear(country.populations, yearsData);
-    });
-    historicalCutoffYear = data.historicalCutoffYear ?? Infinity;
-    globalMetricsByYear = buildGlobalMetricsIndex(globalData);
-    globalTrendMilestones = computeGlobalTrendMilestones(globalData);
-    if (globalData.variants) {
-      highMetricsByYear = buildVariantIndex(globalData.variants.high);
-      lowMetricsByYear = buildVariantIndex(globalData.variants.low);
-    }
+    const appData = await loadPopulationData();
+    countryDemographicMetrics = appData.countryDemographicMetrics;
+    countriesData = appData.countries;
+    yearsData = appData.years;
+    historicalCutoffYear = appData.historicalCutoffYear;
+    globalMetricsByYear = appData.globalMetricsByYear;
+    globalTrendMilestones = appData.globalTrendMilestones;
+    highMetricsByYear = appData.highMetricsByYear;
+    lowMetricsByYear = appData.lowMetricsByYear;
 
-    setupScene(countriesData, incomeGroups);
+    setupScene(countriesData, appData.incomeGroups);
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
