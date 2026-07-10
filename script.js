@@ -1468,6 +1468,7 @@ function buildCountryCharts(country) {
 
   const axisY = chartHeight - 6;
   const peakIndex = yearsData.indexOf(country.peakYear);
+  const peakDotSize = 9;
   if (peakIndex !== -1) {
     const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
     svg.append(
@@ -1478,27 +1479,37 @@ function buildCountryCharts(country) {
         y1: baselineY,
         y2: py.toFixed(2),
       }),
-      svgEl("circle", {
+      svgEl("rect", {
         class: "country-chart-peak-dot",
-        cx: px,
-        cy: py,
-        r: 3,
+        x: (px - peakDotSize/2).toFixed(2),
+        y: (py - peakDotSize/2).toFixed(2),
+        width: peakDotSize,
+        height: peakDotSize,
+        // A square rotated 45° around its own center reads as a diamond
+        // with a corner pointing straight up, rather than a circle.
+        transform: `rotate(45 ${px.toFixed(2)} ${py.toFixed(2)})`,
       }),
     );
+    const peakTextAnchor =
+      peakIndex > n * 0.85 ? "end" : peakIndex < n * 0.15 ? "start" : "middle";
     const peakLabel = svgEl("text", {
       class: "country-chart-peak-label",
       x: px,
       y: axisY,
-      "text-anchor":
-        peakIndex > n * 0.85
-          ? "end"
-          : peakIndex < n * 0.15
-            ? "start"
-            : "middle",
+      "text-anchor": peakTextAnchor,
     });
-    peakLabel.textContent = `Peak`;
-    // peakLabel.textContent = `Peak ${country.peakYear}`;
+    peakLabel.textContent = `${country.peakYear}`;
     svg.append(peakLabel);
+
+    const peakValueLabel = svgEl("text", {
+      class: "country-chart-peak-value-label",
+      x: px,
+      y: Math.max(py - peakDotSize / 2 - 6, COUNTRY_CHART_LABEL_MIN_Y),
+      "text-anchor": peakTextAnchor,
+    });
+    // peakValueLabel.textContent = `Peak ${formatPeakPopulation(country.populations[peakIndex])}`;
+    peakValueLabel.textContent = `Peak`;
+    svg.append(peakValueLabel);
   }
 
   const [x0] = xyFor(0, 0);
@@ -1541,7 +1552,7 @@ function buildCountryCharts(country) {
     svgEl("circle", {
       id: "countryChartMarkerDot",
       class: "country-chart-marker-dot",
-      r: 4,
+      r: 5,
     }),
     svgEl("text", {
       id: "countryChartMarkerLabel",
@@ -1573,7 +1584,7 @@ function buildCountrySparklineCard(key) {
     preserveAspectRatio: "none",
   });
   const dotLine = svgEl("line", { class: "sparkline-dot-line" });
-  const dot = svgEl("circle", { class: "sparkline-dot", r: 3 });
+  const dot = svgEl("circle", { class: "sparkline-dot", r: 4 });
 
   const titleCaption = document.createElement("div");
   titleCaption.className = "sparkline-caption";
