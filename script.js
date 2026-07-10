@@ -850,7 +850,9 @@ function toggleTour() {
 function typeStatus(text, el = elements.status, { instant = false } = {}) {
   const token = ++statusTypingToken;
   if (instant) {
-    el.replaceChildren(document.createTextNode(text));
+    const textNode = document.createElement("div");
+    textNode.innerHTML = text;
+    el.replaceChildren(textNode);
     return;
   }
 
@@ -1494,7 +1496,8 @@ function buildCountryCharts(country) {
             ? "start"
             : "middle",
     });
-    peakLabel.textContent = `Peak ${country.peakYear}`;
+    peakLabel.textContent = `Peak`;
+    // peakLabel.textContent = `Peak ${country.peakYear}`;
     svg.append(peakLabel);
   }
 
@@ -1755,7 +1758,7 @@ function buildCountrySummary(country, year) {
     trend =
       year < peakYear
         ? `${country.name}'s population is projected to keep growing until it peaks near ${formatPeakPopulation(peakPopulation)} in ${peakYear}.`
-        : `${country.name}'s population peaked near ${formatPeakPopulation(peakPopulation)} in ${peakYear} and has been declining since.`;
+        : `${country.name}'s population peaked near ${formatPeakPopulation(peakPopulation)} in <span class="underlined">${peakYear}</span> and has been declining since.`;
   }
 
   return `${yearLead}: ${formatPeakPopulation(population)} people. ${trend}`;
