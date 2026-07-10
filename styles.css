@@ -799,11 +799,27 @@ body.detail .year-timeline {
 }
 
 .country-detail {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
+    /* #detailSummary now lives inside here (see renderCountryDetail), so
+       .detail-panel's grid only has 2 visible children in country mode
+       instead of the usual 3 — without an explicit row, auto-placement
+       would put this in the "auto" summary row instead of the flexible
+       one, and it wouldn't fill the remaining height. */
+    /*grid-row: 3;*/
+    /*display: flex;
+    flex-direction: column;*/
+    /*gap: 24px;*/
     min-height: 0;
     overflow: auto;
+
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 12px;
+}
+
+.detail-table-container {
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+    gap: 12px;
 }
 
 .country-chart-card {
@@ -813,7 +829,7 @@ body.detail .year-timeline {
 .country-chart {
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 1;
+    aspect-ratio: 3 / 1;
     overflow: visible;
 }
 
@@ -823,7 +839,7 @@ body.detail .year-timeline {
 }
 
 .country-chart-bar {
-    stroke: color-mix(in srgb, var(--detail-color) 40%, black);
+    stroke: color-mix(in srgb, var(--detail-color) 60%, black);
     stroke-width: 2;
     opacity: 0.8;
 }
@@ -831,6 +847,12 @@ body.detail .year-timeline {
 .country-chart-bar.projected {
     /*stroke-dasharray: 2 3;*/
     opacity: 0.3;
+}
+
+.country-chart-peak-line {
+    stroke: var(--color-stroke);
+    stroke-width: 1;
+    opacity: 0.45;
 }
 
 .country-chart-peak-dot {
@@ -873,6 +895,7 @@ body.detail .year-timeline {
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
     flex: none;
+    grid-column: 1 / -1;
 }
 
 .sparkline-card {
@@ -883,8 +906,8 @@ body.detail .year-timeline {
     min-width: 0;
     /*border: 1px solid white;*/
     border-radius: 8px;
-    padding: 10px 12px;
-    background: color-mix(in srgb, var(--detail-color) 20%, transparent);
+    padding: 12px;
+    background: color-mix(in srgb, var(--detail-color) 10%, transparent);
 }
 
 .sparkline-label {
@@ -930,6 +953,12 @@ body.detail .year-timeline {
 .sparkline-path.projected {
     stroke-dasharray: 2 4;
     opacity: 0.4;
+}
+
+.sparkline-dot-line {
+    stroke: var(--color-stroke);
+    stroke-width: 1;
+    /*opacity: 0.35;*/
 }
 
 .sparkline-dot {

@@ -1259,6 +1259,10 @@ function renderDetailPanel() {
   });
 
   elements.detailRows.replaceChildren(...rows);
+  // Country mode moves #detailSummary inside #countryDetail (see
+  // renderCountryDetail) so it scrolls together with the chart; restore it
+  // to its fixed spot above the table when coming back to a group.
+  elements.detailTable.before(elements.detailSummary);
   elements.countryDetail.hidden = true;
   elements.detailTable.hidden = false;
   elements.detailPanel.hidden = false;
@@ -1317,11 +1321,9 @@ function svgEl(tag, attrs = {}) {
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
-// top padding is deliberately generous — both the peak-year label and the
-// current-year marker label float above their dot, and when that dot sits
-// near the series max (a very common case: the marker often *is* near the
-// peak) there needs to be real room for the label above y=0, not just a
-// tight clamp papering over too little space.
+// Top padding is deliberately generous because the current-year marker
+// label floats above its dot, and when that dot sits near the series max
+// there needs to be real room for the label above y=0.
 const COUNTRY_CHART_PADDING = { top: 24, right: 12, bottom: 24, left: 12 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_SPARKLINE_METRIC_KEYS = [
@@ -1352,6 +1354,11 @@ function renderCountryDetail() {
 
   elements.detailTable.hidden = true;
   elements.countryDetail.hidden = false;
+  // Unlike the group table (fixed summary above a separately-scrolling
+  // table), the country view scrolls as one unit — moving the same
+  // #detailSummary node inside #countryDetail (rather than duplicating it)
+  // keeps typeStatus()'s existing target working unchanged.
+  elements.countryDetail.prepend(elements.detailSummary);
   // Laid out (panel visible, chart card sized) before measuring its actual
   // width in buildCountryCharts() — otherwise clientWidth reads 0 while the
   // panel is still display:none, and the chart falls back to a fixed size
@@ -1457,10 +1464,18 @@ function buildCountryCharts(country) {
   }
   svg.append(bars);
 
+  const axisY = chartHeight - 6;
   const peakIndex = yearsData.indexOf(country.peakYear);
   if (peakIndex !== -1) {
     const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
     svg.append(
+      svgEl("line", {
+        class: "country-chart-peak-line",
+        x1: px,
+        x2: px,
+        y1: pad.top,
+        y2: baselineY,
+      }),
       svgEl("circle", {
         class: "country-chart-peak-dot",
         cx: px,
@@ -1471,14 +1486,18 @@ function buildCountryCharts(country) {
     const peakLabel = svgEl("text", {
       class: "country-chart-peak-label",
       x: px,
-      y: Math.max(py - 10, COUNTRY_CHART_LABEL_MIN_Y),
-      "text-anchor": peakIndex > n * 0.85 ? "end" : "middle",
+      y: axisY,
+      "text-anchor":
+        peakIndex > n * 0.85
+          ? "end"
+          : peakIndex < n * 0.15
+            ? "start"
+            : "middle",
     });
     peakLabel.textContent = `Peak ${country.peakYear}`;
     svg.append(peakLabel);
   }
 
-  const axisY = chartHeight - 6;
   const [x0] = xyFor(0, 0);
   const [x1] = xyFor(n - 1, 0);
   const labelFirst = svgEl("text", {
@@ -1497,17 +1516,17 @@ function buildCountryCharts(country) {
   labelLast.textContent = yearsData[n - 1];
   svg.append(labelFirst, labelLast);
 
-  if (cutoffIndex > 0 && cutoffIndex < n - 1) {
-    const [xc] = xyFor(cutoffIndex, 0);
-    const labelCutoff = svgEl("text", {
-      class: "country-chart-axis-label muted",
-      x: xc,
-      y: axisY,
-      "text-anchor": "middle",
-    });
-    labelCutoff.textContent = "projected →";
-    svg.append(labelCutoff);
-  }
+  // if (cutoffIndex > 0 && cutoffIndex < n - 1) {
+  //   const [xc] = xyFor(cutoffIndex, 0);
+  //   const labelCutoff = svgEl("text", {
+  //     class: "country-chart-axis-label muted",
+  //     x: xc,
+  //     y: axisY,
+  //     "text-anchor": "middle",
+  //   });
+  //   labelCutoff.textContent = "projected →";
+  //   svg.append(labelCutoff);
+  // }
 
   svg.append(
     svgEl("line", {
@@ -1550,6 +1569,7 @@ function buildCountrySparklineCard(key) {
     class: "sparkline-svg",
     preserveAspectRatio: "none",
   });
+  const dotLine = svgEl("line", { class: "sparkline-dot-line" });
   const dot = svgEl("circle", { class: "sparkline-dot", r: 3 });
 
   const card = document.createElement("div");
@@ -1561,7 +1581,7 @@ function buildCountrySparklineCard(key) {
   value.className = "sparkline-value";
   card.append(label, value, svg);
 
-  return { card, svg, dot, valueEl: value };
+  return { card, svg, dotLine, dot, valueEl: value };
 }
 
 // Each year is its own vertical stroke from the baseline up to that year's
@@ -1573,7 +1593,7 @@ function buildCountrySparklineCard(key) {
 // edge, so bars visibly flip below it once a country drops under
 // replacement rather than just shrinking toward a floor.
 function populateCountrySparkline(instance, series, cutoffIndex, key) {
-  const { svg, dot } = instance;
+  const { svg, dotLine, dot } = instance;
   const width = svg.clientWidth || 160;
   const height = svg.clientHeight || 40;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
@@ -1611,8 +1631,8 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
   }
 
   const elementsToAppend = [];
+  const baselineY = yFor(referenceValue);
   if (referenceValue != null) {
-    const baselineY = yFor(referenceValue);
     elementsToAppend.push(
       svgEl("line", {
         class: "sparkline-baseline",
@@ -1635,7 +1655,8 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
     // A bare "0" reads as the natural zero line; the formatted version
     // ("0.0 yrs", "0.00%") adds precision and units that don't mean
     // anything at exactly zero.
-    baselineLabel.textContent = referenceValue === 0 ? "0" : format(referenceValue);
+    baselineLabel.textContent =
+      referenceValue === 0 ? "0" : format(referenceValue);
     elementsToAppend.push(baselineLabel);
   }
   elementsToAppend.push(
@@ -1648,9 +1669,10 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
       d: pathFor(cutoffIndex, n - 1),
     }),
   );
-  svg.append(...elementsToAppend, dot);
+  svg.append(...elementsToAppend, dotLine, dot);
 
   instance.toXY = toXY;
+  instance.baselineY = baselineY;
 }
 
 // Cheap per-year update shared by the main chart's marker and the four
@@ -1684,20 +1706,28 @@ function updateCountryDetailForYear(year) {
       population != null ? formatPeakPopulation(population) : "";
   }
 
-  countrySparklineInstances.forEach(({ key, series, dot, valueEl, toXY }) => {
-    const value = series[index];
-    const definition = METRICS[key];
-    const format = definition.formatPanel ?? definition.format;
-    valueEl.textContent = format(value);
-    if (value != null) {
-      const [dx, dy] = toXY(index, value);
-      dot.setAttribute("cx", dx);
-      dot.setAttribute("cy", dy);
-      dot.style.display = "";
-    } else {
-      dot.style.display = "none";
-    }
-  });
+  countrySparklineInstances.forEach(
+    ({ key, series, dotLine, dot, valueEl, toXY, baselineY }) => {
+      const value = series[index];
+      const definition = METRICS[key];
+      const format = definition.formatPanel ?? definition.format;
+      valueEl.textContent = format(value);
+      if (value != null) {
+        const [dx, dy] = toXY(index, value);
+        dotLine.setAttribute("x1", dx);
+        dotLine.setAttribute("x2", dx);
+        dotLine.setAttribute("y1", dy);
+        dotLine.setAttribute("y2", baselineY);
+        dot.setAttribute("cx", dx);
+        dot.setAttribute("cy", dy);
+        dotLine.style.display = "";
+        dot.style.display = "";
+      } else {
+        dotLine.style.display = "none";
+        dot.style.display = "none";
+      }
+    },
+  );
 }
 
 function buildCountrySummary(country, year) {
