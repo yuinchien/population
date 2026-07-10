@@ -852,11 +852,12 @@ body.detail .year-timeline {
 .country-chart-peak-line {
     stroke: var(--color-stroke);
     stroke-width: 1;
-    opacity: 0.45;
+    opacity: 1;
 }
 
 .country-chart-peak-dot {
-    fill: var(--color-stroke);
+    display: none;
+    /*fill: var(--color-stroke);*/
 }
 
 .country-chart-peak-label,
@@ -865,21 +866,26 @@ body.detail .year-timeline {
     fill: var(--color-muted);
     font-family: "DM Mono", ui-monospace, monospace;
 }
+.country-chart-peak-label {
+    background: var(--detail-color);
+    border-radius: 20px;
+    padding: 4px 8px;
+}
 
 .country-chart-axis-label.muted {
     fill: var(--color-subtle);
 }
 
 .country-chart-marker-line {
-    stroke: var(--color-text);
-    stroke-width: 1;
-    stroke-dasharray: 2 2;
+    stroke: var(--color-stroke);
+    stroke-width: 2;
+    /*stroke-dasharray: 2 2;*/
 }
 
 .country-chart-marker-dot {
     fill: var(--color-stroke);
-    stroke: white;
-    stroke-width: 1.5;
+    /*stroke: white;*/
+    /*stroke-width: 1.5;*/
 }
 
 .country-chart-marker-label {
@@ -910,18 +916,25 @@ body.detail .year-timeline {
     background: color-mix(in srgb, var(--detail-color) 10%, transparent);
 }
 
+.sparkline-caption {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
 .sparkline-label {
     color: var(--color-muted);
-    font-size: 0.8rem;
+    /*font-size: 0.8rem;*/
     text-transform: uppercase;
     letter-spacing: 0.01em;
 }
 
 .sparkline-value {
     color: var(--color-text);
-    font-weight: 500;
-    font-size: 1.1rem;
-    margin: 2px 0 6px;
+    /*font-size: 1.1rem;*/
+    /*margin: 2px 0 6px;*/
 }
 
 .sparkline-svg {
@@ -957,7 +970,7 @@ body.detail .year-timeline {
 
 .sparkline-dot-line {
     stroke: var(--color-stroke);
-    stroke-width: 1;
+    stroke-width: 1.5;
     /*opacity: 0.35;*/
 }
 

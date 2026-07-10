@@ -1473,8 +1473,8 @@ function buildCountryCharts(country) {
         class: "country-chart-peak-line",
         x1: px,
         x2: px,
-        y1: pad.top,
-        y2: baselineY,
+        y1: baselineY,
+        y2: py.toFixed(2),
       }),
       svgEl("circle", {
         class: "country-chart-peak-dot",
@@ -1532,8 +1532,8 @@ function buildCountryCharts(country) {
     svgEl("line", {
       id: "countryChartMarkerLine",
       class: "country-chart-marker-line",
-      y1: pad.top,
-      y2: pad.top + innerH,
+      // y1: pad.top,
+      y2: baselineY,//pad.top + innerH,
     }),
     svgEl("circle", {
       id: "countryChartMarkerDot",
@@ -1572,6 +1572,9 @@ function buildCountrySparklineCard(key) {
   const dotLine = svgEl("line", { class: "sparkline-dot-line" });
   const dot = svgEl("circle", { class: "sparkline-dot", r: 3 });
 
+  const titleCaption = document.createElement("div");
+  titleCaption.className = "sparkline-caption";
+
   const card = document.createElement("div");
   card.className = "sparkline-card";
   const label = document.createElement("div");
@@ -1579,7 +1582,8 @@ function buildCountrySparklineCard(key) {
   label.textContent = definition.label;
   const value = document.createElement("div");
   value.className = "sparkline-value";
-  card.append(label, value, svg);
+  titleCaption.append(label, value);
+  card.append(titleCaption, svg);
 
   return { card, svg, dotLine, dot, valueEl: value };
 }
@@ -1698,6 +1702,7 @@ function updateCountryDetailForYear(year) {
   if (markerLine && markerDot && markerLabel) {
     markerLine.setAttribute("x1", x);
     markerLine.setAttribute("x2", x);
+    markerLine.setAttribute("y1", y);
     markerDot.setAttribute("cx", x);
     markerDot.setAttribute("cy", y);
     markerLabel.setAttribute("x", x);
