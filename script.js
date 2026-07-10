@@ -18,16 +18,32 @@ const GLOBAL_METRICS_URL = "./data/population-global.json";
 const INCOME_GROUPS_URL = "./data/country-income-groups.json";
 const COUNTRY_DEMOGRAPHICS_URL = "./data/country-demographic-metrics.json";
 const PEOPLE_PER_DOT = 500_000;
-const GLOBE_RADIUS = 200;
-const DOT_SIZE = 3.2;
-const MAP_DOT_SIZE = 2;
 const DOT_OPACITY = 0.9;
 const HOVER_FADE_ALPHA = 0.2;
 const PULSE_AMPLITUDE = 7;
 const PULSE_FREQ_MIN = 0.8;
 const PULSE_FREQ_RANGE = 2.0;
-const MAP_WIDTH = 400;
-const MAP_HEIGHT = 200;
+const VIEW_CONFIG = {
+  globe: {
+    radius: 200,
+    dotSize: 3.2,
+    cameraDistance: 200 * 3.1,
+    minDistance: 200 * 1.3,
+    maxDistance: 200 * 8,
+    autoRotateSpeed: 0.35,
+    calloutExtend: 200 * 1.12,
+  },
+  map: {
+    width: 400,
+    height: 200,
+    dotSize: 2,
+    cameraDistance: 360,
+    minDistance: 250,
+    maxDistance: 1200,
+    calloutExtend: 80,
+  },
+};
+const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
 // dots fly apart into a scrambled cloud filling the globe's volume, hang
 // there for a beat, then fly into their final target formation.
@@ -40,15 +56,10 @@ const SCRAMBLE_OUT_MS = 800;
 // "stretchy" over the same duration.
 const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.6;
 const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
-const GLOBE_AUTO_ROTATE_SPEED = 0.35;
-const GLOBE_CAMERA_POS = new THREE.Vector3(0, 0, GLOBE_RADIUS * 3.1);
-const MAP_CAMERA_POS = new THREE.Vector3(0, 0, 360);
 
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
 // peaks in the currently selected year.
-const CALLOUT_GLOBE_EXTEND = GLOBE_RADIUS * 1.12;
-const CALLOUT_MAP_EXTEND = 80;
 // Keep callout labels clear of the fixed sidebar (#overlay is 240px wide).
 const CALLOUT_LEFT_CLEARANCE = 260;
 
@@ -124,7 +135,7 @@ const camera = new THREE.PerspectiveCamera(
   1,
   4000,
 );
-camera.position.set(0, 0, GLOBE_RADIUS * 3.1);
+camera.position.set(0, 0, VIEW_CONFIG.globe.cameraDistance);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -138,14 +149,14 @@ let peakCallouts = []; // { country, anchor, outward, line, labelEl }
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
-controls.minDistance = GLOBE_RADIUS * 1.3;
-controls.maxDistance = GLOBE_RADIUS * 8;
+controls.minDistance = VIEW_CONFIG.globe.minDistance;
+controls.maxDistance = VIEW_CONFIG.globe.maxDistance;
 controls.autoRotate = true;
-controls.autoRotateSpeed = GLOBE_AUTO_ROTATE_SPEED;
+controls.autoRotateSpeed = VIEW_CONFIG.globe.autoRotateSpeed;
 controls.enablePan = false;
 
 const raycaster = new THREE.Raycaster();
-raycaster.params.Points = { threshold: DOT_SIZE * 1.5 };
+raycaster.params.Points = { threshold: VIEW_CONFIG.globe.dotSize * 1.5 };
 const pointer = new THREE.Vector2(Infinity, Infinity);
 // Latest pointermove event, consumed by animate()'s throttled tooltip
 // hit-test rather than raycasting on every single mousemove.
@@ -163,8 +174,8 @@ function latLonToVector3(lat, lon, radius) {
 
 function latLonToMapVector3(lat, lon) {
   return new THREE.Vector3(
-    (lon / 180) * (MAP_WIDTH / 2),
-    (lat / 90) * (MAP_HEIGHT / 2),
+    (lon / 180) * (VIEW_CONFIG.map.width / 2),
+    (lat / 90) * (VIEW_CONFIG.map.height / 2),
     0,
   );
 }
@@ -359,7 +370,7 @@ let basePositions = null; // pre-pulse baseline, rebuilt whenever the year chang
 let alphas = null;
 let frequencies = null;
 let phases = null;
-let currentDotSize = DOT_SIZE; // logical size (unscaled by pixelRatio)
+let currentDotSize = VIEW_CONFIG.globe.dotSize; // logical size (unscaled by pixelRatio)
 let dotCountry = [];
 let activeTotal = 0;
 let hoverFocusCountry = null;
@@ -501,7 +512,7 @@ function setupScene(countries, incomeGroups) {
     uniforms: {
       map: { value: createDotTexture() },
       uTime: { value: 0 },
-      uSize: { value: DOT_SIZE * renderer.getPixelRatio() },
+      uSize: { value: VIEW_CONFIG.globe.dotSize * renderer.getPixelRatio() },
       uScale: { value: renderer.domElement.height * 0.5 },
       uOpacity: { value: DOT_OPACITY },
       uPulseAmplitude: { value: PULSE_AMPLITUDE },
@@ -526,7 +537,7 @@ function setupScene(countries, incomeGroups) {
   phases = geometry.getAttribute("aPhase").array;
   dotCountry = new Array(maxTotal);
   dotLocalIndex = new Int32Array(maxTotal);
-  currentDotSize = DOT_SIZE;
+  currentDotSize = VIEW_CONFIG.globe.dotSize;
 }
 
 function setDotSize(size) {
@@ -578,9 +589,14 @@ function computeCountryAnchor(country) {
 
 function computeOutwardPoint(anchor) {
   if (viewMode === "map") {
-    return anchor.clone().add(new THREE.Vector3(0, 0, CALLOUT_MAP_EXTEND));
+    return anchor
+      .clone()
+      .add(new THREE.Vector3(0, 0, VIEW_CONFIG.map.calloutExtend));
   }
-  return anchor.clone().normalize().multiplyScalar(CALLOUT_GLOBE_EXTEND);
+  return anchor
+    .clone()
+    .normalize()
+    .multiplyScalar(VIEW_CONFIG.globe.calloutExtend);
 }
 
 function clearPeakCallouts() {
@@ -1459,7 +1475,7 @@ function currentGlobeCameraPosition(target = controls.target) {
   return camera.position
     .clone()
     .sub(target)
-    .setLength(GLOBE_CAMERA_POS.length())
+    .setLength(VIEW_CONFIG.globe.cameraDistance)
     .add(target);
 }
 
@@ -1484,7 +1500,7 @@ function setViewMode(mode) {
   // from.
   const toCamPos =
     mode === "map"
-      ? MAP_CAMERA_POS.clone()
+      ? new THREE.Vector3(0, 0, VIEW_CONFIG.map.cameraDistance)
       : currentGlobeCameraPosition(fromTarget);
 
   transition = {
@@ -1496,7 +1512,8 @@ function setViewMode(mode) {
     toCamPos,
     toTarget,
     fromDotSize: currentDotSize,
-    toDotSize: mode === "map" ? MAP_DOT_SIZE : DOT_SIZE,
+    toDotSize:
+      mode === "map" ? VIEW_CONFIG.map.dotSize : VIEW_CONFIG.globe.dotSize,
     start: performance.now(),
   };
   // Auto-rotate is stopped immediately (rather than only once the fly-out
@@ -1581,15 +1598,15 @@ function updateTransition() {
       controls.enableRotate = true;
       controls.enablePan = false;
       controls.autoRotate = true;
-      controls.autoRotateSpeed = GLOBE_AUTO_ROTATE_SPEED;
-      controls.minDistance = GLOBE_RADIUS * 1.3;
-      controls.maxDistance = GLOBE_RADIUS * 8;
+      controls.autoRotateSpeed = VIEW_CONFIG.globe.autoRotateSpeed;
+      controls.minDistance = VIEW_CONFIG.globe.minDistance;
+      controls.maxDistance = VIEW_CONFIG.globe.maxDistance;
     } else {
       controls.enableRotate = false;
       controls.enablePan = true;
       controls.autoRotate = false;
-      controls.minDistance = 250;
-      controls.maxDistance = 1200;
+      controls.minDistance = VIEW_CONFIG.map.minDistance;
+      controls.maxDistance = VIEW_CONFIG.map.maxDistance;
     }
   }
 }
