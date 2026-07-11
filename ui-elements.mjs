@@ -2,7 +2,7 @@ export function getAppElements(root = document) {
   return {
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
-    titleYear: root.querySelector("#titleYear"),
+    // titleYear: root.querySelector("#titleYear"),
     milestoneNav: root.querySelector("#milestoneNav"),
     milestoneRow: root.querySelector("#milestoneRow"),
     milestoneTour: root.querySelector("#milestoneTour"),

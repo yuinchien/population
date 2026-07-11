@@ -974,7 +974,7 @@ function updateSliderProgress() {
 // live, even though the rest of the content waits for "change".
 function updateYearLabels(year) {
   elements.yearValue.textContent = `${year}`;
-  elements.titleYear.textContent = year;
+  // elements.titleYear.textContent = year;
   updateSelectedYearTick(year);
 }
 
