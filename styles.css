@@ -1116,7 +1116,9 @@ body.menu-open .menu-toggle-icon::after {
 }
 
 @media (max-width: 720px) {
-    --chart-stroke-width: 1;
+    :root {
+        --chart-stroke-width: 1;
+    }
     .country-sparklines {
         grid-template-columns: repeat(1, 1fr);
     }
