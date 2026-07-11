@@ -1218,6 +1218,13 @@ function updateViewModeAvailability() {
     "country-detail",
     isOpen && !elements.countryDetail.hidden,
   );
+  // The mobile hamburger menu and the detail panel are both glass overlays
+  // that can stack on small screens — leaving the menu open behind the
+  // panel would show through its translucent background.
+  if (isOpen) {
+    document.body.classList.remove("menu-open");
+    elements.menuToggle.setAttribute("aria-expanded", "false");
+  }
 }
 
 function renderDetailPanel() {
