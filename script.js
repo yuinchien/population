@@ -1483,7 +1483,7 @@ function buildCountryCharts(country) {
 
   const axisY = chartHeight - 6;
   const peakIndex = yearsData.indexOf(country.peakYear);
-  const peakDotSize = 7;
+  const peakDotSize = 8.2;
   if (peakIndex !== -1) {
     const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
     svg.append(
@@ -1502,7 +1502,7 @@ function buildCountryCharts(country) {
         height: peakDotSize,
         // A square rotated 45° around its own center reads as a diamond
         // with a corner pointing straight up, rather than a circle.
-        transform: `rotate(45 ${px.toFixed(2)} ${py.toFixed(2)})`,
+        // transform: `rotate(45 ${px.toFixed(2)} ${py.toFixed(2)})`,
       }),
     );
     const peakTextAnchor =
@@ -1560,7 +1560,7 @@ function buildCountryCharts(country) {
   const markerDot = svgEl("circle", {
     id: "countryChartMarkerDot",
     class: "country-chart-marker-dot",
-    r: 4,
+    r: 4.5,
   });
   const markerLabel = svgEl("text", {
     id: "countryChartMarkerLabel",
@@ -1685,8 +1685,38 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
     return d;
   }
 
+  // Closes the curve segment back down (or up) to the baseline at its own
+  // start/end x, turning the line into a filled shape — the fill follows
+  // the curve above or below the baseline exactly as drawn, so a metric
+  // that dips below its reference value fills downward there too.
+  function areaFor(from, to, baselineY) {
+    const linePath = pathFor(from, to);
+    if (!linePath) return "";
+    let firstX = null;
+    let lastX = null;
+    for (let i = from; i <= to; i++) {
+      if (series[i] == null) continue;
+      const [x] = toXY(i, series[i]);
+      if (firstX == null) firstX = x;
+      lastX = x;
+    }
+    return `${linePath} L ${lastX.toFixed(1)} ${baselineY.toFixed(1)} L ${firstX.toFixed(1)} ${baselineY.toFixed(1)} Z`;
+  }
+
   const elementsToAppend = [];
   const baselineY = yFor(referenceValue);
+  // Filled area between the curve and the baseline, drawn first so the
+  // baseline/curve/dot render on top of it.
+  elementsToAppend.push(
+    svgEl("path", {
+      class: "sparkline-area historical",
+      d: areaFor(0, cutoffIndex, baselineY),
+    }),
+    svgEl("path", {
+      class: "sparkline-area projected",
+      d: areaFor(cutoffIndex, n - 1, baselineY),
+    }),
+  );
   if (referenceValue != null) {
     elementsToAppend.push(
       svgEl("line", {

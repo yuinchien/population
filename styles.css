@@ -13,7 +13,7 @@
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
     --font-size-year-tick-label: 18px;
-    --chart-stroke-width: 2;
+    --chart-stroke-width: 2.5;
 }
 
 html,
@@ -280,6 +280,7 @@ button.milestone-nav-btn {
 #statusTitle,
 #status {
     font-family: var(--font-sans);
+    text-shadow: 0 0 1px white;
 }
 
 .status-cursor {
@@ -681,7 +682,7 @@ body.detail .year-timeline {
     max-width: 920px;
     font-family: var(--font-sans);
     letter-spacing: 0em;
-    margin: 40px 0 8px 0;
+    margin: 24px 0 12px 0;
 }
 
 .detail-close {
@@ -892,7 +893,7 @@ body.detail .year-timeline {
 
 .country-chart-bar.projected {
     /*stroke-dasharray: 2 3;*/
-    opacity: 0.5;
+    opacity: 0.4;
 }
 
 .country-chart-peak-line {
@@ -903,6 +904,8 @@ body.detail .year-timeline {
 
 .country-chart-peak-dot {
     fill: var(--color-marker);
+    stroke: white;
+    stroke-width: 1;
 }
 
 .country-chart-peak-label,
@@ -929,8 +932,8 @@ body.detail .year-timeline {
 
 .country-chart-marker-dot {
     fill: var(--color-marker);
-    /*stroke: white;*/
-    /*stroke-width: 1.5;*/
+    stroke: white;
+    stroke-width: 1;
 }
 
 .country-chart-marker-label,
@@ -983,6 +986,16 @@ body.detail .year-timeline {
     width: 100%;
     aspect-ratio: 4 / 1;
     overflow: visible;
+}
+
+.sparkline-area {
+    fill: color-mix(in srgb, var(--detail-color) 80%, white);
+    opacity: .5;
+    stroke: none;
+}
+
+.sparkline-area.projected {
+    opacity: 0.25;
 }
 
 .sparkline-baseline {

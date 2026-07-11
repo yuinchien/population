@@ -211,7 +211,7 @@ export function buildDetailStatus({
 }) {
   const label = displayGroupLabel(legend.label);
   const projected = isProjected ? "projected " : "";
-  const yearLead = isProjected ? `${year} projection:` : `${year}:`;
+  const yearLead = isProjected ? `<span class="caption mono-uppercase">${year} projection</span>` : `<span class="caption mono-uppercase">${year}</span>`;
   const populationEntries = countriesWithNumericValue(
     countries,
     (country) => country.populations[currentYearIndex],
