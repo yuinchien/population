@@ -545,9 +545,17 @@ function updatePeakCallouts(year) {
 // (the camera orbits continuously, so this can't be computed just once).
 // On the globe, a callout for a country currently on the far side is
 // hidden — its anchor direction points away from the camera direction.
+// The three Vector3s below are scratch space reused every call instead of
+// .clone()'d fresh each time — this runs once per frame for every active
+// callout, so a fresh allocation per vector per callout adds up to steady
+// GC churn in the render loop.
+const calloutCamDir = new THREE.Vector3();
+const calloutFacing = new THREE.Vector3();
+const calloutProjected = new THREE.Vector3();
+
 function updateCalloutLabels() {
   if (!peakCallouts.length) return;
-  const camDir = camera.position.clone().normalize();
+  calloutCamDir.copy(camera.position).normalize();
   // A callout's line/label are anchored to the resting globe/map position,
   // which doesn't exist mid-transition (dots are off in the scrambled
   // cloud) — so both are hidden together rather than left pointing at a
@@ -560,7 +568,7 @@ function updateCalloutLabels() {
       return;
     }
     if (viewMode !== "map") {
-      const facing = anchor.clone().normalize().dot(camDir);
+      const facing = calloutFacing.copy(anchor).normalize().dot(calloutCamDir);
       if (facing < 0.1) {
         line.visible = false;
         labelEl.hidden = true;
@@ -569,7 +577,7 @@ function updateCalloutLabels() {
     }
     line.visible = true;
     labelEl.hidden = false;
-    const projected = outward.clone().project(camera);
+    const projected = calloutProjected.copy(outward).project(camera);
     const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
     const margin = 12;
@@ -1548,17 +1556,20 @@ function buildCountryCharts(country) {
     class: "country-chart-marker-label",
   });
 
-  svg.append(
-    svgEl("line", {
-      id: "countryChartMarkerLine",
-      class: "country-chart-marker-line",
-      y2: baselineY,
-    }),
+  const markerLine = svgEl("line", {
+    id: "countryChartMarkerLine",
+    class: "country-chart-marker-line",
+    y2: baselineY,
+  });
+  svg.append(markerLine, markerDot, markerLabel);
+
+  countryChartLayout = {
+    populations: country.populations,
+    xyFor,
+    markerLine,
     markerDot,
     markerLabel,
-  );
-
-  countryChartLayout = { populations: country.populations, xyFor };
+  };
 
   elements.countrySparklines.replaceChildren();
   countrySparklineInstances = COUNTRY_SPARKLINE_METRIC_KEYS.map((key) => {
@@ -1745,12 +1756,10 @@ function updateCountryDetailForYear(year) {
       : displayGroupLabel(selectedCountry.region);
   elements.detailSubtitle.textContent = `${groupLabel} · ${year}`;
 
-  const { populations, xyFor } = countryChartLayout;
+  const { populations, xyFor, markerLine, markerDot, markerLabel } =
+    countryChartLayout;
   const population = populations[index];
   const [x, y] = xyFor(index, population ?? 0);
-  const markerLine = document.querySelector("#countryChartMarkerLine");
-  const markerDot = document.querySelector("#countryChartMarkerDot");
-  const markerLabel = document.querySelector("#countryChartMarkerLabel");
   if (markerLine && markerDot && markerLabel) {
     markerLine.setAttribute("x1", x);
     markerLine.setAttribute("x2", x);
