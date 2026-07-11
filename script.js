@@ -1134,30 +1134,18 @@ function legendEntriesFor(mode) {
   ];
 }
 
-// What the legend should highlight: an explicitly selected group takes
-// priority, but with no group selected — e.g. a country opened straight
-// from a globe/map dot — the legend still points at the group that country
-// belongs to under the current color mode, so the sidebar stays in sync.
-function activeLegendLabel() {
-  if (selectedLegend?.mode === colorMode) return selectedLegend.label;
-  if (selectedCountry) {
-    return colorMode === "income"
-      ? selectedCountry._incomeLabel
-      : selectedCountry.region.trim();
-  }
-  return null;
-}
-
 function renderLegend() {
   const entries = legendEntriesFor(colorMode);
-  const activeLabel = activeLegendLabel();
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "legend-item";
       item.dataset.label = label;
-      item.classList.toggle("active", label === activeLabel);
+      item.classList.toggle(
+        "active",
+        selectedLegend?.mode === colorMode && selectedLegend?.label === label,
+      );
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
       item.style.setProperty("--color-legend", color);
@@ -1375,7 +1363,6 @@ function openCountryDetail(country) {
   selectedCountry = country;
   elements.tooltip.hidden = true;
   renderCountryDetail();
-  renderLegend();
 }
 
 function renderCountryDetail() {
