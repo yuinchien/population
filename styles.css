@@ -480,6 +480,18 @@ button.milestone-nav-btn {
 
 }
 
+/* Region/income switching would restyle dots out from under the open
+   country's chart color, so the tabs step aside entirely; the legend list
+   itself stays visible as a reference for which group the country belongs
+   to, just non-interactive. */
+body.country-detail #colorMode {
+    display: none;
+}
+
+body.country-detail #legend {
+    pointer-events: none;
+}
+
 .legend-item {
     display: flex;
     align-items: center;
