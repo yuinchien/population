@@ -203,6 +203,26 @@ body.detail .detail-back {
     font-family: inherit;
 }
 
+.explore-milestones-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 18px;
+    color: var(--color-text);
+    background: transparent;
+    border: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: var(--border);
+}
+
+.explore-milestones-btn .material-symbols-outlined {
+    font-size: 18px;
+}
+
 /* Doubles as the plain divider line the row used to have via border-top:
    the track alone (no fill) looks identical to that border when the tour
    isn't playing. */
@@ -211,6 +231,7 @@ body.detail .detail-back {
     height: 1px;
     background: var(--color-border);
     overflow: hidden;
+    margin-bottom: 16px;
 }
 
 .milestone-progress-fill {
@@ -226,21 +247,20 @@ body.detail .detail-back {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-top: 10px;
 }
 
 .milestone-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 12px;
 }
 
 button.milestone-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     border: var(--border);
     border-radius: 50%;
@@ -977,8 +997,6 @@ body.detail .year-timeline {
 
 .sparkline-value {
     color: var(--color-text);
-    /*font-size: 1.1rem;*/
-    /*margin: 2px 0 6px;*/
 }
 
 .sparkline-svg {
@@ -990,12 +1008,12 @@ body.detail .year-timeline {
 
 .sparkline-area {
     fill: color-mix(in srgb, var(--detail-color) 80%, white);
-    opacity: .5;
+    opacity: .4;
     stroke: none;
 }
 
 .sparkline-area.projected {
-    opacity: 0.25;
+    opacity: 0.2;
 }
 
 .sparkline-baseline {

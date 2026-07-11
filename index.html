@@ -157,14 +157,14 @@
         <div class="status-wrapper hide-for-detail">
             <h1 id="statusTitle" hidden></h1>
             <p id="status">Loading population data…</p>
-            <div id="milestoneNav" class="milestone-nav" hidden>
+            <div id="milestoneNav" class="milestone-nav">
                 <div class="milestone-progress">
                     <div
                         id="milestoneProgressFill"
                         class="milestone-progress-fill"
                     ></div>
                 </div>
-                <div class="milestone-row">
+                <div id="milestoneRow" class="milestone-row">
                     <div class="milestone-controls">
                         <button
                             id="milestoneTour"
@@ -205,6 +205,17 @@
                         class="milestone-caption mono-uppercase"
                     ></span>
                 </div>
+                <button
+                    id="exploreMilestones"
+                    class="explore-milestones-btn"
+                    type="button"
+                    aria-label="Explore milestones"
+                    title="Play tour"
+                    hidden
+                >
+                    <span class="material-symbols-outlined">play_arrow</span>
+                    Explore milestones
+                </button>
             </div>
         </div>
         <div id="yearTimeline" class="year-timeline" hidden></div>

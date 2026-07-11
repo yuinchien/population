@@ -727,7 +727,11 @@ function updateMilestoneNav(year) {
   const years = sortedMilestoneYears();
   const index = years.indexOf(year);
   const hasMilestone = index !== -1;
-  elements.milestoneNav.hidden = !hasMilestone;
+  // The tour always lands exactly on milestone years, so this button (an
+  // invitation to start it) and the milestone row (controls for once
+  // you're on one) are never both relevant at the same time.
+  elements.milestoneRow.hidden = !hasMilestone;
+  elements.exploreMilestones.hidden = hasMilestone;
   if (!hasMilestone) return;
   elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
   elements.milestonePrev.disabled = index === 0;
@@ -1863,7 +1867,7 @@ function buildCountrySummary(country, year) {
     trend =
       year < peakYear
         ? peakIsProjected
-          ? `That number is projected to keep climbing until it peaks near ${peakPopulation} in ${peakYear}.`
+          ? `That number is projected to keep climbing until it peaks near ${peakPopulation} in <span class="underlined">${peakYear}</span>.`
           : `That number kept climbing until it peaked at ${peakPopulation} in ${peakYear}.`
         : `That's down from ${peakIsProjected ? "a projected peak" : "a peak"} of ${peakPopulation} in <span class="underlined">${peakYear}</span>.`;
   }
@@ -2148,6 +2152,7 @@ async function init() {
     elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
     elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
     elements.milestoneTour.addEventListener("click", toggleTour);
+    elements.exploreMilestones.addEventListener("click", toggleTour);
     elements.menuToggle.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
