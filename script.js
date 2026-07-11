@@ -974,7 +974,6 @@ function updateSliderProgress() {
 // live, even though the rest of the content waits for "change".
 function updateYearLabels(year) {
   elements.yearValue.textContent = `${year}`;
-  // elements.titleYear.textContent = year;
   updateSelectedYearTick(year);
 }
 
@@ -1489,14 +1488,6 @@ function buildCountryCharts(country) {
         x2: x.toFixed(2),
         y1: baselineY,
         y2: y.toFixed(2),
-        // Every dashed bar shares the same baseline and dash pattern, so
-        // without a varying offset their gaps all line up at the same
-        // heights — which reads as horizontal stripes cutting across the
-        // chart rather than individually-dashed vertical bars, especially
-        // where the series is flat (adjacent bars near-identical length).
-        // Cycling the phase per bar (matching the 5px "2 3" dash period)
-        // scatters the gaps so each line reads as its own dashed stroke.
-        // ...(isProjected ? { "stroke-dashoffset": i % 5 } : {}),
       }),
     );
   }
@@ -1521,9 +1512,6 @@ function buildCountryCharts(country) {
         y: (py - peakDotSize/2).toFixed(2),
         width: peakDotSize,
         height: peakDotSize,
-        // A square rotated 45° around its own center reads as a diamond
-        // with a corner pointing straight up, rather than a circle.
-        // transform: `rotate(45 ${px.toFixed(2)} ${py.toFixed(2)})`,
       }),
     );
     const peakTextAnchor =
@@ -1536,16 +1524,6 @@ function buildCountryCharts(country) {
     });
     peakLabel.textContent = `PEAK`;
     svg.append(peakLabel);
-
-    // const peakValueLabel = svgEl("text", {
-    //   class: "country-chart-peak-value-label",
-    //   x: px,
-    //   y: Math.max(py - peakDotSize / 2 - 9, COUNTRY_CHART_LABEL_MIN_Y),
-    //   "text-anchor": peakTextAnchor,
-    // });
-    // peakValueLabel.textContent = `Peak ${formatPeakPopulation(country.populations[peakIndex])}`;
-    // peakValueLabel.textContent = `Peak`;
-    // svg.append(peakValueLabel);
   }
 
   const [x0] = xyFor(0, 0);
@@ -1566,18 +1544,6 @@ function buildCountryCharts(country) {
   labelLast.textContent = yearsData[n - 1];
   svg.append(labelFirst, labelLast);
 
-  // if (cutoffIndex > 0 && cutoffIndex < n - 1) {
-  //   const [xc] = xyFor(cutoffIndex, 0);
-  //   const labelCutoff = svgEl("text", {
-  //     class: "country-chart-axis-label muted",
-  //     x: xc,
-  //     y: axisY,
-  //     "text-anchor": "middle",
-  //   });
-  //   labelCutoff.textContent = "projected →";
-  //   svg.append(labelCutoff);
-  // }
-
   const markerDot = svgEl("circle", {
     id: "countryChartMarkerDot",
     class: "country-chart-marker-dot",
@@ -1587,22 +1553,12 @@ function buildCountryCharts(country) {
     id: "countryChartMarkerLabel",
     class: "country-chart-marker-label",
   });
-  // markerLabel already holds the current year's formatted population
-  // (e.g. "149.6M"), so the tooltip just echoes it back.
-  // markerDot.addEventListener("pointerenter", (event) =>
-  //   showChartTooltip(event, markerLabel.textContent),
-  // );
-  // markerDot.addEventListener("pointermove", (event) =>
-  //   showChartTooltip(event, markerLabel.textContent),
-  // );
-  // markerDot.addEventListener("pointerleave", hideChartTooltip);
 
   svg.append(
     svgEl("line", {
       id: "countryChartMarkerLine",
       class: "country-chart-marker-line",
-      // y1: pad.top,
-      y2: baselineY,//pad.top + innerH,
+      y2: baselineY,
     }),
     markerDot,
     markerLabel,
@@ -2256,6 +2212,14 @@ renderer.domElement.addEventListener("pointerleave", () => {
 let canvasPointerDownPos = null;
 const CANVAS_CLICK_MAX_DRAG_PX = 6;
 
+// Shared by the click handler and the hover tooltip below — both just need
+// "which country dot, if any, sits under the current pointer position."
+function hitCountryAtPointer() {
+  raycaster.setFromCamera(pointer, camera);
+  const hits = raycaster.intersectObject(pointsMesh);
+  return hits.length ? dotCountry[hits[0].index] : null;
+}
+
 renderer.domElement.addEventListener("pointerdown", (event) => {
   canvasPointerDownPos = { x: event.clientX, y: event.clientY };
 });
@@ -2270,9 +2234,7 @@ renderer.domElement.addEventListener("pointerup", (event) => {
   );
   if (dragDistance > CANVAS_CLICK_MAX_DRAG_PX) return;
 
-  raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(pointsMesh);
-  const country = hits.length ? dotCountry[hits[0].index] : null;
+  const country = hitCountryAtPointer();
   if (country) openCountryDetail(country);
 });
 
@@ -2295,13 +2257,7 @@ function updateTooltip(event) {
     clearCanvasHover();
     return;
   }
-  raycaster.setFromCamera(pointer, camera);
-  const hits = raycaster.intersectObject(pointsMesh);
-  if (!hits.length) {
-    clearCanvasHover();
-    return;
-  }
-  const country = dotCountry[hits[0].index];
+  const country = hitCountryAtPointer();
   if (!country) {
     clearCanvasHover();
     return;
@@ -2332,17 +2288,6 @@ function updateTooltip(event) {
   line1.append(swatch, countryText);
 
   const lines = [line1];
-  const year = yearsData[currentYearIndex];
-  // if (year > historicalCutoffYear) {
-  //   const hi = country.populationsHigh?.[currentYearIndex];
-  //   const lo = country.populationsLow?.[currentYearIndex];
-  //   // if (hi != null && lo != null) {
-  //   //   const line3 = document.createElement("div");
-  //   //   line3.className = "tooltip-line2";
-  //   //   line3.textContent = `${formatPeakPopulation(lo)} – ${formatPeakPopulation(hi)}`;
-  //   //   lines.push(line3);
-  //   // }
-  // }
 
   elements.tooltip.hidden = false;
   elements.tooltip.replaceChildren(...lines);

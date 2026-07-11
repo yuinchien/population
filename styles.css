@@ -98,16 +98,6 @@ canvas.hovering-dot {
     flex-direction: column;
 }
 
-/* Spacing between #overlay's direct children is margin-bottom rather than
-   flex `gap` on purpose: a flex `gap` reserves its space regardless of a
-   collapsed (max-height: 0) child's own size, and canceling it back out
-   with a negative margin compounds when two collapsing children sit next
-   to each other. A child's own margin-bottom has no such cross-item
-   interaction, so zeroing it while collapsing always closes exactly the
-   space that child contributed — no more, no less. */
-/*#overlay > *:not(:last-child) {
-    margin-bottom: 12px;
-}*/
 .footer {
     flex: 1;
     display: flex;
@@ -183,19 +173,9 @@ body.detail .detail-back {
        switching away from right-align. */
     width: 360px;
     font-weight: 500;
-    /*font-family: var(--font-sans);*/
     font-size: 16px;
     overflow: initial;
 }
-/*.status-wrapper:before {
-    content: "";
-    position: absolute;
-    left: -14px;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--color-text);
-}*/
 
 .milestone-nav {
     margin-top: 12px;
@@ -312,10 +292,6 @@ button.milestone-nav-btn {
     vertical-align: -0.15em;
     animation: status-cursor-blink 1s steps(1) infinite;
 }
-
-/*body.detail .hide-for-detail {
-    display: none !important;
-}*/
 
 @keyframes status-cursor-blink {
     0%,
@@ -832,20 +808,6 @@ body.detail .year-timeline {
 }
 
 .detail-panel {
-    /*.country-capsule {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .country-capsule:before {
-        content: "";
-        font-family: 'DM Mono';
-        background-image: var(--flag-url);
-        background-repeat: no-repeat;
-        background-size: cover;
-        width: 24px;
-        height: 18px;
-    }*/
     .caption {
         display: table;
         font-family: 'DM Mono';
@@ -878,15 +840,6 @@ body.detail .year-timeline {
 
 
 .country-detail {
-    /* #detailSummary now lives inside here (see renderCountryDetail), so
-       .detail-panel's grid only has 2 visible children in country mode
-       instead of the usual 3 — without an explicit row, auto-placement
-       would put this in the "auto" summary row instead of the flexible
-       one, and it wouldn't fill the remaining height. */
-    /*grid-row: 3;*/
-    /*display: flex;
-    flex-direction: column;*/
-    /*gap: 24px;*/
     min-height: 0;
     overflow: auto;
 
@@ -924,7 +877,6 @@ body.detail .year-timeline {
 }
 
 .country-chart-bar.projected {
-    /*stroke-dasharray: 2 3;*/
     opacity: 0.4;
 }
 
