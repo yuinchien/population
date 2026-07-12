@@ -1058,6 +1058,7 @@ body.view-chart #calloutLayer {
     left: 0;
     z-index: 1001;
     display: flex;
+    background: rgba(255, 255, 255, 0.5);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1103,7 +1104,6 @@ body.view-chart #calloutLayer {
 
 .trend-line.projected {
     stroke-dasharray: 4 3;
-    opacity: 0.5;
 }
 
 .trend-chart-baseline {
