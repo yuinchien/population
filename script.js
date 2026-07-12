@@ -1869,7 +1869,7 @@ function removeChartCountry(iso3) {
 }
 
 function flagIconUrl(iso3) {
-  return `node_modules/flag-icons/flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
+  return `./public/flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
 }
 
 function renderChartCountryChips() {
