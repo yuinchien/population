@@ -43,6 +43,7 @@ export function getAppElements(root = document) {
     countryChart: root.querySelector("#countryChart"),
     countrySparklines: root.querySelector("#countrySparklines"),
     chartView: root.querySelector("#chartView"),
+    chartViewClose: root.querySelector("#chartViewClose"),
     chartMetricTabs: root.querySelector("#chartMetricTabs"),
     trendChart: root.querySelector("#trendChart"),
     chartCountryPicker: root.querySelector("#chartCountryPicker"),

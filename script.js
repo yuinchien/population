@@ -293,7 +293,7 @@ let chartViewActive = false;
 let chartMetricKey = "population";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
-let selectedChartCountries = ["USA", "JPN", "CHN", "IND", "ETH", "GBR", "DEU"];
+let selectedChartCountries = ["USA", "JPN", "IND", "DEU", "BRA", "ETH"];
 let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
@@ -2008,9 +2008,10 @@ function renderTrendChart() {
   const definition = METRICS[key];
   const n = yearsData.length;
   const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
-  // Left padding is wide enough to fit the Y axis's value labels (e.g.
-  // "10.29B", "80.0 yrs") between the panel edge and the plotted lines.
-  const pad = { top: 16, right: 12, bottom: 24, left: 48 };
+  // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
+  // yrs"); right padding fits each line's own country-name label, drawn
+  // directly off its end point instead of a separate legend.
+  const pad = { top: 16, right: 100, bottom: 24, left: 48 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -2140,6 +2141,10 @@ function renderTrendChart() {
   labelLast.textContent = yearsData[n - 1];
   elementsToAppend.push(labelFirst, labelLast);
 
+  // Labeled directly off each line's own end point rather than through a
+  // separate legend — the chips above already double as one, so this is
+  // just about tying a color back to a country without eyeballing it.
+  const lineLabels = [];
   countries.forEach((country) => {
     const color = chartColorFor(country.iso3);
     const series = chartSeriesFor(country, key);
@@ -2155,22 +2160,60 @@ function renderTrendChart() {
         stroke: color,
       }),
     );
+
+    let lastIndex = -1;
+    for (let i = n - 1; i >= 0; i--) {
+      if (series[i] != null) {
+        lastIndex = i;
+        break;
+      }
+    }
+    if (lastIndex !== -1) {
+      lineLabels.push({
+        country,
+        color,
+        x: xFor(lastIndex) + 6,
+        y: yFor(series[lastIndex]),
+      });
+    }
+  });
+
+  // Two lines ending at close values would otherwise print their labels
+  // right on top of each other — nudge later ones (in ascending y order)
+  // down just enough to keep each one legible.
+  const MIN_LABEL_GAP = 13;
+  lineLabels.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < lineLabels.length; i++) {
+    const gap = lineLabels[i].y - lineLabels[i - 1].y;
+    if (gap < MIN_LABEL_GAP) {
+      lineLabels[i].y = lineLabels[i - 1].y + MIN_LABEL_GAP;
+    }
+  }
+  lineLabels.forEach(({ country, color, x, y }) => {
+    const label = svgEl("text", {
+      class: "trend-line-label",
+      x,
+      y: (y + 3).toFixed(1),
+      "text-anchor": "start",
+      // fill: color,
+    });
+    label.style.setProperty("--color", color);
+    label.textContent = country.name;
+    elementsToAppend.push(label);
   });
 
   svg.replaceChildren(...elementsToAppend);
 }
 
+// Chart is a full-screen overlay, not a real member of the Globe/Map
+// toggle's selection state — opening it never touches which of those two
+// is "active", so whichever was selected before is still the one shown
+// (and still marked active) once the overlay closes.
 function setChartViewActive(active) {
   if (active === chartViewActive) return;
   chartViewActive = active;
   elements.chartView.hidden = !active;
   document.body.classList.toggle("view-chart", active);
-  elements.viewMode.querySelectorAll("button").forEach((btn) => {
-    btn.classList.toggle(
-      "active",
-      active ? btn.dataset.mode === "chart" : btn.dataset.mode === viewMode,
-    );
-  });
   if (active) {
     stopTour();
     renderTrendChart();
@@ -2499,6 +2542,9 @@ async function init() {
         setViewMode(btn.dataset.mode);
       });
     });
+    elements.chartViewClose.addEventListener("click", () =>
+      setChartViewActive(false),
+    );
     renderChartMetricTabs();
     renderChartCountryChips();
     elements.chartCountrySearch.addEventListener(

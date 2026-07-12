@@ -1028,6 +1028,9 @@ body.detail .year-timeline {
 /* opacity/max-height rather than display:none — matches .hide-for-detail's
    technique, which also sidesteps #metrics's own `display: grid` (an ID
    selector would otherwise outrank a plain class-based display override). */
+   .hide-for-chart {
+       transition: .2s all;
+   }
 body.view-chart .hide-for-chart {
     overflow: hidden;
     opacity: 0;
@@ -1053,13 +1056,13 @@ body.view-chart #calloutLayer {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 999;
+    z-index: 1001;
     display: flex;
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
        this panel so there's still a way back to Globe/Map. */
-    padding: 48px 24px 24px;
+    padding: 0 12px;
     /* Not hidden: the trend chart's own overflow:visible (for axis/marker
        labels that sit right at its edge) and the country-search dropdown
        (anchored below an input that can sit close to the panel's bottom
@@ -1069,15 +1072,20 @@ body.view-chart #calloutLayer {
 }
 
 .chart-view .tab-group {
-    /*flex: none;
-    border-top: none;
-    padding: 0 0 12px;*/
+    border: none;
+    padding: 0;
 }
 
 .chart-card {
     flex: 1;
     min-height: 0;
     display: flex;
+    padding: 20px 12px;
+}
+
+.trend-line-label {
+    font-weight: 700;
+    fill: color-mix(in srgb, var(--color) 70%, black);
 }
 
 .trend-chart {
@@ -1089,7 +1097,7 @@ body.view-chart #calloutLayer {
 
 .trend-line {
     fill: none;
-    stroke-width: var(--chart-stroke-width);
+    stroke-width: 4;
     opacity: 0.9;
 }
 
@@ -1142,11 +1150,11 @@ body.view-chart #calloutLayer {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     min-height: 40px;
-    padding: 6px 8px;
-    border: var(--border);
-    border-radius: 8px;
+    padding: 0px;
+    border-bottom: var(--border);
+    margin-top: -8px;
 }
 
 .chip-input-chips {
@@ -1215,14 +1223,14 @@ body.view-chart #calloutLayer {
    of room for the dropdown without it running past the panel edge. */
 .chip-suggestions {
     position: absolute;
-    top: calc(100% + 4px);
+    top: calc(100% + 0px);
     left: 0;
     right: 0;
     max-height: 220px;
     overflow-y: auto;
-    background: var(--bg-gradient);
+    background: #fafafa;
     border: var(--border);
-    border-radius: 8px;
+    border-radius: 2px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     z-index: 10;
 }
