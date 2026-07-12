@@ -55,6 +55,10 @@ export const METRICS = {
     defaultDirection: "desc",
     format: formatPopulation,
     formatPanel: formatCount,
+    // Population is never negative, so 0 is always the natural floor —
+    // charts for this metric shouldn't scale to the selected countries'
+    // own minimum, which would exaggerate their curves' apparent slope.
+    referenceValue: 0,
   },
   fertility: {
     key: "fertility",

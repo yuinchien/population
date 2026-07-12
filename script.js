@@ -959,6 +959,7 @@ function applyYear(year) {
     updateStatusPanel(year);
   }
   updatePeakCallouts(year);
+  syncUrlFromState();
 }
 
 // Cheap recolor for switching between Region/Income group modes: reuses
@@ -1308,6 +1309,7 @@ function closeDetailPanel() {
   updateViewModeAvailability();
   renderLegend();
   if (currentYearIndex >= 0) updateStatusPanel(yearsData[currentYearIndex]);
+  syncUrlFromState();
 }
 
 // Returns to the group table this country was opened from (if any),
@@ -1322,6 +1324,88 @@ function closeCountryDetail() {
   } else {
     closeDetailPanel();
   }
+  syncUrlFromState();
+}
+
+// --- Deep linking ---------------------------------------------------------
+// Mirrors "which page am I looking at" into the URL query string (via
+// replaceState, so it doesn't spam browser history with every year the
+// slider passes through) so a copied link reopens to the same view —
+// country/group detail, or the chart view with its metric and selected
+// countries — instead of always landing back on the plain globe.
+function urlParamsFromState() {
+  const params = new URLSearchParams();
+  if (viewMode === "map") params.set("mode", "map");
+  if (chartViewActive) {
+    params.set("view", "chart");
+    params.set("metric", chartMetricKey);
+    if (selectedChartCountries.length) {
+      params.set("countries", selectedChartCountries.join(","));
+    }
+  } else if (selectedCountry) {
+    params.set("view", "country");
+    params.set("country", selectedCountry.iso3);
+  } else if (selectedLegend) {
+    params.set("view", "group");
+    params.set("groupMode", selectedLegend.mode);
+    params.set("group", selectedLegend.label);
+  }
+  if (currentYearIndex >= 0) {
+    params.set("year", String(yearsData[currentYearIndex]));
+  }
+  return params;
+}
+
+function syncUrlFromState() {
+  const query = urlParamsFromState().toString();
+  const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+  window.history.replaceState(null, "", url);
+}
+
+// Applied once at startup, after the default year and legend have already
+// rendered — it only overrides that default when the URL actually asks for
+// something, so a plain visit behaves exactly as it always has. Takes the
+// search string as an argument (captured before init() started calling
+// syncUrlFromState()) rather than reading window.location.search live,
+// since by this point that's already been overwritten with default state.
+function applyUrlStateFromLocation(search) {
+  const params = new URLSearchParams(search);
+
+  const yearParam = Number(params.get("year"));
+  if (yearsData.includes(yearParam)) goToYear(yearParam);
+
+  if (params.get("mode") === "map") setViewMode("map");
+
+  const view = params.get("view");
+  if (view === "chart") {
+    const countriesParam = params.get("countries");
+    if (countriesParam) {
+      const iso3List = countriesParam
+        .split(",")
+        .map((code) => code.trim().toUpperCase())
+        .filter((code) => countriesData.some((c) => c.iso3 === code));
+      if (iso3List.length) selectedChartCountries = iso3List;
+    }
+    setChartViewActive(true);
+    const metric = params.get("metric");
+    if (metric) setChartMetric(metric);
+    renderChartCountryChips();
+    renderTrendChart();
+  } else if (view === "country") {
+    const iso3 = params.get("country")?.toUpperCase();
+    const country = countriesData.find((c) => c.iso3 === iso3);
+    if (country) openCountryDetail(country);
+  } else if (view === "group") {
+    const groupMode = params.get("groupMode");
+    const groupLabel = params.get("group");
+    if (groupLabel && (groupMode === "region" || groupMode === "income")) {
+      if (groupMode !== colorMode) setColorMode(groupMode);
+      const entry = legendEntriesFor(groupMode).find(
+        ([label]) => label === groupLabel,
+      );
+      if (entry) selectLegendItem(entry[0], entry[1]);
+    }
+  }
 }
 
 function selectLegendItem(label, color) {
@@ -1333,6 +1417,7 @@ function selectLegendItem(label, color) {
   selectedLegend = { mode: colorMode, label, color };
   renderLegend();
   renderDetailPanel();
+  syncUrlFromState();
 }
 
 // --- Country detail view ------------------------------------------------
@@ -1412,6 +1497,7 @@ function openCountryDetail(country) {
   selectedCountry = country;
   elements.tooltip.hidden = true;
   renderCountryDetail();
+  syncUrlFromState();
 }
 
 function renderCountryDetail() {
@@ -1860,6 +1946,7 @@ function addChartCountry(iso3) {
   selectedChartCountries.push(iso3);
   renderChartCountryChips();
   renderTrendChart();
+  syncUrlFromState();
 }
 
 function removeChartCountry(iso3) {
@@ -1868,6 +1955,7 @@ function removeChartCountry(iso3) {
   selectedChartCountries.splice(index, 1);
   renderChartCountryChips();
   renderTrendChart();
+  syncUrlFromState();
 }
 
 function flagIconUrl(iso3) {
@@ -1995,6 +2083,7 @@ function setChartMetric(key) {
     btn.classList.toggle("active", btn.dataset.key === key);
   });
   renderTrendChart();
+  syncUrlFromState();
 }
 
 function renderChartMetricTabs() {
@@ -2237,6 +2326,7 @@ function setChartViewActive(active) {
     stopTour();
     renderTrendChart();
   }
+  syncUrlFromState();
 }
 
 function buildCountrySummary(country, year) {
@@ -2312,6 +2402,7 @@ function setColorMode(mode) {
   recolor();
   if (keepDetailOpen) renderDetailPanel();
   updatePeakCallouts(yearsData[currentYearIndex]);
+  syncUrlFromState();
 }
 
 // Reads target positions straight out of each active dot's precomputed
@@ -2392,6 +2483,7 @@ function setViewMode(mode) {
     .forEach((btn) =>
       btn.classList.toggle("active", btn.dataset.mode === mode),
     );
+  syncUrlFromState();
 }
 
 // Three-phase morph: current formation -> scrambled cloud filling the
@@ -2473,6 +2565,10 @@ function updateTransition() {
 }
 
 async function init() {
+  // Captured before anything else runs — applyYear() and friends call
+  // syncUrlFromState() as they go, which would otherwise overwrite the
+  // deep link's query string with default state before it's ever read.
+  const initialSearch = window.location.search;
   try {
     const appData = await loadPopulationData();
     countryDemographicMetrics = appData.countryDemographicMetrics;
@@ -2621,6 +2717,7 @@ async function init() {
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();
+    applyUrlStateFromLocation(initialSearch);
   } catch (error) {
     elements.status.textContent = `Could not load data: ${error.message}`;
   }
