@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 // matches the "./"-relative asset/fetch paths already used throughout the
 // app, which exist for the same reason.
 export default defineConfig({
-  base: "./",
+  base: "/",
   server: {
     hmr: false,
   },

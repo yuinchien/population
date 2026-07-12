@@ -1869,7 +1869,7 @@ function removeChartCountry(iso3) {
 }
 
 function flagIconUrl(iso3) {
-  return `./public/flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
+  return `./flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
 }
 
 function renderChartCountryChips() {
@@ -2227,13 +2227,12 @@ function buildCountrySummary(country, year) {
   const peakYear = country.peakYear;
   const caption = isProjected ? "Projected" : "Historical";
   const iso2 = convertAlpha3ToAlpha2(country.iso3);
-  const flagUrl = `node_modules/flag-icons/flags/4x3/${iso2}.svg`;
   // Tense follows isProjected rather than a single fixed "is" — a year
   // that's already happened reads oddly described as a projection, and a
   // future year reads oddly stated as settled fact.
   const lead = isProjected
-    ? `<span class="country-capsule" style="--flag-url: url(${flagUrl})">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
-    : `<span class="country-capsule" style="--flag-url: url(${flagUrl})">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;
+    ? `<span class="country-capsule">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
+    : `<span class="country-capsule">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;
 
   // computePeakYear() returns null when the max sits at either end of the
   // series — i.e. there's no interior peak, the population is still rising
