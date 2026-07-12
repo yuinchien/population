@@ -1914,15 +1914,27 @@ function renderChartCountryChips() {
 
 const CHART_COUNTRY_SUGGESTION_LIMIT = 8;
 
+// Common informal abbreviations people search by that don't match the
+// official ISO 3166-1 alpha-2 code — "UK" for the United Kingdom, whose
+// actual code is "GB", is the everyday example.
+const CHART_COUNTRY_CODE_ALIASES = {
+  uk: "GB",
+};
+
 function chartCountryMatches(query) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
+  const aliasIso2 = CHART_COUNTRY_CODE_ALIASES[q];
   return countriesData
-    .filter(
-      (country) =>
-        !selectedChartCountries.includes(country.iso3) &&
-        country.name.toLowerCase().includes(q),
-    )
+    .filter((country) => {
+      if (selectedChartCountries.includes(country.iso3)) return false;
+      const iso2 = convertAlpha3ToAlpha2(country.iso3);
+      return (
+        country.name.toLowerCase().includes(q) ||
+        (iso2 && iso2.toLowerCase().includes(q)) ||
+        (aliasIso2 && iso2 === aliasIso2)
+      );
+    })
     .sort((a, b) => a.name.localeCompare(b.name))
     .slice(0, CHART_COUNTRY_SUGGESTION_LIMIT);
 }
