@@ -1050,6 +1050,12 @@ body.view-chart #calloutLayer {
     display: none;
 }
 
+body.view-chart .detail-panel-header {
+    padding-left: 12px;
+    padding-right: 12px;
+    /*background: #222;*/
+}
+
 .chart-view {
     position: fixed;
     top: 0;
@@ -1063,7 +1069,6 @@ body.view-chart #calloutLayer {
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
        this panel so there's still a way back to Globe/Map. */
-    padding: 0 12px;
     /* Not hidden: the trend chart's own overflow:visible (for axis/marker
        labels that sit right at its edge) and the country-search dropdown
        (anchored below an input that can sit close to the panel's bottom
@@ -1152,9 +1157,9 @@ body.view-chart #calloutLayer {
     align-items: center;
     gap: 8px;
     min-height: 40px;
-    padding: 0px;
+    padding: 0px 12px;
     border-bottom: var(--border);
-    margin-top: -8px;
+    border-top: var(--border);
 }
 
 .chip-input-chips {
