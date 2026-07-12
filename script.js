@@ -1361,6 +1361,7 @@ const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "medianAge",
   "populationGrowth",
   "ageDependencyRatio",
+  "netMigrationRate",
 ];
 
 // --- Chart view (Globe/Map's third mode) ---------------------------------
@@ -1372,6 +1373,7 @@ const CHART_METRIC_KEYS = [
   "lifeExpectancy",
   "fertility",
   "ageDependencyRatio",
+  "netMigrationRate",
 ];
 // A plain categorical color set assigned by selection order, not by the
 // country's actual region — two countries in the same region are a

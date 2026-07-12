@@ -23,6 +23,11 @@ export function formatDependencyRatio(value) {
   return Number(value).toFixed(1);
 }
 
+export function formatMigrationRate(value) {
+  if (value == null) return "N/A";
+  return Number(value).toFixed(1);
+}
+
 export function formatCount(value, options = {}) {
   const {
     billionsDecimals = 2,
@@ -102,6 +107,19 @@ export const METRICS = {
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
     formatRange: formatDependencyRatio,
+    referenceValue: 0,
+  },
+  netMigrationRate: {
+    key: "netMigrationRate",
+    label: "Net migration rate",
+    detailLabel: "Migration rate",
+    defaultDirection: "desc",
+    format: formatMigrationRate,
+    formatPanel: (value) => `${formatMigrationRate(value)} per 1,000`,
+    formatRange: formatMigrationRate,
+    // Net-zero migration (inflow exactly offsetting outflow) is the natural
+    // threshold — charts for this metric plot deviation from it so a shift
+    // between net immigration and net emigration stands out.
     referenceValue: 0,
   },
 };
