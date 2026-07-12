@@ -32,7 +32,41 @@ function addMilestone(milestones, year, title, text, priority = 0) {
   }
 }
 
-export function computeGlobalTrendMilestones(globalData) {
+// The first year a region's share of *cumulative* population growth since
+// baseYear (typically the historical/projected cutoff, i.e. "now") crosses
+// the given threshold — distinct from that region's share of total world
+// population, which the region has held for a while by the time its share
+// of new growth catches up.
+function regionGrowthShareYear(countries, years, baseYear, region, threshold) {
+  const baseIndex = years.indexOf(baseYear);
+  if (baseIndex === -1 || baseIndex >= years.length - 1) return null;
+
+  const totalAt = (index, regionFilter) =>
+    countries.reduce((sum, country) => {
+      if (regionFilter && country.region?.trim() !== regionFilter) return sum;
+      const value = country.populations[index];
+      return value != null ? sum + value : sum;
+    }, 0);
+
+  const globalBase = totalAt(baseIndex);
+  const regionBase = totalAt(baseIndex, region);
+
+  for (let i = baseIndex + 1; i < years.length; i++) {
+    const globalGrowth = totalAt(i) - globalBase;
+    const regionGrowth = totalAt(i, region) - regionBase;
+    if (globalGrowth > 0 && regionGrowth / globalGrowth >= threshold) {
+      return years[i];
+    }
+  }
+  return null;
+}
+
+export function computeGlobalTrendMilestones(
+  globalData,
+  countries = [],
+  years = [],
+  baseYear,
+) {
   const milestones = new Map();
   const populationRows = metricRows(globalData, "population");
   const peakPopulation = populationRows.reduce(
@@ -139,6 +173,25 @@ export function computeGlobalTrendMilestones(globalData) {
       `${life80.year} is the first projected year global life expectancy reaches 80 years.`,
       3,
     );
+  }
+
+  if (countries.length && years.length && baseYear != null) {
+    const africanCenturyYear = regionGrowthShareYear(
+      countries,
+      years,
+      baseYear,
+      "Sub-Saharan Africa",
+      0.5,
+    );
+    if (africanCenturyYear) {
+      addMilestone(
+        milestones,
+        africanCenturyYear,
+        "The African Century",
+        `${africanCenturyYear} is the year Sub-Saharan Africa's share of global population growth since ${baseYear} first tops half — more than half of everyone added to the planet from here on is projected to be born there.`,
+        4,
+      );
+    }
   }
 
   return milestones;

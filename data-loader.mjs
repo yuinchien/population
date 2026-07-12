@@ -331,7 +331,12 @@ export async function loadPopulationData({
   const years = dotsData.years;
   const historicalCutoffYear = dotsData.historicalCutoffYear ?? Infinity;
   const globalMetricsByYear = buildGlobalMetricsIndex(globalData);
-  const globalTrendMilestones = computeGlobalTrendMilestones(globalData);
+  const globalTrendMilestones = computeGlobalTrendMilestones(
+    globalData,
+    countries,
+    years,
+    historicalCutoffYear,
+  );
   const highMetricsByYear = globalData.variants?.high
     ? buildVariantIndex(globalData.variants.high)
     : new Map();

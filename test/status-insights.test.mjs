@@ -64,6 +64,45 @@ test("computeGlobalTrendMilestones finds the expected WPP global trend years", a
   );
 });
 
+test("computeGlobalTrendMilestones adds The African Century when country data is provided", async () => {
+  const globalData = JSON.parse(
+    await readFile(
+      new URL("../public/data/population-global.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const dotsData = JSON.parse(
+    await readFile(
+      new URL("../public/data/population-dots.json", import.meta.url),
+      "utf8",
+    ),
+  );
+
+  const milestones = computeGlobalTrendMilestones(
+    globalData,
+    dotsData.countries,
+    dotsData.years,
+    dotsData.historicalCutoffYear,
+  );
+
+  const africanCentury = [...milestones.entries()].find(
+    ([, milestone]) => milestone.title === "The African Century",
+  );
+  assert.ok(africanCentury, "expected an African Century milestone");
+  const [year, milestone] = africanCentury;
+  assert.equal(year, 2036);
+  assert.match(milestone.text, /Sub-Saharan Africa's share of global population growth/);
+
+  // Omitting country data (e.g. the plain globalData-only call above)
+  // shouldn't add or crash on this milestone — it simply can't be computed.
+  const withoutCountries = computeGlobalTrendMilestones(globalData);
+  assert.ok(
+    ![...withoutCountries.values()].some(
+      (m) => m.title === "The African Century",
+    ),
+  );
+});
+
 test("computeGlobalTrendMilestones keeps the highest-priority copy when milestones overlap", () => {
   const milestones = computeGlobalTrendMilestones({
     population: [
