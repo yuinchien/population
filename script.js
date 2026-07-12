@@ -293,7 +293,7 @@ let chartViewActive = false;
 let chartMetricKey = "population";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
-let selectedChartCountries = ["USA", "JPN", "IND", "DEU", "BRA", "ETH"];
+let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "BRA", "NGA"];
 let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
