@@ -1869,7 +1869,12 @@ function removeChartCountry(iso3) {
 }
 
 function flagIconUrl(iso3) {
-  return `./flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
+  // The flag-icons package (and this project's public/flags/ copy of it)
+  // names files in lowercase — convertAlpha3ToAlpha2() returns uppercase
+  // codes, so this needs its own lowercasing rather than relying on a
+  // case-insensitive filesystem lucking it into working (which local dev
+  // sometimes does, but a GitHub Pages deploy never will).
+  return `./flags/4x3/${convertAlpha3ToAlpha2(iso3)?.toLowerCase()}.svg`;
 }
 
 function renderChartCountryChips() {
