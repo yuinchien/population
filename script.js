@@ -289,6 +289,11 @@ let selectedCountry = null;
 let countryChartLayout = null;
 let countrySparklineInstances = [];
 let detailSort = { key: "population", direction: "desc" };
+let chartViewActive = false;
+let chartMetricKey = "population";
+// Insertion-order array (not a Set) so a country keeps the same line color
+// for as long as it stays selected, even as others are toggled around it.
+let selectedChartCountries = ["USA", "JPN", "CHN", "IND", "ETH", "GBR", "DEU"];
 let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
@@ -1355,6 +1360,33 @@ const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "lifeExpectancy",
   "medianAge",
   "populationGrowth",
+  "ageDependencyRatio",
+];
+
+// --- Chart view (Globe/Map's third mode) ---------------------------------
+// A full-width multi-country trend chart, independent of the 3D dot scene
+// and the single-year snapshot the rest of the app is built around.
+const CHART_METRIC_KEYS = [
+  "population",
+  "populationGrowth",
+  "lifeExpectancy",
+  "fertility",
+  "ageDependencyRatio",
+];
+// A plain categorical color set assigned by selection order, not by the
+// country's actual region — two countries in the same region are a
+// near-certainty among any handful of selections, so coloring by region
+// here would make their lines indistinguishable. Starts with the region
+// palette (for visual consistency with the rest of the app) extended with
+// a few more distinct hues, since the country grid invites selecting well
+// past 7.
+const CHART_LINE_COLORS = [
+  ...Object.values(REGION_COLORS),
+  "#4fc3f7",
+  "#ba68c8",
+  "#ff8f6b",
+  "#8bc34a",
+  "#ffca28",
 ];
 
 // A dedicated tooltip (separate from #tooltip, which the 3D canvas's own
@@ -1801,6 +1833,350 @@ function convertAlpha3ToAlpha2(code) {
   return ISO3_TO_ISO2[code.toUpperCase()] || null;
 }
 
+// Population comes from the dots dataset (same series peakYear/dots are
+// built from); every other chart metric comes from the demographics file,
+// keyed and indexed identically to yearsData.
+function chartSeriesFor(country, key) {
+  if (key === "population") return country.populations;
+  return countryDemographicMetrics?.countries?.[country.iso3]?.[key] ?? [];
+}
+
+function chartCountryList() {
+  return selectedChartCountries
+    .map((iso3) => countriesData.find((country) => country.iso3 === iso3))
+    .filter(Boolean);
+}
+
+function chartColorFor(iso3) {
+  const index = selectedChartCountries.indexOf(iso3);
+  if (index === -1) return null;
+  return CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
+}
+
+function addChartCountry(iso3) {
+  if (selectedChartCountries.includes(iso3)) return;
+  selectedChartCountries.push(iso3);
+  renderChartCountryChips();
+  renderTrendChart();
+}
+
+function removeChartCountry(iso3) {
+  const index = selectedChartCountries.indexOf(iso3);
+  if (index === -1) return;
+  selectedChartCountries.splice(index, 1);
+  renderChartCountryChips();
+  renderTrendChart();
+}
+
+function flagIconUrl(iso3) {
+  return `node_modules/flag-icons/flags/4x3/${convertAlpha3ToAlpha2(iso3)}.svg`;
+}
+
+function renderChartCountryChips() {
+  elements.chartCountryChips.replaceChildren(
+    ...chartCountryList().map((country) => {
+      const color = chartColorFor(country.iso3);
+      const chip = document.createElement("span");
+      chip.className = "chip";
+      if (color) chip.style.setProperty("--chart-line-color", color);
+
+      const flag = document.createElement("span");
+      flag.className = "chip-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+
+      const label = document.createElement("span");
+      label.textContent = country.name;
+
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "chip-remove";
+      remove.setAttribute("aria-label", `Remove ${country.name}`);
+      const icon = document.createElement("span");
+      icon.className = "material-symbols-outlined";
+      icon.textContent = "close";
+      remove.append(icon);
+      remove.addEventListener("click", () =>
+        removeChartCountry(country.iso3),
+      );
+
+      chip.append(flag, label, remove);
+      return chip;
+    }),
+  );
+}
+
+const CHART_COUNTRY_SUGGESTION_LIMIT = 8;
+
+function chartCountryMatches(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return countriesData
+    .filter(
+      (country) =>
+        !selectedChartCountries.includes(country.iso3) &&
+        country.name.toLowerCase().includes(q),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, CHART_COUNTRY_SUGGESTION_LIMIT);
+}
+
+function hideChartCountrySuggestions() {
+  elements.chartCountrySuggestions.hidden = true;
+  elements.chartCountrySuggestions.replaceChildren();
+}
+
+function selectChartCountrySuggestion(iso3) {
+  addChartCountry(iso3);
+  elements.chartCountrySearch.value = "";
+  hideChartCountrySuggestions();
+  elements.chartCountrySearch.focus();
+}
+
+function renderChartCountrySuggestions() {
+  const query = elements.chartCountrySearch.value.trim();
+  if (!query) {
+    hideChartCountrySuggestions();
+    return;
+  }
+  const matches = chartCountryMatches(query);
+  elements.chartCountrySuggestions.hidden = false;
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "chip-suggestions-empty";
+    empty.textContent = "No matching countries";
+    elements.chartCountrySuggestions.replaceChildren(empty);
+    return;
+  }
+  elements.chartCountrySuggestions.replaceChildren(
+    ...matches.map((country) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "chip-suggestion";
+
+      const flag = document.createElement("span");
+      flag.className = "chip-suggestion-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+
+      const label = document.createElement("span");
+      label.textContent = country.name;
+
+      item.append(flag, label);
+      item.addEventListener("click", () =>
+        selectChartCountrySuggestion(country.iso3),
+      );
+      return item;
+    }),
+  );
+}
+
+function setChartMetric(key) {
+  if (key === chartMetricKey || !METRICS[key]) return;
+  chartMetricKey = key;
+  elements.chartMetricTabs.querySelectorAll("button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.key === key);
+  });
+  renderTrendChart();
+}
+
+function renderChartMetricTabs() {
+  elements.chartMetricTabs.replaceChildren(
+    ...CHART_METRIC_KEYS.map((key) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      // btn.className = "mono-uppercase";
+      btn.dataset.key = key;
+      btn.textContent = METRICS[key].label;
+      btn.classList.toggle("active", key === chartMetricKey);
+      btn.addEventListener("click", () => setChartMetric(key));
+      return btn;
+    }),
+  );
+}
+
+// Rebuilt from scratch on every metric/selection change rather than
+// incrementally updated — infrequent enough (explicit tab/flag clicks) that
+// a full rebuild is simpler and cheap at this scale (a handful of countries
+// × 151 years).
+function renderTrendChart() {
+  const svg = elements.trendChart;
+  const width = svg.clientWidth || 900;
+  const height = svg.clientHeight || 360;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  const countries = chartCountryList();
+  const key = chartMetricKey;
+  const definition = METRICS[key];
+  const n = yearsData.length;
+  const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
+  // Left padding is wide enough to fit the Y axis's value labels (e.g.
+  // "10.29B", "80.0 yrs") between the panel edge and the plotted lines.
+  const pad = { top: 16, right: 12, bottom: 24, left: 48 };
+  const innerW = width - pad.left - pad.right;
+  const innerH = height - pad.top - pad.bottom;
+
+  const allValues = [];
+  countries.forEach((country) => {
+    chartSeriesFor(country, key).forEach((value) => {
+      if (Number.isFinite(value)) allValues.push(value);
+    });
+  });
+  let min = allValues.length ? Math.min(...allValues) : 0;
+  let max = allValues.length ? Math.max(...allValues) : 1;
+  const referenceValue = definition?.referenceValue;
+  if (referenceValue != null) {
+    min = Math.min(min, referenceValue);
+    max = Math.max(max, referenceValue);
+  }
+  const range = max - min || 1;
+
+  function yFor(value) {
+    return pad.top + innerH - ((value - min) / range) * innerH;
+  }
+  function xFor(index) {
+    return pad.left + (index / (n - 1)) * innerW;
+  }
+  function pathFor(series, from, to) {
+    let d = "";
+    for (let i = from; i <= to; i++) {
+      const value = series[i];
+      if (value == null) continue;
+      d += `${d ? " L " : "M "}${xFor(i).toFixed(1)} ${yFor(value).toFixed(1)}`;
+    }
+    return d;
+  }
+
+  const elementsToAppend = [];
+  // Population's own .format spells out the full number ("701,283,707"),
+  // right for a single-value table cell but too wide and precise for an
+  // axis with several ticks stacked close together — millions keeps every
+  // tick on this metric in one consistent, compact unit.
+  const tickFormat =
+    key === "population"
+      ? (value) => `${Math.round(value / 1_000_000).toLocaleString()}M`
+      : (definition?.format ?? ((value) => `${value}`));
+
+  // Y axis: a spine at the left edge plus a handful of evenly-spaced value
+  // ticks (gridline + short tick mark + label), so the plotted lines read
+  // against an actual scale instead of just relative shape.
+  const Y_TICK_COUNT = 4;
+  elementsToAppend.push(
+    svgEl("line", {
+      class: "trend-chart-axis",
+      x1: pad.left,
+      x2: pad.left,
+      y1: pad.top,
+      y2: height - pad.bottom,
+    }),
+  );
+  for (let i = 0; i < Y_TICK_COUNT; i++) {
+    const tickValue = min + (range / (Y_TICK_COUNT - 1)) * i;
+    const y = yFor(tickValue).toFixed(1);
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "trend-chart-tick-line",
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: y,
+        y2: y,
+      }),
+      svgEl("line", {
+        class: "trend-chart-tick",
+        x1: pad.left - 4,
+        x2: pad.left,
+        y1: y,
+        y2: y,
+      }),
+    );
+    const tickLabel = svgEl("text", {
+      class: "trend-chart-axis-label",
+      x: pad.left - 8,
+      y: (Number(y) + 3).toFixed(1),
+      "text-anchor": "end",
+    });
+    tickLabel.textContent = tickValue === 0 ? "0" : tickFormat(tickValue);
+    elementsToAppend.push(tickLabel);
+  }
+
+  // Skipped when the reference value sits at the scale's own min/max — that
+  // only happens when it was the thing that extended the range to begin
+  // with (see min/max above), in which case a tick already labels it and
+  // a separate baseline would just double-print the same line and value.
+  if (referenceValue != null && referenceValue !== min && referenceValue !== max) {
+    const baselineY = yFor(referenceValue).toFixed(1);
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "trend-chart-baseline",
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: baselineY,
+        y2: baselineY,
+      }),
+    );
+    const baselineLabel = svgEl("text", {
+      class: "trend-chart-baseline-label",
+      x: pad.left - 8,
+      y: Math.max(yFor(referenceValue) - 4, 12).toFixed(1),
+      "text-anchor": "end",
+    });
+    baselineLabel.textContent =
+      referenceValue === 0 ? "0" : tickFormat(referenceValue);
+    elementsToAppend.push(baselineLabel);
+  }
+
+  const axisY = height - 6;
+  const labelFirst = svgEl("text", {
+    class: "trend-chart-axis-label",
+    x: pad.left,
+    y: axisY,
+    "text-anchor": "start",
+  });
+  labelFirst.textContent = yearsData[0];
+  const labelLast = svgEl("text", {
+    class: "trend-chart-axis-label",
+    x: width - pad.right,
+    y: axisY,
+    "text-anchor": "end",
+  });
+  labelLast.textContent = yearsData[n - 1];
+  elementsToAppend.push(labelFirst, labelLast);
+
+  countries.forEach((country) => {
+    const color = chartColorFor(country.iso3);
+    const series = chartSeriesFor(country, key);
+    elementsToAppend.push(
+      svgEl("path", {
+        class: "trend-line historical",
+        d: pathFor(series, 0, cutoffIndex),
+        stroke: color,
+      }),
+      svgEl("path", {
+        class: "trend-line projected",
+        d: pathFor(series, cutoffIndex, n - 1),
+        stroke: color,
+      }),
+    );
+  });
+
+  svg.replaceChildren(...elementsToAppend);
+}
+
+function setChartViewActive(active) {
+  if (active === chartViewActive) return;
+  chartViewActive = active;
+  elements.chartView.hidden = !active;
+  document.body.classList.toggle("view-chart", active);
+  elements.viewMode.querySelectorAll("button").forEach((btn) => {
+    btn.classList.toggle(
+      "active",
+      active ? btn.dataset.mode === "chart" : btn.dataset.mode === viewMode,
+    );
+  });
+  if (active) {
+    stopTour();
+    renderTrendChart();
+  }
+}
+
 function buildCountrySummary(country, year) {
   const isProjected = year > historicalCutoffYear;
   const index = yearsData.indexOf(year);
@@ -2114,7 +2490,48 @@ async function init() {
 
     elements.viewMode.hidden = false;
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => setViewMode(btn.dataset.mode));
+      btn.addEventListener("click", () => {
+        if (btn.dataset.mode === "chart") {
+          setChartViewActive(true);
+          return;
+        }
+        setChartViewActive(false);
+        setViewMode(btn.dataset.mode);
+      });
+    });
+    renderChartMetricTabs();
+    renderChartCountryChips();
+    elements.chartCountrySearch.addEventListener(
+      "input",
+      renderChartCountrySuggestions,
+    );
+    elements.chartCountrySearch.addEventListener(
+      "focus",
+      renderChartCountrySuggestions,
+    );
+    elements.chartCountrySearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const [firstMatch] = chartCountryMatches(
+          elements.chartCountrySearch.value,
+        );
+        if (firstMatch) selectChartCountrySuggestion(firstMatch.iso3);
+      } else if (
+        event.key === "Backspace" &&
+        !elements.chartCountrySearch.value &&
+        selectedChartCountries.length
+      ) {
+        removeChartCountry(
+          selectedChartCountries[selectedChartCountries.length - 1],
+        );
+      } else if (event.key === "Escape") {
+        hideChartCountrySuggestions();
+      }
+    });
+    document.addEventListener("click", (event) => {
+      if (!elements.chartCountryPicker.contains(event.target)) {
+        hideChartCountrySuggestions();
+      }
     });
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
@@ -2348,6 +2765,10 @@ window.addEventListener("resize", () => {
       buildCountryCharts(selectedCountry);
       updateCountryDetailForYear(yearsData[currentYearIndex]);
     }, 120);
+  }
+  if (chartViewActive) {
+    clearTimeout(countryChartResizeTimer);
+    countryChartResizeTimer = setTimeout(renderTrendChart, 120);
   }
 });
 

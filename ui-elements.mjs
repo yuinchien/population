@@ -42,6 +42,13 @@ export function getAppElements(root = document) {
     countryDetail: root.querySelector("#countryDetail"),
     countryChart: root.querySelector("#countryChart"),
     countrySparklines: root.querySelector("#countrySparklines"),
+    chartView: root.querySelector("#chartView"),
+    chartMetricTabs: root.querySelector("#chartMetricTabs"),
+    trendChart: root.querySelector("#trendChart"),
+    chartCountryPicker: root.querySelector("#chartCountryPicker"),
+    chartCountryChips: root.querySelector("#chartCountryChips"),
+    chartCountrySearch: root.querySelector("#chartCountrySearch"),
+    chartCountrySuggestions: root.querySelector("#chartCountrySuggestions"),
   };
 }
 

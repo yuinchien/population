@@ -243,7 +243,7 @@ export const ISO3_TO_ISO2 = {
     ARE: "AE",
     GBR: "GB",
     UMI: "UM",
-    USA: "USA",
+    USA: "US",
     URY: "UY",
     UZB: "UZ",
     VUT: "VU",

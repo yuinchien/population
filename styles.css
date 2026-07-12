@@ -8,12 +8,12 @@
     --border: 1px solid var(--color-border);
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
-    --letterspacing-uppercase: 0.02em;
+    --letterspacing-uppercase: 0.01em;
     --overlay-width: 248px;
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
     --font-size-year-tick-label: 18px;
-    --chart-stroke-width: 2.5;
+    --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
 }
 
 html,
@@ -96,6 +96,7 @@ canvas.hovering-dot {
     font-weight: 500;
     display: flex;
     flex-direction: column;
+    transition: transform 0.2s ease;
 }
 
 .footer {
@@ -309,6 +310,11 @@ button.milestone-nav-btn {
     position: fixed;
     right: 12px;
     top: 0;
+    padding: 12px 0;
+    /* Above .chart-view's own z-index (999) — otherwise the chart panel,
+       which needs to cover the canvas the same way the detail panel does,
+       covers this toggle too and there'd be no way back to Globe/Map. */
+    z-index: 1000;
 }
 
 #yearSlider {
@@ -421,7 +427,7 @@ button.milestone-nav-btn {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 10px;
+    padding: 4px 8px;
     border: var(--border);
     border-radius: 8px;
     color: var(--color-text);
@@ -999,6 +1005,12 @@ body.detail .year-timeline {
     opacity: 0.9;
 }
 
+@media (max-width: 1080px) {
+    :root {
+        --chart-stroke-width: 1.5;
+    }
+}
+
 .sparkline-path.projected {
     stroke-dasharray: 3 4;
     opacity: 0.6;
@@ -1011,6 +1023,243 @@ body.detail .year-timeline {
 
 .sparkline-dot {
     fill: var(--color-marker);
+}
+
+/* opacity/max-height rather than display:none — matches .hide-for-detail's
+   technique, which also sidesteps #metrics's own `display: grid` (an ID
+   selector would otherwise outrank a plain class-based display override). */
+body.view-chart .hide-for-chart {
+    overflow: hidden;
+    opacity: 0;
+    max-height: 0;
+    pointer-events: none;
+}
+
+body.view-chart #overlay {
+    transform: translateX(-120%);
+}
+
+body.view-chart .year-timeline {
+    display: none;
+}
+
+body.view-chart #calloutLayer {
+    display: none;
+}
+
+.chart-view {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
+       the detail panel opens — stays visible (and fixed-position) above
+       this panel so there's still a way back to Globe/Map. */
+    padding: 48px 24px 24px;
+    /* Not hidden: the trend chart's own overflow:visible (for axis/marker
+       labels that sit right at its edge) and the country-search dropdown
+       (anchored below an input that can sit close to the panel's bottom
+       edge once chips wrap to multiple rows) both need to be able to
+       render outside this container's box without getting clipped. */
+    overflow: visible;
+}
+
+.chart-view .tab-group {
+    /*flex: none;
+    border-top: none;
+    padding: 0 0 12px;*/
+}
+
+.chart-card {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.trend-chart {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.trend-line {
+    fill: none;
+    stroke-width: var(--chart-stroke-width);
+    opacity: 0.9;
+}
+
+.trend-line.projected {
+    stroke-dasharray: 4 3;
+    opacity: 0.5;
+}
+
+.trend-chart-baseline {
+    stroke: var(--color-border);
+    stroke-width: 1;
+}
+
+.trend-chart-axis {
+    stroke: var(--color-border);
+    stroke-width: 1;
+}
+
+.trend-chart-tick-line {
+    stroke: var(--color-border);
+    stroke-width: 1;
+    opacity: 0.4;
+}
+
+.trend-chart-tick {
+    stroke: var(--color-muted);
+    stroke-width: 1;
+}
+
+.trend-chart-baseline-label,
+.trend-chart-axis-label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    fill: var(--color-muted);
+}
+
+.chart-country-picker-label {
+    flex: none;
+    display: block;
+    margin: 16px 0 6px;
+    padding-top: 16px;
+    border-top: var(--border);
+    color: var(--color-muted);
+    font-size: 12px;
+}
+
+.chip-input {
+    flex: none;
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 6px 8px;
+    border: var(--border);
+    border-radius: 8px;
+}
+
+.chip-input-chips {
+    display: contents;
+}
+
+.chip-input-field {
+    flex: 1;
+    min-width: 140px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+}
+
+.chip {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 4px;
+    padding: 3px;
+    border: 1px solid var(--chart-line-color, var(--color-text));
+    background: color-mix(
+        in srgb,
+        var(--chart-line-color, var(--color-text)) 15%,
+        transparent
+    );
+    font-size: 12px;
+}
+
+.chip-flag {
+    flex: none;
+    width: 18px;
+    height: 13px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.chip-remove {
+    display: flex;
+    align-items: center;
+    margin-left: -4px;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    opacity: 0.6;
+}
+
+.chip-remove:hover {
+    opacity: 1;
+}
+
+.chip-remove .material-symbols-outlined {
+    font-size: 14px;
+}
+
+/* Opens downward: the picker sits near the top of the chart panel, above
+   the chart itself, which takes all the flexible space below it — plenty
+   of room for the dropdown without it running past the panel edge. */
+.chip-suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    background: var(--bg-gradient);
+    border: var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+}
+
+.chip-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.chip-suggestion:hover,
+.chip-suggestion.highlighted {
+    background: var(--color-border);
+}
+
+.chip-suggestion-flag {
+    flex: none;
+    width: 20px;
+    height: 15px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.chip-suggestions-empty {
+    padding: 8px 10px;
+    color: var(--color-muted);
+    font-size: 12px;
 }
 
 #calloutLayer {
@@ -1147,13 +1396,21 @@ body.menu-open .menu-toggle-icon::after {
         background: rgba(255, 255, 255, 0.8);
         width: 288px;
         transform: translateX(-120%);
-        transition: transform 0.2s ease;
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
     }
 
     .detail-panel {
         left: 0;
         z-index: 10001;
+    }
+
+    .chart-view {
+        left: 0;
+        padding-top: 48px;
+    }
+
+    .chart-view .tab-group {
+        flex-wrap: wrap;
     }
 
     body.menu-open #overlay {

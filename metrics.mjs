@@ -18,6 +18,11 @@ export function formatFertility(value) {
   return Number(value).toFixed(1);
 }
 
+export function formatDependencyRatio(value) {
+  if (value == null) return "N/A";
+  return Number(value).toFixed(1);
+}
+
 export function formatCount(value, options = {}) {
   const {
     billionsDecimals = 2,
@@ -87,6 +92,16 @@ export const METRICS = {
     formatPanel: formatPercent,
     // Zero growth is the natural threshold — charts for this metric plot
     // deviation from it so a country's shift into decline stands out.
+    referenceValue: 0,
+  },
+  ageDependencyRatio: {
+    key: "ageDependencyRatio",
+    label: "Age dependency ratio",
+    detailLabel: "Dependency ratio",
+    defaultDirection: "desc",
+    format: formatDependencyRatio,
+    formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
+    formatRange: formatDependencyRatio,
     referenceValue: 0,
   },
 };

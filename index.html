@@ -68,6 +68,15 @@
             >
                 Map
             </button>
+            <button
+                type="button"
+                data-mode="chart"
+                aria-label="Chart view"
+                title="Chart"
+                class="mono-uppercase"
+            >
+                Chart
+            </button>
         </div>
         <div id="overlay" class="glass">
             <div class="topbar">
@@ -153,7 +162,7 @@
                 >
             </div>
         </div>
-        <div class="status-wrapper hide-for-detail">
+        <div class="status-wrapper hide-for-detail ">
             <h1 id="statusTitle" hidden></h1>
             <p id="status">Loading population data…</p>
             <div id="milestoneNav" class="milestone-nav">
@@ -218,6 +227,39 @@
             </div>
         </div>
         <div id="yearTimeline" class="year-timeline" hidden></div>
+        <section id="chartView" class="chart-view glass" hidden>
+            <div id="chartMetricTabs" class="tab-group"></div>
+
+            <!--<label
+                for="chartCountrySearch"
+                class="chart-country-picker-label mono-uppercase"
+                >Countries</label
+            >-->
+            <div id="chartCountryPicker" class="chip-input">
+                <div id="chartCountryChips" class="chip-input-chips"></div>
+                <input
+                    id="chartCountrySearch"
+                    class="chip-input-field"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="Add country"
+                />
+                <div
+                    id="chartCountrySuggestions"
+                    class="chip-suggestions no-scrollbar"
+                    hidden
+                ></div>
+            </div>
+
+            <div class="chart-card">
+                <svg
+                    id="trendChart"
+                    class="trend-chart"
+                    preserveAspectRatio="none"
+                ></svg>
+            </div>
+
+        </section>
         <section id="detailPanel" class="detail-panel glass" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">
