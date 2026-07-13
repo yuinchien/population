@@ -150,11 +150,12 @@ body.detail .detail-back {
     display: flex;
 }
 
-.topbar h1 {
+h1 {
     position: fixed;
+    z-index: 1001;
     left: 0;
     top: 0;
-    margin: var(--margin);
+    margin: 16px var(--margin);
     font-size: 2.4rem;
     line-height: 1;
     font-weight: 500;
@@ -313,11 +314,15 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    margin-right: var(--margin);
+    margin: var(--margin);
     /* Above .chart-view's own z-index (999) — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
-    z-index: 1000;
+    z-index: 1001;
+}
+
+#chartViewClose {
+    display: none;
 }
 
 .slider-container {
@@ -427,8 +432,6 @@ button.milestone-nav-btn {
 .button-group {
     display: flex;
     gap: 8px;
-    /*border-top: var(--border);*/
-    padding: 12px 0;
 }
 
 .button-group button {
@@ -471,10 +474,6 @@ button.milestone-nav-btn {
    to, just non-interactive. */
 body.country-detail #colorMode {
     display: none;
-}
-
-body.country-detail #legend {
-
 }
 
 #legend {
@@ -662,8 +661,8 @@ body.detail .year-timeline {
     top: 0;
     right: 0;
     bottom: 0;
-    left: var(--overlay-width);
-    z-index: 999;
+    left: 0;
+    z-index: 1001;
     display: grid;
     grid-template-rows: auto auto 1fr;
     grid-template-columns: minmax(0, 1fr);
@@ -677,7 +676,7 @@ body.detail .year-timeline {
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    height: 56px;
+    height: 70px;
 }
 
 .detail-title-row {
@@ -758,7 +757,7 @@ body.detail .year-timeline {
 
 .detail-row {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 120px 120px 140px 140px 100px;
+    grid-template-columns: minmax(220px, 1fr) 140px 140px 160px 168px 120px;
     align-items: stretch;
     min-height: 34px;
 }
@@ -1110,9 +1109,9 @@ body.view-chart .detail-panel-header {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 1001;
+    z-index: 1000;
     display: flex;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.5);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1130,11 +1129,20 @@ body.view-chart .detail-panel-header {
     padding: 0;
 }
 
+.chart-content {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    max-width: 1440px;
+    display: flex;
+    flex-direction: column;
+    margin: 0 auto;
+}
 .chart-card {
     flex: 1;
     min-height: 0;
     display: flex;
-    padding: 0 40px;
+    padding: var(--margin) 40px var(--margin) var(--margin);
 }
 
 /* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
@@ -1143,7 +1151,8 @@ body.view-chart .detail-panel-header {
 .chart-view .detail-table {
     flex: 1;
     min-height: 0;
-    padding: var(--margin);
+    padding: calc(var(--margin) * 1);
+    max-width: 1400px;
 }
 
 .trend-line-label {
@@ -1219,17 +1228,25 @@ body.view-chart .detail-panel-header {
 }
 
 .chip-input {
-    flex: none;
     position: relative;
+    flex: none;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    background: #f5f5f5;
-    padding: 8px 14px;
-    border: none;
-    border-radius: 48px;
-    margin: 0 20px;
+    background: #fff;
+    padding: 8px;
+    box-shadow: 0 0 4px 0px rgba(0,0,0,.1);
+
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: var(--margin);
+    z-index: 1000;
+    border-radius: 8px;
+    padding: 12px;
+    gap: 12px;
 }
 
 .chip-input-chips {
@@ -1298,15 +1315,14 @@ body.view-chart .detail-panel-header {
    of room for the dropdown without it running past the panel edge. */
 .chip-suggestions {
     position: absolute;
-    top: calc(100% + 0px);
+    bottom: calc(100% + 8px);
     left: 0;
     right: 0;
-    max-height: 220px;
     overflow-y: auto;
     background: #fafafa;
     border: var(--border);
-    border-radius: 2px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 0 4px  rgba(0, 0, 0, 0.1);
     z-index: 10;
 }
 
@@ -1315,7 +1331,7 @@ body.view-chart .detail-panel-header {
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 8px 10px;
+    padding: 16px;
     border: none;
     background: transparent;
     color: var(--color-text);
@@ -1326,7 +1342,7 @@ body.view-chart .detail-panel-header {
 
 .chip-suggestion:hover,
 .chip-suggestion.highlighted {
-    background: var(--color-border);
+    background: #f5f5f5;
 }
 
 .chip-suggestion-flag {
@@ -1343,6 +1359,39 @@ body.view-chart .detail-panel-header {
     padding: 8px 10px;
     color: var(--color-muted);
     font-size: 12px;
+}
+
+
+.button-list button {
+    background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 500;
+    display: block;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    min-width: 240px;
+    height: 32px;
+    gap: 10px;
+    /*margin-left: 16px;*/
+    opacity: .5;
+    cursor: pointer;
+
+    &:before {
+        width: 8px;
+        height: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--color-text);
+        content: "";
+    }
+    &.active {
+        opacity: 1;
+    }
+    &.active:before {
+        background: var(--color-text);
+    }
 }
 
 #calloutLayer {

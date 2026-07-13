@@ -2506,6 +2506,17 @@ function setChartViewActive(active) {
   chartViewActive = active;
   elements.chartView.hidden = !active;
   document.body.classList.toggle("view-chart", active);
+  // #viewMode now stays visible while chart view is open rather than being
+  // hidden behind it, so its active state needs to track "chart" here too —
+  // setViewMode() only ever toggles between "globe"/"map", and would
+  // otherwise leave "chart" stuck highlighted (or nothing highlighted)
+  // after this panel opens or closes.
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle(
+      "active",
+      btn.dataset.mode === (active ? "chart" : viewMode),
+    ),
+  );
   if (active) {
     stopTour();
     renderTrendChart();
