@@ -878,10 +878,9 @@ body.detail .year-timeline {
 .country-detail {
     min-height: 0;
     overflow: auto;
-
     display: grid;
-    grid-template-columns: 1fr 3fr;
-    gap: 12px;
+    grid-template-columns: 1fr 2fr;
+    gap: var(--margin);
 }
 
 .detail-table-container {
@@ -1035,11 +1034,7 @@ body.detail .year-timeline {
     opacity: 0.9;
 }
 
-@media (max-width: 1080px) {
-    :root {
-        --chart-stroke-width: 1.5;
-    }
-}
+
 
 .sparkline-path.projected {
     stroke-dasharray: 3 4;
@@ -1464,6 +1459,15 @@ body.menu-open .menu-toggle-icon::after {
     transition: opacity 0.2s ease;
 }
 
+@media (max-width: 1080px) {
+    :root {
+        --chart-stroke-width: 1.5;
+    }
+    .country-detail {
+        display: block;
+    }
+}
+
 @media (max-width: 720px) {
     :root {
         --chart-stroke-width: 1;
@@ -1492,9 +1496,7 @@ body.menu-open .menu-toggle-icon::after {
     .status-wrapper p {
         font-size: 1.2rem;
     }
-    .country-detail {
-        display: block;
-    }
+
     .country-chart {
         aspect-ratio: 2 / 1;
     }
