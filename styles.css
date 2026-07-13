@@ -1478,6 +1478,20 @@ body.menu-open .menu-toggle-icon::after {
 @media (max-width: 720px) {
     :root {
         --chart-stroke-width: 1;
+        --margin: 12px;
+    }
+    h1 {
+        display: none;
+    }
+    .timeline {
+        width: auto;
+        left: 0;
+    }
+    .legend-wrapper {
+        display: none;
+    }
+    .status-wrapper p {
+        font-size: 1rem;
     }
     .country-detail {
         display: block;

@@ -19,7 +19,6 @@ export function getAppElements(root = document) {
     // yearControl: root.querySelector("#yearControl"),
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
-    yearTimeline: root.querySelector("#yearTimeline"),
     metrics: root.querySelector("#metrics"),
     metricPopulation: root.querySelector("#metricPopulation"),
     metricFertility: root.querySelector("#metricFertility"),
