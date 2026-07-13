@@ -1,5 +1,5 @@
 :root {
-    --slider-size: 2px;
+    --slider-size: 20px;
     --color-text: #222;
     --color-muted: #666;
     --color-milestone: #ff48b0;
@@ -322,15 +322,11 @@ button.milestone-nav-btn {
     z-index: 1001;
 }
 
-#chartViewClose {
-    /*display: none;#chartViewClose*/
-}
-
 .slider-container {
     position: relative;
     --progress: 0%;
     flex-grow: 1;
-    margin-top: -7px;
+    line-height: 1;
 }
 
 #yearSlider {
@@ -341,13 +337,13 @@ button.milestone-nav-btn {
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
-    background: var(--color-text);
+    background: transparent;
 }
 
 #yearSlider::-webkit-slider-runnable-track {
-    height: var(--slider-size);
+    height: 2px;
     border-radius: 999px;
-    background: transparent;
+    background: var(--color-text);
     -webkit-appearance: none;
 }
 
@@ -363,24 +359,20 @@ button.milestone-nav-btn {
 }
 
 #yearSlider::-moz-range-track {
-    height: var(--slider-size);
+    height: 2px;
     border-radius: 999px;
-    background: rgba(34, 34, 34, 0.05);
+    background: var(--color-text);
 }
 
 #yearSlider::-moz-range-progress {
-    height: var(--slider-size);
+    height: 2px;
     border-radius: 999px 0 0 999px;
-    background: linear-gradient(
-        to right,
-        rgb(34, 34, 34) 0%,
-        rgba(34, 34, 34, 0.4) 100%
-    );
+    background: var(--color-text);
 }
 
 #yearSlider::-moz-range-thumb {
-    width: var(--slider-size);
-    height: var(--slider-size);
+    width: 8px;
+    height: 8px;
     border: 0;
     border-radius: 50%;
     background: var(--color-text);
@@ -1222,11 +1214,12 @@ body.view-chart #overlayChart {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    background: #fff;
     padding: 8px;
-    box-shadow: 0 0 4px 0px rgba(0,0,0,.1);
-    border-radius: 8px;
-    flex: 1;
+    border-bottom: var(--border);
+    /*background: #fff;*/
+
+    /*box-shadow: 0 0 4px 0px rgba(0,0,0,.1);*/
+    /*flex: 1;*/
 }
 
 .chip-input-chips {

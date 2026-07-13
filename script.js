@@ -623,19 +623,20 @@ function buildPeakStatus(year, peakCountries, isProjected) {
     variants[Math.floor(Math.random() * variants.length)];
   const count = peakCountries.length;
   if (count === 0) {
-    return pick(
-      isProjected
-        ? [
-            `No country's population is projected to peak in ${year}.`,
-            `${year} is projected to pass quietly — no country's population is expected to hit its peak.`,
-            `No population peaks are projected for ${year}. Try another spot on the timeline.`,
-          ]
-        : [
-            `No country's population peaked in ${year}.`,
-            `${year} passed quietly — no country's population hit its peak.`,
-            `Not a single population peak that year. Try another spot on the timeline.`,
-          ],
-    );
+    return "";
+    // return pick(
+    //   isProjected
+    //     ? [
+    //         `No country's population is projected to peak in ${year}.`,
+    //         `${year} is projected to pass quietly — no country's population is expected to hit its peak.`,
+    //         `No population peaks are projected for ${year}. Try another spot on the timeline.`,
+    //       ]
+    //     : [
+    //         `No country's population peaked in ${year}.`,
+    //         `${year} passed quietly — no country's population hit its peak.`,
+    //         `Not a single population peak that year. Try another spot on the timeline.`,
+    //       ],
+    // );
   }
 
   if (count === 1) {
@@ -685,6 +686,30 @@ function buildPeakStatus(year, peakCountries, isProjected) {
   );
 }
 
+// Trails the global status line with headline world numbers for the
+// selected year — the milestone/peak copy above is about a specific trend
+// or country, so these figures themselves would otherwise never appear on
+// the main (no country/group selected) view.
+function buildGlobalPopulationStatus(year) {
+  const isProjected = year > historicalCutoffYear;
+  const metrics = globalMetricsByYear.get(year);
+  const population = metrics?.population;
+  if (population == null) return "";
+  const verb = isProjected ? "is" : "was";
+  const parts = [`Global total ${verb} ${formatPeakPopulation(population)}`];
+  if (metrics.lifeExpectancy != null) {
+    parts.push(
+      `life expectancy ${verb} ${METRICS.lifeExpectancy.format(metrics.lifeExpectancy)}`,
+    );
+  }
+  if (metrics.populationGrowth != null) {
+    parts.push(
+      `population growth ${verb} ${METRICS.populationGrowth.format(metrics.populationGrowth)}`,
+    );
+  }
+  return `${parts.join(", ")}.`;
+}
+
 function updateStatusPanel(year) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
@@ -724,14 +749,17 @@ function updateStatusPanel(year) {
   const milestone = globalTrendMilestones.get(year);
   setStatusTitle(milestone?.title);
   updateMilestoneNav(year);
+  const globalPopulationStatus = buildGlobalPopulationStatus(year);
   typeStatus(
-    milestone
-      ? `${milestone.text}${
-          peakCountries.length
-            ? ` ${buildPeakStatus(year, peakCountries, isProjected)}`
-            : ""
-        }`
-      : buildPeakStatus(year, peakCountries, isProjected),
+    `${
+      milestone
+        ? `${milestone.text}${
+            peakCountries.length
+              ? ` ${buildPeakStatus(year, peakCountries, isProjected)}`
+              : ""
+          }`
+        : buildPeakStatus(year, peakCountries, isProjected)
+    }${globalPopulationStatus ? ` ${globalPopulationStatus}` : ""}`,
   );
 }
 
@@ -2863,7 +2891,6 @@ async function init() {
     });
     updateSliderProgress();
     applyYear(defaultYear);
-    console.log('renderLegend 1');
     renderLegend();
     applyUrlStateFromLocation(initialSearch);
   } catch (error) {
