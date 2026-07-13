@@ -150,7 +150,7 @@ body.detail .detail-back {
 
 h1 {
     position: fixed;
-    z-index: 1001;
+    z-index: 999;
     left: 0;
     top: 0;
     margin: 16px var(--margin);
@@ -184,7 +184,7 @@ h1 {
        a shrink-to-fit box would still creep leftward as content grows even
        though the text itself is left-aligned, which defeats the point of
        switching away from right-align. */
-    width: 480px;
+    width: 420px;
     font-weight: 500;
     font-size: 16px;
     overflow: initial;
@@ -315,11 +315,11 @@ button.milestone-nav-btn {
     /* Above .chart-view's own z-index (999) — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
-    z-index: 1001;
+    z-index: 999;
 }
 
 #chartViewClose {
-    display: none;
+    /*display: none;#chartViewClose*/
 }
 
 .slider-container {
@@ -1133,7 +1133,7 @@ body.view-chart .detail-panel-header {
     padding-right: calc(var(--margin) *2 );
 }
 .chart-card {
-    flex: 1;
+    flex: 3;
     min-height: 0;
     display: flex;
     padding: var(--margin) 40px 24px var(--margin);
@@ -1143,7 +1143,7 @@ body.view-chart .detail-panel-header {
    same .detail-table used by the group view, just reused here against
    whichever countries are currently plotted. */
 .chart-view .detail-table {
-    flex: 1;
+    flex: 2;
     min-height: 0;
     padding: calc(var(--margin) * 1);
 }
@@ -1232,16 +1232,8 @@ body.view-chart .detail-panel-header {
     background: #fff;
     padding: 8px;
     box-shadow: 0 0 4px 0px rgba(0,0,0,.1);
-
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    margin: var(--margin);
-    z-index: 1000;
-    border-radius: 8px;
-    padding: 12px;
-    gap: 12px;
+    border-radius: 16px;
+    flex: 1;
 }
 
 .chip-input-chips {
@@ -1270,7 +1262,6 @@ body.view-chart .detail-panel-header {
         var(--chart-line-color) 50%,
         white
     );
-    /*border: var(--border);*/
     font-weight: 500;
 }
 
@@ -1310,14 +1301,13 @@ body.view-chart .detail-panel-header {
    of room for the dropdown without it running past the panel edge. */
 .chip-suggestions {
     position: absolute;
-    bottom: calc(100% + 8px);
+    top: calc(100% + 8px);
     left: 0;
     right: 0;
     overflow-y: auto;
-    background: #fafafa;
-    border: var(--border);
+    background: #fff;
     border-radius: 8px;
-    box-shadow: 0 0 4px  rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
     z-index: 10;
 }
 
@@ -1370,7 +1360,6 @@ body.view-chart .detail-panel-header {
     min-width: 240px;
     height: 32px;
     gap: 10px;
-    /*margin-left: 16px;*/
     opacity: .5;
     cursor: pointer;
 
