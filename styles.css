@@ -534,7 +534,7 @@ body.country-detail #legend {
    avoids. */
 .timeline {
     position: fixed;
-    z-index: 1002;
+    z-index: 1000;
     bottom: 0;
     right: 0;
     padding: var(--margin);
@@ -1112,7 +1112,7 @@ body.view-chart .detail-panel-header {
     left: 0;
     z-index: 1001;
     display: flex;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.8);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1134,7 +1134,7 @@ body.view-chart .detail-panel-header {
     flex: 1;
     min-height: 0;
     display: flex;
-    padding: 20px 12px;
+    padding: 0 40px;
 }
 
 /* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
@@ -1143,7 +1143,7 @@ body.view-chart .detail-panel-header {
 .chart-view .detail-table {
     flex: 1;
     min-height: 0;
-    padding: 0 12px 12px;
+    padding: var(--margin);
 }
 
 .trend-line-label {
@@ -1195,6 +1195,12 @@ body.view-chart .detail-panel-header {
     opacity: 0.6;
 }
 
+.trend-chart-year-drag {
+    fill: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+}
+
 .trend-chart-baseline-label,
 .trend-chart-axis-label {
     font-size: 10px;
@@ -1219,7 +1225,7 @@ body.view-chart .detail-panel-header {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    background: #e5e5e5;
+    background: #f5f5f5;
     padding: 8px 14px;
     border: none;
     border-radius: 48px;
@@ -1252,7 +1258,7 @@ body.view-chart .detail-panel-header {
         var(--chart-line-color) 50%,
         white
     );
-    border: var(--border);
+    /*border: var(--border);*/
     font-weight: 500;
 }
 

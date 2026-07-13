@@ -911,12 +911,29 @@ function typeStatus(text, el = elements.status, { instant = false } = {}) {
 
 function applyYear(year) {
   const yearIndex = yearsData.indexOf(year);
-  if (yearIndex === -1 || !pointsMesh) return;
+  if (yearIndex === -1) return;
+  const isFirstCall = currentYearIndex === -1;
+  currentYearIndex = yearIndex;
+
+  // The 3D scene is fully hidden behind the chart overlay while it's open,
+  // so repositioning every dot on each year change here would be pure
+  // wasted work — this keeps year-scrubbing (e.g. the draggable chart
+  // marker) cheap by touching only what's actually visible. Closing the
+  // overlay (setChartViewActive) does one full applyYear() call to catch
+  // the 3D scene up to wherever this left it.
+  if (chartViewActive) {
+    updateYearLabels(year);
+    renderTrendChart();
+    renderChartTable();
+    syncUrlFromState();
+    return;
+  }
+
+  if (!pointsMesh) return;
   // Skip the pulse on the very first call (initial page load) — there's no
   // prior year for this one to visibly change *from*, so it would just
   // read as an unexplained flash rather than communicating a change.
-  if (currentYearIndex !== -1) triggerYearChangePulse();
-  currentYearIndex = yearIndex;
+  if (!isFirstCall) triggerYearChangePulse();
   hoverFocusCountry = null;
   elements.tooltip.hidden = true;
   // A slider move mid-transition invalidates the in-flight tween's index
@@ -979,10 +996,6 @@ function applyYear(year) {
     updateStatusPanel(year);
   }
   updatePeakCallouts(year);
-  if (chartViewActive) {
-    renderTrendChart();
-    renderChartTable();
-  }
   syncUrlFromState();
 }
 
@@ -2345,20 +2358,19 @@ function renderTrendChart() {
     elementsToAppend.push(label);
   });
 
-  // Marks the year the rest of the app (slider, table below) is currently
-  // showing, so the chart reads as "here's where that number comes from"
-  // instead of a plot floating free of the year-scrubbing everywhere else.
+  // Marks the year the rest of the app (table below) is currently showing,
+  // so the chart reads as "here's where that number comes from" instead of
+  // a plot floating free of the year — and doubles as this view's only way
+  // to scrub years, now that #timelineContainer stays hidden here.
   if (currentYearIndex >= 0 && currentYearIndex < n) {
     const markerX = xFor(currentYearIndex).toFixed(1);
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "trend-chart-year-marker",
-        x1: markerX,
-        x2: markerX,
-        y1: pad.top,
-        y2: height - pad.bottom,
-      }),
-    );
+    const markerLine = svgEl("line", {
+      class: "trend-chart-year-marker",
+      x1: markerX,
+      x2: markerX,
+      y1: pad.top,
+      y2: height - pad.bottom,
+    });
     const markerLabel = svgEl("text", {
       class: "trend-chart-axis-label",
       x: markerX,
@@ -2366,7 +2378,66 @@ function renderTrendChart() {
       "text-anchor": "middle",
     });
     markerLabel.textContent = yearsData[currentYearIndex];
-    elementsToAppend.push(markerLabel);
+    // Wider than the visible line and invisible itself — just a generous
+    // pointer target, since a 1px line is hard to grab precisely.
+    const DRAG_HIT_HALF_WIDTH = 10;
+    const dragHit = svgEl("rect", {
+      class: "trend-chart-year-drag",
+      x: (Number(markerX) - DRAG_HIT_HALF_WIDTH).toFixed(1),
+      y: pad.top,
+      width: DRAG_HIT_HALF_WIDTH * 2,
+      height: innerH,
+    });
+
+    function yearForClientX(clientX) {
+      const rect = svg.getBoundingClientRect();
+      const localX = ((clientX - rect.left) / rect.width) * width;
+      const ratio = (localX - pad.left) / innerW;
+      const index = Math.round(ratio * (n - 1));
+      return yearsData[Math.min(n - 1, Math.max(0, index))];
+    }
+
+    // Cheap live preview while dragging: moves the marker and updates the
+    // table directly (both untouched by the SVG's own re-renders) without
+    // going through applyYear()'s full year-change pipeline — that only
+    // runs once, at drag end, via goToYear() below. Re-rendering this SVG
+    // mid-drag would also drop the pointer capture, since setPointerCapture
+    // is tied to the specific DOM node it was called on.
+    function previewYear(year) {
+      const index = yearsData.indexOf(year);
+      if (index === -1 || index === currentYearIndex) return;
+      const x = xFor(index).toFixed(1);
+      markerLine.setAttribute("x1", x);
+      markerLine.setAttribute("x2", x);
+      markerLabel.setAttribute("x", x);
+      markerLabel.textContent = year;
+      dragHit.setAttribute("x", (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1));
+      currentYearIndex = index;
+      renderChartTable();
+    }
+
+    let dragging = false;
+    dragHit.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      stopTour();
+      dragHit.setPointerCapture(event.pointerId);
+      previewYear(yearForClientX(event.clientX));
+    });
+    dragHit.addEventListener("pointermove", (event) => {
+      if (dragging) previewYear(yearForClientX(event.clientX));
+    });
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      // Commits the previewed year through the normal pipeline — syncs the
+      // (hidden) slider, the URL, and the 3D scene's own year once chart
+      // view closes.
+      goToYear(yearsData[currentYearIndex]);
+    };
+    dragHit.addEventListener("pointerup", endDrag);
+    dragHit.addEventListener("pointercancel", endDrag);
+
+    elementsToAppend.push(markerLine, markerLabel, dragHit);
   }
 
   svg.replaceChildren(...elementsToAppend);
@@ -2439,6 +2510,11 @@ function setChartViewActive(active) {
     stopTour();
     renderTrendChart();
     renderChartTable();
+  } else if (currentYearIndex >= 0) {
+    // While the overlay was open, applyYear() took its chart-only fast path
+    // and left the 3D scene stale (still showing whatever year it had
+    // before) — catch it up now that it's visible again.
+    applyYear(yearsData[currentYearIndex]);
   }
   syncUrlFromState();
 }
