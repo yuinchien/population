@@ -1182,12 +1182,12 @@ body.view-chart .detail-panel-header {
 .trend-chart-tick-line {
     stroke: var(--color-border);
     stroke-width: 1;
-    opacity: 0;
 }
 
 .trend-chart-tick {
     stroke: var(--color-muted);
     stroke-width: 1;
+    opacity: 0;
 }
 
 .trend-chart-year-marker {

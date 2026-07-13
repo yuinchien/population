@@ -2240,7 +2240,7 @@ function renderTrendChart() {
   // Y axis: a spine at the left edge plus a handful of evenly-spaced value
   // ticks (gridline + short tick mark + label), so the plotted lines read
   // against an actual scale instead of just relative shape.
-  const Y_TICK_COUNT = 4;
+  const Y_TICK_COUNT = 2;
   elementsToAppend.push(
     svgEl("line", {
       class: "trend-chart-axis",
@@ -2250,25 +2250,56 @@ function renderTrendChart() {
       y2: height - pad.bottom,
     }),
   );
+
+  // elementsToAppend.push(
+  //   svgEl("line", {
+  //     class: "trend-chart-axis",
+  //     x1: width - pad.right,
+  //     x2: width - pad.right,
+  //     y1: pad.top,
+  //     y2: height - pad.bottom,
+  //   }),
+  // );
+
+  elementsToAppend.push(
+    svgEl("line", {
+      class: "trend-chart-axis",
+      x1: pad.left,
+      x2: width - pad.right,
+      y1: height - pad.bottom,
+      y2: height - pad.bottom,
+    }),
+  );
+
+  // elementsToAppend.push(
+  //   svgEl("line", {
+  //     class: "trend-chart-axis",
+  //     x1: pad.left,
+  //     x2: width - pad.right,
+  //     y1: pad.top,
+  //     y2: pad.top,
+  //   }),
+  // );
+
   for (let i = 0; i < Y_TICK_COUNT; i++) {
     const tickValue = min + (range / (Y_TICK_COUNT - 1)) * i;
     const y = yFor(tickValue).toFixed(1);
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "trend-chart-tick-line",
-        x1: pad.left,
-        x2: width - pad.right,
-        y1: y,
-        y2: y,
-      }),
-      svgEl("line", {
-        class: "trend-chart-tick",
-        x1: pad.left - 4,
-        x2: pad.left,
-        y1: y,
-        y2: y,
-      }),
-    );
+    // elementsToAppend.push(
+    //   svgEl("line", {
+    //     class: "trend-chart-tick-line",
+    //     x1: pad.left,
+    //     x2: width - pad.right,
+    //     y1: y,
+    //     y2: y,
+    //   }),
+    //   svgEl("line", {
+    //     class: "trend-chart-tick",
+    //     x1: pad.left - 4,
+    //     x2: pad.left,
+    //     y1: y,
+    //     y2: y,
+    //   }),
+    // );
     const tickLabel = svgEl("text", {
       class: "trend-chart-axis-label",
       x: pad.left - 8,
