@@ -50,6 +50,8 @@ export function getAppElements(root = document) {
     chartCountryChips: root.querySelector("#chartCountryChips"),
     chartCountrySearch: root.querySelector("#chartCountrySearch"),
     chartCountrySuggestions: root.querySelector("#chartCountrySuggestions"),
+    chartTableHeader: root.querySelector("#chartTableHeader"),
+    chartTableRows: root.querySelector("#chartTableRows"),
   };
 }
 

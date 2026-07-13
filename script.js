@@ -10,6 +10,7 @@ import {
   buildDetailColumns,
   buildDetailRows,
   selectDetailCountries,
+  sortDetailCountries,
 } from "./detail-table.mjs";
 import { loadPopulationData, ISO3_TO_ISO2 } from "./data-loader.mjs";
 import {
@@ -294,6 +295,9 @@ let chartMetricKey = "population";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
 let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
+// Separate from detailSort (the group table's own sort) so switching one
+// doesn't surprise the other the next time it's opened.
+let chartTableSort = { key: "population", direction: "desc" };
 let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
@@ -975,6 +979,10 @@ function applyYear(year) {
     updateStatusPanel(year);
   }
   updatePeakCallouts(year);
+  if (chartViewActive) {
+    renderTrendChart();
+    renderChartTable();
+  }
   syncUrlFromState();
 }
 
@@ -1514,6 +1522,10 @@ function hideChartTooltip() {
 
 function openCountryDetail(country) {
   if (!country || currentYearIndex < 0) return;
+  // A row click in the chart view's own table drills into the same full
+  // country detail panel the group table uses — that panel and the chart
+  // overlay are both full-screen, so the chart has to step aside first.
+  if (chartViewActive) setChartViewActive(false);
   stopTour();
   selectedCountry = country;
   elements.tooltip.hidden = true;
@@ -1967,6 +1979,7 @@ function addChartCountry(iso3) {
   selectedChartCountries.push(iso3);
   renderChartCountryChips();
   renderTrendChart();
+  renderChartTable();
   syncUrlFromState();
 }
 
@@ -1976,6 +1989,7 @@ function removeChartCountry(iso3) {
   selectedChartCountries.splice(index, 1);
   renderChartCountryChips();
   renderTrendChart();
+  renderChartTable();
   syncUrlFromState();
 }
 
@@ -2331,7 +2345,85 @@ function renderTrendChart() {
     elementsToAppend.push(label);
   });
 
+  // Marks the year the rest of the app (slider, table below) is currently
+  // showing, so the chart reads as "here's where that number comes from"
+  // instead of a plot floating free of the year-scrubbing everywhere else.
+  if (currentYearIndex >= 0 && currentYearIndex < n) {
+    const markerX = xFor(currentYearIndex).toFixed(1);
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "trend-chart-year-marker",
+        x1: markerX,
+        x2: markerX,
+        y1: pad.top,
+        y2: height - pad.bottom,
+      }),
+    );
+    const markerLabel = svgEl("text", {
+      class: "trend-chart-axis-label",
+      x: markerX,
+      y: axisY,
+      "text-anchor": "middle",
+    });
+    markerLabel.textContent = yearsData[currentYearIndex];
+    elementsToAppend.push(markerLabel);
+  }
+
   svg.replaceChildren(...elementsToAppend);
+}
+
+function setChartTableSort(key) {
+  const column = detailColumns().find((c) => c.key === key);
+  if (!column) return;
+  chartTableSort =
+    chartTableSort.key === key
+      ? { key, direction: chartTableSort.direction === "asc" ? "desc" : "asc" }
+      : { key, direction: column.defaultDirection };
+  renderChartTable();
+}
+
+// The same detail-table component the group view uses, reused as-is (same
+// columns, same per-country row data) against whichever countries are
+// currently plotted — sort state is kept separate from the group table's
+// own (chartTableSort vs detailSort) so the two views don't clobber each
+// other's preference.
+function renderChartTable() {
+  if (!elements.chartTableRows) return;
+  const countries = chartCountryList();
+  const columns = detailColumns();
+
+  elements.chartTableHeader.replaceChildren(
+    ...columns.map((column) => {
+      const arrow =
+        chartTableSort.key === column.key
+          ? chartTableSort.direction === "asc"
+            ? " ↑"
+            : " ↓"
+          : "";
+      const cell = createDetailCell(
+        `${column.label}${arrow}`,
+        `${column.className} sortable`,
+      );
+      cell.classList.toggle("active", chartTableSort.key === column.key);
+      cell.addEventListener("click", () => setChartTableSort(column.key));
+      return cell;
+    }),
+  );
+
+  const sorted = sortDetailCountries(countries, columns, chartTableSort);
+  const rows = buildDetailRows(sorted, columns).map((detailRow) => {
+    const row = document.createElement("div");
+    row.style.setProperty("--ratio", detailRow.ratio);
+    row.className = "detail-row";
+    row.append(
+      ...detailRow.cells.map((cell) =>
+        createDetailCell(cell.text, cell.className),
+      ),
+    );
+    row.addEventListener("click", () => openCountryDetail(detailRow.country));
+    return row;
+  });
+  elements.chartTableRows.replaceChildren(...rows);
 }
 
 // Chart is a full-screen overlay, not a real member of the Globe/Map
@@ -2346,6 +2438,7 @@ function setChartViewActive(active) {
   if (active) {
     stopTour();
     renderTrendChart();
+    renderChartTable();
   }
   syncUrlFromState();
 }

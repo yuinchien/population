@@ -159,6 +159,7 @@ body.detail .detail-back {
     line-height: 1;
     font-weight: 500;
     font-family: var(--font-sans);
+    text-decoration: underline;
 }
 
 .title-year {
@@ -169,18 +170,23 @@ body.detail .detail-back {
 
 .status-wrapper {
     position: fixed;
-    left: 24px;
-    top: 64px;
+    left: var(--margin);
+    top: 68px;
     z-index: 100;
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
        a shrink-to-fit box would still creep leftward as content grows even
        though the text itself is left-aligned, which defeats the point of
        switching away from right-align. */
-    width: 360px;
+    width: 480px;
     font-weight: 500;
     font-size: 16px;
     overflow: initial;
+}
+.status-wrapper p {
+    margin: 0 0 4px;
+    line-height: 1.35;
+    font-size: 1.4rem;
 }
 
 .milestone-nav {
@@ -265,24 +271,6 @@ button.milestone-nav-btn {
     color: var(--color-subtle);
     opacity: 0.4;
     cursor: not-allowed;
-}
-
-.milestone-caption {
-    font-family: var(--font-mono);
-    font-size: 14px;
-}
-
-.status-wrapper h1 {
-    margin: 0 0 4px;
-    color: var(--color-text);
-    font-size: clamp(1.5rem, 2.5vw, 2.5rem);
-    font-weight: 500;
-    line-height: 1.1;
-}
-
-.status-wrapper p {
-    margin: 0 0 4px;
-    line-height: 1.5em;
 }
 
 #statusTitle,
@@ -546,6 +534,7 @@ body.country-detail #legend {
    avoids. */
 .timeline {
     position: fixed;
+    z-index: 1002;
     bottom: 0;
     right: 0;
     padding: var(--margin);
@@ -1148,6 +1137,15 @@ body.view-chart .detail-panel-header {
     padding: 20px 12px;
 }
 
+/* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
+   same .detail-table used by the group view, just reused here against
+   whichever countries are currently plotted. */
+.chart-view .detail-table {
+    flex: 1;
+    min-height: 0;
+    padding: 0 12px 12px;
+}
+
 .trend-line-label {
     font-weight: 500;
     fill: color-mix(in srgb, var(--color) 70%, black);
@@ -1162,7 +1160,7 @@ body.view-chart .detail-panel-header {
 
 .trend-line {
     fill: none;
-    stroke-width: 6;
+    stroke-width: 4;
     opacity: 0.9;
 }
 
@@ -1191,6 +1189,12 @@ body.view-chart .detail-panel-header {
     stroke-width: 1;
 }
 
+.trend-chart-year-marker {
+    stroke: var(--color-text);
+    stroke-width: 1;
+    opacity: 0.6;
+}
+
 .trend-chart-baseline-label,
 .trend-chart-axis-label {
     font-size: 10px;
@@ -1215,9 +1219,11 @@ body.view-chart .detail-panel-header {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
-    padding: 0px var(--margin) 14px var(--margin);
-    border-bottom: var(--border);
+    background: #e5e5e5;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 48px;
+    margin: 0 20px;
 }
 
 .chip-input-chips {
@@ -1240,13 +1246,13 @@ body.view-chart .detail-panel-header {
     align-items: center;
     gap: 6px;
     border-radius: 4px;
-    padding: 3px;
-    border: 1px solid var(--chart-line-color, var(--color-text));
+    padding: 4px 6px;
     background: color-mix(
         in srgb,
-        var(--chart-line-color, var(--color-text)) 15%,
-        transparent
+        var(--chart-line-color) 50%,
+        white
     );
+    border: var(--border);
     font-weight: 500;
 }
 

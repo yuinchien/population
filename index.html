@@ -82,7 +82,7 @@
         <div id="timelineContainer" class="timeline">
             <button
                 id="milestoneTour"
-                class="milestone-nav-btn"
+                class="milestone-nav-btn hide-for-chart"
                 type="button"
                 aria-label="Play milestone tour"
                 title="Play tour"
@@ -104,7 +104,7 @@
             </div>
             <button
                 id="milestonePrev"
-                class="milestone-nav-btn"
+                class="milestone-nav-btn hide-for-chart"
                 type="button"
                 aria-label="Previous milestone"
             >
@@ -114,7 +114,7 @@
             </button>
             <button
                 id="milestoneNext"
-                class="milestone-nav-btn"
+                class="milestone-nav-btn hide-for-chart"
                 type="button"
                 aria-label="Next milestone"
             >
@@ -124,7 +124,7 @@
             </button>
         </div>
 
-        <div class="topbar">
+        <div class="topbar hide-for-chart">
             <button
                 id="detailBack"
                 class="detail-back"
@@ -241,6 +241,14 @@
                     class="trend-chart"
                     preserveAspectRatio="none"
                 ></svg>
+            </div>
+
+            <div id="chartTable" class="detail-table">
+                <div
+                    id="chartTableHeader"
+                    class="detail-row header mono-uppercase"
+                ></div>
+                <div id="chartTableRows" class="detail-rows no-scrollbar"></div>
             </div>
 
         </section>
