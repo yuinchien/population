@@ -717,7 +717,7 @@ function updateStatusPanel(year) {
   );
   const milestone = globalTrendMilestones.get(year);
   setStatusTitle(milestone?.title);
-  updateMilestoneNav(milestone ? year : null);
+  updateMilestoneNav(year);
   typeStatus(
     milestone
       ? `${milestone.text}${
@@ -745,25 +745,52 @@ function sortedMilestoneYears() {
   return [...globalTrendMilestones.keys()].sort((a, b) => a - b);
 }
 
-function updateMilestoneNav(year) {
+// Off a milestone year, prev/next target the nearest milestone on either
+// side rather than being disabled outright — the slider can land anywhere
+// (dragging, deep links, chart-marker scrubbing), and these buttons are the
+// fastest way back onto the story from wherever that leaves you.
+function adjacentMilestoneYears(year) {
   const years = sortedMilestoneYears();
   const index = years.indexOf(year);
+  if (index !== -1) {
+    return {
+      prev: index > 0 ? years[index - 1] : null,
+      next: index < years.length - 1 ? years[index + 1] : null,
+    };
+  }
+  let prev = null;
+  let next = null;
+  for (const y of years) {
+    if (y < year) prev = y;
+    else if (y > year && next === null) next = y;
+  }
+  return { prev, next };
+}
+
+// year is null while a country/group detail view is showing its own status
+// instead of the global story — milestone nav isn't relevant there, so both
+// buttons are simply disabled rather than pointed at the global timeline.
+function updateMilestoneNav(year) {
+  const years = sortedMilestoneYears();
+  const index = year == null ? -1 : years.indexOf(year);
   const hasMilestone = index !== -1;
-  // The tour always lands exactly on milestone years, so this button (an
-  // invitation to start it) and the milestone row (controls for once
-  // you're on one) are never both relevant at the same time.
-  // elements.milestoneRow.hidden = !hasMilestone;
-  // elements.exploreMilestones.hidden = hasMilestone;
-  if (!hasMilestone) return;
   // #milestoneCaption's markup was commented out along with the rest of
   // the old #milestoneRow, but this counter update wasn't — left in place,
   // it throws on every year change (elements.milestoneCaption is null),
   // which is what was actually breaking data loading via updateStatusPanel.
   if (elements.milestoneCaption) {
-    elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
+    elements.milestoneCaption.textContent = hasMilestone
+      ? `${index + 1} / ${years.length}`
+      : "";
   }
-  elements.milestonePrev.disabled = index === 0;
-  elements.milestoneNext.disabled = index === years.length - 1;
+  if (year == null) {
+    elements.milestonePrev.disabled = true;
+    elements.milestoneNext.disabled = true;
+    return;
+  }
+  const { prev, next } = adjacentMilestoneYears(year);
+  elements.milestonePrev.disabled = prev == null;
+  elements.milestoneNext.disabled = next == null;
 }
 
 // Mirrors selectYearFromClientY()'s slider-driven navigation, so jumping to
@@ -777,12 +804,10 @@ function goToYear(year) {
 
 function stepMilestone(delta) {
   stopTour();
-  const years = sortedMilestoneYears();
-  const index = years.indexOf(yearsData[currentYearIndex]);
-  if (index === -1) return;
-  const nextIndex = index + delta;
-  if (nextIndex < 0 || nextIndex >= years.length) return;
-  goToYear(years[nextIndex]);
+  const { prev, next } = adjacentMilestoneYears(yearsData[currentYearIndex]);
+  const target = delta < 0 ? prev : next;
+  if (target == null) return;
+  goToYear(target);
 }
 
 // Guided "story mode": auto-advances through milestones one at a time,
