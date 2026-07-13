@@ -88,21 +88,21 @@ canvas.hovering-dot {
     backdrop-filter: blur(16px);
 }
 
-#overlay {
-    position: fixed;
-    z-index: 10000;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: var(--overlay-width);
-    padding: var(--margin);
+.overlay {
     font-weight: 500;
-    display: flex;
-    flex-direction: column;
     transition: transform 0.2s ease;
+}
+
+#overlayMain {
+    position: fixed;
+    left: 0;
+    bottom: 0;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    padding: var(--margin);
+}
+#overlayChart {
+
 }
 
 .footer {
@@ -319,7 +319,7 @@ button.milestone-nav-btn {
     /* Above .chart-view's own z-index (999) — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
-    z-index: 999;
+    z-index: 1001;
 }
 
 #chartViewClose {
@@ -458,15 +458,6 @@ button.milestone-nav-btn {
 .button-group button:disabled {
     cursor: not-allowed;
     opacity: 0.4;
-}
-
-
-.overlay {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    margin: var(--margin);
-    z-index: 1000;
 }
 
 /* Region/income switching would restyle dots out from under the open
@@ -676,7 +667,7 @@ body.detail .year-timeline {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: var(--margin);
     height: calc(var(--button-size) + var(--margin) * 2 );
 }
 
@@ -1084,10 +1075,6 @@ body.view-chart .hide-for-chart {
     pointer-events: none;
 }
 
-body.view-chart #overlay {
-    transform: translateX(-120%);
-}
-
 body.view-chart .year-timeline {
     display: none;
 }
@@ -1096,9 +1083,9 @@ body.view-chart #calloutLayer {
     display: none;
 }
 
-body.view-chart .detail-panel-header {
-    padding-left: var(--margin);
-    padding-right: var(--margin);
+body.view-chart #overlayChart {
+    padding: var(--margin) 236px var(--margin) var(--margin);
+    margin-top: -4px;
 }
 
 .chart-view {
@@ -1331,6 +1318,7 @@ body.view-chart .detail-panel-header {
     cursor: pointer;
 }
 
+.chip-suggestion:focus,
 .chip-suggestion:hover,
 .chip-suggestion.highlighted {
     background: #f5f5f5;
@@ -1490,9 +1478,22 @@ body.menu-open .menu-toggle-icon::after {
     h1 {
         display: none;
     }
+    #chartMetricTabs {
+        display: none;
+    }
+    .chart-card {
+        padding: 0;
+    }
     .timeline {
         width: auto;
         left: 0;
+    }
+    body.view-chart #overlayChart {
+        width: 100%;
+        padding: 48px var(--margin) var(--margin) var(--margin);
+    }
+    body.view-chart .detail-panel-header {
+        height: auto;
     }
     .status-wrapper p {
         font-size: 1.2rem;
@@ -1518,20 +1519,38 @@ body.menu-open .menu-toggle-icon::after {
         right: 16px;
         bottom: 16px;
     }
+    .chart-content {
+        padding-top: 56px;
+        padding-left: 0;
+        padding-right: 0;
+    }
 
     .menu-toggle {
         display: block;
     }
     #viewMode {
-        top: 0
+        top: 0;
         right: 0;
     }
-    #overlay {
-        background: rgba(255, 255, 255, 0.8);
+    body.menu-open.view-chart #viewMode {
+        display: none;
+    }
+
+    .overlay {
+        position: fixed;
+        z-index: 10000;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: var(--overlay-width);
+        padding: var(--margin);
         width: 288px;
         transform: translateX(-120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
-        justify-content: flex-start;
+
+        background: rgba(255, 255, 255, 0.8);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
     }
 
     .detail-panel {
@@ -1539,20 +1558,26 @@ body.menu-open .menu-toggle-icon::after {
         z-index: 10001;
     }
 
+    .chip-input {
+        align-self: flex-start;
+        margin-top: var(--margin);
+    }
+
     .chart-view {
         left: 0;
-        padding-top: 48px;
+        padding-top: 0;
     }
 
     .chart-view .button-group {
         flex-wrap: wrap;
     }
 
-    body.menu-open #overlay {
+    body.menu-open:not(.view-chart) #overlayMain,
+    body.menu-open.view-chart #overlayChart {
         transform: translateX(0);
     }
 
-    body.menu-open .menu-shim {
+    body.menu-open:not(.view-chart) .menu-shim {
         display: block;
         opacity: 1;
     }

@@ -316,13 +316,23 @@ export async function loadPopulationData({
   urls = DATA_URLS,
   fetchImpl = fetch,
 } = {}) {
-  const [dotsData, globalData, incomeGroups, countryDemographicMetrics] =
-    await Promise.all([
-      fetchJson(urls.dots, fetchImpl),
-      fetchJson(urls.globalMetrics, fetchImpl),
-      fetchJson(urls.incomeGroups, fetchImpl),
-      fetchJson(urls.countryDemographics, fetchImpl),
-    ]);
+  // country-demographic-metrics.json is the single biggest payload here
+  // (bigger than the other three combined) but nothing on first paint reads
+  // it — only a country/group detail view or a chart tab that needs one of
+  // its metrics does. Fired off immediately so it's not sitting idle, but
+  // deliberately left out of the Promise.all below so the initial globe/map
+  // render isn't blocked waiting on it; callers get it back as its own
+  // promise and can pick it up once it resolves.
+  const countryDemographicMetricsPromise = fetchJson(
+    urls.countryDemographics,
+    fetchImpl,
+  );
+
+  const [dotsData, globalData, incomeGroups] = await Promise.all([
+    fetchJson(urls.dots, fetchImpl),
+    fetchJson(urls.globalMetrics, fetchImpl),
+    fetchJson(urls.incomeGroups, fetchImpl),
+  ]);
 
   const countries = dotsData.countries.map((country) => ({
     ...country,
@@ -348,7 +358,7 @@ export async function loadPopulationData({
     countries,
     years,
     incomeGroups,
-    countryDemographicMetrics,
+    countryDemographicMetricsPromise,
     historicalCutoffYear,
     globalMetricsByYear,
     globalTrendMilestones,

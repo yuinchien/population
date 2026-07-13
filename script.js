@@ -2718,7 +2718,22 @@ async function init() {
   try {
 
     const appData = await loadPopulationData();
-    countryDemographicMetrics = appData.countryDemographicMetrics;
+    // The biggest single data file and not needed for first paint (only a
+    // country/group detail view or certain chart tabs read it) — resolves
+    // in the background instead of blocking the initial render, and
+    // refreshes whatever's already on screen once it lands.
+    appData.countryDemographicMetricsPromise.then((data) => {
+      countryDemographicMetrics = data;
+      if (chartViewActive) {
+        renderTrendChart();
+        renderChartTable();
+      }
+      if (selectedCountry) {
+        renderCountryDetail();
+      } else if (selectedLegend) {
+        renderDetailPanel();
+      }
+    });
     countriesData = appData.countries;
     yearsData = appData.years;
     historicalCutoffYear = appData.historicalCutoffYear;
@@ -2785,9 +2800,9 @@ async function init() {
         setViewMode(btn.dataset.mode);
       });
     });
-    elements.chartViewClose.addEventListener("click", () =>
-      setChartViewActive(false),
-    );
+    // elements.chartViewClose.addEventListener("click", () =>
+    //   setChartViewActive(false),
+    // );
     renderChartMetricTabs();
     renderChartCountryChips();
     elements.chartCountrySearch.addEventListener(
