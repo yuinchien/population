@@ -437,7 +437,7 @@ button.milestone-nav-btn {
 .button-group button {
     display: flex;
     gap: 4px;
-    padding: 8px 10px;
+    padding: 8px;
     border: var(--border);
     border-radius: 0;
     color: var(--color-text);
@@ -1225,7 +1225,7 @@ body.view-chart #overlayChart {
     background: #fff;
     padding: 8px;
     box-shadow: 0 0 4px 0px rgba(0,0,0,.1);
-    border-radius: 16px;
+    border-radius: 8px;
     flex: 1;
 }
 

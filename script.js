@@ -2389,7 +2389,7 @@ function renderTrendChart() {
 }
 
 function setChartTableSort(key) {
-  const column = detailColumns().find((c) => c.key === key);
+  const column = chartTableColumns().find((c) => c.key === key);
   if (!column) return;
   chartTableSort =
     chartTableSort.key === key
@@ -2398,15 +2398,16 @@ function setChartTableSort(key) {
   renderChartTable();
 }
 
-// The same detail-table component the group view uses, reused as-is (same
-// columns, same per-country row data) against whichever countries are
-// currently plotted — sort state is kept separate from the group table's
-// own (chartTableSort vs detailSort) so the two views don't clobber each
-// other's preference.
+// The same detail-table component the group view uses (same per-country row
+// data), reused against whichever countries are currently plotted — sort
+// state is kept separate from the group table's own (chartTableSort vs
+// detailSort) so the two views don't clobber each other's preference. Its
+// column set is chartTableColumns(), not detailColumns() — two extra
+// metrics beyond what the group table shows (see that function's comment).
 function renderChartTable() {
   if (!elements.chartTableRows) return;
   const countries = chartCountryList();
-  const columns = detailColumns();
+  const columns = chartTableColumns();
 
   elements.chartTableHeader.replaceChildren(
     ...columns.map((column) => {
