@@ -9,12 +9,13 @@
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --letterspacing-uppercase: 0.01em;
-    --overlay-width: 248px;
+    --overlay-width: 288px;
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
     --margin: 20px;
     --icon-size: 24px;
+    --button-size: 32px;
 }
 
 html,
@@ -94,11 +95,14 @@ canvas.hovering-dot {
     bottom: 0;
     left: 0;
     width: var(--overlay-width);
-    padding: 0 12px;
+    padding: var(--margin);
     font-weight: 500;
     display: flex;
     flex-direction: column;
     transition: transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
 }
 
 .footer {
@@ -255,8 +259,8 @@ button.milestone-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: var(--button-size);
+    height: var(--button-size);
     padding: 0;
     border: var(--border);
     border-radius: 50%;
@@ -427,7 +431,7 @@ button.milestone-nav-btn {
 
 .button-group {
     display: flex;
-    gap: 8px;
+    gap: calc(var(--margin) / 2);
 }
 
 .button-group button {
@@ -456,7 +460,8 @@ button.milestone-nav-btn {
     opacity: 0.4;
 }
 
-.legend-wrapper {
+
+.overlay {
     position: fixed;
     left: 0;
     bottom: 0;
@@ -672,7 +677,7 @@ body.detail .year-timeline {
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    height: 72px;
+    height: calc(var(--button-size) + var(--margin) * 2 );
 }
 
 .detail-title-row {
@@ -719,8 +724,8 @@ body.detail .year-timeline {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: var(--button-size);
+    height: var(--button-size);
     padding: 0;
     border: 0;
     color: var(--color-text);
@@ -858,6 +863,7 @@ body.detail .year-timeline {
 .tab-group {
     border-bottom: var(--border);
     margin-bottom: 12px;
+    display: flex;
 }
 .tab-group button {
     cursor: pointer;
@@ -867,7 +873,7 @@ body.detail .year-timeline {
     font-size: 1rem;
     border: none;
     background: none;
-    height: 36px;
+    height: var(--button-size);
     padding: 0 12px;
     opacity: .5;
     &.active {
@@ -1256,7 +1262,7 @@ body.view-chart .detail-panel-header {
     align-items: center;
     gap: 6px;
     border-radius: 4px;
-    padding: 4px 6px;
+    padding: 3px 4px 3px 6px;
     background: color-mix(
         in srgb,
         var(--chart-line-color) 50%,
@@ -1358,7 +1364,7 @@ body.view-chart .detail-panel-header {
     display: flex;
     align-items: center;
     min-width: 240px;
-    height: 32px;
+    height: var(--button-size);
     gap: 10px;
     opacity: .5;
     cursor: pointer;
@@ -1407,13 +1413,14 @@ body.detail #calloutLayer {
 .menu-toggle {
     display: none;
     position: fixed;
-    top: 12px;
-    left: 12px;
+    top: var(--margin);
+    left: var(--margin);
     z-index: 10000;
-    width: 36px;
-    height: 36px;
+    width: var(--button-size);
+    height: var(--button-size);
     padding: 0;
     border-radius: 24px;
+    border: none;
     color: var(--color-text);
     background: rgba(255, 255, 255, 0.1);
     cursor: pointer;
@@ -1487,11 +1494,8 @@ body.menu-open .menu-toggle-icon::after {
         width: auto;
         left: 0;
     }
-    .legend-wrapper {
-        display: none;
-    }
     .status-wrapper p {
-        font-size: 1rem;
+        font-size: 1.2rem;
     }
     .country-detail {
         display: block;
@@ -1519,14 +1523,15 @@ body.menu-open .menu-toggle-icon::after {
         display: block;
     }
     #viewMode {
-        top: 5px;
-        right: 16px;
+        top: 0
+        right: 0;
     }
     #overlay {
         background: rgba(255, 255, 255, 0.8);
         width: 288px;
         transform: translateX(-120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
+        justify-content: flex-start;
     }
 
     .detail-panel {
