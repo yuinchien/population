@@ -161,6 +161,13 @@ h1 {
     font-weight: 500;
     font-family: var(--font-sans);
     text-decoration: underline;
+    /*border: 3px solid var(--color-text);*/
+    /*border-radius: 24px;*/
+    /*padding: 6px 10px 4px 10px;*/
+    /*line-height: 0.8em;*/
+    /*background-color: #222;*/
+    /*color:white;*/
+    /*box-sizing: border-box;*/
 }
 
 .title-year {
@@ -172,7 +179,7 @@ h1 {
 .status-wrapper {
     position: fixed;
     left: var(--margin);
-    top: 68px;
+    top: 64px;
     z-index: 100;
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -1111,7 +1118,7 @@ body.view-chart .detail-panel-header {
     left: 0;
     z-index: 1000;
     display: flex;
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.7);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1142,7 +1149,7 @@ body.view-chart .detail-panel-header {
     flex: 1;
     min-height: 0;
     display: flex;
-    padding: var(--margin) 40px var(--margin) var(--margin);
+    padding: var(--margin) 40px 24px var(--margin);
 }
 
 /* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
