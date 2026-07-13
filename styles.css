@@ -749,7 +749,7 @@ body.detail .year-timeline {
 
 .detail-row {
     display: grid;
-    grid-template-columns: minmax(220px, 1fr) 140px 140px 160px 168px 120px;
+    grid-template-columns: minmax(220px, 1fr) 140px 140px 160px 168px 120px 166px 146px;
     align-items: stretch;
     min-height: 34px;
 }
@@ -1125,10 +1125,12 @@ body.view-chart .detail-panel-header {
     flex: 1;
     min-height: 0;
     width: 100%;
-    max-width: 1440px;
+    /*max-width: 1440px;*/
     display: flex;
     flex-direction: column;
     margin: 0 auto;
+    padding-left: var(--margin);
+    padding-right: var(--margin);
 }
 .chart-card {
     flex: 1;
@@ -1144,7 +1146,6 @@ body.view-chart .detail-panel-header {
     flex: 1;
     min-height: 0;
     padding: calc(var(--margin) * 1);
-    max-width: 1400px;
 }
 
 .trend-line-label {
