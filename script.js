@@ -2867,13 +2867,13 @@ async function init() {
       }
     });
     elements.detailClose.addEventListener("click", closeDetailPanel);
-    elements.detailBack.addEventListener("click", () => {
-      if (selectedCountry) {
-        closeCountryDetail();
-      } else {
-        closeDetailPanel();
-      }
-    });
+    // elements.detailBack.addEventListener("click", () => {
+    //   if (selectedCountry) {
+    //     closeCountryDetail();
+    //   } else {
+    //     closeDetailPanel();
+    //   }
+    // });
     elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
     elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
     elements.milestoneTour.addEventListener("click", toggleTour);

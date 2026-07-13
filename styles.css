@@ -227,7 +227,7 @@ h1 {
 .milestone-progress {
     position: fixed;
     height: 2px;
-    background: var(--color-border);
+    /*background: var(--color-border);*/
     overflow: hidden;
     bottom: 0;
     left: 0;
