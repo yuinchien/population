@@ -479,6 +479,7 @@ body.country-detail #colorMode {
     font: inherit;
     text-align: left;
     cursor: pointer;
+    padding: 2px 0;
 }
 
 .legend-item:hover,
