@@ -528,93 +528,6 @@ body.country-detail #colorMode {
     width: 480px;
 }
 
-.year-timeline {
-    position: fixed;
-    top: 40px;
-    bottom: 40px;
-    left: calc(var(--overlay-width) + 8px);
-    width: 70px;
-    z-index: 100;
-    cursor: pointer;
-}
-body.detail .year-timeline {
-    display: none;
-}
-
-.year-tick {
-    position: absolute;
-    left: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    /* --offset pushes magnified neighbors away from the epicenter (see
-       YEAR_TIMELINE_MAGNIFY_SPACING) so they have room to grow into
-       instead of crowding into each other; the transition smooths both
-       that push and the scale/font-size changes below between the
-       discrete values each mousemove tick sets, approximating the spring
-       feel of a dock magnify without needing a physics library. */
-    transform: translateY(calc(-50% + var(--offset, 0px)));
-    transition: transform 0.15s ease-out;
-}
-
-/* Magnify scales width/height/font-size directly (via calc()) rather than
-   `transform: scale()` on the whole tick. A scaled-up transform forces the
-   browser to rasterize the text at its base size and then stretch that
-   bitmap, which is what read as pixelated — growing the actual box and
-   font size instead means the glyphs get re-rendered at each size, same as
-   any other font-size change. */
-.year-tick-dash {
-    width: calc(var(--dash-size) * var(--magnify, 1));
-    height: 2px;
-    background: var(--color-text);
-    opacity: 0.2;
-    flex: none;
-    transition: width 0.15s ease;
-}
-
-/*.year-tick-label {
-    font-size: var(--font-size-year-tick-label);
-    line-height: 1;
-    color: var(--color-text);
-    white-space: nowrap;
-    position: absolute;
-    opacity: 0;
-    left: calc(var(--dash-size) * 5.6);
-    transition: opacity 0s ease;
-    font-weight: 500;
-    text-shadow: 0 0 1px #ffffff;
-}*/
-
-.year-tick.hovered .year-tick-dash {
-    opacity: 0.5;
-    width: calc(var(--dash-size) * 1.5 * var(--magnify, 1));
-}
-.year-tick.selected .year-tick-dash {
-    width: calc(var(--dash-size) * 2);
-    opacity: 1;
-}
-/* Marks the same data-driven "interesting year" set the status copy and
-   randomized default year draw from (prioritizedMilestoneYears), so the
-   timeline visually points at years worth stopping on. */
-.year-tick.milestone .year-tick-dash {
-    background: var(--color-milestone);
-    opacity: 1;
-}
-.year-tick.hovered.selected .year-tick-dash {
-    opacity: 1;
-    width: calc(var(--dash-size) * 1.5 * var(--magnify, 1));
-}
-
-.year-tick.selected .year-tick-label {
-    opacity: 1;
-    left: calc(var(--dash-size) * 3);
-}
-
-.year-tick.hovered .year-tick-label {
-    opacity: 1;
-    left: calc(var(--dash-size) * 5.6);
-}
-
 #tooltip,
 #chartTooltip {
     position: fixed;
@@ -1063,10 +976,6 @@ body.view-chart .hide-for-chart {
     pointer-events: none;
 }
 
-body.view-chart .year-timeline {
-    display: none;
-}
-
 body.view-chart #calloutLayer {
     display: none;
 }
@@ -1505,9 +1414,6 @@ body.menu-open .menu-toggle-icon::after {
     }
     .sparkline-svg {
         aspect-ratio: 3 / 1;
-    }
-    #yearTimeline {
-        display: none;
     }
     .status-wrapper {
         width: auto;

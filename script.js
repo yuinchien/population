@@ -29,7 +29,6 @@ import {
   VIEW_CONFIG,
 } from "./view-config.mjs";
 import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
-import { createYearTimeline } from "./year-timeline.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -107,7 +106,7 @@ function latLonToMapVector3(lat, lon) {
 }
 
 function regionColor(region) {
-  return new THREE.Color(REGION_COLORS[region.trim()] || DEFAULT_COLOR);
+  return new THREE.Color(REGION_COLORS[region?.trim()] || DEFAULT_COLOR);
 }
 
 function incomeGroupLabel(iso3, incomeGroups) {
@@ -155,6 +154,17 @@ const DOT_VERTEX_SHADER = `
   uniform float uAmpMul;
   uniform float uGlobeRadius;
   uniform float uIsMap;
+  // Globe<->map view transitions morph every dot through a scrambled cloud
+  // over ~2s. That target changes every frame, unlike the pulse (constant
+  // per-dot frequency/phase) — so unlike the pulse, it can't just read a
+  // fixed per-dot attribute; the two endpoints it's morphing between this
+  // frame have to be supplied. Lerping them here means the CPU only writes
+  // aMorphFrom/aMorphTo when the *phase* changes (a few times per
+  // transition) instead of writing every vertex's position every frame.
+  uniform float uMorphActive;
+  uniform float uMorphT;
+  attribute vec3 aMorphFrom;
+  attribute vec3 aMorphTo;
 
   attribute vec3 color;
   attribute float aAlpha;
@@ -168,19 +178,23 @@ const DOT_VERTEX_SHADER = `
     vColor = color;
     vAlpha = aAlpha;
 
+    vec3 basePos = uMorphActive > 0.5
+      ? mix(aMorphFrom, aMorphTo, uMorphT)
+      : position;
+
     float wave = sin(uTime * aFrequency * uFreqMul + aPhase) * uPulseAmplitude * uAmpMul;
 
     vec3 pulsed;
     if (uIsMap > 0.5) {
       // No shared "outward" direction on a flat map, so pulse toward/away
       // from the camera along Z instead (matches the old CPU behavior).
-      pulsed = vec3(position.x, position.y, position.z + wave);
+      pulsed = vec3(basePos.x, basePos.y, basePos.z + wave);
     } else {
       // Globe (and the scrambled cloud) points already sit at a fixed
       // radius from the origin, so scaling the position vector is the
       // same as displacing along the surface normal.
       float scale = 1.0 + wave / uGlobeRadius;
-      pulsed = position * scale;
+      pulsed = basePos * scale;
     }
 
     vec4 mvPosition = modelViewMatrix * vec4(pulsed, 1.0);
@@ -424,6 +438,17 @@ function setupScene(countries, incomeGroups) {
     "aPhase",
     new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
   );
+  // Scratch endpoints for the GPU-side transition morph (see
+  // DOT_VERTEX_SHADER) — only written when setViewMode()/updateTransition()
+  // actually have a transition in flight; otherwise unused.
+  geometry.setAttribute(
+    "aMorphFrom",
+    new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
+  );
+  geometry.setAttribute(
+    "aMorphTo",
+    new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
+  );
   geometry.setDrawRange(0, 0);
 
   const material = new THREE.ShaderMaterial({
@@ -438,6 +463,8 @@ function setupScene(countries, incomeGroups) {
       uAmpMul: { value: 1 },
       uGlobeRadius: { value: GLOBE_RADIUS },
       uIsMap: { value: 0 },
+      uMorphActive: { value: 0 },
+      uMorphT: { value: 0 },
     },
     vertexShader: DOT_VERTEX_SHADER,
     fragmentShader: DOT_FRAGMENT_SHADER,
@@ -1089,26 +1116,7 @@ function updateYearLabels(year) {
   elements.yearValue.style.setProperty('--thumb-position', `${percentage}%`);
 
   elements.yearValue.textContent = `${year}`;
-  yearTimeline.setSelectedYear(year);
 }
-
-// Applies a year picked via the #yearTimeline component the same way
-// goToYear() does for the horizontal slider: mirrors its input/change
-// split, so dragging only pays for the cheap live update and the real
-// work waits for the drag to actually end.
-function applyYearTimelineSelection(year, { commit }) {
-  if (Number(elements.yearSlider.value) === year && !commit) return;
-  elements.yearSlider.value = year;
-  elements.yearSlider.dispatchEvent(new Event("input", { bubbles: true }));
-  if (commit) {
-    elements.yearSlider.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-}
-
-const yearTimeline = createYearTimeline({
-  onSelectYear: applyYearTimelineSelection,
-  onDragStart: stopTour,
-});
 
 function legendEntriesFor(mode) {
   if (mode !== "income") return Object.entries(REGION_COLORS);
@@ -1192,13 +1200,71 @@ function createDetailCell(text, className = "") {
   return cell;
 }
 
+// Shared by the group-detail table and the chart table: builds sortable
+// header cells (with the active sort's arrow) and per-country rows from the
+// same column/row-building helpers, wiring header clicks to onSort and row
+// clicks to onRowClick. Sorting happens here rather than being the caller's
+// job, so both tables stay correct even if handed an unsorted country list.
+function renderSortableTable({
+  headerEl,
+  rowsEl,
+  columns,
+  sort,
+  countries,
+  onSort,
+  onRowClick,
+}) {
+  headerEl.replaceChildren(
+    ...columns.map((column) => {
+      const arrow =
+        sort.key === column.key
+          ? sort.direction === "asc"
+            ? " ↑"
+            : " ↓"
+          : "";
+      const cell = createDetailCell(
+        `${column.label}${arrow}`,
+        `${column.className} sortable`,
+      );
+      cell.classList.toggle("active", sort.key === column.key);
+      cell.addEventListener("click", () => onSort(column.key));
+      return cell;
+    }),
+  );
+
+  const sorted = sortDetailCountries(countries, columns, sort);
+  const rows = buildDetailRows(sorted, columns).map((detailRow) => {
+    const row = document.createElement("div");
+    row.style.setProperty("--ratio", detailRow.ratio);
+    row.className = "detail-row";
+    row.append(
+      ...detailRow.cells.map((cell) =>
+        createDetailCell(cell.text, cell.className),
+      ),
+    );
+    row.addEventListener("click", () => onRowClick(detailRow.country));
+    return row;
+  });
+  rowsEl.replaceChildren(...rows);
+}
+
+// Shared asc/desc toggle: clicking the already-active column flips
+// direction; clicking a different one switches to that column's own
+// default direction (e.g. population defaults to desc, country name to
+// asc). Returns null for an unrecognized key so callers can skip the
+// re-render rather than sorting by a column that doesn't exist.
+function nextSortState(sort, key, columns) {
+  const column = columns.find((c) => c.key === key);
+  if (!column) return null;
+  return sort.key === key
+    ? { key, direction: sort.direction === "asc" ? "desc" : "asc" }
+    : { key, direction: column.defaultDirection };
+}
+
 function setDetailSort(key) {
-  const column = detailColumns().find((c) => c.key === key);
-  if (!column) return;
-  detailSort =
-    detailSort.key === key
-      ? { key, direction: detailSort.direction === "asc" ? "desc" : "asc" }
-      : { key, direction: column.defaultDirection };
+  const next = nextSortState(detailSort, key, detailColumns());
+  if (!next) return;
+  detailSort = next;
   renderDetailPanel();
 }
 
@@ -1243,38 +1309,15 @@ function renderDetailPanel() {
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
-  elements.detailHeader.replaceChildren(
-    ...columns.map((column) => {
-      const arrow =
-        detailSort.key === column.key
-          ? detailSort.direction === "asc"
-            ? " ↑"
-            : " ↓"
-          : "";
-      const cell = createDetailCell(
-        `${column.label}${arrow}`,
-        `${column.className} sortable`,
-      );
-      cell.classList.toggle("active", detailSort.key === column.key);
-      cell.addEventListener("click", () => setDetailSort(column.key));
-      return cell;
-    }),
-  );
-
-  const rows = buildDetailRows(countries, columns).map((detailRow) => {
-    const row = document.createElement("div");
-    row.style.setProperty("--ratio", detailRow.ratio);
-    row.className = "detail-row";
-    row.append(
-      ...detailRow.cells.map((cell) =>
-        createDetailCell(cell.text, cell.className),
-      ),
-    );
-    row.addEventListener("click", () => openCountryDetail(detailRow.country));
-    return row;
+  renderSortableTable({
+    headerEl: elements.detailHeader,
+    rowsEl: elements.detailRows,
+    columns,
+    sort: detailSort,
+    countries,
+    onSort: setDetailSort,
+    onRowClick: openCountryDetail,
   });
-
-  elements.detailRows.replaceChildren(...rows);
   // Country mode moves #detailSummary inside #countryDetail (see
   // renderCountryDetail) so it scrolls together with the chart; restore it
   // to its fixed spot above the table when coming back to a group.
@@ -2376,6 +2419,7 @@ function renderTrendChart() {
     // runs once, at drag end, via goToYear() below. Re-rendering this SVG
     // mid-drag would also drop the pointer capture, since setPointerCapture
     // is tied to the specific DOM node it was called on.
+    let chartTableRenderScheduled = false;
     function previewYear(year) {
       const index = yearsData.indexOf(year);
       if (index === -1 || index === currentYearIndex) return;
@@ -2386,7 +2430,17 @@ function renderTrendChart() {
       markerLabel.textContent = year;
       dragHit.setAttribute("x", (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1));
       currentYearIndex = index;
-      renderChartTable();
+      // pointermove can fire far more often than every animation frame, but
+      // renderChartTable() tears down and rebuilds every cell (and re-attaches
+      // every click listener) from scratch — coalescing to one rebuild per
+      // frame keeps a fast drag smooth instead of visibly stuttering.
+      if (!chartTableRenderScheduled) {
+        chartTableRenderScheduled = true;
+        requestAnimationFrame(() => {
+          chartTableRenderScheduled = false;
+          renderChartTable();
+        });
+      }
     }
 
     let dragging = false;
@@ -2417,12 +2471,9 @@ function renderTrendChart() {
 }
 
 function setChartTableSort(key) {
-  const column = chartTableColumns().find((c) => c.key === key);
-  if (!column) return;
-  chartTableSort =
-    chartTableSort.key === key
-      ? { key, direction: chartTableSort.direction === "asc" ? "desc" : "asc" }
-      : { key, direction: column.defaultDirection };
+  const next = nextSortState(chartTableSort, key, chartTableColumns());
+  if (!next) return;
+  chartTableSort = next;
   renderChartTable();
 }
 
@@ -2434,41 +2485,15 @@ function setChartTableSort(key) {
 // metrics beyond what the group table shows (see that function's comment).
 function renderChartTable() {
   if (!elements.chartTableRows) return;
-  const countries = chartCountryList();
-  const columns = chartTableColumns();
-
-  elements.chartTableHeader.replaceChildren(
-    ...columns.map((column) => {
-      const arrow =
-        chartTableSort.key === column.key
-          ? chartTableSort.direction === "asc"
-            ? " ↑"
-            : " ↓"
-          : "";
-      const cell = createDetailCell(
-        `${column.label}${arrow}`,
-        `${column.className} sortable`,
-      );
-      cell.classList.toggle("active", chartTableSort.key === column.key);
-      cell.addEventListener("click", () => setChartTableSort(column.key));
-      return cell;
-    }),
-  );
-
-  const sorted = sortDetailCountries(countries, columns, chartTableSort);
-  const rows = buildDetailRows(sorted, columns).map((detailRow) => {
-    const row = document.createElement("div");
-    row.style.setProperty("--ratio", detailRow.ratio);
-    row.className = "detail-row";
-    row.append(
-      ...detailRow.cells.map((cell) =>
-        createDetailCell(cell.text, cell.className),
-      ),
-    );
-    row.addEventListener("click", () => openCountryDetail(detailRow.country));
-    return row;
+  renderSortableTable({
+    headerEl: elements.chartTableHeader,
+    rowsEl: elements.chartTableRows,
+    columns: chartTableColumns(),
+    sort: chartTableSort,
+    countries: chartCountryList(),
+    onSort: setChartTableSort,
+    onRowClick: openCountryDetail,
   });
-  elements.chartTableRows.replaceChildren(...rows);
 }
 
 // Chart is a full-screen overlay, not a real member of the Globe/Map
@@ -2606,6 +2631,18 @@ function currentGlobeCameraPosition(target = controls.target) {
     .add(target);
 }
 
+// Points the GPU morph at a new pair of endpoints (see DOT_VERTEX_SHADER) —
+// called once when a transition starts (from -> scramble) and once more
+// when it flies back out (scramble -> to), rather than every frame.
+function setMorphEndpoints(fromArr, toArr) {
+  const morphFrom = pointsMesh.geometry.getAttribute("aMorphFrom");
+  const morphTo = pointsMesh.geometry.getAttribute("aMorphTo");
+  morphFrom.array.set(fromArr);
+  morphTo.array.set(toArr);
+  morphFrom.needsUpdate = true;
+  morphTo.needsUpdate = true;
+}
+
 function setViewMode(mode) {
   if (mode === viewMode || !activeTotal) return;
 
@@ -2642,7 +2679,14 @@ function setViewMode(mode) {
     toDotSize:
       mode === "map" ? VIEW_CONFIG.map.dotSize : VIEW_CONFIG.globe.dotSize,
     start: performance.now(),
+    // Whether the scramble -> final-formation GPU endpoints have been set
+    // yet — flips once, the first frame updateTransition() sees elapsed
+    // cross into the out phase.
+    outPhaseStarted: false,
   };
+  setMorphEndpoints(fromPositions, scramblePositions);
+  pointsMesh.material.uniforms.uMorphActive.value = 1;
+  pointsMesh.material.uniforms.uMorphT.value = 0;
   // Auto-rotate is stopped immediately (rather than only once the fly-out
   // phase begins) and the camera glides toward its final position across
   // the whole transition below — letting it keep spinning through the
@@ -2674,41 +2718,32 @@ function updateTransition() {
   const overallT = Math.min(1, elapsed / VIEW_TRANSITION_MS);
   const outPhaseStart = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS;
 
-  let from, to, localT, ease;
+  // Only a single float (uMorphT) needs computing here each frame now —
+  // the GPU does the actual position lerp (see DOT_VERTEX_SHADER) between
+  // whichever pair of endpoints setViewMode()/the out-phase branch below
+  // last wrote into aMorphFrom/aMorphTo.
+  let morphT;
   isHoldPhase = false;
   if (elapsed < SCRAMBLE_IN_MS) {
-    from = transition.fromPositions;
-    to = transition.scramblePositions;
-    localT = elapsed / SCRAMBLE_IN_MS;
-    ease = easeInCubic;
+    morphT = easeInCubic(Math.min(1, elapsed / SCRAMBLE_IN_MS));
     isScrambledPhase = true;
   } else if (elapsed < outPhaseStart) {
-    from = transition.scramblePositions;
-    to = transition.scramblePositions;
-    localT = 0;
-    ease = easeInCubic;
+    // Holding at the scramble cloud is just "fully at aMorphTo" (already
+    // scramblePositions from the in-phase) — no attribute rewrite needed.
+    morphT = 1;
     isScrambledPhase = true;
     isHoldPhase = true;
   } else {
-    from = transition.scramblePositions;
-    to = transition.toPositions;
-    localT = (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS;
-    ease = easeOutCubic;
+    if (!transition.outPhaseStarted) {
+      transition.outPhaseStarted = true;
+      setMorphEndpoints(transition.scramblePositions, transition.toPositions);
+    }
+    morphT = easeOutCubic(
+      Math.min(1, (elapsed - outPhaseStart) / SCRAMBLE_OUT_MS),
+    );
     isScrambledPhase = false;
   }
-  const e = ease(Math.min(1, localT));
-
-  for (let k = 0; k < transition.toPositions.length; k++) {
-    basePositions[k] = from[k] + (to[k] - from[k]) * e;
-  }
-  // The GPU shader only displaces whatever is currently in the position
-  // buffer, so the interpolated (unpulsed) base positions still need to
-  // reach the GPU each frame while a transition is in flight — this is
-  // the one per-frame CPU cost the shader migration couldn't remove,
-  // since the morph target itself changes every frame, not just the pulse.
-  const posAttr = pointsMesh.geometry.getAttribute("position");
-  posAttr.array.set(basePositions.subarray(0, transition.toPositions.length));
-  posAttr.needsUpdate = true;
+  pointsMesh.material.uniforms.uMorphT.value = morphT;
 
   const camE = easeInOutCubic(overallT);
   camera.position.lerpVectors(transition.fromCamPos, transition.toCamPos, camE);
@@ -2719,6 +2754,18 @@ function updateTransition() {
   );
 
   if (overallT >= 1) {
+    // Settle the CPU-side base positions (read by applyYear()'s per-year
+    // rebuild and by raycasting) to match where the GPU morph ended up, and
+    // hand rendering back to the plain `position` attribute now that
+    // there's no morph left to track.
+    basePositions.set(transition.toPositions);
+    const posAttr = pointsMesh.geometry.getAttribute("position");
+    posAttr.array.set(
+      basePositions.subarray(0, transition.toPositions.length),
+    );
+    posAttr.needsUpdate = true;
+    pointsMesh.material.uniforms.uMorphActive.value = 0;
+
     transition = null;
     isScrambledPhase = false;
     controls.enabled = true;
@@ -2806,12 +2853,6 @@ async function init() {
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps.
     elements.yearSlider.addEventListener("pointerdown", stopTour);
-
-    // yearTimeline.build(...) is currently unused — the control stays
-    // dormant (hidden, no ticks) until something calls it — but it still
-    // needs its selected tick kept in sync so it's ready to show the right
-    // state whenever it is built.
-    yearTimeline.setSelectedYear(defaultYear);
 
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
@@ -2989,6 +3030,12 @@ renderer.domElement.addEventListener("pointerup", (event) => {
     event.clientY - downPos.y,
   );
   if (dragDistance > CANVAS_CLICK_MAX_DRAG_PX) return;
+  // The `position` attribute stops tracking dots mid-transition (the morph
+  // runs entirely on the GPU now — see DOT_VERTEX_SHADER), so a raycast
+  // here would hit wherever dots sat before the transition started, not
+  // where they visually are. Orbit controls are already disabled for the
+  // same window; this just extends that to clicks.
+  if (transition) return;
 
   const country = hitCountryAtPointer();
   if (country) openCountryDetail(country);
@@ -3010,6 +3057,13 @@ function updateTooltip(event) {
   // runs off whatever pointer position was last seen, so without this check
   // a tooltip from before the panel opened keeps reappearing underneath it.
   if (!elements.detailPanel.hidden) {
+    clearCanvasHover();
+    return;
+  }
+  // Same reasoning as the pointerup guard above: raycasting mid-transition
+  // would test against pre-transition positions, since the morph itself
+  // runs on the GPU rather than updating the CPU-side position attribute.
+  if (transition) {
     clearCanvasHover();
     return;
   }

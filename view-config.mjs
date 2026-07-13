@@ -21,7 +21,7 @@ export const VIEW_CONFIG = {
   map: {
     width: 400,
     height: 200,
-    dotSize: 2,
+    dotSize: 1.5,
     cameraDistance: 360,
     minDistance: 250,
     maxDistance: 1200,
