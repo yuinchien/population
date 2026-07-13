@@ -14,7 +14,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
-        chart: resolve(__dirname, "chart.html"),
         colors: resolve(__dirname, "colors.html"),
       },
     },

@@ -293,7 +293,7 @@ let chartViewActive = false;
 let chartMetricKey = "population";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
-let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "BRA", "NGA"];
+let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
 let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
@@ -743,8 +743,8 @@ function updateMilestoneNav(year) {
   // The tour always lands exactly on milestone years, so this button (an
   // invitation to start it) and the milestone row (controls for once
   // you're on one) are never both relevant at the same time.
-  elements.milestoneRow.hidden = !hasMilestone;
-  elements.exploreMilestones.hidden = hasMilestone;
+  // elements.milestoneRow.hidden = !hasMilestone;
+  // elements.exploreMilestones.hidden = hasMilestone;
   if (!hasMilestone) return;
   elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
   elements.milestonePrev.disabled = index === 0;
@@ -949,6 +949,7 @@ function applyYear(year) {
 
   const isProjected = year > historicalCutoffYear;
   isProjectedYear = isProjected;
+
   updateYearLabels(year);
   updateMetricsPanel(year);
   renderDetailPanel();
@@ -987,6 +988,11 @@ function updateSliderProgress() {
 // applyYear()'s full rebuild — so the year figure still tracks the thumb
 // live, even though the rest of the content waits for "change".
 function updateYearLabels(year) {
+  const min = elements.yearSlider.min || 0;
+  const max = elements.yearSlider.max || 100;
+  const percentage = ((elements.yearSlider.value - min) / (max - min)) * 100;
+  elements.yearValue.style.setProperty('--thumb-position', `${percentage}%`);
+
   elements.yearValue.textContent = `${year}`;
   updateSelectedYearTick(year);
 }
@@ -2570,6 +2576,7 @@ async function init() {
   // deep link's query string with default state before it's ever read.
   const initialSearch = window.location.search;
   try {
+
     const appData = await loadPopulationData();
     countryDemographicMetrics = appData.countryDemographicMetrics;
     countriesData = appData.countries;
@@ -2596,7 +2603,7 @@ async function init() {
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
-    elements.yearControl.hidden = false;
+    // elements.yearControl.hidden = false;
     // "input" fires continuously while dragging — kept cheap (thumb/fill
     // tracking plus the year figure itself, so there's still feedback on
     // what year you'd land on) so the slider stays responsive. The actual
@@ -2616,7 +2623,7 @@ async function init() {
     // cancel would make the tour immediately cancel its own steps.
     elements.yearSlider.addEventListener("pointerdown", stopTour);
 
-    buildYearTimeline();
+    // buildYearTimeline();
     updateSelectedYearTick(defaultYear);
     elements.yearTimeline.addEventListener("mousemove", (event) => {
       updateYearTimelineHover(event.clientY);
@@ -2693,7 +2700,6 @@ async function init() {
         hideChartCountrySuggestions();
       }
     });
-
     elements.detailClose.addEventListener("click", closeDetailPanel);
     elements.detailBack.addEventListener("click", () => {
       if (selectedCountry) {
@@ -2716,6 +2722,7 @@ async function init() {
     });
     updateSliderProgress();
     applyYear(defaultYear);
+    console.log('renderLegend 1');
     renderLegend();
     applyUrlStateFromLocation(initialSearch);
   } catch (error) {

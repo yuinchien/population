@@ -1,5 +1,5 @@
 :root {
-    --slider-size: 10px;
+    --slider-size: 2px;
     --color-text: #222;
     --color-muted: #666;
     --color-milestone: #ff48b0;
@@ -12,8 +12,8 @@
     --overlay-width: 248px;
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
-    --font-size-year-tick-label: 18px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
+    --margin: 20px;
 }
 
 html,
@@ -23,8 +23,8 @@ body {
     overflow: hidden;
     color: var(--color-text);
     font-family: var(--font-mono);
-    font-size: 12px;
-    line-height: 14px;
+    font-size: 14px;
+    line-height: 18px;
     letter-spacing: -0.01em;
     background: var(--bg-gradient);
 }
@@ -150,10 +150,15 @@ body.detail .detail-back {
     display: flex;
 }
 
-#overlay h1 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 600;
+.topbar h1 {
+    position: fixed;
+    left: 0;
+    top: 0;
+    margin: var(--margin);
+    font-size: 2.4rem;
+    line-height: 1;
+    font-weight: 500;
+    font-family: var(--font-sans);
 }
 
 .title-year {
@@ -164,8 +169,8 @@ body.detail .detail-back {
 
 .status-wrapper {
     position: fixed;
-    right: 24px;
-    bottom: 24px;
+    left: 24px;
+    top: 64px;
     z-index: 100;
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -240,8 +245,8 @@ button.milestone-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border: var(--border);
     border-radius: 50%;
@@ -308,33 +313,33 @@ button.milestone-nav-btn {
 #viewMode {
     border: none;
     position: fixed;
-    right: 12px;
+    right: 0;
     top: 0;
-    padding: 12px 0;
+    margin-top: 8px;
+    margin-right: var(--margin);
     /* Above .chart-view's own z-index (999) — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
     z-index: 1000;
 }
 
-#yearSlider {
+.slider-container {
+    position: relative;
     --progress: 0%;
+    flex-grow: 1;
+    margin-top: -5px;
+}
+
+#yearSlider {
     width: 100%;
     height: var(--slider-size);
-    margin: 0;
+    margin: 0 4px;
     border-radius: 999px;
     outline: none;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;
-    background:
-        linear-gradient(
-                to right,
-                rgb(34, 34, 34) 0%,
-                rgba(34, 34, 34, 0.4) 100%
-            )
-            0 / var(--progress) 100% no-repeat,
-        rgba(34, 34, 34, 0.1);
+    background: var(--color-text);
 }
 
 #yearSlider::-webkit-slider-runnable-track {
@@ -345,13 +350,15 @@ button.milestone-nav-btn {
 }
 
 #yearSlider::-webkit-slider-thumb {
-    width: var(--slider-size);
-    height: var(--slider-size);
+    width: 8px;
+    height: 8px;
+    margin-top: -3px;
     border-radius: 50%;
     background: var(--color-text);
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
     cursor: pointer;
     -webkit-appearance: none;
+    position: relative;
 }
 
 #yearSlider::-moz-range-track {
@@ -382,6 +389,7 @@ button.milestone-nav-btn {
 #metrics {
     display: grid;
     margin-top: -4px;
+    display: none;
 }
 
 .metric {
@@ -398,9 +406,13 @@ button.milestone-nav-btn {
 }
 
 .metric-value {
+    position: absolute;
+    left: var(--thumb-position, 50%);
+    top: -15px;
+    margin-left: -14px;
     min-width: 0;
     color: var(--color-text);
-    font-weight: 500;
+    font-weight: 700;
     text-align: right;
     white-space: nowrap;
 }
@@ -425,9 +437,8 @@ button.milestone-nav-btn {
 
 .tab-group button {
     display: flex;
-    align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 10px 12px;
     border: var(--border);
     border-radius: 8px;
     color: var(--color-text);
@@ -435,6 +446,7 @@ button.milestone-nav-btn {
     font: inherit;
     font-weight: 500;
     cursor: pointer;
+    line-height: 1;
 }
 
 .tab-group button.active {
@@ -459,7 +471,10 @@ button.milestone-nav-btn {
 }
 
 .legend-wrapper {
-
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    margin: var(--margin);
 }
 
 /* Region/income switching would restyle dots out from under the open
@@ -523,6 +538,17 @@ body.country-detail #legend {
    ticks via transform only — a layout-based approach would reflow
    neighboring ticks as each one scales, which is exactly the jitter this
    avoids. */
+.timeline {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 480px;
+}
+
 .year-timeline {
     position: fixed;
     top: 40px;
@@ -567,7 +593,7 @@ body.detail .year-timeline {
     transition: width 0.15s ease;
 }
 
-.year-tick-label {
+/*.year-tick-label {
     font-size: var(--font-size-year-tick-label);
     line-height: 1;
     color: var(--color-text);
@@ -578,7 +604,7 @@ body.detail .year-timeline {
     transition: opacity 0s ease;
     font-weight: 500;
     text-shadow: 0 0 1px #ffffff;
-}
+}*/
 
 .year-tick.hovered .year-tick-dash {
     opacity: 0.5;
@@ -1103,7 +1129,7 @@ body.view-chart .detail-panel-header {
 
 .trend-line {
     fill: none;
-    stroke-width: 4;
+    stroke-width: 6;
     opacity: 0.9;
 }
 
