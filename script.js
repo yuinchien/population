@@ -5,7 +5,12 @@ import {
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
-import { GLOBAL_METRIC_KEYS, METRICS, formatCount } from "./metrics.mjs";
+import {
+  DETAIL_METRIC_KEYS,
+  GLOBAL_METRIC_KEYS,
+  METRICS,
+  formatCount,
+} from "./metrics.mjs";
 import {
   buildDetailColumns,
   buildDetailRows,
@@ -1263,6 +1268,20 @@ function detailColumns() {
   return buildDetailColumns({ currentYearIndex, metricFor });
 }
 
+// The chart table gets two extra columns the group-detail table doesn't —
+// migration and age-dependency already have their own chart tabs, so
+// showing them here too lets a scrub reveal that data without switching
+// tabs. Keeping this separate from detailColumns() rather than just
+// extending DETAIL_METRIC_KEYS avoids cluttering the region/income table,
+// which wasn't part of this ask.
+function chartTableColumns() {
+  return buildDetailColumns({
+    currentYearIndex,
+    metricFor,
+    metricKeys: [...DETAIL_METRIC_KEYS, "ageDependencyRatio", "netMigrationRate"],
+  });
+}
+
 function createDetailCell(text, className = "") {
   const cell = document.createElement("div");
   cell.className = `detail-cell ${className}`.trim();
@@ -2434,9 +2453,7 @@ function renderTrendChart() {
       "text-anchor": "middle",
     });
     markerLabel.textContent = yearsData[currentYearIndex];
-    // Wider than the visible line and invisible itself — just a generous
-    // pointer target, since a 1px line is hard to grab precisely.
-    const DRAG_HIT_HALF_WIDTH = 10;
+    const DRAG_HIT_HALF_WIDTH = 1;
     const dragHit = svgEl("rect", {
       class: "trend-chart-year-drag",
       x: (Number(markerX) - DRAG_HIT_HALF_WIDTH).toFixed(1),

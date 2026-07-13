@@ -1,6 +1,10 @@
 import { DETAIL_METRIC_KEYS, METRICS } from "./metrics.mjs";
 
-export function buildDetailColumns({ currentYearIndex, metricFor }) {
+export function buildDetailColumns({
+  currentYearIndex,
+  metricFor,
+  metricKeys = DETAIL_METRIC_KEYS,
+}) {
   return [
     {
       key: "name",
@@ -10,7 +14,7 @@ export function buildDetailColumns({ currentYearIndex, metricFor }) {
       value: (country) => country.name,
       format: (value) => value,
     },
-    ...DETAIL_METRIC_KEYS.map((key) => {
+    ...metricKeys.map((key) => {
       const definition = METRICS[key];
       return {
         key,

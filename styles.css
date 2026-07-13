@@ -1197,9 +1197,11 @@ body.view-chart .detail-panel-header {
 }
 
 .trend-chart-year-drag {
-    fill: transparent;
+    fill: tomato;
     cursor: ew-resize;
     touch-action: none;
+    stroke-width: 10;
+    stroke: transparent;
 }
 
 .trend-chart-baseline-label,
