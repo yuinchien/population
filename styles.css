@@ -213,11 +213,13 @@ body.detail .detail-back {
    the track alone (no fill) looks identical to that border when the tour
    isn't playing. */
 .milestone-progress {
-    position: relative;
-    height: 1px;
+    position: fixed;
+    height: 2px;
     background: var(--color-border);
     overflow: hidden;
-    margin-bottom: 16px;
+    bottom: 0;
+    left: 0;
+    right: 0;
 }
 
 .milestone-progress-fill {
@@ -245,8 +247,8 @@ button.milestone-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     padding: 0;
     border: var(--border);
     border-radius: 50%;
@@ -289,6 +291,14 @@ button.milestone-nav-btn {
     text-shadow: 0 0 1px white;
 }
 
+#statusTitle {
+    font-weight: 700;
+    /* Space before the status text that follows — a margin rather than a
+       trailing space in the span's own text content, so it isn't at the
+       mercy of whitespace-collapsing at the inline-element boundary. */
+    margin-right: 0.3em;
+}
+
 .status-cursor {
     display: inline-block;
     width: min(0.4em, 10px);
@@ -315,7 +325,6 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    margin-top: 8px;
     margin-right: var(--margin);
     /* Above .chart-view's own z-index (999) — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
@@ -327,13 +336,12 @@ button.milestone-nav-btn {
     position: relative;
     --progress: 0%;
     flex-grow: 1;
-    margin-top: -5px;
+    margin-top: -7px;
 }
 
 #yearSlider {
     width: 100%;
     height: var(--slider-size);
-    margin: 0 4px;
     border-radius: 999px;
     outline: none;
     appearance: none;
@@ -409,7 +417,7 @@ button.milestone-nav-btn {
     position: absolute;
     left: var(--thumb-position, 50%);
     top: -15px;
-    margin-left: -14px;
+    margin-left: -15px;
     min-width: 0;
     color: var(--color-text);
     font-weight: 700;
@@ -428,46 +436,37 @@ button.milestone-nav-btn {
     margin-bottom: 10px;
 }
 
-.tab-group {
+.button-group {
     display: flex;
     gap: 8px;
-    border-top: var(--border);
+    /*border-top: var(--border);*/
     padding: 12px 0;
 }
 
-.tab-group button {
+.button-group button {
     display: flex;
     gap: 4px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     color: var(--color-text);
     background: transparent;
     font: inherit;
     font-weight: 500;
     cursor: pointer;
     line-height: 1;
-}
-
-.tab-group button.active {
-    color: #fff;
-    background: var(--color-text);
-}
-
-.tab-group button:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-}
-
-.tab-group.full-width button {
-    flex: 1;
-    justify-content: center;
-    border-radius: 0;
     transition: all 0.15s ease-out;
 }
 
-.tab-group.full-width button.active {
+.button-group button.active {
+    color: #fff;
+    background: var(--color-text);
     border-radius: 40px;
+}
+
+.button-group button:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
 }
 
 .legend-wrapper {
@@ -475,6 +474,7 @@ button.milestone-nav-btn {
     left: 0;
     bottom: 0;
     margin: var(--margin);
+    z-index: 1000;
 }
 
 /* Region/income switching would restyle dots out from under the open
@@ -486,16 +486,22 @@ body.country-detail #colorMode {
 }
 
 body.country-detail #legend {
-    pointer-events: none;
+
 }
 
+#legend {
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
 .legend-item {
     display: flex;
     align-items: center;
     gap: 4px;
     box-sizing: border-box;
     width: 100%;
-    padding: 6px;
+    font-weight: 500;
     border: 0;
     color: inherit;
     background: transparent;
@@ -542,7 +548,7 @@ body.country-detail #legend {
     position: fixed;
     bottom: 0;
     right: 0;
-    padding: 24px;
+    padding: var(--margin);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -682,7 +688,7 @@ body.detail .year-timeline {
     align-items: center;
     justify-content: space-between;
     gap: 24px;
-    height: 40px;
+    height: 56px;
 }
 
 .detail-title-row {
@@ -869,6 +875,34 @@ body.detail .year-timeline {
     }
 }
 
+.tab-group {
+    border-bottom: var(--border);
+    margin-bottom: 12px;
+}
+.tab-group button {
+    cursor: pointer;
+    position: relative;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 1rem;
+    border: none;
+    background: none;
+    height: 36px;
+    padding: 0 12px;
+    opacity: .5;
+    &.active {
+        opacity: 1;
+    }
+    &.active:after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: var(--color-text);
+    }
+}
 
 
 .country-detail {
@@ -1077,9 +1111,8 @@ body.view-chart #calloutLayer {
 }
 
 body.view-chart .detail-panel-header {
-    padding-left: 12px;
-    padding-right: 12px;
-    /*background: #222;*/
+    padding-left: var(--margin);
+    padding-right: var(--margin);
 }
 
 .chart-view {
@@ -1103,7 +1136,7 @@ body.view-chart .detail-panel-header {
     overflow: visible;
 }
 
-.chart-view .tab-group {
+.chart-view .button-group {
     border: none;
     padding: 0;
 }
@@ -1116,7 +1149,7 @@ body.view-chart .detail-panel-header {
 }
 
 .trend-line-label {
-    font-weight: 700;
+    font-weight: 500;
     fill: color-mix(in srgb, var(--color) 70%, black);
 }
 
@@ -1183,9 +1216,8 @@ body.view-chart .detail-panel-header {
     align-items: center;
     gap: 8px;
     min-height: 40px;
-    padding: 0px 12px;
+    padding: 0px var(--margin) 14px var(--margin);
     border-bottom: var(--border);
-    border-top: var(--border);
 }
 
 .chip-input-chips {
@@ -1215,7 +1247,7 @@ body.view-chart .detail-panel-header {
         var(--chart-line-color, var(--color-text)) 15%,
         transparent
     );
-    font-size: 12px;
+    font-weight: 500;
 }
 
 .chip-flag {
@@ -1448,7 +1480,7 @@ body.menu-open .menu-toggle-icon::after {
         padding-top: 48px;
     }
 
-    .chart-view .tab-group {
+    .chart-view .button-group {
         flex-wrap: wrap;
     }
 

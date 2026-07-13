@@ -49,7 +49,7 @@
             <span class="menu-toggle-icon"></span>
         </button>
         <div id="menuShim" class="menu-shim"></div>
-        <div id="viewMode" class="tab-group full-width hide-for-detail hide-for-chart" hidden>
+        <div id="viewMode" class="button-group hide-for-detail hide-for-chart" hidden>
             <button
                 type="button"
                 data-mode="globe"
@@ -144,7 +144,7 @@
                 <button
                     type="button"
                     data-mode="region"
-                    class="active"
+                    class="active mono-uppercase"
                     aria-label="region"
                     title="Region"
                 >
@@ -153,137 +153,67 @@
                 <button
                     type="button"
                     data-mode="income"
+                    class="mono-uppercase"
                     aria-label="Income group"
                     title="Income group"
                 >
                     Income group
                 </button>
             </div>
-
             <div id="legend"></div>
         </div>
 
-        <div class="status-wrapper hide-for-detail hide-for-chart">
-            <span id="statusTitle" hidden></span>
-            <p id="status">Loading population data…</p>
-
-            <div id="milestoneNav" class="milestone-nav">
-                <div class="milestone-progress">
-                    <div
-                        id="milestoneProgressFill"
-                        class="milestone-progress-fill"
-                    ></div>
-                </div>
-                <!--
-                <div id="milestoneRow" class="milestone-row">
-                    <div class="milestone-controls">
-                        <button
-                            id="milestoneTour"
-                            class="milestone-nav-btn"
-                            type="button"
-                            aria-label="Play milestone tour"
-                            title="Play tour"
-                        >
-                            <span
-                                id="milestoneTourIcon"
-                                class="material-symbols-outlined"
-                                >play_arrow</span
-                            >
-                        </button>
-                        <button
-                            id="milestonePrev"
-                            class="milestone-nav-btn"
-                            type="button"
-                            aria-label="Previous milestone"
-                        >
-                            <span class="material-symbols-outlined"
-                                >arrow_back</span
-                            >
-                        </button>
-                        <button
-                            id="milestoneNext"
-                            class="milestone-nav-btn"
-                            type="button"
-                            aria-label="Next milestone"
-                        >
-                            <span class="material-symbols-outlined"
-                                >arrow_forward</span
-                            >
-                        </button>
-                    </div>
-                    <span
-                        id="milestoneCaption"
-                        class="milestone-caption mono-uppercase"
-                    ></span>
-                </div>
-                 -->
-                <button
-                    id="exploreMilestones"
-                    class="explore-milestones-btn"
-                    type="button"
-                    aria-label="Explore milestones"
-                    title="Play tour"
-                    hidden
-                >
-                    <span class="material-symbols-outlined">play_arrow</span>
-                    Explore milestones
-                </button>
-            </div>
-
+        <div class="milestone-progress">
+            <div
+                id="milestoneProgressFill"
+                class="milestone-progress-fill"
+            ></div>
         </div>
 
-        <div id="overlay">
+        <div class="status-wrapper hide-for-detail hide-for-chart">
+            <p id="status">
+                <span id="statusTitle" hidden></span>Loading population
+                data…
+            </p>
+        </div>
 
-
-            <!--<div id="yearControl" hidden>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Year</span>
-
-                </div>
-                <input
-                    id="yearSlider"
-                    type="range"
-                    autocomplete="off"
-                    step="1"
-                />
-            </div>-->
-            <div id="metrics" class="hide-for-detail" hidden>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Population</span>
-                    <span class="metric-value" id="metricPopulation"></span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Fertility rate</span>
-                    <span class="metric-value" id="metricFertility"></span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Life expectancy</span>
-                    <span class="metric-value" id="metricLifeExpectancy"></span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Median age</span>
-                    <span class="metric-value" id="metricMedianAge"></span>
-                </div>
-                <div class="metric">
-                    <span class="metric-label mono-uppercase">Population growth</span>
-                    <span
-                        class="metric-value"
-                        id="metricPopulationGrowth"
-                    ></span>
-                </div>
+        <div id="metrics" class="hide-for-detail" hidden>
+            <div class="metric">
+                <span class="metric-label mono-uppercase">Population</span>
+                <span class="metric-value" id="metricPopulation"></span>
             </div>
+            <div class="metric">
+                <span class="metric-label mono-uppercase">Fertility rate</span>
+                <span class="metric-value" id="metricFertility"></span>
+            </div>
+            <div class="metric">
+                <span class="metric-label mono-uppercase">Life expectancy</span>
+                <span class="metric-value" id="metricLifeExpectancy"></span>
+            </div>
+            <div class="metric">
+                <span class="metric-label mono-uppercase">Median age</span>
+                <span class="metric-value" id="metricMedianAge"></span>
+            </div>
+            <div class="metric">
+                <span class="metric-label mono-uppercase">Population growth</span>
+                <span
+                    class="metric-value"
+                    id="metricPopulationGrowth"
+                ></span>
+            </div>
+        </div>
 
             <!--<div class="footer mono-uppercase">
                 <a href="https://population.un.org/wpp/" target="_blank"
                     >Data source</a
                 >
             </div>-->
-        </div>
+
         <div id="yearTimeline" class="year-timeline" hidden></div>
         <section id="chartView" class="chart-view glass" hidden>
 
             <div class="detail-panel-header">
-                <div id="chartMetricTabs" class="tab-group"></div>
+                <div id="chartMetricTabs" class="button-group"></div>
                 <button id="chartViewClose" class="detail-close" type="button" aria-label="Close chart view" title="Close">
                     <span class="material-symbols-outlined">close</span>
                 </button>

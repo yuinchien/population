@@ -726,7 +726,12 @@ function updateStatusPanel(year) {
 }
 
 function setStatusTitle(title = "") {
-  elements.statusTitle.textContent = title;
+  // The period turns the title into a sentence lead-in ("A Super-Aged
+  // Planet.") now that it sits inline ahead of the status text rather than
+  // standing alone as its own heading; the space after it is a CSS margin
+  // on the span (see styles.css) rather than trailing whitespace here, to
+  // avoid relying on whitespace-collapsing behavior at the span boundary.
+  elements.statusTitle.textContent = title ? `${title}.` : "";
   elements.statusTitle.hidden = !title;
 }
 
@@ -746,7 +751,13 @@ function updateMilestoneNav(year) {
   // elements.milestoneRow.hidden = !hasMilestone;
   // elements.exploreMilestones.hidden = hasMilestone;
   if (!hasMilestone) return;
-  elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
+  // #milestoneCaption's markup was commented out along with the rest of
+  // the old #milestoneRow, but this counter update wasn't — left in place,
+  // it throws on every year change (elements.milestoneCaption is null),
+  // which is what was actually breaking data loading via updateStatusPanel.
+  if (elements.milestoneCaption) {
+    elements.milestoneCaption.textContent = `${index + 1} / ${years.length}`;
+  }
   elements.milestonePrev.disabled = index === 0;
   elements.milestoneNext.disabled = index === years.length - 1;
 }
@@ -866,17 +877,21 @@ function toggleTour() {
 // should still invalidate whatever was previously in flight.
 function typeStatus(text, el = elements.status, { instant = false } = {}) {
   const token = ++statusTypingToken;
+  // #statusTitle now lives inside #status as its lead-in span rather than
+  // as a separate element next to it — replaceChildren() below would
+  // otherwise throw it away along with whatever text was there before.
+  const titlePrefix = el === elements.status ? [elements.statusTitle] : [];
   if (instant) {
     const textNode = document.createElement("div");
     textNode.innerHTML = text;
-    el.replaceChildren(textNode);
+    el.replaceChildren(...titlePrefix, textNode);
     return;
   }
 
   const textNode = document.createTextNode("");
   const cursor = document.createElement("span");
   cursor.className = "status-cursor";
-  el.replaceChildren(textNode, cursor);
+  el.replaceChildren(...titlePrefix, textNode, cursor);
 
   let i = 0;
   const step = () => {
@@ -2711,7 +2726,10 @@ async function init() {
     elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
     elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
     elements.milestoneTour.addEventListener("click", toggleTour);
-    elements.exploreMilestones.addEventListener("click", toggleTour);
+    // #exploreMilestones' markup is gone along with the old #milestoneRow —
+    // guarded the same way as its .hidden toggle above, rather than
+    // assuming it won't come back.
+    elements.exploreMilestones?.addEventListener("click", toggleTour);
     elements.menuToggle.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
