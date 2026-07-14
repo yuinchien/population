@@ -622,7 +622,6 @@ body.country-detail #colorMode {
     color: var(--color-text);
     background: transparent;
     cursor: pointer;
-    margin: -4px;
 }
 
 .detail-table {
@@ -978,6 +977,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: var(--margin);
     margin-top: -4px;
     gap: var(--margin);
@@ -1119,10 +1119,10 @@ body.view-chart #calloutLayer {
     align-items: center;
     gap: 8px;
     padding: 8px;
-    flex-grow: 1;
+    /*flex-grow: 1;*/
     border-radius: 8px;
     background: #fff;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
     flex-shrink: 1;
 }
 
@@ -1162,7 +1162,7 @@ body.view-chart #calloutLayer {
     background-size: cover;
     background-position: center;
     border-radius: 2px;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
 }
 
 .chip-remove {
@@ -1405,7 +1405,8 @@ body.menu-open .menu-toggle-icon::after {
     body.view-chart .detail-panel-header {
         height: auto;
     }
-    .status-wrapper p {
+
+    #detailSummary.detail-summary, .status-wrapper p {
         font-size: 1.2rem;
     }
 
