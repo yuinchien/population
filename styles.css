@@ -752,7 +752,7 @@ body.country-detail #colorMode {
 
 .tab-group {
     border-bottom: var(--border);
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     display: flex;
 }
 .tab-group button {
