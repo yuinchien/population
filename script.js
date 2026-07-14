@@ -105,6 +105,10 @@ const calloutGroup = new THREE.Group();
 scene.add(calloutGroup);
 let peakCallouts = []; // { country, anchor, outward, line, labelEl }
 
+const hoverCountryGroup = new THREE.Group();
+scene.add(hoverCountryGroup);
+let hoverCountry = null;
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.06;
@@ -324,6 +328,11 @@ let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
+// Simplified country outline rings ({ [iso3]: [[lon,lat], ...][] }), lazily
+// loaded — see showHoverCountryFill(). null until it resolves; hovering
+// before then just doesn't draw a fill for that hover, same tradeoff as the
+// demographic-metrics deferred load.
+let countryBorders = null;
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
@@ -501,6 +510,87 @@ function setDotSize(size) {
 
 function positionsFor(country) {
   return viewMode === "map" ? country._xyzMap : country._xyzGlobe;
+}
+
+// Nudges the fill just outside the globe surface/dot pulse range (up to
+// ±DOT_CONFIG.pulseAmplitude) so it reads as sitting on the country rather
+// than a pulsing dot occasionally poking through it, and just toward the
+// camera on the flat map for the same reason.
+const HOVER_FILL_GLOBE_RADIUS = GLOBE_RADIUS + DOT_CONFIG.pulseAmplitude + 4;
+const HOVER_FILL_MAP_Z = 2;
+
+function clearHoverCountryFill() {
+  if (!hoverCountry) return;
+  hoverCountryGroup.children.slice().forEach((mesh) => {
+    hoverCountryGroup.remove(mesh);
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  });
+  hoverCountry = null;
+}
+
+// Fills a country's outline (one shape per ring — most countries are a
+// single polygon, but archipelagos/exclaves are several) on whichever
+// surface is currently showing, in a darkened version of its own dot color
+// (an outline this same color, even drawn at several px wide, read as too
+// close to the dot cloud underneath to make out — a filled, darker shape
+// doesn't have that problem). Border data is lazy-loaded and keyed by
+// iso3 (see init()); hovering before it's arrived just skips drawing one,
+// same as any other deferred data here.
+function showHoverCountryFill(country) {
+  if (hoverCountry === country) return;
+  clearHoverCountryFill();
+  hoverCountry = country;
+  const rings = countryBorders?.[country.iso3];
+  if (!rings) return;
+  // Same darkening CSS color-mix(in srgb, <color> 50%, black 50%) would
+  // produce — halving each channel toward black.
+  const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.1);
+
+  rings.forEach((ring) => {
+    // A ring under 3 points can't form a polygon — shouldn't occur in the
+    // shipped data, but cheap to guard against rather than handing
+    // THREE.Shape/ShapeGeometry a degenerate triangulation.
+    if (ring.length < 3) return;
+    // Triangulated in plain (lon, lat) space — flat and not geographically
+    // accurate for a very large country, but plenty close at the size a
+    // hover highlight actually needs to read correctly at.
+    const shape = new THREE.Shape(
+      ring.map(([lon, lat]) => new THREE.Vector2(lon, lat)),
+    );
+    const geometry = new THREE.ShapeGeometry(shape);
+    // Re-project every triangulated vertex from (lon, lat) onto the globe
+    // surface or flat map, same basis the dots themselves use.
+    const pos = geometry.getAttribute("position");
+    for (let i = 0; i < pos.count; i++) {
+      const lon = pos.getX(i);
+      const lat = pos.getY(i);
+      const p =
+        viewMode === "map"
+          ? latLonToMapVector3(lat, lon).setZ(HOVER_FILL_MAP_Z)
+          : latLonToVector3(lat, lon, HOVER_FILL_GLOBE_RADIUS);
+      pos.setXYZ(i, p.x, p.y, p.z);
+    }
+    pos.needsUpdate = true;
+    geometry.computeVertexNormals();
+
+    const material = new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.8,
+      // Reprojecting a flat triangulation onto a sphere can flip a
+      // triangle's winding relative to the camera depending on where on
+      // the globe it lands — DoubleSide avoids backface-culling some of
+      // them away.
+      side: THREE.DoubleSide,
+      // Same reasoning as the dots' own depthWrite: false — nothing should
+      // stop this from painting over the point cloud underneath it.
+      depthTest: false,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = 10;
+    hoverCountryGroup.add(mesh);
+  });
 }
 
 // Centroid of a country's precomputed dot cloud in the current view basis,
@@ -2699,6 +2789,20 @@ function applySettledViewControls() {
   }
 }
 
+// URL-selected map mode is initial state, not a user-triggered transition.
+// Configure the camera, controls, material, and dot sizing before the first
+// population layout is written so the globe never flashes or scrambles in.
+function initializeViewMode(mode) {
+  if (mode !== "map") return;
+  viewMode = "map";
+  camera.position.set(0, 0, VIEW_CONFIG.map.cameraDistance);
+  controls.target.set(0, 0, 0);
+  setDotSize(VIEW_CONFIG.map.dotSize);
+  pointsMesh.material.uniforms.uIsMap.value = 1;
+  applySettledViewControls();
+  controls.update();
+}
+
 // Snaps an interrupted morph to the destination view. applyYear() immediately
 // rewrites the position buffer after this; this helper owns all the remaining
 // transition state that otherwise survives in the shader/camera/controls.
@@ -2869,6 +2973,11 @@ async function init() {
         renderDetailPanel();
       }
     });
+    // Same deferred treatment — only used to draw a border under the
+    // pointer on hover, never needed before then.
+    appData.countryBordersPromise.then((data) => {
+      countryBorders = data;
+    });
     countriesData = appData.countries;
     yearsData = appData.years;
     historicalCutoffYear = appData.historicalCutoffYear;
@@ -2878,6 +2987,11 @@ async function init() {
     lowMetricsByYear = appData.lowMetricsByYear;
 
     setupScene(countriesData, appData.incomeGroups);
+    const initialUrlState = parseUrlState(initialSearch, {
+      years: yearsData,
+      countryCodes: countriesData.map((country) => country.iso3),
+    });
+    initializeViewMode(initialUrlState.mode);
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
@@ -2919,6 +3033,9 @@ async function init() {
     });
 
     elements.viewMode.hidden = false;
+    elements.viewMode.querySelectorAll("button").forEach((btn) =>
+      btn.classList.toggle("active", btn.dataset.mode === viewMode),
+    );
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.mode === "chart") {
@@ -3118,6 +3235,7 @@ renderer.domElement.addEventListener("pointerup", (event) => {
 function clearCanvasHover() {
   elements.tooltip.hidden = true;
   renderer.domElement.classList.remove("hovering-dot");
+  clearHoverCountryFill();
 }
 
 function updateTooltip(event) {
@@ -3143,6 +3261,7 @@ function updateTooltip(event) {
     return;
   }
   renderer.domElement.classList.add("hovering-dot");
+  showHoverCountryFill(country);
 
   // A country with an active peak-year callout already shows its own
   // "name: population" label on the globe — stacking the hover tooltip
@@ -3160,10 +3279,10 @@ function updateTooltip(event) {
   swatch.style.background = `#${groupColor.getHexString()}`;
 
   const countryText = document.createElement("span");
-  countryText.textContent = `${country.name}: ${formatPeakPopulation(pop)}`;
+  countryText.textContent = `${country.name} ${formatPeakPopulation(pop)}`;
 
   const line1 = document.createElement("div");
-  line1.className = "tooltip-line1 mono-uppercase";
+  line1.className = "tooltip-line mono-uppercase";
   line1.append(swatch, countryText);
 
   const lines = [line1];
@@ -3174,8 +3293,22 @@ function updateTooltip(event) {
     "--tooltip-color",
     `#${groupColor.getHexString()}`,
   );
-  elements.tooltip.style.left = `${event ? event.clientX : 0}px`;
-  elements.tooltip.style.top = `${event ? event.clientY : 0}px`;
+  const cursorX = event?.clientX ?? 0;
+  const cursorY = event?.clientY ?? 0;
+  const gap = 24;
+  const margin = 80;
+  const tooltipWidth = elements.tooltip.offsetWidth;
+  const tooltipHeight = elements.tooltip.offsetHeight;
+  const fitsOnRight = cursorX + gap + tooltipWidth <= window.innerWidth - margin;
+    const tooltipX = fitsOnRight
+      ? cursorX + gap
+      : Math.max(margin, cursorX - gap - tooltipWidth);
+    const tooltipY = Math.min(
+      Math.max(margin, cursorY - tooltipHeight / 2),
+      window.innerHeight - margin - tooltipHeight,
+  );
+  elements.tooltip.style.left = `${tooltipX}px`;
+  elements.tooltip.style.top = `${tooltipY}px`;
 }
 
 // Raycasting activeTotal dots (up to ~33K) on every single animation frame

@@ -1,5 +1,6 @@
 :root {
     --slider-size: 20px;
+    --color-bg: #F3F2EF;
     --color-text: #222;
     --color-muted: #666;
     --color-milestone: #ff48b0;
@@ -10,7 +11,7 @@
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --letterspacing-uppercase: 0.01em;
     --overlay-width: 288px;
-    --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
+
     --dash-size: 8px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
     --margin: 16px;
@@ -28,7 +29,7 @@ body {
     font-size: 14px;
     line-height: 18px;
     letter-spacing: -0.01em;
-    background: var(--bg-gradient);
+    background: var(--color-bg);
 }
 
 * {
@@ -488,6 +489,7 @@ body.country-detail #colorMode {
     margin-right: 6px;
     border-radius: 50%;
     background: var(--color-legend);
+    display: none;
 }
 
 .legend-item.active {
@@ -524,11 +526,10 @@ body.country-detail #colorMode {
 #tooltip,
 #chartTooltip {
     position: fixed;
-    padding: 4px 6px;
-    border-radius: 2px;
+    padding: 2px 6px;
+    border-radius: 12px;
     white-space: nowrap;
     pointer-events: none;
-    transform: translate(-50%, -130%);
     /* Above .detail-panel/#viewMode (1001) — both can be open while a
        chart underneath them (sparklines, the trend chart) is hovered, and
        this tooltip needs to paint over them, not get hidden behind. */
@@ -539,12 +540,16 @@ body.country-detail #colorMode {
     gap: 4px;
 }
 
-.tooltip-line1 {
-    font-weight: 500;
+#tooltip {
+    transform: none;
 }
 
-.tooltip-line2 {
-    color: var(--color-muted);
+#chartTooltip {
+    transform: translate(-50%, -130%);
+}
+
+.tooltip-line {
+    font-weight: 500;
 }
 
 .detail-panel {

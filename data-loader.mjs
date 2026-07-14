@@ -5,6 +5,7 @@ export const DATA_URLS = {
   globalMetrics: "./data/population-global.json",
   incomeGroups: "./data/country-income-groups.json",
   countryDemographics: "./data/country-demographic-metrics.json",
+  countryBorders: "./data/country-borders.json",
 };
 
 export const ISO3_TO_ISO2 = {
@@ -343,6 +344,9 @@ export async function loadPopulationData({
     urls.countryDemographics,
     fetchImpl,
   );
+  // Same deferred treatment — only needed once something's actually
+  // hovered, never for first paint.
+  const countryBordersPromise = fetchJson(urls.countryBorders, fetchImpl);
 
   const [dotsData, globalData, incomeGroups] = await Promise.all([
     fetchJson(urls.dots, fetchImpl),
@@ -375,6 +379,7 @@ export async function loadPopulationData({
     years,
     incomeGroups,
     countryDemographicMetricsPromise,
+    countryBordersPromise,
     historicalCutoffYear,
     globalMetricsByYear,
     globalTrendMilestones,
