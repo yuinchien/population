@@ -72,7 +72,7 @@ const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see renderTrendChart).
-const CHART_LINE_GROW_MS = 700;
+const CHART_LINE_GROW_MS = 500;
 
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
