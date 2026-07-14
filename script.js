@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { TessellateModifier } from "three/addons/modifiers/TessellateModifier.js";
 import {
   buildDetailStatus,
   displayGroupLabel,
@@ -108,6 +109,7 @@ let peakCallouts = []; // { country, anchor, outward, line, labelEl }
 const hoverCountryGroup = new THREE.Group();
 scene.add(hoverCountryGroup);
 let hoverCountry = null;
+const globeFillTessellator = new TessellateModifier(8, 6);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -546,6 +548,10 @@ function showHoverCountryFill(country) {
   // Same darkening CSS color-mix(in srgb, <color> 50%, black 50%) would
   // produce — halving each channel toward black.
   const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.1);
+  // Russia's continental outline spans most of a hemisphere. Its flat
+  // triangulation must be subdivided before spherical projection; otherwise
+  // a handful of huge faces cut through and overlap the visible globe.
+  const tessellateGlobeFill = viewMode === "globe" && country.iso3 === "RUS";
 
   rings.forEach((ring) => {
     // A ring under 3 points can't form a polygon — shouldn't occur in the
@@ -558,7 +564,12 @@ function showHoverCountryFill(country) {
     const shape = new THREE.Shape(
       ring.map(([lon, lat]) => new THREE.Vector2(lon, lat)),
     );
-    const geometry = new THREE.ShapeGeometry(shape);
+    let geometry = new THREE.ShapeGeometry(shape);
+    if (tessellateGlobeFill) {
+      const flatGeometry = geometry;
+      geometry = globeFillTessellator.modify(flatGeometry);
+      flatGeometry.dispose();
+    }
     // Re-project every triangulated vertex from (lon, lat) onto the globe
     // surface or flat map, same basis the dots themselves use.
     const pos = geometry.getAttribute("position");
