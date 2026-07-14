@@ -1,5 +1,5 @@
 export const TREND_CHART_PADDING = {
-  top: 16,
+  top: 40,
   right: 32,
   bottom: 24,
   left: 48,

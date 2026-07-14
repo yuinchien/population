@@ -2418,6 +2418,7 @@ function renderTrendChart({ animate = false } = {}) {
   // yrs"); the compact right padding only needs to fit the ISO alpha-2
   // labels drawn directly off each line's end point.
   const pad = TREND_CHART_PADDING;
+  const chartTop = 4;
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -2459,7 +2460,7 @@ function renderTrendChart({ animate = false } = {}) {
       class: "trend-chart-axis",
       x1: pad.left,
       x2: pad.left,
-      y1: pad.top,
+      y1: chartTop,
       y2: height - pad.bottom,
     }),
   );
@@ -2638,17 +2639,28 @@ function renderTrendChart({ animate = false } = {}) {
   // to scrub years, now that #timelineContainer stays hidden here.
   if (currentYearIndex >= 0 && currentYearIndex < n) {
     const markerX = xFor(currentYearIndex).toFixed(1);
+    const markerPillWidth = 32;
+    const markerPillHeight = 18;
+    const markerPillY = chartTop;
     const markerLine = svgEl("line", {
       class: "trend-chart-year-marker",
       x1: markerX,
       x2: markerX,
-      y1: pad.top,
+      y1: markerPillY + markerPillHeight,
       y2: height - pad.bottom,
     });
+    const markerPill = svgEl("rect", {
+      class: "trend-chart-year-pill",
+      x: (Number(markerX) - markerPillWidth / 2).toFixed(1),
+      y: markerPillY,
+      width: markerPillWidth,
+      height: markerPillHeight,
+      rx: 4,
+    });
     const markerLabel = svgEl("text", {
-      class: "trend-chart-axis-label",
+      class: "trend-chart-year-label",
       x: markerX,
-      y: axisY,
+      y: markerPillY + 13,
       "text-anchor": "middle",
     });
     markerLabel.textContent = yearsData[currentYearIndex];
@@ -2656,9 +2668,9 @@ function renderTrendChart({ animate = false } = {}) {
     const dragHit = svgEl("rect", {
       class: "trend-chart-year-drag",
       x: (Number(markerX) - DRAG_HIT_HALF_WIDTH).toFixed(1),
-      y: pad.top,
+      y: markerPillY + markerPillHeight,
       width: DRAG_HIT_HALF_WIDTH * 2,
-      height: innerH,
+      height: height - pad.bottom - markerPillY - markerPillHeight,
     });
 
     function yearForClientX(clientX) {
@@ -2682,6 +2694,10 @@ function renderTrendChart({ animate = false } = {}) {
       const x = xFor(index).toFixed(1);
       markerLine.setAttribute("x1", x);
       markerLine.setAttribute("x2", x);
+      markerPill.setAttribute(
+        "x",
+        (Number(x) - markerPillWidth / 2).toFixed(1),
+      );
       markerLabel.setAttribute("x", x);
       markerLabel.textContent = year;
       dragHit.setAttribute("x", (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1));
@@ -2720,7 +2736,7 @@ function renderTrendChart({ animate = false } = {}) {
     dragHit.addEventListener("pointerup", endDrag);
     dragHit.addEventListener("pointercancel", endDrag);
 
-    elementsToAppend.push(markerLine, markerLabel, dragHit);
+    elementsToAppend.push(markerLine, markerPill, markerLabel, dragHit);
   }
 
   svg.replaceChildren(...elementsToAppend);
