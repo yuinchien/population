@@ -363,7 +363,7 @@ const countryChartAnimationHandles = [];
 let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartViewActive = false;
-let chartMetricKey = "population";
+let chartMetricKey = "ageDependencyRatio";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
 let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
