@@ -1575,6 +1575,8 @@ function buildCountryCharts(country, { animate = false } = {}) {
   }
 
   svg.replaceChildren();
+  const growingBars = [];
+  const revealElements = [];
 
   if (cutoffIndex < n - 1) {
     let top = "";
@@ -1587,12 +1589,13 @@ function buildCountryCharts(country, { animate = false } = {}) {
       const [x, y] = xyFor(i, country.populationsLow[i]);
       bottom += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
     }
-    svg.append(
-      svgEl("path", {
-        class: "country-chart-band",
-        d: `${top}${bottom} Z`,
-      }),
-    );
+    const band = svgEl("path", {
+      class: "country-chart-band",
+      d: `${top}${bottom} Z`,
+    });
+    if (animate) band.style.opacity = "0";
+    revealElements.push(band);
+    svg.append(band);
   }
 
   // One vertical stroke per year (from the baseline up to that year's
@@ -1605,15 +1608,15 @@ function buildCountryCharts(country, { animate = false } = {}) {
     if (value == null) continue;
     const [x, y] = xyFor(i, value);
     const isProjected = i >= cutoffIndex;
-    bars.append(
-      svgEl("line", {
-        class: `country-chart-bar${isProjected ? " projected" : ""}`,
-        x1: x.toFixed(2),
-        x2: x.toFixed(2),
-        y1: baselineY,
-        y2: y.toFixed(2),
-      }),
-    );
+    const bar = svgEl("line", {
+      class: `country-chart-bar${isProjected ? " projected" : ""}`,
+      x1: x.toFixed(2),
+      x2: x.toFixed(2),
+      y1: baselineY,
+      y2: animate ? baselineY : y.toFixed(2),
+    });
+    if (animate) growingBars.push({ bar, targetY: y });
+    bars.append(bar);
   }
   svg.append(bars);
 
@@ -1622,22 +1625,26 @@ function buildCountryCharts(country, { animate = false } = {}) {
   const peakDotSize = 8.2;
   if (peakIndex !== -1) {
     const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
-    svg.append(
-      svgEl("line", {
+    const peakLine = svgEl("line", {
         class: "country-chart-peak-line",
         x1: px,
         x2: px,
         y1: baselineY,
         y2: py.toFixed(2),
-      }),
-      svgEl("rect", {
+      });
+    const peakDot = svgEl("rect", {
         class: "country-chart-peak-dot",
         x: (px - peakDotSize/2).toFixed(2),
         y: (py - peakDotSize/2).toFixed(2),
         width: peakDotSize,
         height: peakDotSize,
-      }),
-    );
+      });
+    if (animate) {
+      peakLine.style.opacity = "0";
+      peakDot.style.opacity = "0";
+    }
+    revealElements.push(peakLine, peakDot);
+    svg.append(peakLine, peakDot);
     const peakTextAnchor =
       peakIndex > n * 0.85 ? "end" : peakIndex < n * 0.15 ? "start" : "middle";
     const peakLabel = svgEl("text", {
@@ -1647,6 +1654,8 @@ function buildCountryCharts(country, { animate = false } = {}) {
       "text-anchor": peakTextAnchor,
     });
     peakLabel.textContent = `PEAK`;
+    if (animate) peakLabel.style.opacity = "0";
+    revealElements.push(peakLabel);
     svg.append(peakLabel);
   }
 
@@ -1666,6 +1675,11 @@ function buildCountryCharts(country, { animate = false } = {}) {
     "text-anchor": "end",
   });
   labelLast.textContent = yearsData[n - 1];
+  if (animate) {
+    labelFirst.style.opacity = "0";
+    labelLast.style.opacity = "0";
+  }
+  revealElements.push(labelFirst, labelLast);
   svg.append(labelFirst, labelLast);
 
   const markerDot = svgEl("circle", {
@@ -1683,6 +1697,12 @@ function buildCountryCharts(country, { animate = false } = {}) {
     class: "country-chart-marker-line",
     y2: baselineY,
   });
+  if (animate) {
+    markerLine.style.opacity = "0";
+    markerDot.style.opacity = "0";
+    markerLabel.style.opacity = "0";
+  }
+  revealElements.push(markerLine, markerDot, markerLabel);
   svg.append(markerLine, markerDot, markerLabel);
 
   countryChartLayout = {
@@ -1692,6 +1712,33 @@ function buildCountryCharts(country, { animate = false } = {}) {
     markerDot,
     markerLabel,
   };
+
+  if (animate && growingBars.length) {
+    const FADE_IN_MS = 320;
+    const start = performance.now();
+    const step = (now) => {
+      const elapsed = now - start;
+      const growT = easeOutCubic(
+        Math.min(1, elapsed / CHART_LINE_GROW_MS),
+      );
+      growingBars.forEach(({ bar, targetY }) => {
+        bar.setAttribute(
+          "y2",
+          baselineY + (targetY - baselineY) * growT,
+        );
+      });
+
+      const fadeT = Math.min(
+        1,
+        Math.max(0, (elapsed - CHART_LINE_GROW_MS) / FADE_IN_MS),
+      );
+      revealElements.forEach((element) => {
+        element.style.opacity = String(fadeT);
+      });
+      if (growT < 1 || fadeT < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 
   elements.countrySparklines.replaceChildren();
   countrySparklineInstances = COUNTRY_SPARKLINE_METRIC_KEYS.map((key) => {
