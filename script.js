@@ -1213,10 +1213,15 @@ function updateSliderProgress() {
 // applyYear()'s full rebuild — so the year figure still tracks the thumb
 // live, even though the rest of the content waits for "change".
 function updateYearLabels(year) {
-  const min = elements.yearSlider.min || 0;
-  const max = elements.yearSlider.max || 100;
-  const percentage = ((elements.yearSlider.value - min) / (max - min)) * 100;
-  elements.yearValue.style.setProperty('--thumb-position', `${percentage}%`);
+  const slider = elements.yearSlider;
+  const min = Number(slider.min || 0);
+  const max = Number(slider.max || 100);
+  const percentage = (Number(slider.value) - min) / (max - min);
+  const thumbSize = 8;
+  const thumbCenter =
+    slider.offsetLeft + thumbSize / 2 +
+    percentage * Math.max(0, slider.clientWidth - thumbSize);
+  elements.yearValue.style.setProperty('--thumb-position', `${thumbCenter}px`);
 
   elements.yearValue.textContent = `${year}`;
 }
@@ -3358,6 +3363,9 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (currentYearIndex >= 0) {
+    updateYearLabels(yearsData[currentYearIndex]);
+  }
   if (pointsMesh) {
     pointsMesh.material.uniforms.uScale.value =
       renderer.domElement.height * 0.5;

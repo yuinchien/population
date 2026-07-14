@@ -392,11 +392,11 @@ button.milestone-nav-btn {
     position: absolute;
     left: var(--thumb-position, 50%);
     top: -15px;
-    margin-left: -15px;
+    transform: translateX(-50%);
     min-width: 0;
     color: var(--color-text);
     font-weight: 700;
-    text-align: right;
+    text-align: center;
     white-space: nowrap;
 }
 
