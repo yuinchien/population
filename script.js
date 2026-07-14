@@ -1534,7 +1534,7 @@ function renderCountryDetail() {
   // this settles is exactly what left the chart/sparklines a few pixels
   // narrower than their final size.
   updateStatusPanel(year);
-  buildCountryCharts(country);
+  buildCountryCharts(country, { animate: true });
   updateCountryDetailForYear(year);
   updateViewModeAvailability();
 }
@@ -1545,7 +1545,7 @@ function renderCountryDetail() {
 // mapper is cached on countryChartLayout so updateCountryDetailForYear()
 // can cheaply reposition the marker on every slider tick instead of
 // rebuilding the whole chart.
-function buildCountryCharts(country) {
+function buildCountryCharts(country, { animate = false } = {}) {
   const n = yearsData.length;
   const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
   const maxPopulation = Math.max(
@@ -1702,7 +1702,7 @@ function buildCountryCharts(country) {
     // preserveAspectRatio="none" stretching from a mismatched viewBox.
     const instance = buildCountrySparklineCard(key);
     elements.countrySparklines.append(instance.card);
-    populateCountrySparkline(instance, series, cutoffIndex, key);
+    populateCountrySparkline(instance, series, cutoffIndex, key, { animate });
     return { key, series, ...instance };
   });
 }
@@ -1750,7 +1750,13 @@ function buildCountrySparklineCard(key) {
 // replacement-level threshold) bar from that line instead of the bottom
 // edge, so bars visibly flip below it once a country drops under
 // replacement rather than just shrinking toward a floor.
-function populateCountrySparkline(instance, series, cutoffIndex, key) {
+function populateCountrySparkline(
+  instance,
+  series,
+  cutoffIndex,
+  key,
+  { animate = false } = {},
+) {
   const { svg, dotLine, dot } = instance;
   const width = svg.clientWidth || 160;
   const height = svg.clientHeight || 40;
@@ -1772,16 +1778,22 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
     return [chartXFor(index, n, width), yFor(value)];
   }
 
-  function pathFor(from, to) {
-    return buildLinePath(series, from, to, (i) => chartXFor(i, n, width), yFor);
+  function pathFor(from, to, valueToY = yFor) {
+    return buildLinePath(
+      series,
+      from,
+      to,
+      (i) => chartXFor(i, n, width),
+      valueToY,
+    );
   }
 
   // Closes the curve segment back down (or up) to the baseline at its own
   // start/end x, turning the line into a filled shape — the fill follows
   // the curve above or below the baseline exactly as drawn, so a metric
   // that dips below its reference value fills downward there too.
-  function areaFor(from, to, baselineY) {
-    const linePath = pathFor(from, to);
+  function areaFor(from, to, baselineY, valueToY = yFor) {
+    const linePath = pathFor(from, to, valueToY);
     if (!linePath) return "";
     let firstX = null;
     let lastX = null;
@@ -1796,17 +1808,20 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
 
   const elementsToAppend = [];
   const baselineY = yFor(referenceValue);
+  const initialYFor = animate ? () => baselineY : yFor;
+  const historicalArea = svgEl("path", {
+    class: "sparkline-area historical",
+    d: areaFor(0, cutoffIndex, baselineY, initialYFor),
+  });
+  const projectedArea = svgEl("path", {
+    class: "sparkline-area projected",
+    d: areaFor(cutoffIndex, n - 1, baselineY, initialYFor),
+  });
   // Filled area between the curve and the baseline, drawn first so the
   // baseline/curve/dot render on top of it.
   elementsToAppend.push(
-    svgEl("path", {
-      class: "sparkline-area historical",
-      d: areaFor(0, cutoffIndex, baselineY),
-    }),
-    svgEl("path", {
-      class: "sparkline-area projected",
-      d: areaFor(cutoffIndex, n - 1, baselineY),
-    }),
+    historicalArea,
+    projectedArea,
   );
   if (referenceValue != null) {
     elementsToAppend.push(
@@ -1835,17 +1850,45 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
       referenceValue === 0 ? "0" : format(referenceValue);
     elementsToAppend.push(baselineLabel);
   }
-  elementsToAppend.push(
-    svgEl("path", {
-      class: "sparkline-path historical",
-      d: pathFor(0, cutoffIndex),
-    }),
-    svgEl("path", {
-      class: "sparkline-path projected",
-      d: pathFor(cutoffIndex, n - 1),
-    }),
-  );
+  const historicalPath = svgEl("path", {
+    class: "sparkline-path historical",
+    d: pathFor(0, cutoffIndex, initialYFor),
+  });
+  const projectedPath = svgEl("path", {
+    class: "sparkline-path projected",
+    d: pathFor(cutoffIndex, n - 1, initialYFor),
+  });
+  elementsToAppend.push(historicalPath, projectedPath);
   svg.append(...elementsToAppend, dotLine, dot);
+
+  if (animate) {
+    const start = performance.now();
+    const step = (now) => {
+      const eased = easeOutCubic(
+        Math.min(1, (now - start) / CHART_LINE_GROW_MS),
+      );
+      const animatedYFor = (value) =>
+        baselineY + (yFor(value) - baselineY) * eased;
+      historicalPath.setAttribute(
+        "d",
+        pathFor(0, cutoffIndex, animatedYFor),
+      );
+      projectedPath.setAttribute(
+        "d",
+        pathFor(cutoffIndex, n - 1, animatedYFor),
+      );
+      historicalArea.setAttribute(
+        "d",
+        areaFor(0, cutoffIndex, baselineY, animatedYFor),
+      );
+      projectedArea.setAttribute(
+        "d",
+        areaFor(cutoffIndex, n - 1, baselineY, animatedYFor),
+      );
+      if (eased < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 
   instance.toXY = toXY;
   instance.baselineY = baselineY;
