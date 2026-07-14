@@ -50,6 +50,10 @@ const SCRAMBLE_OUT_MS = 800;
 const SCRAMBLE_RADIUS = GLOBE_RADIUS * 0.6;
 const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 
+// How long each trend-chart line takes to grow up from a flat baseline into
+// its real shape when the chart first appears (see renderTrendChart).
+const CHART_LINE_GROW_MS = 700;
+
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
 // peaks in the currently selected year.
@@ -1435,11 +1439,14 @@ function applyUrlStateFromLocation(search) {
         .filter((code) => countriesData.some((c) => c.iso3 === code));
       if (iso3List.length) selectedChartCountries = iso3List;
     }
-    setChartViewActive(true);
+    // Countries/metric are settled before the panel opens, so its own
+    // renderTrendChart({ animate: true }) call is both the first one that
+    // reflects the deep-linked state and the only one that's actually
+    // visible — no need for a redundant plain re-render after it.
     const metric = params.get("metric");
     if (metric) setChartMetric(metric);
     renderChartCountryChips();
-    renderTrendChart();
+    setChartViewActive(true);
   } else if (view === "country") {
     const iso3 = params.get("country")?.toUpperCase();
     const country = countriesData.find((c) => c.iso3 === iso3);
@@ -2174,7 +2181,7 @@ function renderChartMetricTabs() {
 // incrementally updated — infrequent enough (explicit tab/flag clicks) that
 // a full rebuild is simpler and cheap at this scale (a handful of countries
 // × 151 years).
-function renderTrendChart() {
+function renderTrendChart({ animate = false } = {}) {
   const svg = elements.trendChart;
   const width = svg.clientWidth || 900;
   const height = svg.clientHeight || 360;
@@ -2341,21 +2348,34 @@ function renderTrendChart() {
   // separate legend — the chips above already double as one, so this is
   // just about tying a color back to a country without eyeballing it.
   const lineLabels = [];
+  // Bottom of the plot area — every line starts flattened here and grows
+  // up into its real shape below, when animate is on.
+  const baselineY = pad.top + innerH;
+  const growingLines = [];
   countries.forEach((country) => {
     const color = chartColorFor(country.iso3);
     const series = chartSeriesFor(country, key);
-    elementsToAppend.push(
-      svgEl("path", {
-        class: "trend-line historical",
-        d: pathFor(series, 0, cutoffIndex),
-        stroke: color,
-      }),
-      svgEl("path", {
-        class: "trend-line projected",
-        d: pathFor(series, cutoffIndex, n - 1),
-        stroke: color,
-      }),
-    );
+    const historicalPath = svgEl("path", {
+      class: "trend-line historical",
+      d: animate
+        ? buildLinePath(series, 0, cutoffIndex, xFor, () => baselineY)
+        : pathFor(series, 0, cutoffIndex),
+      stroke: color,
+    });
+    const projectedPath = svgEl("path", {
+      class: "trend-line projected",
+      d: animate
+        ? buildLinePath(series, cutoffIndex, n - 1, xFor, () => baselineY)
+        : pathFor(series, cutoffIndex, n - 1),
+      stroke: color,
+    });
+    elementsToAppend.push(historicalPath, projectedPath);
+    if (animate) {
+      growingLines.push(
+        { el: historicalPath, series, from: 0, to: cutoffIndex },
+        { el: projectedPath, series, from: cutoffIndex, to: n - 1 },
+      );
+    }
 
     let lastIndex = -1;
     for (let i = n - 1; i >= 0; i--) {
@@ -2490,6 +2510,23 @@ function renderTrendChart() {
   }
 
   svg.replaceChildren(...elementsToAppend);
+
+  if (growingLines.length) {
+    const start = performance.now();
+    const step = (now) => {
+      const eased = easeOutCubic(Math.min(1, (now - start) / CHART_LINE_GROW_MS));
+      growingLines.forEach(({ el, series, from, to }) => {
+        el.setAttribute(
+          "d",
+          buildLinePath(series, from, to, xFor, (value) =>
+            baselineY + (yFor(value) - baselineY) * eased,
+          ),
+        );
+      });
+      if (eased < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
 }
 
 function setChartTableSort(key) {
@@ -2540,7 +2577,7 @@ function setChartViewActive(active) {
   );
   if (active) {
     stopTour();
-    renderTrendChart();
+    renderTrendChart({ animate: true });
     renderChartTable();
   } else if (currentYearIndex >= 0) {
     // While the overlay was open, applyYear() took its chart-only fast path

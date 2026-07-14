@@ -1237,6 +1237,9 @@ body.view-chart #calloutLayer {
     font-size: 12px;
 }
 
+.button-list {
+    width: 240px;
+}
 
 .button-list button {
     background: none;
