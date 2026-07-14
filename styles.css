@@ -971,13 +971,13 @@ body.country-detail #colorMode {
 }
 
 .sparkline-area {
-    fill: color-mix(in srgb, var(--detail-color) 72%, var(--color-surface-raised));
-    opacity: .4;
+    fill: var(--detail-color);
+    opacity: .2;
     stroke: none;
 }
 
 .sparkline-area.projected {
-    opacity: 0.2;
+    opacity: 0.1;
 }
 
 .sparkline-baseline {
@@ -1143,7 +1143,7 @@ body.view-chart #calloutLayer {
 }
 
 .trend-line.projected {
-    stroke-dasharray: 4 4;
+    stroke-dasharray: 8 8;
 }
 
 .trend-chart-baseline {
