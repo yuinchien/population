@@ -146,9 +146,9 @@ h1 {
     position: fixed;
     z-index: 999;
     left: 0;
-    top: 0;
+    top: 2px;
     margin: 16px var(--margin);
-    font-size: 2.4rem;
+    font-size: 2rem;
     line-height: 1;
     font-weight: 500;
     font-family: var(--font-sans);
@@ -171,7 +171,7 @@ h1 {
 .status-wrapper {
     position: fixed;
     left: var(--margin);
-    top: 64px;
+    top: 58px;
     z-index: 100;
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -180,13 +180,12 @@ h1 {
        switching away from right-align. */
     width: 420px;
     font-weight: 500;
-    font-size: 16px;
     overflow: initial;
 }
 .status-wrapper p {
     margin: 0 0 4px;
-    line-height: 1.35;
-    font-size: 1.4rem;
+    line-height: 1.4;
+    font-size: 1.25rem;
 }
 
 .milestone-nav {
@@ -458,7 +457,7 @@ body.country-detail #colorMode {
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0px;
 }
 .legend-item {
     display: flex;
