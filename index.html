@@ -242,17 +242,23 @@
                 </button>
             </div>
 
-            <div class="chart-content">
-                <div class="chart-card">
-                    <div id="chartMetricTabs" class="button-list"></div>
-                    <svg
-                        id="trendChart"
-                        class="trend-chart"
-                        preserveAspectRatio="none"
-                    ></svg>
-                </div>
-
+            <div class="chart-card">
+                <svg
+                    id="trendChart"
+                    class="trend-chart"
+                    preserveAspectRatio="none"
+                ></svg>
                 <div id="chartTable" class="detail-table">
+                    <div class="detail-summary chart-insight">
+                        <div
+                            id="chartInsightCaption"
+                            class="caption mono-uppercase"
+                        ></div>
+                        <p
+                            id="chartInsightText"
+                            class="country-summary-copy"
+                        ></p>
+                    </div>
                     <div
                         id="chartTableHeader"
                         class="detail-row header mono-uppercase"
@@ -260,6 +266,7 @@
                     <div id="chartTableRows" class="detail-rows no-scrollbar"></div>
                 </div>
             </div>
+            <div id="chartMetricTabs" class="button-group"></div>
 
         </section>
         <section id="detailPanel" class="detail-panel glass" hidden>

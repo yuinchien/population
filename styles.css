@@ -28,7 +28,7 @@ body {
     font-family: var(--font-mono);
     font-size: 14px;
     line-height: 18px;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
     background: var(--color-bg);
 }
 
@@ -612,10 +612,7 @@ body.country-detail #colorMode {
     font-size: 1.1rem;
 }
 
-/* #detailSummary (ID) rather than .detail-summary: needs to out-rank the
-   ".detail-panel p" color rule above, which a same-weight class alone
-   wouldn't do. */
-#detailSummary.detail-summary {
+.detail-summary {
     color: var(--color-text);
     line-height: 1.4em;
     font-size: 1.6rem;
@@ -735,7 +732,7 @@ body.country-detail #colorMode {
     white-space: nowrap;
 }
 
-.detail-panel {
+.detail-summary {
     .caption {
         display: table;
         font-family: 'DM Mono';
@@ -758,16 +755,9 @@ body.country-detail #colorMode {
         margin-bottom: 0;
     }
 
-    .country-summary-flag {
-        flex: none;
-        width: 24px;
-        height: 18px;
-        background-position: center;
-        background-size: cover;
-    }
-
     .country-summary-copy {
         display: block;
+        margin: 0;
     }
 
     .underlined {
@@ -785,6 +775,14 @@ body.country-detail #colorMode {
         height: 3px;
         background-color: var(--detail-color);
     }
+}
+
+.detail-panel .country-summary-flag {
+    flex: none;
+    width: 24px;
+    height: 18px;
+    background-position: center;
+    background-size: cover;
 }
 
 .tab-group {
@@ -957,7 +955,7 @@ body.country-detail #colorMode {
 .sparkline-svg {
     display: block;
     width: 100%;
-    aspect-ratio: 4 / 1;
+    aspect-ratio: 3 / 1;
     overflow: visible;
 }
 
@@ -1056,7 +1054,40 @@ body.view-chart #calloutLayer {
 
 .chart-view .button-group {
     border: none;
-    padding: 0;
+    padding: var(--margin);
+    border-top: var(--border);
+}
+.chart-view .button-group button {
+    border-radius: 20px;
+    border: 1px solid var(--color-text);
+    /*background: none;
+    border: none;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    font-weight: 500;
+    display: block;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    min-width: 240px;
+    height: var(--button-size);
+    gap: 10px;
+    opacity: .5;
+    cursor: pointer;*/
+
+    /*&:before {
+        width: 8px;
+        height: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--color-text);
+        content: "";
+    }*/
+    &.active {
+        opacity: 1;
+    }
+    /*&.active:before {
+        background: var(--color-text);
+    }*/
 }
 
 .chart-content {
@@ -1077,15 +1108,24 @@ body.view-chart #calloutLayer {
     display: flex;
     padding: var(--margin);
     margin-bottom: var(--margin);
+    flex-direction: row-reverse;
 }
 
 /* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
    same .detail-table used by the group view, just reused here against
    whichever countries are currently plotted. */
 .chart-view .detail-table {
-    flex: 2;
+    flex: .5;
     min-height: 0;
     padding: calc(var(--margin) * 1);
+    grid-template-rows: auto auto 1fr;
+}
+
+.chart-insight {
+    --detail-color: #ccc;
+    max-width: 38ch;
+    margin-top: 0;
+    margin-bottom: calc(var(--margin) * 1.5);
 }
 
 .trend-line-label {
@@ -1104,12 +1144,12 @@ body.view-chart #calloutLayer {
 
 .trend-line {
     fill: none;
-    stroke-width: 4;
+    stroke-width: 3;
     opacity: 0.9;
 }
 
 .trend-line.projected {
-    stroke-dasharray: 4 3;
+    stroke-dasharray: 4 4;
 }
 
 .trend-chart-baseline {
@@ -1290,40 +1330,7 @@ body.view-chart #calloutLayer {
     font-size: 12px;
 }
 
-.button-list {
-    width: 240px;
-}
 
-.button-list button {
-    background: none;
-    border: none;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 500;
-    display: block;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    min-width: 240px;
-    height: var(--button-size);
-    gap: 10px;
-    opacity: .5;
-    cursor: pointer;
-
-    &:before {
-        width: 8px;
-        height: 8px;
-        border-radius: 8px;
-        border: 1px solid var(--color-text);
-        content: "";
-    }
-    &.active {
-        opacity: 1;
-    }
-    &.active:before {
-        background: var(--color-text);
-    }
-}
 
 
 #calloutLayer {

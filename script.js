@@ -7,7 +7,6 @@ import {
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
 import {
-  DETAIL_METRIC_KEYS,
   GLOBAL_METRIC_KEYS,
   METRICS,
   formatCount,
@@ -1311,17 +1310,18 @@ function detailColumns() {
   return buildDetailColumns({ currentYearIndex, metricFor });
 }
 
-// The chart table gets two extra columns the group-detail table doesn't —
-// migration and age-dependency already have their own chart tabs, so
-// showing them here too lets a scrub reveal that data without switching
-// tabs. Keeping this separate from detailColumns() rather than just
-// extending DETAIL_METRIC_KEYS avoids cluttering the region/income table,
-// which wasn't part of this ask.
+// Keep the comparison table focused on the chart's current question:
+// country and population are always present, followed by the selected
+// metric when it is not population itself.
 function chartTableColumns() {
+  const metricKeys = [
+    "population",
+    ...(chartMetricKey === "population" ? [] : [chartMetricKey]),
+  ];
   return buildDetailColumns({
     currentYearIndex,
     metricFor,
-    metricKeys: [...DETAIL_METRIC_KEYS, "ageDependencyRatio", "netMigrationRate"],
+    metricKeys,
   });
 }
 
@@ -1348,7 +1348,13 @@ function renderSortableTable({
   countries,
   onSort,
   onRowClick,
+  gridTemplateColumns,
 }) {
+  if (gridTemplateColumns) {
+    headerEl.style.gridTemplateColumns = gridTemplateColumns;
+  } else {
+    headerEl.style.removeProperty("grid-template-columns");
+  }
   headerEl.replaceChildren(
     ...columns.map((column) => {
       const arrow =
@@ -1372,6 +1378,9 @@ function renderSortableTable({
     const row = document.createElement("div");
     row.style.setProperty("--ratio", detailRow.ratio);
     row.className = "detail-row";
+    if (gridTemplateColumns) {
+      row.style.gridTemplateColumns = gridTemplateColumns;
+    }
     row.append(
       ...detailRow.cells.map((cell) =>
         createDetailCell(cell.text, cell.className),
@@ -1605,10 +1614,10 @@ const COUNTRY_SPARKLINE_METRIC_KEYS = [
 const CHART_METRIC_KEYS = [
   "population",
   "populationGrowth",
-  "lifeExpectancy",
-  "fertility",
-  "ageDependencyRatio",
   "netMigrationRate",
+  "fertility",
+  "lifeExpectancy",
+  "ageDependencyRatio",
 ];
 // A plain categorical color set assigned by selection order, not by the
 // country's actual region — two countries in the same region are a
@@ -2369,6 +2378,7 @@ function setChartMetric(key) {
     btn.classList.toggle("active", btn.dataset.key === key);
   });
   renderTrendChart();
+  renderChartTable();
   syncUrlFromState();
 }
 
@@ -2743,22 +2753,72 @@ function setChartTableSort(key) {
   renderChartTable();
 }
 
-// The same detail-table component the group view uses (same per-country row
-// data), reused against whichever countries are currently plotted — sort
-// state is kept separate from the group table's own (chartTableSort vs
-// detailSort) so the two views don't clobber each other's preference. Its
-// column set is chartTableColumns(), not detailColumns() — two extra
-// metrics beyond what the group table shows (see that function's comment).
+function renderChartInsight() {
+  const year = yearsData[currentYearIndex];
+  elements.chartInsightCaption.textContent = `${year} snapshot`;
+
+  const definition = METRICS[chartMetricKey];
+  const ranked = chartCountryList()
+    .map((country) => ({
+      country,
+      value: chartSeriesFor(country, chartMetricKey)[currentYearIndex],
+    }))
+    .filter(({ value }) => Number.isFinite(value))
+    .sort((a, b) => b.value - a.value);
+
+  if (!ranked.length) {
+    elements.chartInsightText.textContent =
+      "No comparable data is available for the selected countries.";
+    return;
+  }
+
+  const format =
+    chartMetricKey === "population"
+      ? formatPeakPopulation
+      : (definition.formatPanel ?? definition.format);
+  const [highest, second] = ranked;
+  if (!second) {
+    elements.chartInsightText.textContent =
+      `${highest.country.name} is at ${format(highest.value)}.`;
+    return;
+  }
+
+  if (chartMetricKey === "population") {
+    elements.chartInsightText.textContent =
+      `${highest.country.name} leads at ${format(highest.value)}, followed by ` +
+      `${second.country.name} at ${format(second.value)}.`;
+    return;
+  }
+
+  const lowest = ranked.at(-1);
+  const metricLabel = definition.label.toLowerCase();
+  elements.chartInsightText.textContent =
+    `${highest.country.name} has the highest ${metricLabel} at ` +
+    `${format(highest.value)}, while ${lowest.country.name} has the lowest ` +
+    `at ${format(lowest.value)}.`;
+}
+
+// The same sortable table component the group view uses, reduced here to
+// country, population, and the active chart metric.
 function renderChartTable() {
   if (!elements.chartTableRows) return;
+  renderChartInsight();
+  const columns = chartTableColumns();
+  if (!columns.some((column) => column.key === chartTableSort.key)) {
+    chartTableSort = { key: "population", direction: "desc" };
+  }
+  const metricColumnCount = columns.length - 1;
+  const gridTemplateColumns =
+    `minmax(150px, 1fr) repeat(${metricColumnCount}, minmax(120px, 0.8fr))`;
   renderSortableTable({
     headerEl: elements.chartTableHeader,
     rowsEl: elements.chartTableRows,
-    columns: chartTableColumns(),
+    columns,
     sort: chartTableSort,
     countries: chartCountryList(),
     onSort: setChartTableSort,
     onRowClick: openCountryDetail,
+    gridTemplateColumns,
   });
 }
 
