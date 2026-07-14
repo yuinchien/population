@@ -737,7 +737,7 @@ function buildGlobalPopulationStatus(year) {
   return `${parts.join(", ")}.`;
 }
 
-function updateStatusPanel(year) {
+function updateStatusPanel(year, { instant = false } = {}) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
     setStatusTitle();
@@ -776,17 +776,26 @@ function updateStatusPanel(year) {
   const milestone = globalTrendMilestones.get(year);
   setStatusTitle(milestone?.title);
   updateMilestoneNav(year);
+  const leadText = milestone
+    ? `${milestone.text}${
+        peakCountries.length
+          ? ` ${buildPeakStatus(year, peakCountries, isProjected)}`
+          : ""
+      }`
+    : buildPeakStatus(year, peakCountries, isProjected);
   const globalPopulationStatus = buildGlobalPopulationStatus(year);
+  // Neither the milestone blurb nor the peak-year line mentions the year on
+  // its own — normally one of them is present and does, but buildPeakStatus
+  // returns "" when nothing peaked that year, which (off a milestone year
+  // too) would leave the global figures below as the only copy, with no
+  // year attached to them at all.
+  const yearLead = leadText
+    ? ""
+    : `${year}${isProjected ? " projection" : ""}:`;
   typeStatus(
-    `${
-      milestone
-        ? `${milestone.text}${
-            peakCountries.length
-              ? ` ${buildPeakStatus(year, peakCountries, isProjected)}`
-              : ""
-          }`
-        : buildPeakStatus(year, peakCountries, isProjected)
-    }${globalPopulationStatus ? ` ${globalPopulationStatus}` : ""}`,
+    [yearLead, leadText, globalPopulationStatus].filter(Boolean).join(" "),
+    elements.status,
+    { instant },
   );
 }
 
@@ -995,7 +1004,7 @@ function typeStatus(text, el = elements.status, { instant = false } = {}) {
   step();
 }
 
-function applyYear(year) {
+function applyYear(year, { instant = false } = {}) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1) return;
   const isFirstCall = currentYearIndex === -1;
@@ -1077,9 +1086,9 @@ function applyYear(year) {
   renderDetailPanel();
   if (selectedCountry) {
     updateCountryDetailForYear(year);
-    updateStatusPanel(year);
+    updateStatusPanel(year, { instant });
   } else if (!selectedLegend) {
-    updateStatusPanel(year);
+    updateStatusPanel(year, { instant });
   }
   updatePeakCallouts(year);
   syncUrlFromState();
@@ -2037,6 +2046,12 @@ function renderChartCountryChips() {
 
 const CHART_COUNTRY_SUGGESTION_LIMIT = 8;
 
+// Which suggestion Up/Down arrow keys have moved to, -1 meaning none yet
+// (Enter then falls back to the top match, as it always has). Reset
+// whenever the list itself changes, since a stale index from the previous
+// keystroke's results wouldn't line up with the new ones.
+let chartSuggestionActiveIndex = -1;
+
 // Common informal abbreviations people search by that don't match the
 // official ISO 3166-1 alpha-2 code — "UK" for the United Kingdom, whose
 // actual code is "GB", is the everyday example.
@@ -2065,6 +2080,7 @@ function chartCountryMatches(query) {
 function hideChartCountrySuggestions() {
   elements.chartCountrySuggestions.hidden = true;
   elements.chartCountrySuggestions.replaceChildren();
+  chartSuggestionActiveIndex = -1;
 }
 
 function selectChartCountrySuggestion(iso3) {
@@ -2072,6 +2088,25 @@ function selectChartCountrySuggestion(iso3) {
   elements.chartCountrySearch.value = "";
   hideChartCountrySuggestions();
   elements.chartCountrySearch.focus();
+}
+
+// Moves the Up/Down-arrow highlight, clamped to the list's bounds (rather
+// than wrapping) — simpler to reason about, and matches most desktop
+// autocomplete widgets. Scrolled into view since the list can scroll while
+// only a few rows show at once.
+function moveChartSuggestionActiveIndex(delta) {
+  const items = elements.chartCountrySuggestions.querySelectorAll(
+    ".chip-suggestion",
+  );
+  if (!items.length) return;
+  chartSuggestionActiveIndex = Math.min(
+    items.length - 1,
+    Math.max(0, chartSuggestionActiveIndex + delta),
+  );
+  items.forEach((item, i) => {
+    item.classList.toggle("highlighted", i === chartSuggestionActiveIndex);
+  });
+  items[chartSuggestionActiveIndex].scrollIntoView({ block: "nearest" });
 }
 
 function renderChartCountrySuggestions() {
@@ -2082,6 +2117,9 @@ function renderChartCountrySuggestions() {
   }
   const matches = chartCountryMatches(query);
   elements.chartCountrySuggestions.hidden = false;
+  // The list itself just changed (new keystroke), so whatever the arrow
+  // keys had highlighted before no longer lines up with anything.
+  chartSuggestionActiveIndex = -1;
   if (!matches.length) {
     const empty = document.createElement("div");
     empty.className = "chip-suggestions-empty";
@@ -2523,8 +2561,11 @@ function setChartViewActive(active) {
   } else if (currentYearIndex >= 0) {
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had
-    // before) — catch it up now that it's visible again.
-    applyYear(yearsData[currentYearIndex]);
+    // before) — catch it up now that it's visible again. instant: true
+    // skips #status's typewriter replay here — chart view already showed
+    // this year's own text (via renderChartTable) the whole time, so
+    // retyping it from scratch on close would just be redundant animation.
+    applyYear(yearsData[currentYearIndex], { instant: true });
   }
   syncUrlFromState();
 }
@@ -2884,12 +2925,24 @@ async function init() {
       renderChartCountrySuggestions,
     );
     elements.chartCountrySearch.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
+      if (event.key === "ArrowDown") {
+        if (elements.chartCountrySuggestions.hidden) return;
         event.preventDefault();
-        const [firstMatch] = chartCountryMatches(
-          elements.chartCountrySearch.value,
-        );
-        if (firstMatch) selectChartCountrySuggestion(firstMatch.iso3);
+        moveChartSuggestionActiveIndex(1);
+      } else if (event.key === "ArrowUp") {
+        if (elements.chartCountrySuggestions.hidden) return;
+        event.preventDefault();
+        moveChartSuggestionActiveIndex(-1);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        // Arrow keys pick a specific suggestion; without that, Enter falls
+        // back to the top match, same as before arrow navigation existed.
+        const matches = chartCountryMatches(elements.chartCountrySearch.value);
+        const match =
+          chartSuggestionActiveIndex >= 0
+            ? matches[chartSuggestionActiveIndex]
+            : matches[0];
+        if (match) selectChartCountrySuggestion(match.iso3);
       } else if (
         event.key === "Backspace" &&
         !elements.chartCountrySearch.value &&
