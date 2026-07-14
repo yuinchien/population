@@ -277,7 +277,7 @@ export function buildDetailStatus({
   const otherCountries = allCountries.filter((country) =>
     legend.mode === "income"
       ? country._incomeLabel !== legend.label
-      : country.region.trim() !== legend.label,
+      : country.region?.trim() !== legend.label,
   );
 
   const growth = computeMetricStats(

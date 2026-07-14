@@ -29,6 +29,12 @@ import {
   VIEW_CONFIG,
 } from "./view-config.mjs";
 import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
+import {
+  buildLinePath,
+  chartXFor,
+  chartYFor,
+  computeValueRange,
+} from "./chart-math.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -737,7 +743,12 @@ function buildGlobalPopulationStatus(year) {
   return `${parts.join(", ")}.`;
 }
 
-function updateStatusPanel(year, { instant = false } = {}) {
+// groupCountries lets a caller that already has the filtered+sorted group
+// list (renderDetailPanel, right after building its table from the same
+// list) hand it over instead of this recomputing selectDetailCountries()
+// a second time on every year change; other callers just omit it and it's
+// computed here as before.
+function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
     setStatusTitle();
@@ -757,7 +768,7 @@ function updateStatusPanel(year, { instant = false } = {}) {
     typeStatus(
       buildDetailStatus({
         year,
-        countries: selectedCountries(),
+        countries: groupCountries ?? selectedCountries(),
         allCountries: countriesData,
         currentYearIndex,
         isProjected,
@@ -1335,7 +1346,7 @@ function renderDetailPanel() {
   elements.detailTable.hidden = false;
   elements.detailPanel.hidden = false;
   updateViewModeAvailability();
-  updateStatusPanel(year);
+  updateStatusPanel(year, { groupCountries: countries });
 }
 
 function closeDetailPanel() {
@@ -1606,11 +1617,8 @@ function buildCountryCharts(country) {
   const innerH = chartHeight - pad.top - pad.bottom;
 
   function xyFor(index, value) {
-    const x = pad.left + (index / (n - 1)) * innerW;
-    const y =
-      pad.top +
-      innerH -
-      (maxPopulation > 0 ? value / maxPopulation : 0) * innerH;
+    const x = chartXFor(index, n, innerW, pad.left);
+    const y = chartYFor(value, 0, maxPopulation, innerH, pad.top);
     return [x, y];
   }
 
@@ -1797,36 +1805,24 @@ function populateCountrySparkline(instance, series, cutoffIndex, key) {
   const height = svg.clientHeight || 40;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  const values = series.filter((value) => Number.isFinite(value));
-  let min = values.length ? Math.min(...values) : 0;
-  let max = values.length ? Math.max(...values) : 1;
+  const { min, range } = computeValueRange(series, METRICS[key]?.referenceValue);
   // Metrics without a meaningful universal threshold (life expectancy,
   // median age — unlike fertility's 2.1 replacement line or growth's 0%)
   // fall back to the series' own minimum, so every sparkline still draws a
   // baseline for visual consistency even though it has nothing to flip
   // below.
   const referenceValue = METRICS[key]?.referenceValue ?? min;
-  min = Math.min(min, referenceValue);
-  max = Math.max(max, referenceValue);
-  const range = max - min || 1;
   const n = series.length;
 
   function yFor(value) {
-    return height - ((value - min) / range) * height;
+    return chartYFor(value, min, range, height);
   }
   function toXY(index, value) {
-    return [(index / (n - 1)) * width, yFor(value)];
+    return [chartXFor(index, n, width), yFor(value)];
   }
 
   function pathFor(from, to) {
-    let d = "";
-    for (let i = from; i <= to; i++) {
-      const value = series[i];
-      if (value == null) continue;
-      const [x, y] = toXY(i, value);
-      d += `${d ? " L " : "M "}${x.toFixed(1)} ${y.toFixed(1)}`;
-    }
-    return d;
+    return buildLinePath(series, from, to, (i) => chartXFor(i, n, width), yFor);
   }
 
   // Closes the curve segment back down (or up) to the baseline at its own
@@ -2202,29 +2198,17 @@ function renderTrendChart() {
       if (Number.isFinite(value)) allValues.push(value);
     });
   });
-  let min = allValues.length ? Math.min(...allValues) : 0;
-  let max = allValues.length ? Math.max(...allValues) : 1;
   const referenceValue = definition?.referenceValue;
-  if (referenceValue != null) {
-    min = Math.min(min, referenceValue);
-    max = Math.max(max, referenceValue);
-  }
-  const range = max - min || 1;
+  const { min, max, range } = computeValueRange(allValues, referenceValue);
 
   function yFor(value) {
-    return pad.top + innerH - ((value - min) / range) * innerH;
+    return chartYFor(value, min, range, innerH, pad.top);
   }
   function xFor(index) {
-    return pad.left + (index / (n - 1)) * innerW;
+    return chartXFor(index, n, innerW, pad.left);
   }
   function pathFor(series, from, to) {
-    let d = "";
-    for (let i = from; i <= to; i++) {
-      const value = series[i];
-      if (value == null) continue;
-      d += `${d ? " L " : "M "}${xFor(i).toFixed(1)} ${yFor(value).toFixed(1)}`;
-    }
-    return d;
+    return buildLinePath(series, from, to, xFor, yFor);
   }
 
   const elementsToAppend = [];

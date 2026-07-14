@@ -181,7 +181,7 @@ export const ISO3_TO_ISO2 = {
     PAN: "PA",
     PNG: "PG",
     PRY: "PY",
-    PER: "PR",
+    PER: "PE",
     PHL: "PH",
     PCN: "PN",
     POL: "PL",

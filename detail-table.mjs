@@ -35,7 +35,7 @@ export function countryMatchesLegend(country, legend) {
   if (!legend) return false;
   return legend.mode === "income"
     ? country._incomeLabel === legend.label
-    : country.region.trim() === legend.label;
+    : country.region?.trim() === legend.label;
 }
 
 export function filterDetailCountries(countries, legend) {
