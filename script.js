@@ -696,7 +696,16 @@ function updatePeakCallouts(year) {
       labelEl.addEventListener("click", () => openCountryDetail(country));
       elements.calloutLayer.append(labelEl);
 
-      peakCallouts.push({ country, anchor, outward, line, labelEl });
+      peakCallouts.push({
+        country,
+        anchor,
+        outward,
+        line,
+        labelEl,
+        screenX: null,
+        screenY: null,
+        lastFrameTime: null,
+      });
     });
 }
 
@@ -712,7 +721,9 @@ const calloutCamDir = new THREE.Vector3();
 const calloutFacing = new THREE.Vector3();
 const calloutProjected = new THREE.Vector3();
 
-function updateCalloutLabels() {
+const CALLOUT_SMOOTHING_MS = 90;
+
+function updateCalloutLabels(timestamp) {
   if (!peakCallouts.length) return;
   calloutCamDir.copy(camera.position).normalize();
   // A callout's line/label are anchored to the resting globe/map position,
@@ -720,10 +731,14 @@ function updateCalloutLabels() {
   // cloud) — so both are hidden together rather than left pointing at a
   // now-stale spot, which reads as broken/frozen rather than "in motion".
   const inTransition = !!transition;
-  peakCallouts.forEach(({ anchor, outward, line, labelEl }) => {
+  peakCallouts.forEach((callout) => {
+    const { anchor, outward, line, labelEl } = callout;
     if (inTransition) {
       line.visible = false;
       labelEl.hidden = true;
+      callout.screenX = null;
+      callout.screenY = null;
+      callout.lastFrameTime = null;
       return;
     }
     if (viewMode !== "map") {
@@ -731,6 +746,9 @@ function updateCalloutLabels() {
       if (facing < 0.1) {
         line.visible = false;
         labelEl.hidden = true;
+        callout.screenX = null;
+        callout.screenY = null;
+        callout.lastFrameTime = null;
         return;
       }
     }
@@ -740,8 +758,26 @@ function updateCalloutLabels() {
     const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
     const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
     const margin = 12;
-    labelEl.style.left = `${Math.min(Math.max(x, CALLOUT_LEFT_CLEARANCE), window.innerWidth - margin)}px`;
-    labelEl.style.top = `${Math.min(Math.max(y, margin + 20), window.innerHeight - margin)}px`;
+    const targetX = Math.min(
+      Math.max(x, CALLOUT_LEFT_CLEARANCE),
+      window.innerWidth - margin,
+    );
+    const targetY = Math.min(
+      Math.max(y, margin + 20),
+      window.innerHeight - margin,
+    );
+    if (callout.screenX == null || callout.lastFrameTime == null) {
+      callout.screenX = targetX;
+      callout.screenY = targetY;
+    } else {
+      const elapsed = Math.min(50, Math.max(0, timestamp - callout.lastFrameTime));
+      const blend = 1 - Math.exp(-elapsed / CALLOUT_SMOOTHING_MS);
+      callout.screenX += (targetX - callout.screenX) * blend;
+      callout.screenY += (targetY - callout.screenY) * blend;
+    }
+    callout.lastFrameTime = timestamp;
+    labelEl.style.setProperty("--callout-x", `${callout.screenX}px`);
+    labelEl.style.setProperty("--callout-y", `${callout.screenY}px`);
   });
 }
 
@@ -3517,7 +3553,7 @@ function animate(timestamp) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
   }
-  updateCalloutLabels();
+  updateCalloutLabels(timestamp);
   renderer.render(scene, camera);
 }
 

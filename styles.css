@@ -1361,7 +1361,11 @@ body.detail #calloutLayer {
     white-space: nowrap;
     pointer-events: auto;
     cursor: pointer;
-    transform: translate(-50%, -100%);
+    left: 0;
+    top: 0;
+    will-change: transform;
+    transform: translate3d(var(--callout-x, 0), var(--callout-y, 0), 0)
+        translate(-50%, -100%);
     box-shadow: 0 0 2px rgba(0,0,0,.5);
 }
 
