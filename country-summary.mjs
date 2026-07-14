@@ -1,3 +1,4 @@
+import { ISO3_TO_ISO2 } from "./data-loader.mjs";
 export function buildCountrySummary({
   country,
   year,
@@ -10,6 +11,12 @@ export function buildCountrySummary({
   const population = formatPopulation(country.populations[index]);
   const peakYear = country.peakYear;
   const caption = isProjected ? "Projected" : "Historical";
+
+  function convertAlpha3ToAlpha2(code) {
+    if (!code) return null;
+    return ISO3_TO_ISO2[code.toUpperCase()] || null;
+  }
+  const flagUrl = `./flags/4x3/${convertAlpha3ToAlpha2(country.iso3)?.toLowerCase()}.svg`;
   const lead = isProjected
     ? `<span class="country-capsule">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
     : `<span class="country-capsule">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;
@@ -32,5 +39,5 @@ export function buildCountrySummary({
         : `That's down from ${peakIsProjected ? "a projected peak" : "a peak"} of ${peakPopulation} in <span class="underlined">${peakYear}</span>.`;
   }
 
-  return `<div class="caption mono-uppercase">${caption}</div> ${lead} ${trend}`;
+  return `<div class="country-summary-meta"><div class="caption mono-uppercase">${caption}</div><span class="country-summary-flag" style="background-image: url('${flagUrl}');" aria-hidden="true"></span></div><div class="country-summary-copy">${lead} ${trend}</div>`;
 }

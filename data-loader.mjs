@@ -256,6 +256,7 @@ export const ISO3_TO_ISO2 = {
     YEM: "YE",
     ZMB: "ZM",
     ZWE: "ZW",
+    XKX: "XK",
   };
 
 async function fetchJson(url, fetchImpl) {

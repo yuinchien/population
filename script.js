@@ -578,8 +578,10 @@ function updatePeakCallouts(year) {
       const line = new THREE.Line(geometry, material);
       calloutGroup.add(line);
 
-      const labelEl = document.createElement("div");
+      const labelEl = document.createElement("button");
+      labelEl.type = "button";
       labelEl.className = "peak-callout-label glass";
+      labelEl.setAttribute("aria-label", `Open ${country.name} details`);
       labelEl.textContent = `${country.name} ${formatPeakPopulation(
         country.populations[currentYearIndex],
       )}`;
@@ -593,6 +595,9 @@ function updatePeakCallouts(year) {
       labelEl.addEventListener("pointerleave", () =>
         setHoverFocusCountry(null),
       );
+      labelEl.addEventListener("focus", () => setHoverFocusCountry(country));
+      labelEl.addEventListener("blur", () => setHoverFocusCountry(null));
+      labelEl.addEventListener("click", () => openCountryDetail(country));
       elements.calloutLayer.append(labelEl);
 
       peakCallouts.push({ country, anchor, outward, line, labelEl });

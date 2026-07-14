@@ -732,6 +732,28 @@ body.country-detail #colorMode {
         line-height: 1;
         margin-bottom: 8px;
     }
+    .country-summary-meta {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 8px;
+    }
+
+    .country-summary-meta .caption {
+        margin-bottom: 0;
+    }
+
+    .country-summary-flag {
+        flex: none;
+        width: 24px;
+        height: 18px;
+        background-position: center;
+        background-size: cover;
+    }
+
+    .country-summary-copy {
+        display: block;
+    }
 
     .underlined {
         position: relative;
@@ -1272,11 +1294,13 @@ body.view-chart #calloutLayer {
     }
 }
 
+
 #calloutLayer {
     position: fixed;
     inset: 0;
     z-index: 5;
     pointer-events: none;
+    font-weight: 500;
 }
 
 /* The detail panel's glass background only dims/blurs what's behind it
@@ -1287,15 +1311,23 @@ body.detail #calloutLayer {
 }
 
 .peak-callout-label {
+    appearance: none;
     position: fixed;
     padding: 2px 4px;
     border-radius: 3px;
     color: var(--color-text);
     background: color-mix(in srgb, var(--color-callout) 70%, white);
     font-weight: 500;
+    font: inherit;
     white-space: nowrap;
     pointer-events: auto;
+    cursor: pointer;
     transform: translate(-50%, -100%);
+}
+
+.peak-callout-label:focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
 }
 
 .menu-toggle {
