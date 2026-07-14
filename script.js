@@ -2783,7 +2783,7 @@ function setChartTableSort(key) {
 
 function renderChartInsight() {
   const year = yearsData[currentYearIndex];
-  elements.chartInsightCaption.textContent = `${year} snapshot`;
+  elements.chartInsightCaption.textContent = `${year}`;
 
   const definition = METRICS[chartMetricKey];
   const ranked = chartCountryList()

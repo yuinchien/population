@@ -1067,15 +1067,21 @@ body.view-chart #calloutLayer {
 .chart-view .button-group {
     border: none;
     padding: var(--margin);
+    gap: 0;
+    background: var(--color-surface);
 }
 .chart-view .button-group button {
+    text-transform: uppercase;
     border-radius: 2px;
     border: none;
-    background: var(--color-surface);
+    padding: 8px 12px;
+    opacity: .6;
+
     &.active {
         opacity: 1;
-        background: white;
+        background: var(--color-bg);
         border-radius: 20px;
+        color: white;
     }
 }
 
