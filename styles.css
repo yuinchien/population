@@ -25,7 +25,7 @@
     --trend-line-width: 4;
     --dash-size: 8px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
-    --margin: 16px;
+    --margin: 24px;
     --icon-size: 24px;
     --button-size: 32px;
 }
@@ -1066,7 +1066,7 @@ body.view-chart #calloutLayer {
 
 .chart-view .button-group {
     border: none;
-    padding: var(--margin);
+    padding: 20px;
     gap: 0;
     background: var(--color-surface);
 }
