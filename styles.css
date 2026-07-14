@@ -101,9 +101,6 @@ canvas.hovering-dot {
     flex-direction: column;
     padding: var(--margin);
 }
-#overlayChart {
-
-}
 
 .footer {
     flex: 1;
@@ -981,8 +978,11 @@ body.view-chart #calloutLayer {
 }
 
 body.view-chart #overlayChart {
-    padding: var(--margin) 236px var(--margin) var(--margin);
+    padding: var(--margin);
     margin-top: -4px;
+    display: flex;
+    gap: var(--margin);
+    align-items: center;
 }
 
 .chart-view {
@@ -1119,12 +1119,11 @@ body.view-chart #overlayChart {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 8px;
-    border-bottom: var(--border);
-    /*background: #fff;*/
-
-    /*box-shadow: 0 0 4px 0px rgba(0,0,0,.1);*/
-    /*flex: 1;*/
+    padding: 8px 12px;
+    flex-grow: 1;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 0 2px 0px rgba(0,0,0,.1);
 }
 
 .chip-input-chips {

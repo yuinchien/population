@@ -2870,9 +2870,9 @@ async function init() {
         setViewMode(btn.dataset.mode);
       });
     });
-    // elements.chartViewClose.addEventListener("click", () =>
-    //   setChartViewActive(false),
-    // );
+    elements.chartViewClose.addEventListener("click", () =>
+      setChartViewActive(false),
+    );
     renderChartMetricTabs();
     renderChartCountryChips();
     elements.chartCountrySearch.addEventListener(
