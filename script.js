@@ -17,7 +17,11 @@ import {
   selectDetailCountries,
   sortDetailCountries,
 } from "./detail-table.mjs";
-import { loadPopulationData, ISO3_TO_ISO2 } from "./data-loader.mjs";
+import {
+  convertAlpha3ToAlpha2,
+  loadPopulationData,
+  flagIconUrl
+} from "./data-loader.mjs";
 import {
   DEFAULT_COLOR,
   DOT_CONFIG,
@@ -2001,11 +2005,6 @@ function updateCountryDetailForYear(year) {
   );
 }
 
-function convertAlpha3ToAlpha2(code) {
-  if (!code) return null;
-  return ISO3_TO_ISO2[code.toUpperCase()] || null;
-}
-
 // Population comes from the dots dataset (same series peakYear/dots are
 // built from); every other chart metric comes from the demographics file,
 // keyed and indexed identically to yearsData.
@@ -2045,14 +2044,6 @@ function removeChartCountry(iso3) {
   syncUrlFromState();
 }
 
-function flagIconUrl(iso3) {
-  // The flag-icons package (and this project's public/flags/ copy of it)
-  // names files in lowercase — convertAlpha3ToAlpha2() returns uppercase
-  // codes, so this needs its own lowercasing rather than relying on a
-  // case-insensitive filesystem lucking it into working (which local dev
-  // sometimes does, but a GitHub Pages deploy never will).
-  return `./flags/4x3/${convertAlpha3ToAlpha2(iso3)?.toLowerCase()}.svg`;
-}
 
 function renderChartCountryChips() {
   elements.chartCountryChips.replaceChildren(

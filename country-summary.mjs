@@ -1,4 +1,4 @@
-import { ISO3_TO_ISO2 } from "./data-loader.mjs";
+import { flagIconUrl } from "./data-loader.mjs";
 export function buildCountrySummary({
   country,
   year,
@@ -12,11 +12,7 @@ export function buildCountrySummary({
   const peakYear = country.peakYear;
   const caption = isProjected ? "Projected" : "Historical";
 
-  function convertAlpha3ToAlpha2(code) {
-    if (!code) return null;
-    return ISO3_TO_ISO2[code.toUpperCase()] || null;
-  }
-  const flagUrl = `./flags/4x3/${convertAlpha3ToAlpha2(country.iso3)?.toLowerCase()}.svg`;
+  const flagUrl = flagIconUrl(country.iso3);
   const lead = isProjected
     ? `<span class="country-capsule">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
     : `<span class="country-capsule">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;

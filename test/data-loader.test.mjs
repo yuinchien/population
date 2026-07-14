@@ -3,9 +3,16 @@ import test from "node:test";
 import {
   buildGlobalMetricsIndex,
   buildVariantIndex,
+  convertAlpha3ToAlpha2,
   computePeakYear,
   loadPopulationData,
 } from "../data-loader.mjs";
+
+test("convertAlpha3ToAlpha2 normalizes and converts shared country codes", () => {
+  assert.equal(convertAlpha3ToAlpha2("civ"), "CI");
+  assert.equal(convertAlpha3ToAlpha2("XXX"), null);
+  assert.equal(convertAlpha3ToAlpha2(null), null);
+});
 
 test("computePeakYear returns only interior population peaks", () => {
   const years = [2000, 2001, 2002, 2003];
