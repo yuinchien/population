@@ -27,6 +27,7 @@ export function getAppElements(root = document) {
     viewMode: root.querySelector("#viewMode"),
     calloutLayer: root.querySelector("#calloutLayer"),
     detailPanel: root.querySelector("#detailPanel"),
+    detailFlag: root.querySelector("#detailFlag"),
     detailTitle: root.querySelector("#detailTitle"),
     detailSubtitle: root.querySelector("#detailSubtitle"),
     detailSummary: root.querySelector("#detailSummary"),

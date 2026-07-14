@@ -587,7 +587,7 @@ body.country-detail #colorMode {
 
 .detail-title-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
 }
 
@@ -913,9 +913,15 @@ body.country-detail #colorMode {
     text-anchor: middle;
 }
 
+.country-chart-year-drag {
+    fill: transparent;
+    cursor: ew-resize;
+    touch-action: none;
+}
+
 .country-sparklines {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     flex: none;
     grid-column: 1 / -1;
@@ -1430,6 +1436,9 @@ body.menu-open .menu-toggle-icon::after {
     }
     .country-detail {
         display: block;
+    }
+    .country-sparklines {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 

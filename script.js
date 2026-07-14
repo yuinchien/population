@@ -1071,11 +1071,11 @@ function renderCountrySummary(summary) {
   meta.append(caption);
 
   if (summary.flagUrl) {
-    const flag = document.createElement("span");
-    flag.className = "country-summary-flag";
-    flag.style.backgroundImage = `url(${summary.flagUrl})`;
-    flag.setAttribute("aria-hidden", "true");
-    meta.append(flag);
+    elements.detailFlag.style.backgroundImage = `url(${summary.flagUrl})`;
+    elements.detailFlag.hidden = false;
+  } else {
+    elements.detailFlag.hidden = true;
+    elements.detailFlag.style.backgroundImage = "";
   }
 
   const copy = document.createElement("div");
@@ -1094,6 +1094,8 @@ function renderCountrySummary(summary) {
 }
 
 function renderDetailStatus(status) {
+  elements.detailFlag.hidden = true;
+  elements.detailFlag.style.backgroundImage = "";
   const badge = document.createElement("span");
   badge.className = "caption mono-uppercase";
   badge.textContent = status.period;
@@ -1842,13 +1844,19 @@ function buildCountryCharts(country, { animate = false } = {}) {
     class: "country-chart-marker-line",
     y2: baselineY,
   });
+  const markerDragHit = svgEl("rect", {
+    class: "country-chart-year-drag",
+    y: pad.top,
+    width: 18,
+    height: Math.max(0, baselineY - pad.top),
+  });
   if (animate) {
     markerLine.style.opacity = "0";
     markerDot.style.opacity = "0";
     markerLabel.style.opacity = "0";
   }
   revealElements.push(markerLine, markerDot, markerLabel);
-  svg.append(markerLine, markerDot, markerLabel);
+  svg.append(markerLine, markerDot, markerLabel, markerDragHit);
 
   countryChartLayout = {
     populations: country.populations,
@@ -1856,7 +1864,44 @@ function buildCountryCharts(country, { animate = false } = {}) {
     markerLine,
     markerDot,
     markerLabel,
+    markerDragHit,
   };
+
+  function yearForClientX(clientX) {
+    const rect = svg.getBoundingClientRect();
+    const localX = ((clientX - rect.left) / rect.width) * chartWidth;
+    const [firstX] = xyFor(0, 0);
+    const [lastX] = xyFor(n - 1, 0);
+    const ratio = (localX - firstX) / (lastX - firstX);
+    const index = Math.round(ratio * (n - 1));
+    return yearsData[Math.min(n - 1, Math.max(0, index))];
+  }
+
+  function previewCountryYear(clientX) {
+    const year = yearForClientX(clientX);
+    const index = yearsData.indexOf(year);
+    if (index === -1 || index === currentYearIndex) return;
+    currentYearIndex = index;
+    updateCountryDetailForYear(year);
+  }
+
+  let draggingYearMarker = false;
+  markerDragHit.addEventListener("pointerdown", (event) => {
+    draggingYearMarker = true;
+    tourController.stop();
+    markerDragHit.setPointerCapture(event.pointerId);
+    previewCountryYear(event.clientX);
+  });
+  markerDragHit.addEventListener("pointermove", (event) => {
+    if (draggingYearMarker) previewCountryYear(event.clientX);
+  });
+  const endYearMarkerDrag = () => {
+    if (!draggingYearMarker) return;
+    draggingYearMarker = false;
+    goToYear(yearsData[currentYearIndex]);
+  };
+  markerDragHit.addEventListener("pointerup", endYearMarkerDrag);
+  markerDragHit.addEventListener("pointercancel", endYearMarkerDrag);
 
   if (animate && growingBars.length) {
     const totalDuration = CHART_LINE_GROW_MS + CHART_MARKER_FADE_IN_MS;
@@ -2091,7 +2136,14 @@ function updateCountryDetailForYear(year) {
       : displayGroupLabel(selectedCountry.region);
   elements.detailSubtitle.textContent = `${groupLabel} · ${year}`;
 
-  const { populations, xyFor, markerLine, markerDot, markerLabel } =
+  const {
+    populations,
+    xyFor,
+    markerLine,
+    markerDot,
+    markerLabel,
+    markerDragHit,
+  } =
     countryChartLayout;
   const population = populations[index];
   const [x, y] = xyFor(index, population ?? 0);
@@ -2105,6 +2157,7 @@ function updateCountryDetailForYear(year) {
     markerLabel.setAttribute("y", Math.max(y - 14, COUNTRY_CHART_LABEL_MIN_Y));
     markerLabel.textContent =
       population != null ? formatPeakPopulation(population) : "";
+    markerDragHit?.setAttribute("x", x - 9);
   }
 
   countrySparklineInstances.forEach(
