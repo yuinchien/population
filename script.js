@@ -46,6 +46,10 @@ import {
   TREND_CHART_PADDING,
 } from "./trend-chart.mjs";
 import {
+  cancelChartAnimations,
+  runChartAnimation,
+} from "./chart-animation.mjs";
+import {
   buildLinePath,
   chartXFor,
   chartYFor,
@@ -335,6 +339,8 @@ let selectedCountry = null;
 // chart rebuild every time the slider moves.
 let countryChartLayout = null;
 let countrySparklineInstances = [];
+const countryChartAnimationHandles = [];
+let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartViewActive = false;
 let chartMetricKey = "population";
@@ -1338,6 +1344,7 @@ function renderDetailPanel() {
 }
 
 function closeDetailPanel() {
+  cancelChartAnimations(countryChartAnimationHandles);
   selectedLegend = null;
   selectedCountry = null;
   countryChartLayout = null;
@@ -1353,6 +1360,7 @@ function closeDetailPanel() {
 // otherwise closes the whole panel — mirrors closeDetailPanel()'s job but
 // one level up the navigation stack.
 function closeCountryDetail() {
+  cancelChartAnimations(countryChartAnimationHandles);
   selectedCountry = null;
   countryChartLayout = null;
   countrySparklineInstances = [];
@@ -1562,6 +1570,7 @@ function renderCountryDetail() {
 // can cheaply reposition the marker on every slider tick instead of
 // rebuilding the whole chart.
 function buildCountryCharts(country, { animate = false } = {}) {
+  cancelChartAnimations(countryChartAnimationHandles);
   // Sized to the chart's actual rendered box (panel is already visible by
   // this point) rather than fixed constants — the SVG uses
   // preserveAspectRatio="none" to fill that box exactly, so a mismatched
@@ -1727,29 +1736,30 @@ function buildCountryCharts(country, { animate = false } = {}) {
 
   if (animate && growingBars.length) {
     const FADE_IN_MS = 320;
-    const start = performance.now();
-    const step = (now) => {
-      const elapsed = now - start;
-      const growT = easeOutCubic(
-        Math.min(1, elapsed / CHART_LINE_GROW_MS),
-      );
-      growingBars.forEach(({ bar, targetY }) => {
-        bar.setAttribute(
-          "y2",
-          baselineY + (targetY - baselineY) * growT,
+    const totalDuration = CHART_LINE_GROW_MS + FADE_IN_MS;
+    countryChartAnimationHandles.push(runChartAnimation({
+      duration: totalDuration,
+      onFrame: (_eased, progress) => {
+        const elapsed = progress * totalDuration;
+        const growT = easeOutCubic(
+          Math.min(1, elapsed / CHART_LINE_GROW_MS),
         );
-      });
+        growingBars.forEach(({ bar, targetY }) => {
+          bar.setAttribute(
+            "y2",
+            baselineY + (targetY - baselineY) * growT,
+          );
+        });
 
-      const fadeT = Math.min(
-        1,
-        Math.max(0, (elapsed - CHART_LINE_GROW_MS) / FADE_IN_MS),
-      );
-      revealElements.forEach((element) => {
-        element.style.opacity = String(fadeT);
-      });
-      if (growT < 1 || fadeT < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+        const fadeT = Math.min(
+          1,
+          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / FADE_IN_MS),
+        );
+        revealElements.forEach((element) => {
+          element.style.opacity = String(fadeT);
+        });
+      },
+    }));
   }
 
   elements.countrySparklines.replaceChildren();
@@ -1895,32 +1905,30 @@ function populateCountrySparkline(
   svg.append(...elementsToAppend, dotLine, dot);
 
   if (animate) {
-    const start = performance.now();
-    const step = (now) => {
-      const eased = easeOutCubic(
-        Math.min(1, (now - start) / CHART_LINE_GROW_MS),
-      );
-      const animatedYFor = (value) =>
-        baselineY + (yFor(value) - baselineY) * eased;
-      historicalPath.setAttribute(
-        "d",
-        pathFor(0, cutoffIndex, animatedYFor),
-      );
-      projectedPath.setAttribute(
-        "d",
-        pathFor(cutoffIndex, n - 1, animatedYFor),
-      );
-      historicalArea.setAttribute(
-        "d",
-        areaFor(0, cutoffIndex, animatedYFor),
-      );
-      projectedArea.setAttribute(
-        "d",
-        areaFor(cutoffIndex, n - 1, animatedYFor),
-      );
-      if (eased < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+    countryChartAnimationHandles.push(runChartAnimation({
+      duration: CHART_LINE_GROW_MS,
+      easing: easeOutCubic,
+      onFrame: (eased) => {
+        const animatedYFor = (value) =>
+          baselineY + (yFor(value) - baselineY) * eased;
+        historicalPath.setAttribute(
+          "d",
+          pathFor(0, cutoffIndex, animatedYFor),
+        );
+        projectedPath.setAttribute(
+          "d",
+          pathFor(cutoffIndex, n - 1, animatedYFor),
+        );
+        historicalArea.setAttribute(
+          "d",
+          areaFor(0, cutoffIndex, animatedYFor),
+        );
+        projectedArea.setAttribute(
+          "d",
+          areaFor(cutoffIndex, n - 1, animatedYFor),
+        );
+      },
+    }));
   }
 
   instance.toXY = toXY;
@@ -2189,6 +2197,8 @@ function renderChartMetricTabs() {
 // a full rebuild is simpler and cheap at this scale (a handful of countries
 // × 151 years).
 function renderTrendChart({ animate = false } = {}) {
+  trendChartAnimationHandle?.cancel();
+  trendChartAnimationHandle = null;
   const svg = elements.trendChart;
   const width = svg.clientWidth || 900;
   const height = svg.clientHeight || 360;
@@ -2511,9 +2521,10 @@ function renderTrendChart({ animate = false } = {}) {
   svg.replaceChildren(...elementsToAppend);
 
   if (growingLines.length) {
-    const start = performance.now();
-    const step = (now) => {
-      const eased = easeOutCubic(Math.min(1, (now - start) / CHART_LINE_GROW_MS));
+    trendChartAnimationHandle = runChartAnimation({
+      duration: CHART_LINE_GROW_MS,
+      easing: easeOutCubic,
+      onFrame: (eased) => {
       growingLines.forEach(({ el, series, from, to }) => {
         el.setAttribute(
           "d",
@@ -2522,9 +2533,11 @@ function renderTrendChart({ animate = false } = {}) {
           ),
         );
       });
-      if (eased < 1) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
+      },
+      onFinish: () => {
+        trendChartAnimationHandle = null;
+      },
+    });
   }
 }
 
@@ -2579,6 +2592,8 @@ function setChartViewActive(active) {
     renderTrendChart({ animate: true });
     renderChartTable();
   } else if (currentYearIndex >= 0) {
+    trendChartAnimationHandle?.cancel();
+    trendChartAnimationHandle = null;
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had
     // before) — catch it up now that it's visible again. instant: true
