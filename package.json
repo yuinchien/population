@@ -2,7 +2,6 @@
   "name": "population",
   "version": "1.0.0",
   "description": "A static data visualization web app using native JavaScript, CSS, SVG, and the World Bank Open Data API.",
-  "main": "app.js",
   "scripts": {
     "dev": "vite",
     "test": "node --test test/*.test.mjs",

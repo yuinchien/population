@@ -29,6 +29,12 @@ import {
   VIEW_CONFIG,
 } from "./view-config.mjs";
 import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
+import { buildCountrySummary } from "./country-summary.mjs";
+import { parseUrlState, serializeUrlState } from "./url-state.mjs";
+import {
+  adjacentMilestoneYears,
+  createTourController,
+} from "./tour-controller.mjs";
 import {
   buildLinePath,
   chartXFor,
@@ -758,7 +764,13 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
     setStatusTitle();
     updateMilestoneNav(null);
     typeStatus(
-      buildCountrySummary(selectedCountry, year),
+      buildCountrySummary({
+        country: selectedCountry,
+        year,
+        years: yearsData,
+        historicalCutoffYear,
+        formatPopulation: formatPeakPopulation,
+      }),
       elements.detailSummary,
       {
         instant: true,
@@ -833,24 +845,6 @@ function sortedMilestoneYears() {
 // side rather than being disabled outright — the slider can land anywhere
 // (dragging, deep links, chart-marker scrubbing), and these buttons are the
 // fastest way back onto the story from wherever that leaves you.
-function adjacentMilestoneYears(year) {
-  const years = sortedMilestoneYears();
-  const index = years.indexOf(year);
-  if (index !== -1) {
-    return {
-      prev: index > 0 ? years[index - 1] : null,
-      next: index < years.length - 1 ? years[index + 1] : null,
-    };
-  }
-  let prev = null;
-  let next = null;
-  for (const y of years) {
-    if (y < year) prev = y;
-    else if (y > year && next === null) next = y;
-  }
-  return { prev, next };
-}
-
 // year is null while a country/group detail view is showing its own status
 // instead of the global story — milestone nav isn't relevant there, so both
 // buttons are simply disabled rather than pointed at the global timeline.
@@ -872,7 +866,7 @@ function updateMilestoneNav(year) {
     elements.milestoneNext.disabled = true;
     return;
   }
-  const { prev, next } = adjacentMilestoneYears(year);
+  const { prev, next } = adjacentMilestoneYears(years, year);
   elements.milestonePrev.disabled = prev == null;
   elements.milestoneNext.disabled = next == null;
 }
@@ -887,8 +881,11 @@ function goToYear(year) {
 }
 
 function stepMilestone(delta) {
-  stopTour();
-  const { prev, next } = adjacentMilestoneYears(yearsData[currentYearIndex]);
+  tourController.stop();
+  const { prev, next } = adjacentMilestoneYears(
+    sortedMilestoneYears(),
+    yearsData[currentYearIndex],
+  );
   const target = delta < 0 ? prev : next;
   if (target == null) return;
   goToYear(target);
@@ -898,13 +895,6 @@ function stepMilestone(delta) {
 // dwelling on each long enough to read the status text before moving on.
 // A fixed dwell (rather than measuring text length) is simplest and the
 // milestone blurbs are all similar, short-paragraph lengths.
-const TOUR_STEP_DURATION_MS = 6000;
-let tourTimer = null;
-
-function isTourPlaying() {
-  return tourTimer !== null;
-}
-
 function setTourButtonState(playing) {
   elements.milestoneTourIcon.textContent = playing ? "pause" : "play_arrow";
   const label = playing ? "Pause milestone tour" : "Play milestone tour";
@@ -922,7 +912,7 @@ function resetTourProgress() {
 
 // Restarts the fill-to-100% sweep timed to exactly one dwell period, so it
 // reads as "time remaining on this milestone" rather than decoration.
-function animateTourProgress() {
+function animateTourProgress(durationMs) {
   const fill = elements.milestoneProgressFill;
   fill.style.transition = "none";
   fill.style.width = "0%";
@@ -930,54 +920,18 @@ function animateTourProgress() {
   // transition is re-enabled — otherwise the browser coalesces both style
   // writes and the fill just jumps straight to 100% with no visible sweep.
   void fill.offsetWidth;
-  fill.style.transition = `width ${TOUR_STEP_DURATION_MS}ms linear`;
+  fill.style.transition = `width ${durationMs}ms linear`;
   fill.style.width = "100%";
 }
 
-function stopTour() {
-  if (tourTimer === null) return;
-  clearTimeout(tourTimer);
-  tourTimer = null;
-  setTourButtonState(false);
-  resetTourProgress();
-}
-
-function scheduleNextTourStep() {
-  animateTourProgress();
-  tourTimer = setTimeout(() => {
-    const years = sortedMilestoneYears();
-    const index = years.indexOf(yearsData[currentYearIndex]);
-    if (index === -1) {
-      stopTour();
-      return;
-    }
-    // Loop back to the first milestone after the last one, so the tour
-    // reads as a continuous rotation rather than something that "ends".
-    const nextIndex = (index + 1) % years.length;
-    goToYear(years[nextIndex]);
-    scheduleNextTourStep();
-  }, TOUR_STEP_DURATION_MS);
-}
-
-function startTour() {
-  const years = sortedMilestoneYears();
-  if (!years.length) return;
-  // Starting mid-tour from wherever the slider already sits reads as more
-  // natural than always resetting to the first milestone.
-  if (years.indexOf(yearsData[currentYearIndex]) === -1) {
-    goToYear(years[0]);
-  }
-  setTourButtonState(true);
-  scheduleNextTourStep();
-}
-
-function toggleTour() {
-  if (isTourPlaying()) {
-    stopTour();
-  } else {
-    startTour();
-  }
-}
+const tourController = createTourController({
+  getMilestoneYears: sortedMilestoneYears,
+  getCurrentYear: () => yearsData[currentYearIndex],
+  goToYear,
+  onPlayingChange: setTourButtonState,
+  onProgressReset: resetTourProgress,
+  onProgressStart: animateTourProgress,
+});
 
 // Types the status line out character-by-character with a blinking cursor,
 // so the peak-year callout actually catches the eye instead of silently
@@ -1400,31 +1354,21 @@ function closeCountryDetail() {
 // slider passes through) so a copied link reopens to the same view —
 // country/group detail, or the chart view with its metric and selected
 // countries — instead of always landing back on the plain globe.
-function urlParamsFromState() {
-  const params = new URLSearchParams();
-  if (viewMode === "map") params.set("mode", "map");
+function urlStateFromApp() {
+  const state = { mode: viewMode };
   if (chartViewActive) {
-    params.set("view", "chart");
-    params.set("metric", chartMetricKey);
-    if (selectedChartCountries.length) {
-      params.set("countries", selectedChartCountries.join(","));
-    }
+    Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (selectedCountry) {
-    params.set("view", "country");
-    params.set("country", selectedCountry.iso3);
+    Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
-    params.set("view", "group");
-    params.set("groupMode", selectedLegend.mode);
-    params.set("group", selectedLegend.label);
+    Object.assign(state, { view: "group", groupMode: selectedLegend.mode, group: selectedLegend.label });
   }
-  if (currentYearIndex >= 0) {
-    params.set("year", String(yearsData[currentYearIndex]));
-  }
-  return params;
+  if (currentYearIndex >= 0) state.year = yearsData[currentYearIndex];
+  return state;
 }
 
 function syncUrlFromState() {
-  const query = urlParamsFromState().toString();
+  const query = serializeUrlState(urlStateFromApp());
   const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
   window.history.replaceState(null, "", url);
 }
@@ -1436,45 +1380,31 @@ function syncUrlFromState() {
 // syncUrlFromState()) rather than reading window.location.search live,
 // since by this point that's already been overwritten with default state.
 function applyUrlStateFromLocation(search) {
-  const params = new URLSearchParams(search);
+  const state = parseUrlState(search, {
+    years: yearsData,
+    countryCodes: countriesData.map((country) => country.iso3),
+  });
+  if (state.year != null) goToYear(state.year);
+  if (state.mode === "map") setViewMode("map");
 
-  const yearParam = Number(params.get("year"));
-  if (yearsData.includes(yearParam)) goToYear(yearParam);
-
-  if (params.get("mode") === "map") setViewMode("map");
-
-  const view = params.get("view");
-  if (view === "chart") {
-    const countriesParam = params.get("countries");
-    if (countriesParam) {
-      const iso3List = countriesParam
-        .split(",")
-        .map((code) => code.trim().toUpperCase())
-        .filter((code) => countriesData.some((c) => c.iso3 === code));
-      if (iso3List.length) selectedChartCountries = iso3List;
-    }
+  if (state.view === "chart") {
+    if (state.countries.length) selectedChartCountries = state.countries;
     // Countries/metric are settled before the panel opens, so its own
     // renderTrendChart({ animate: true }) call is both the first one that
     // reflects the deep-linked state and the only one that's actually
     // visible — no need for a redundant plain re-render after it.
-    const metric = params.get("metric");
-    if (metric) setChartMetric(metric);
+    if (state.metric) setChartMetric(state.metric);
     renderChartCountryChips();
     setChartViewActive(true);
-  } else if (view === "country") {
-    const iso3 = params.get("country")?.toUpperCase();
-    const country = countriesData.find((c) => c.iso3 === iso3);
+  } else if (state.view === "country") {
+    const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
-  } else if (view === "group") {
-    const groupMode = params.get("groupMode");
-    const groupLabel = params.get("group");
-    if (groupLabel && (groupMode === "region" || groupMode === "income")) {
-      if (groupMode !== colorMode) setColorMode(groupMode);
-      const entry = legendEntriesFor(groupMode).find(
-        ([label]) => label === groupLabel,
+  } else if (state.view === "group") {
+      if (state.groupMode !== colorMode) setColorMode(state.groupMode);
+      const entry = legendEntriesFor(state.groupMode).find(
+        ([label]) => label === state.group,
       );
       if (entry) selectLegendItem(entry[0], entry[1]);
-    }
   }
 }
 
@@ -1483,7 +1413,7 @@ function selectLegendItem(label, color) {
     closeDetailPanel();
     return;
   }
-  stopTour();
+  tourController.stop();
   selectedLegend = { mode: colorMode, label, color };
   renderLegend();
   renderDetailPanel();
@@ -1567,7 +1497,7 @@ function openCountryDetail(country) {
   // country detail panel the group table uses — that panel and the chart
   // overlay are both full-screen, so the chart has to step aside first.
   if (chartViewActive) setChartViewActive(false);
-  stopTour();
+  tourController.stop();
   selectedCountry = country;
   elements.tooltip.hidden = true;
   renderCountryDetail();
@@ -2502,7 +2432,7 @@ function renderTrendChart({ animate = false } = {}) {
     let dragging = false;
     dragHit.addEventListener("pointerdown", (event) => {
       dragging = true;
-      stopTour();
+      tourController.stop();
       dragHit.setPointerCapture(event.pointerId);
       previewYear(yearForClientX(event.clientX));
     });
@@ -2590,7 +2520,7 @@ function setChartViewActive(active) {
     ),
   );
   if (active) {
-    stopTour();
+    tourController.stop();
     renderTrendChart({ animate: true });
     renderChartTable();
   } else if (currentYearIndex >= 0) {
@@ -2603,55 +2533,6 @@ function setChartViewActive(active) {
     applyYear(yearsData[currentYearIndex], { instant: true });
   }
   syncUrlFromState();
-}
-
-function buildCountrySummary(country, year) {
-  const isProjected = year > historicalCutoffYear;
-  const index = yearsData.indexOf(year);
-  const population = formatPeakPopulation(country.populations[index]);
-  const peakYear = country.peakYear;
-  const caption = isProjected ? "Projected" : "Historical";
-  const iso2 = convertAlpha3ToAlpha2(country.iso3);
-  // Tense follows isProjected rather than a single fixed "is" — a year
-  // that's already happened reads oddly described as a projection, and a
-  // future year reads oddly stated as settled fact.
-  const lead = isProjected
-    ? `<span class="country-capsule">${country.name}</span> is projected to be home to <span class="underlined">${population}</span> people in ${year}.`
-    : `<span class="country-capsule">${country.name}</span> was home to <span class="underlined">${population}</span> people in ${year}.`;
-
-  // computePeakYear() returns null when the max sits at either end of the
-  // series — i.e. there's no interior peak, the population is still rising
-  // (or was already falling) across the whole 1950-2100 window.
-  let trend;
-  if (peakYear == null) {
-    const lastYear = yearsData[yearsData.length - 1];
-    trend = `Its population is projected to keep growing through ${lastYear}, with no peak yet in sight.`;
-  } else if (peakYear === year) {
-    // isProjected here is really "is peakYear projected", since they're
-    // the same year in this branch — a historical peak shouldn't still
-    // read as a future projection just because the lead sentence pattern
-    // does.
-    trend = isProjected
-      ? `This is projected to be its peak — the highest its population will reach.`
-      : `This was its peak — the highest its population reached.`;
-  } else {
-    // Distinct from the selected year's own tense: the peak year can be
-    // historical even while browsing a later, still-projected year (or
-    // vice versa), and "a projected peak" is only accurate when the peak
-    // itself, not just the currently-selected year, falls after the cutoff.
-    const peakIsProjected = peakYear > historicalCutoffYear;
-    const peakPopulation = formatPeakPopulation(
-      country.populations[yearsData.indexOf(peakYear)],
-    );
-    trend =
-      year < peakYear
-        ? peakIsProjected
-          ? `That number is projected to keep climbing until it peaks near ${peakPopulation} in <span class="underlined">${peakYear}</span>.`
-          : `That number kept climbing until it peaked at ${peakPopulation} in ${peakYear}.`
-        : `That's down from ${peakIsProjected ? "a projected peak" : "a peak"} of ${peakPopulation} in <span class="underlined">${peakYear}</span>.`;
-  }
-
-  return `<div class="caption mono-uppercase">${caption}</div> ${lead} ${trend}`;
 }
 
 function setColorMode(mode) {
@@ -2928,7 +2809,7 @@ async function init() {
     // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps.
-    elements.yearSlider.addEventListener("pointerdown", stopTour);
+    elements.yearSlider.addEventListener("pointerdown", tourController.stop);
 
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
@@ -3005,11 +2886,11 @@ async function init() {
     // });
     elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
     elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
-    elements.milestoneTour.addEventListener("click", toggleTour);
+    elements.milestoneTour.addEventListener("click", tourController.toggle);
     // #exploreMilestones' markup is gone along with the old #milestoneRow —
     // guarded the same way as its .hidden toggle above, rather than
     // assuming it won't come back.
-    elements.exploreMilestones?.addEventListener("click", toggleTour);
+    elements.exploreMilestones?.addEventListener("click", tourController.toggle);
     elements.menuToggle.addEventListener("click", () => {
       const isOpen = document.body.classList.toggle("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
