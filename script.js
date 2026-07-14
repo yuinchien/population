@@ -762,6 +762,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
       elements.detailSummary,
       {
         instant: true,
+        rich: true,
       },
     );
     return;
@@ -769,7 +770,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   if (selectedLegend && !elements.detailPanel.hidden) {
     setStatusTitle();
     updateMilestoneNav(null);
-    typeStatus(
+    renderDetailStatus(
       buildDetailStatus({
         year,
         countries: groupCountries ?? selectedCountries(),
@@ -779,8 +780,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
         legend: selectedLegend,
         metricFor,
       }),
-      elements.detailSummary,
-      { instant: true },
     );
     return;
   }
@@ -989,7 +988,11 @@ function toggleTour() {
 // #detailSummary is ever being typed into at a time (they're mutually
 // exclusive with the detail panel's visibility), so a new call anywhere
 // should still invalidate whatever was previously in flight.
-function typeStatus(text, el = elements.status, { instant = false } = {}) {
+function typeStatus(
+  text,
+  el = elements.status,
+  { instant = false, rich = false } = {},
+) {
   const token = ++statusTypingToken;
   // #statusTitle now lives inside #status as its lead-in span rather than
   // as a separate element next to it — replaceChildren() below would
@@ -997,7 +1000,11 @@ function typeStatus(text, el = elements.status, { instant = false } = {}) {
   const titlePrefix = el === elements.status ? [elements.statusTitle] : [];
   if (instant) {
     const textNode = document.createElement("div");
-    textNode.innerHTML = text;
+    if (rich) {
+      textNode.innerHTML = text;
+    } else {
+      textNode.textContent = text;
+    }
     el.replaceChildren(...titlePrefix, textNode);
     return;
   }
@@ -1017,6 +1024,13 @@ function typeStatus(text, el = elements.status, { instant = false } = {}) {
     }
   };
   step();
+}
+
+function renderDetailStatus(status) {
+  const badge = document.createElement("span");
+  badge.className = "caption mono-uppercase";
+  badge.textContent = status.period;
+  elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
 }
 
 function applyYear(year, { instant = false } = {}) {

@@ -144,7 +144,7 @@ test("buildDetailStatus highlights older income-group age profiles", () => {
     }),
   ];
 
-  const text = buildDetailStatus({
+  const status = buildDetailStatus({
     year: 2050,
     countries: highIncome,
     allCountries: [...highIncome, ...others],
@@ -154,9 +154,9 @@ test("buildDetailStatus highlights older income-group age profiles", () => {
     metricFor,
   });
 
-  assert.match(text, /^2050 projection:/);
-  assert.match(text, /High-income has the oldest age profile/);
-  assert.match(text, /Borduria is highest at 49\.0 yrs/);
+  assert.equal(status.period, "projection");
+  assert.match(status.text, /^High-income has the oldest age profile/);
+  assert.match(status.text, /Borduria is highest at 49\.0 yrs/);
 });
 
 test("buildDetailStatus highlights regional growth when growth dominates", () => {
@@ -183,7 +183,7 @@ test("buildDetailStatus highlights regional growth when growth dominates", () =>
     }),
   ];
 
-  const text = buildDetailStatus({
+  const status = buildDetailStatus({
     year: 2026,
     countries: selected,
     allCountries: [...selected, ...others],
@@ -193,9 +193,9 @@ test("buildDetailStatus highlights regional growth when growth dominates", () =>
     metricFor,
   });
 
-  assert.match(text, /^2026:/);
-  assert.match(text, /South Asia still leans toward growth/);
-  assert.match(text, /Deltora has the fastest rate at 1\.20%/);
+  assert.equal(status.period, "historical");
+  assert.match(status.text, /^South Asia still leans toward growth/);
+  assert.match(status.text, /Deltora has the fastest rate at 1\.20%/);
 });
 
 test("displayGroupLabel removes income suffixes and shortens long MENA labels", () => {
