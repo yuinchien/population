@@ -43,7 +43,7 @@ export const DEFAULT_COLOR = "var(--color-teal)";
 export const INCOME_GROUP_COLORS = {
   "High-income countries": "var(--color-yellow)",
   "Middle-income countries": "var(--color-blue)",
-  "Low-income countries": "var(--color-orange)",
+  "Low-income countries": "var(--color-pink)",
 };
 
 export const UNCLASSIFIED_INCOME = "Not classified";
