@@ -1,6 +1,6 @@
 :root {
     --slider-size: 20px;
-    --color-bg: #F3F2EF;
+    --color-bg: #FBFBFA;
     --color-text: #222;
     --color-muted: #666;
     --color-milestone: #ff48b0;
@@ -458,7 +458,7 @@ body.country-detail #colorMode {
     pointer-events: none;
     display: flex;
     flex-direction: column;
-    gap: 0px;
+    gap: 2px;
 }
 .legend-item {
     display: flex;
@@ -1123,7 +1123,7 @@ body.view-chart #calloutLayer {
 }
 
 .trend-chart-year-drag {
-    fill: tomato;
+    fill: black;
     cursor: ew-resize;
     touch-action: none;
     stroke-width: 10;
