@@ -2224,9 +2224,9 @@ function renderTrendChart({ animate = false } = {}) {
   const n = yearsData.length;
   const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
   // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
-  // yrs"); right padding fits each line's own country-name label, drawn
-  // directly off its end point instead of a separate legend.
-  const pad = { top: 16, right: 100, bottom: 24, left: 48 };
+  // yrs"); the compact right padding only needs to fit the ISO alpha-2
+  // labels drawn directly off each line's end point.
+  const pad = { top: 16, right: 32, bottom: 24, left: 48 };
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -2445,7 +2445,7 @@ function renderTrendChart({ animate = false } = {}) {
       // fill: color,
     });
     label.style.setProperty("--color", color);
-    label.textContent = country.name;
+    label.textContent = convertAlpha3ToAlpha2(country.iso3) ?? country.iso3;
     elementsToAppend.push(label);
   });
 

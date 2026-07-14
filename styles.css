@@ -735,7 +735,7 @@ body.country-detail #colorMode {
     .country-summary-meta {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
         margin-bottom: 8px;
     }
 
@@ -745,7 +745,7 @@ body.country-detail #colorMode {
 
     .country-summary-flag {
         flex: none;
-        width: 24px;
+        width: 18px;
         height: 18px;
         background-position: center;
         background-size: cover;
@@ -1179,8 +1179,8 @@ body.view-chart #calloutLayer {
 
 .chip-flag {
     flex: none;
-    width: 18px;
-    height: 13px;
+    width: 14px;
+    height: 14px;
     background-size: cover;
     background-position: center;
     border-radius: 2px;
