@@ -39,6 +39,12 @@ import {
   adjacentMilestoneYears,
   createTourController,
 } from "./tour-controller.mjs";
+import { createCountryChartGeometry } from "./country-chart.mjs";
+import { createSparklineGeometry } from "./sparkline-chart.mjs";
+import {
+  separateTrendLineLabels,
+  TREND_CHART_PADDING,
+} from "./trend-chart.mjs";
 import {
   buildLinePath,
   chartXFor,
@@ -1556,13 +1562,6 @@ function renderCountryDetail() {
 // can cheaply reposition the marker on every slider tick instead of
 // rebuilding the whole chart.
 function buildCountryCharts(country, { animate = false } = {}) {
-  const n = yearsData.length;
-  const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
-  const maxPopulation = Math.max(
-    0,
-    ...country.populationsHigh,
-    ...country.populations,
-  );
   // Sized to the chart's actual rendered box (panel is already visible by
   // this point) rather than fixed constants — the SVG uses
   // preserveAspectRatio="none" to fill that box exactly, so a mismatched
@@ -1574,14 +1573,19 @@ function buildCountryCharts(country, { animate = false } = {}) {
   const svg = elements.countryChart;
   svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
   const pad = COUNTRY_CHART_PADDING;
-  const innerW = chartWidth - pad.left - pad.right;
-  const innerH = chartHeight - pad.top - pad.bottom;
-
-  function xyFor(index, value) {
-    const x = chartXFor(index, n, innerW, pad.left);
-    const y = chartYFor(value, 0, maxPopulation, innerH, pad.top);
-    return [x, y];
-  }
+  const {
+    count: n,
+    cutoffIndex,
+    baselineY,
+    xyFor,
+  } = createCountryChartGeometry({
+    country,
+    years: yearsData,
+    historicalCutoffYear,
+    width: chartWidth,
+    height: chartHeight,
+    padding: pad,
+  });
 
   svg.replaceChildren();
   const growingBars = [];
@@ -1610,7 +1614,6 @@ function buildCountryCharts(country, { animate = false } = {}) {
   // One vertical stroke per year (from the baseline up to that year's
   // value) rather than a connected curve — historical years solid,
   // projected years dashed, matching the sparklines' bar-code treatment.
-  const baselineY = pad.top + innerH;
   const bars = document.createDocumentFragment();
   for (let i = 0; i < n; i++) {
     const value = country.populations[i];
@@ -1819,60 +1822,33 @@ function populateCountrySparkline(
   const height = svg.clientHeight || 40;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  const { min, range } = computeValueRange(series, METRICS[key]?.referenceValue);
   // Metrics without a meaningful universal threshold (life expectancy,
   // median age — unlike fertility's 2.1 replacement line or growth's 0%)
   // fall back to the series' own minimum, so every sparkline still draws a
   // baseline for visual consistency even though it has nothing to flip
   // below.
-  const referenceValue = METRICS[key]?.referenceValue ?? min;
+  const configuredReferenceValue = METRICS[key]?.referenceValue;
+  const { min } = computeValueRange(series, configuredReferenceValue);
+  const referenceValue = configuredReferenceValue ?? min;
   const n = series.length;
-
-  function yFor(value) {
-    return chartYFor(value, min, range, height);
-  }
-  function toXY(index, value) {
-    return [chartXFor(index, n, width), yFor(value)];
-  }
-
-  function pathFor(from, to, valueToY = yFor) {
-    return buildLinePath(
+  const { baselineY, toXY, yFor, pathFor, areaFor } =
+    createSparklineGeometry({
       series,
-      from,
-      to,
-      (i) => chartXFor(i, n, width),
-      valueToY,
-    );
-  }
-
-  // Closes the curve segment back down (or up) to the baseline at its own
-  // start/end x, turning the line into a filled shape — the fill follows
-  // the curve above or below the baseline exactly as drawn, so a metric
-  // that dips below its reference value fills downward there too.
-  function areaFor(from, to, baselineY, valueToY = yFor) {
-    const linePath = pathFor(from, to, valueToY);
-    if (!linePath) return "";
-    let firstX = null;
-    let lastX = null;
-    for (let i = from; i <= to; i++) {
-      if (series[i] == null) continue;
-      const [x] = toXY(i, series[i]);
-      if (firstX == null) firstX = x;
-      lastX = x;
-    }
-    return `${linePath} L ${lastX.toFixed(1)} ${baselineY.toFixed(1)} L ${firstX.toFixed(1)} ${baselineY.toFixed(1)} Z`;
-  }
+      cutoffIndex,
+      width,
+      height,
+      referenceValue: configuredReferenceValue,
+    });
 
   const elementsToAppend = [];
-  const baselineY = yFor(referenceValue);
   const initialYFor = animate ? () => baselineY : yFor;
   const historicalArea = svgEl("path", {
     class: "sparkline-area historical",
-    d: areaFor(0, cutoffIndex, baselineY, initialYFor),
+    d: areaFor(0, cutoffIndex, initialYFor),
   });
   const projectedArea = svgEl("path", {
     class: "sparkline-area projected",
-    d: areaFor(cutoffIndex, n - 1, baselineY, initialYFor),
+    d: areaFor(cutoffIndex, n - 1, initialYFor),
   });
   // Filled area between the curve and the baseline, drawn first so the
   // baseline/curve/dot render on top of it.
@@ -1936,11 +1912,11 @@ function populateCountrySparkline(
       );
       historicalArea.setAttribute(
         "d",
-        areaFor(0, cutoffIndex, baselineY, animatedYFor),
+        areaFor(0, cutoffIndex, animatedYFor),
       );
       projectedArea.setAttribute(
         "d",
-        areaFor(cutoffIndex, n - 1, baselineY, animatedYFor),
+        areaFor(cutoffIndex, n - 1, animatedYFor),
       );
       if (eased < 1) requestAnimationFrame(step);
     };
@@ -2226,7 +2202,7 @@ function renderTrendChart({ animate = false } = {}) {
   // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
   // yrs"); the compact right padding only needs to fit the ISO alpha-2
   // labels drawn directly off each line's end point.
-  const pad = { top: 16, right: 32, bottom: 24, left: 48 };
+  const pad = TREND_CHART_PADDING;
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
@@ -2428,15 +2404,7 @@ function renderTrendChart({ animate = false } = {}) {
   // Two lines ending at close values would otherwise print their labels
   // right on top of each other — nudge later ones (in ascending y order)
   // down just enough to keep each one legible.
-  const MIN_LABEL_GAP = 13;
-  lineLabels.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < lineLabels.length; i++) {
-    const gap = lineLabels[i].y - lineLabels[i - 1].y;
-    if (gap < MIN_LABEL_GAP) {
-      lineLabels[i].y = lineLabels[i - 1].y + MIN_LABEL_GAP;
-    }
-  }
-  lineLabels.forEach(({ country, color, x, y }) => {
+  separateTrendLineLabels(lineLabels).forEach(({ country, color, x, y }) => {
     const label = svgEl("text", {
       class: "trend-line-label",
       x,
