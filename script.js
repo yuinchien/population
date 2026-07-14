@@ -547,7 +547,7 @@ function showHoverCountryFill(country) {
   if (!rings) return;
   // Same darkening CSS color-mix(in srgb, <color> 50%, black 50%) would
   // produce — halving each channel toward black.
-  const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.1);
+  const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.05);
   // Russia's continental outline spans most of a hemisphere. Its flat
   // triangulation must be subdivided before spherical projection; otherwise
   // a handful of huge faces cut through and overlap the visible globe.
@@ -588,7 +588,7 @@ function showHoverCountryFill(country) {
     const material = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
-      opacity: 0.8,
+      opacity: 0.85,
       // Reprojecting a flat triangulation onto a sphere can flip a
       // triangle's winding relative to the camera depending on where on
       // the globe it lands — DoubleSide avoids backface-culling some of
