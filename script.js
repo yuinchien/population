@@ -73,6 +73,10 @@ const VIEW_TRANSITION_MS = SCRAMBLE_IN_MS + SCRAMBLE_HOLD_MS + SCRAMBLE_OUT_MS;
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see renderTrendChart).
 const CHART_LINE_GROW_MS = 500;
+// How long markers/labels take to fade in once their curve has finished
+// growing — used by both the main country chart and its sparklines so a
+// marker never appears sitting on a curve that hasn't caught up to it yet.
+const CHART_MARKER_FADE_IN_MS = 320;
 
 // "Peak population year" callouts: a leader line drawn along the surface
 // normal at a country's location, from a country whose modeled population
@@ -1763,8 +1767,7 @@ function buildCountryCharts(country, { animate = false } = {}) {
   };
 
   if (animate && growingBars.length) {
-    const FADE_IN_MS = 320;
-    const totalDuration = CHART_LINE_GROW_MS + FADE_IN_MS;
+    const totalDuration = CHART_LINE_GROW_MS + CHART_MARKER_FADE_IN_MS;
     countryChartAnimationHandles.push(runChartAnimation({
       duration: totalDuration,
       onFrame: (_eased, progress) => {
@@ -1781,7 +1784,7 @@ function buildCountryCharts(country, { animate = false } = {}) {
 
         const fadeT = Math.min(
           1,
-          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / FADE_IN_MS),
+          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / CHART_MARKER_FADE_IN_MS),
         );
         revealElements.forEach((element) => {
           element.style.opacity = String(fadeT);
@@ -1930,15 +1933,27 @@ function populateCountrySparkline(
     d: pathFor(cutoffIndex, n - 1, initialYFor),
   });
   elementsToAppend.push(historicalPath, projectedPath);
+  // The dot/connector line mark this metric's exact value for the
+  // currently selected year — showing them at full opacity while the
+  // curve underneath is still growing up from the baseline would leave
+  // them floating over a shape that hasn't caught up to their position
+  // yet, so they fade in only once the curve finishes (same two-phase
+  // timeline as the main chart's own marker, just without the bar grow).
+  if (animate) {
+    dot.style.opacity = "0";
+    dotLine.style.opacity = "0";
+  }
   svg.append(...elementsToAppend, dotLine, dot);
 
   if (animate) {
+    const totalDuration = CHART_LINE_GROW_MS + CHART_MARKER_FADE_IN_MS;
     countryChartAnimationHandles.push(runChartAnimation({
-      duration: CHART_LINE_GROW_MS,
-      easing: easeOutCubic,
-      onFrame: (eased) => {
+      duration: totalDuration,
+      onFrame: (_eased, progress) => {
+        const elapsed = progress * totalDuration;
+        const growT = easeOutCubic(Math.min(1, elapsed / CHART_LINE_GROW_MS));
         const animatedYFor = (value) =>
-          baselineY + (yFor(value) - baselineY) * eased;
+          baselineY + (yFor(value) - baselineY) * growT;
         historicalPath.setAttribute(
           "d",
           pathFor(0, cutoffIndex, animatedYFor),
@@ -1955,6 +1970,13 @@ function populateCountrySparkline(
           "d",
           areaFor(cutoffIndex, n - 1, animatedYFor),
         );
+
+        const fadeT = Math.min(
+          1,
+          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / CHART_MARKER_FADE_IN_MS),
+        );
+        dot.style.opacity = String(fadeT);
+        dotLine.style.opacity = String(fadeT);
       },
     }));
   }
@@ -3240,6 +3262,10 @@ window.addEventListener("resize", () => {
   if (selectedCountry) {
     clearTimeout(countryChartResizeTimer);
     countryChartResizeTimer = setTimeout(() => {
+      // Re-checked rather than trusting the outer `if` above: the panel
+      // can close during this 120ms debounce, and selectedCountry (read
+      // live, not captured) would be null by the time this fires.
+      if (!selectedCountry) return;
       buildCountryCharts(selectedCountry);
       updateCountryDetailForYear(yearsData[currentYearIndex]);
     }, 120);

@@ -3,15 +3,15 @@ export const PEOPLE_PER_DOT = 500_000;
 export const DOT_CONFIG = {
   opacity: 0.9,
   hoverFadeAlpha: 0.5,
-  pulseAmplitude: 7,
-  pulseFrequencyMin: 0.8,
-  pulseFrequencyRange: 2.0,
+  pulseAmplitude: 8,
+  pulseFrequencyMin: 0.7,
+  pulseFrequencyRange: 2.1,
 };
 
 export const VIEW_CONFIG = {
   globe: {
     radius: 200,
-    dotSize: 3.2,
+    dotSize: 3,
     cameraDistance: 200 * 3.1,
     minDistance: 200 * 1.3,
     maxDistance: 200 * 8,
@@ -21,7 +21,7 @@ export const VIEW_CONFIG = {
   map: {
     width: 400,
     height: 200,
-    dotSize: 1.5,
+    dotSize: 1.2,
     cameraDistance: 360,
     minDistance: 250,
     maxDistance: 1200,

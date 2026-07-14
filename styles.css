@@ -529,7 +529,10 @@ body.country-detail #colorMode {
     white-space: nowrap;
     pointer-events: none;
     transform: translate(-50%, -130%);
-    z-index: 1000;
+    /* Above .detail-panel/#viewMode (1001) — both can be open while a
+       chart underneath them (sparklines, the trend chart) is hovered, and
+       this tooltip needs to paint over them, not get hidden behind. */
+    z-index: 1002;
     font-weight: 500;
     display: flex;
     align-items: center;
