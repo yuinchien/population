@@ -1,6 +1,9 @@
 export function prefersReducedMotion(matchMediaImpl = globalThis.matchMedia) {
   return typeof matchMediaImpl === "function"
-    ? matchMediaImpl("(prefers-reduced-motion: reduce)").matches
+    ? matchMediaImpl.call(
+        globalThis,
+        "(prefers-reduced-motion: reduce)",
+      ).matches
     : false;
 }
 
@@ -11,8 +14,8 @@ export function runChartAnimation({
   onFinish = () => {},
   reduceMotion = prefersReducedMotion(),
   now = () => performance.now(),
-  requestFrame = globalThis.requestAnimationFrame,
-  cancelFrame = globalThis.cancelAnimationFrame,
+  requestFrame = (callback) => globalThis.requestAnimationFrame(callback),
+  cancelFrame = (frameId) => globalThis.cancelAnimationFrame(frameId),
 }) {
   let frameId = null;
   let cancelled = false;

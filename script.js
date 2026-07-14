@@ -33,7 +33,7 @@ import {
   VIEW_CONFIG,
 } from "./view-config.mjs";
 import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
-import { buildCountrySummary } from "./country-summary.mjs";
+import { buildCountrySummary } from "./country-summary-model.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -784,7 +784,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   if (selectedCountry && !elements.detailPanel.hidden) {
     setStatusTitle();
     updateMilestoneNav(null);
-    typeStatus(
+    renderCountrySummary(
       buildCountrySummary({
         country: selectedCountry,
         year,
@@ -792,11 +792,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
         historicalCutoffYear,
         formatPopulation: formatPeakPopulation,
       }),
-      elements.detailSummary,
-      {
-        instant: true,
-        rich: true,
-      },
     );
     return;
   }
@@ -966,7 +961,7 @@ const tourController = createTourController({
 function typeStatus(
   text,
   el = elements.status,
-  { instant = false, rich = false } = {},
+  { instant = false } = {},
 ) {
   const token = ++statusTypingToken;
   // #statusTitle now lives inside #status as its lead-in span rather than
@@ -975,11 +970,7 @@ function typeStatus(
   const titlePrefix = el === elements.status ? [elements.statusTitle] : [];
   if (instant) {
     const textNode = document.createElement("div");
-    if (rich) {
-      textNode.innerHTML = text;
-    } else {
-      textNode.textContent = text;
-    }
+    textNode.textContent = text;
     el.replaceChildren(...titlePrefix, textNode);
     return;
   }
@@ -999,6 +990,38 @@ function typeStatus(
     }
   };
   step();
+}
+
+function renderCountrySummary(summary) {
+  const meta = document.createElement("div");
+  meta.className = "country-summary-meta";
+
+  const caption = document.createElement("div");
+  caption.className = "caption mono-uppercase";
+  caption.textContent = summary.caption;
+  meta.append(caption);
+
+  if (summary.flagUrl) {
+    const flag = document.createElement("span");
+    flag.className = "country-summary-flag";
+    flag.style.backgroundImage = `url(${summary.flagUrl})`;
+    flag.setAttribute("aria-hidden", "true");
+    meta.append(flag);
+  }
+
+  const copy = document.createElement("div");
+  copy.className = "country-summary-copy";
+  summary.segments.forEach((segment) => {
+    if (!segment.className) {
+      copy.append(document.createTextNode(segment.text));
+      return;
+    }
+    const span = document.createElement("span");
+    span.className = segment.className;
+    span.textContent = segment.text;
+    copy.append(span);
+  });
+  elements.detailSummary.replaceChildren(meta, copy);
 }
 
 function renderDetailStatus(status) {
@@ -1332,9 +1355,9 @@ function renderDetailPanel() {
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
-  // Country mode moves #detailSummary inside #countryDetail (see
-  // renderCountryDetail) so it scrolls together with the chart; restore it
-  // to its fixed spot above the table when coming back to a group.
+  // Keep the summary in the panel's second grid row. Country detail uses the
+  // flexible third row; moving the summary inside it would leave row two
+  // empty and allow the min-height:0 chart container to collapse there.
   elements.detailTable.before(elements.detailSummary);
   elements.countryDetail.hidden = true;
   elements.detailTable.hidden = false;
@@ -1352,7 +1375,12 @@ function closeDetailPanel() {
   elements.detailPanel.hidden = true;
   updateViewModeAvailability();
   renderLegend();
-  if (currentYearIndex >= 0) updateStatusPanel(yearsData[currentYearIndex]);
+  // Match chart-view close behavior: the underlying global status was
+  // already established before opening the detail overlay, so restore it
+  // immediately instead of replaying the typewriter animation.
+  if (currentYearIndex >= 0) {
+    updateStatusPanel(yearsData[currentYearIndex], { instant: true });
+  }
   syncUrlFromState();
 }
 
@@ -1541,10 +1569,10 @@ function renderCountryDetail() {
 
   elements.detailTable.hidden = true;
   elements.countryDetail.hidden = false;
-  // Unlike the group table (fixed summary above a separately-scrolling
-  // table), the country view scrolls as one unit — moving the same
-  // #detailSummary node inside #countryDetail (rather than duplicating it)
-  // keeps typeStatus()'s existing target working unchanged.
+  // Country detail's hero is a two-column composition: summary on the left,
+  // population chart on the right, followed by full-width sparklines.
+  // Keep the structured summary inside that grid instead of leaving it in
+  // the panel's standalone group-summary row.
   elements.countryDetail.prepend(elements.detailSummary);
   // Laid out (panel visible, chart card sized) before measuring its actual
   // width in buildCountryCharts() — otherwise clientWidth reads 0 while the

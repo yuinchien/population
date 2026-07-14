@@ -807,8 +807,15 @@ body.country-detail #colorMode {
     min-height: 0;
     overflow: auto;
     display: grid;
+    grid-row: 2 / -1;
     grid-template-columns: 1fr 2fr;
+    align-content: start;
     gap: var(--margin);
+}
+
+.country-detail > .detail-summary {
+    min-width: 0;
+    align-self: start;
 }
 
 .detail-table-container {
