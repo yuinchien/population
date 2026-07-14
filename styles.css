@@ -1354,7 +1354,7 @@ body.detail #calloutLayer {
     position: fixed;
     padding: 2px 4px;
     border-radius: 3px;
-    color: var(--color-text);
+    color: var(--color-callout-text, var(--color-text));
     background: var(--color-callout);
     font-weight: 500;
     font: inherit;

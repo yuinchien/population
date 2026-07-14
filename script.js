@@ -825,6 +825,15 @@ function updatePeakCallouts(year) {
         "--color-callout",
         `#${dotColor.getHexString()}`,
       );
+      const yellow = new THREE.Color(
+        resolveCssColor("var(--color-yellow)"),
+      );
+      labelEl.style.setProperty(
+        "--color-callout-text",
+        dotColor.getHex() === yellow.getHex()
+          ? "var(--color-bg)"
+          : "var(--color-text)",
+      );
       labelEl.addEventListener("click", () => openCountryDetail(country));
       elements.calloutLayer.append(labelEl);
 
