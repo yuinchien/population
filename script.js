@@ -144,8 +144,18 @@ function latLonToMapVector3(lat, lon) {
   );
 }
 
+function resolveCssColor(color) {
+  const variable = /^var\((--[^)]+)\)$/.exec(color)?.[1];
+  if (!variable) return color;
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(variable)
+    .trim();
+}
+
 function regionColor(region) {
-  return new THREE.Color(REGION_COLORS[region?.trim()] || DEFAULT_COLOR);
+  return new THREE.Color(
+    resolveCssColor(REGION_COLORS[region?.trim()] || DEFAULT_COLOR),
+  );
 }
 
 function incomeGroupLabel(iso3, incomeGroups) {
@@ -155,7 +165,9 @@ function incomeGroupLabel(iso3, incomeGroups) {
 }
 
 function incomeColor(label) {
-  return new THREE.Color(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR);
+  return new THREE.Color(
+    resolveCssColor(INCOME_GROUP_COLORS[label] || UNCLASSIFIED_COLOR),
+  );
 }
 
 function createDotTexture() {
@@ -1628,11 +1640,11 @@ const CHART_METRIC_KEYS = [
 // past 7.
 const CHART_LINE_COLORS = [
   ...Object.values(REGION_COLORS),
-  "#4fc3f7",
-  "#ba68c8",
-  "#ff8f6b",
-  "#8bc34a",
-  "#ffca28",
+  "#4C75F0",
+  "#A99BEA",
+  "#F46E54",
+  "#5CC8BB",
+  "#E9A0E2",
 ];
 
 // A dedicated tooltip (separate from #tooltip, which the 3D canvas's own
@@ -2664,7 +2676,7 @@ function renderTrendChart({ animate = false } = {}) {
       "text-anchor": "middle",
     });
     markerLabel.textContent = yearsData[currentYearIndex];
-    const DRAG_HIT_HALF_WIDTH = 1;
+    const DRAG_HIT_HALF_WIDTH = 10;
     const dragHit = svgEl("rect", {
       class: "trend-chart-year-drag",
       x: (Number(markerX) - DRAG_HIT_HALF_WIDTH).toFixed(1),

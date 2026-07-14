@@ -29,22 +29,22 @@ export const VIEW_CONFIG = {
 };
 
 export const REGION_COLORS = {
-  "East Asia & Pacific": "#5ec8e5",
-  "Europe & Central Asia": "#FFBD91",
-  "Latin America & Caribbean": "#D7BDFF",
-  "Middle East, North Africa, Afghanistan & Pakistan": "#e6b5c9",
-  "North America": "#E4E42F",
-  "South Asia": "#C0E08D",
-  "Sub-Saharan Africa": "#62c2b1",
+  "East Asia & Pacific": "var(--color-blue)",
+  "Europe & Central Asia": "var(--color-orange)",
+  "Latin America & Caribbean": "var(--color-purple)",
+  "Middle East, North Africa, Afghanistan & Pakistan": "var(--color-pink)",
+  "North America": "var(--color-yellow)",
+  "South Asia": "var(--color-teal)",
+  "Sub-Saharan Africa": "var(--color-teal-dark)",
 };
 
-export const DEFAULT_COLOR = "#5fe39a";
+export const DEFAULT_COLOR = "var(--color-teal)";
 
 export const INCOME_GROUP_COLORS = {
-  "High-income countries": "#62c2b1",
-  "Middle-income countries": "#ABBEF8",
-  "Low-income countries": "#E0DE70",
+  "High-income countries": "var(--color-yellow)",
+  "Middle-income countries": "var(--color-blue)",
+  "Low-income countries": "var(--color-orange)",
 };
 
 export const UNCLASSIFIED_INCOME = "Not classified";
-export const UNCLASSIFIED_COLOR = "#999999";
+export const UNCLASSIFIED_COLOR = "var(--color-subtle)";

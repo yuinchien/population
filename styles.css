@@ -1,11 +1,21 @@
 :root {
     --slider-size: 20px;
-    --color-bg: #FBFBFA;
-    --color-text: #222;
-    --color-muted: #666;
-    --color-milestone: #ff48b0;
-    --color-subtle: #888;
-    --color-border: rgba(0, 0, 0, 0.1);
+    color-scheme: dark;
+    --color-bg: #050505;
+    --color-surface: #1f1f1f;
+    --color-surface-raised: #1a1a18;
+    --color-text: #f3f1ed;
+    --color-muted: #aaa7a1;
+    --color-subtle: #74716d;
+    --color-border: rgba(243, 241, 237, 0.15);
+    --color-blue: #174fe5;
+    --color-teal: #39b2a3;
+    --color-pink: #d77dce;
+    --color-yellow: #F2EE68;
+    --color-orange: #f04424;
+    --color-purple: #8070dd;
+    --color-teal-dark: #168271;
+    --color-milestone: var(--color-pink);
     --border: 1px solid var(--color-border);
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
@@ -83,8 +93,8 @@ canvas.hovering-dot {
 }
 
 .glass {
-    background: rgba(255, 255, 255, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(12, 12, 11, 0.76);
+    border: 1px solid rgba(243, 241, 237, 0.12);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
@@ -268,7 +278,7 @@ button.milestone-nav-btn {
 #statusTitle,
 #status {
     font-family: var(--font-sans);
-    text-shadow: 0 0 1px white;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
 }
 
 #statusTitle {
@@ -404,7 +414,7 @@ button.milestone-nav-btn {
     color: var(--color-muted);
     font-weight: 500;
     pointer-events: none;
-    background: rgba(255, 255, 255, .9);
+    background: rgba(17, 17, 16, .92);
     padding: 0 4px;
 }
 
@@ -444,7 +454,7 @@ button {
 }
 
 .button-group button.active {
-    color: #fff;
+    color: var(--color-bg);
     background: var(--color-text);
     border-radius: 40px;
 }
@@ -494,13 +504,13 @@ body.country-detail #colorMode {
     flex: none;
     width: 8px;
     height: 8px;
-    margin-right: 6px;
+    margin-right: 4px;
     border-radius: 50%;
     background: var(--color-legend);
 }
 
 .legend-item.active {
-    background: color-mix(in srgb, white, var(--color-legend));
+    background: color-mix(in srgb, var(--color-legend) 30%, var(--color-surface-raised));
 }
 
 .no-scrollbar {
@@ -560,9 +570,7 @@ body.country-detail #colorMode {
 }
 
 .detail-panel {
-    --color-lines: color-mix(in srgb, var(--detail-color) 90%, black);
-    --color-marker: color-mix(in srgb, var(--detail-color) 70%, black);
-    --color-lighten: color-mix(in srgb, var(--detail-color) 12%, transparent);
+    --color-lighten: color-mix(in srgb, var(--detail-color) 8%, transparent);
     position: fixed;
     top: 0;
     right: 0;
@@ -711,8 +719,8 @@ body.country-detail #colorMode {
     width: calc(var(--ratio, 0) * 100%);
     background-color: color-mix(
         in srgb,
-        var(--detail-color, #82d8d5) 45%,
-        white
+        var(--detail-color) 20%,
+        transparent
     );
     z-index: -1;
 }
@@ -738,7 +746,9 @@ body.country-detail #colorMode {
         font-family: 'DM Mono';
         font-size: 1rem;
         font-weight: 700;
-        background: color-mix(in srgb, var(--detail-color), white);
+        background: var(--detail-color);
+        color: var(--color-bg);
+        /*color-mix(in srgb, var(--detail-color) 62%, var(--color-surface-raised));*/
         border-radius: 20px;
         padding: 4px 8px;
         line-height: 1;
@@ -854,9 +864,9 @@ body.country-detail #colorMode {
 }
 
 .country-chart-bar {
-    stroke: var(--color-lines);
+    stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
-    opacity: 0.9;
+    opacity: 0.7;
 }
 
 .country-chart-bar.projected {
@@ -864,14 +874,14 @@ body.country-detail #colorMode {
 }
 
 .country-chart-peak-line {
-    stroke: var(--color-marker);
+    stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
     opacity: 1;
 }
 
 .country-chart-peak-dot {
-    fill: var(--color-marker);
-    stroke: white;
+    fill: var(--detail-color);
+    stroke: var(--color-bg);
     stroke-width: 1;
 }
 
@@ -893,13 +903,13 @@ body.country-detail #colorMode {
 }
 
 .country-chart-marker-line {
-    stroke: var(--color-marker);
+    stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
 }
 
 .country-chart-marker-dot {
-    fill: var(--color-marker);
-    stroke: white;
+    fill: var(--detail-color);
+    stroke: var(--color-bg);
     stroke-width: 1;
 }
 
@@ -960,7 +970,7 @@ body.country-detail #colorMode {
 }
 
 .sparkline-area {
-    fill: color-mix(in srgb, var(--detail-color) 80%, white);
+    fill: color-mix(in srgb, var(--detail-color) 72%, var(--color-surface-raised));
     opacity: .4;
     stroke: none;
 }
@@ -970,7 +980,7 @@ body.country-detail #colorMode {
 }
 
 .sparkline-baseline {
-    stroke: var(--color-lines);
+    stroke: var(--detail-color);
     stroke-width: 1;
     opacity: 0.3;
 }
@@ -983,7 +993,7 @@ body.country-detail #colorMode {
 
 .sparkline-path {
     fill: none;
-    stroke: var(--color-lines);
+    stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
     opacity: 0.9;
 }
@@ -996,12 +1006,12 @@ body.country-detail #colorMode {
 }
 
 .sparkline-dot-line {
-    stroke: var(--color-marker);
+    stroke: var(--detail-color);
     stroke-width: 1.5;
 }
 
 .sparkline-dot {
-    fill: var(--color-marker);
+    fill: var(--detail-color);
 }
 
 /* opacity/max-height rather than display:none — matches .hide-for-detail's
@@ -1032,6 +1042,7 @@ body.view-chart #calloutLayer {
 }
 
 .chart-view {
+    --detail-color: #fff;
     position: fixed;
     top: 0;
     right: 0;
@@ -1039,7 +1050,7 @@ body.view-chart #calloutLayer {
     left: 0;
     z-index: 1000;
     display: flex;
-    background: rgba(255, 255, 255, 0.7);
+    background: rgba(5, 5, 5, 0.9);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1055,39 +1066,16 @@ body.view-chart #calloutLayer {
 .chart-view .button-group {
     border: none;
     padding: var(--margin);
-    border-top: var(--border);
 }
 .chart-view .button-group button {
-    border-radius: 20px;
-    border: 1px solid var(--color-text);
-    /*background: none;
+    border-radius: 2px;
     border: none;
-    font-family: var(--font-mono);
-    font-size: 1rem;
-    font-weight: 500;
-    display: block;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    min-width: 240px;
-    height: var(--button-size);
-    gap: 10px;
-    opacity: .5;
-    cursor: pointer;*/
-
-    /*&:before {
-        width: 8px;
-        height: 8px;
-        border-radius: 8px;
-        border: 1px solid var(--color-text);
-        content: "";
-    }*/
+    background: var(--color-surface);
     &.active {
         opacity: 1;
+        background: white;
+        border-radius: 20px;
     }
-    /*&.active:before {
-        background: var(--color-text);
-    }*/
 }
 
 .chart-content {
@@ -1122,7 +1110,6 @@ body.view-chart #calloutLayer {
 }
 
 .chart-insight {
-    --detail-color: #ccc;
     max-width: 38ch;
     margin-top: 0;
     margin-bottom: calc(var(--margin) * 1.5);
@@ -1130,7 +1117,7 @@ body.view-chart #calloutLayer {
 
 .trend-line-label {
     font-weight: 500;
-    fill: color-mix(in srgb, var(--color) 70%, black);
+    fill: color-mix(in srgb, var(--color) 82%, var(--color-text));
 }
 
 .trend-chart {
@@ -1173,18 +1160,18 @@ body.view-chart #calloutLayer {
     opacity: 0;
 }
 
-.trend-chart-year-marker {
-    stroke: var(--color-text);
+.chart-view .trend-chart-year-marker {
+    stroke: var(--detail-color);
     stroke-width: 1;
-    opacity: 0.6;
+    opacity: 1;
 }
 
 .trend-chart-year-pill {
-    fill: var(--color-text);
+    fill: var(--detail-color);
 }
 
 .trend-chart-year-label {
-    fill: white;
+    fill: var(--color-bg);
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 700;
@@ -1192,11 +1179,10 @@ body.view-chart #calloutLayer {
 }
 
 .trend-chart-year-drag {
-    /*fill: transparent;*/
+    fill: transparent;
     cursor: ew-resize;
     touch-action: none;
-    stroke-width: 10;
-    stroke: transparent;
+    stroke: none;
 }
 
 .trend-chart-baseline-label,
@@ -1219,15 +1205,15 @@ body.view-chart #calloutLayer {
 .chip-input {
     position: relative;
     flex: none;
+    flex: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     padding: 8px;
-    /*flex-grow: 1;*/
     border-radius: 8px;
-    background: #fff;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+    background: var(--color-surface);
+    /*box-shadow: 0 0 0 1px var(--color-border);*/
     flex-shrink: 1;
 }
 
@@ -1254,8 +1240,8 @@ body.view-chart #calloutLayer {
     padding: 3px 4px 3px 6px;
     background: color-mix(
         in srgb,
-        var(--chart-line-color) 50%,
-        white
+        var(--chart-line-color) 42%,
+        var(--color-surface-raised)
     );
     font-weight: 500;
 }
@@ -1300,7 +1286,7 @@ body.view-chart #calloutLayer {
     left: 0;
     right: 0;
     overflow-y: auto;
-    background: #fff;
+    background: var(--color-surface-raised);
     border-radius: 8px;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
     z-index: 10;
@@ -1323,7 +1309,7 @@ body.view-chart #calloutLayer {
 .chip-suggestion:focus,
 .chip-suggestion:hover,
 .chip-suggestion.highlighted {
-    background: #f5f5f5;
+    background: var(--color-border);
 }
 
 .chip-suggestion-flag {
@@ -1366,7 +1352,7 @@ body.detail #calloutLayer {
     padding: 2px 4px;
     border-radius: 3px;
     color: var(--color-text);
-    background: color-mix(in srgb, var(--color-callout) 70%, white);
+    background: var(--color-callout);
     font-weight: 500;
     font: inherit;
     white-space: nowrap;
@@ -1392,7 +1378,7 @@ body.detail #calloutLayer {
     border-radius: 24px;
     border: none;
     color: var(--color-text);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(243, 241, 237, 0.1);
     cursor: pointer;
 }
 
@@ -1538,7 +1524,7 @@ body.menu-open .menu-toggle-icon::after {
         transform: translateX(-120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
 
-        background: rgba(255, 255, 255, 0.8);
+        background: rgba(12, 12, 11, 0.9);
         -webkit-backdrop-filter: blur(16px);
         backdrop-filter: blur(16px);
     }
