@@ -13,7 +13,7 @@
     --bg-gradient: linear-gradient(180deg, #f0f0f0 0%, #dedede 100%);
     --dash-size: 8px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
-    --margin: 20px;
+    --margin: 16px;
     --icon-size: 24px;
     --button-size: 32px;
 }
@@ -122,13 +122,6 @@ body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
     max-height: 0;
-}
-
-.topbar {
-    display: flex;
-    align-items: center;
-    height: 40px;
-    gap: 4px;
 }
 
 .detail-back {
@@ -423,6 +416,10 @@ button.milestone-nav-btn {
     gap: calc(var(--margin) / 2);
 }
 
+button {
+    flex-shrink: 0;
+}
+
 .button-group button {
     display: flex;
     gap: 4px;
@@ -614,6 +611,7 @@ body.country-detail #colorMode {
     margin: 24px 0 12px 0;
 }
 
+.btn-return,
 .detail-close {
     display: flex;
     align-items: center;
@@ -977,12 +975,13 @@ body.view-chart #calloutLayer {
     display: none;
 }
 
-body.view-chart #overlayChart {
+
+.topbar {
+    display: flex;
+    align-items: center;
     padding: var(--margin);
     margin-top: -4px;
-    display: flex;
     gap: var(--margin);
-    align-items: center;
 }
 
 .chart-view {
@@ -1026,7 +1025,8 @@ body.view-chart #overlayChart {
     flex: 3;
     min-height: 0;
     display: flex;
-    padding: var(--margin) 40px 24px var(--margin);
+    padding: var(--margin);
+    margin-bottom: var(--margin);
 }
 
 /* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
@@ -1119,11 +1119,12 @@ body.view-chart #overlayChart {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 8px;
     flex-grow: 1;
-    border-radius: 24px;
+    border-radius: 8px;
     background: #fff;
     box-shadow: 0 0 2px 0px rgba(0,0,0,.1);
+    flex-shrink: 1;
 }
 
 .chip-input-chips {
@@ -1384,6 +1385,10 @@ body.menu-open .menu-toggle-icon::after {
     h1 {
         display: none;
     }
+    .btn-return {
+        align-self: flex-start;
+        margin-top: 4px;
+    }
     #chartMetricTabs {
         display: none;
     }
@@ -1394,10 +1399,7 @@ body.menu-open .menu-toggle-icon::after {
         width: auto;
         left: 0;
     }
-    body.view-chart #overlayChart {
-        width: 100%;
-        padding: 48px var(--margin) var(--margin) var(--margin);
-    }
+
     body.view-chart .detail-panel-header {
         height: auto;
     }
@@ -1421,12 +1423,11 @@ body.menu-open .menu-toggle-icon::after {
         bottom: 16px;
     }
     .chart-content {
-        padding-top: 56px;
         padding-left: 0;
         padding-right: 0;
     }
 
-    .menu-toggle {
+    body:not(.view-chart) .menu-toggle {
         display: block;
     }
     #viewMode {
@@ -1459,10 +1460,10 @@ body.menu-open .menu-toggle-icon::after {
         z-index: 10001;
     }
 
-    .chip-input {
+    /*.chip-input {
         align-self: flex-start;
         margin-top: var(--margin);
-    }
+    }*/
 
     .chart-view {
         left: 0;
@@ -1473,8 +1474,7 @@ body.menu-open .menu-toggle-icon::after {
         flex-wrap: wrap;
     }
 
-    body.menu-open:not(.view-chart) #overlayMain,
-    body.menu-open.view-chart #overlayChart {
+    body.menu-open:not(.view-chart) #overlayMain {
         transform: translateX(0);
     }
 

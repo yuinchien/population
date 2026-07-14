@@ -214,7 +214,10 @@
 
         <section id="chartView" class="chart-view glass" hidden>
 
-            <div class="overlay" id="overlayChart">
+            <div class="topbar">
+                <button id="chartViewClose" class="btn-return" type="button" aria-label="Close chart view" title="Close">
+                    <span class="material-symbols-outlined">arrow_back</span>
+                </button>
                 <div id="chartCountryPicker" class="chip-input">
                     <div id="chartCountryChips" class="chip-input-chips"></div>
                     <input
@@ -230,9 +233,7 @@
                         hidden
                     ></div>
                 </div>
-                <button id="chartViewClose" class="detail-close" type="button" aria-label="Close chart view" title="Close">
-                    <span class="material-symbols-outlined">close</span>
-                </button>
+
             </div>
 
             <div class="chart-content">
