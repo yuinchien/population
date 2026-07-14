@@ -752,7 +752,7 @@ body.country-detail #colorMode {
 
     .country-summary-flag {
         flex: none;
-        width: 18px;
+        width: 24px;
         height: 18px;
         background-position: center;
         background-size: cover;

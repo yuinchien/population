@@ -266,13 +266,14 @@ export function convertAlpha3ToAlpha2(code) {
   return ISO3_TO_ISO2[code.toUpperCase()] || null;
 }
 
-export function flagIconUrl(iso3) {
+export function flagIconUrl(iso3, square=true) {
   // The flag-icons package (and this project's public/flags/ copy of it)
   // names files in lowercase — convertAlpha3ToAlpha2() returns uppercase
   // codes, so this needs its own lowercasing rather than relying on a
   // case-insensitive filesystem lucking it into working (which local dev
   // sometimes does, but a GitHub Pages deploy never will).
-  return `./flags/1x1/${convertAlpha3ToAlpha2(iso3)?.toLowerCase()}.svg`;
+  const folder = square ? '1x1' : '4x3';
+  return `./flags/${folder}/${convertAlpha3ToAlpha2(iso3)?.toLowerCase()}.svg`;
 }
 
 async function fetchJson(url, fetchImpl) {

@@ -2,9 +2,6 @@ export function getAppElements(root = document) {
   return {
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
-    // titleYear: root.querySelector("#titleYear"),
-    // milestoneNav: root.querySelector("#milestoneNav"),
-    // milestoneRow: root.querySelector("#milestoneRow"),
     milestoneTour: root.querySelector("#milestoneTour"),
     milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
     milestonePrev: root.querySelector("#milestonePrev"),
@@ -16,7 +13,6 @@ export function getAppElements(root = document) {
     status: root.querySelector("#status"),
     tooltip: root.querySelector("#tooltip"),
     chartTooltip: root.querySelector("#chartTooltip"),
-    // yearControl: root.querySelector("#yearControl"),
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
     metrics: root.querySelector("#metrics"),
