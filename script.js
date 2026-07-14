@@ -109,6 +109,14 @@ const hoverCountryGroup = new THREE.Group();
 scene.add(hoverCountryGroup);
 let hoverCountry = null;
 const globeFillTessellator = new TessellateModifier(5, 8);
+// Rebuilding a large country's fill — especially the globe tessellation
+// pass — on every single re-hover gets expensive fast, and jittering the
+// mouse across a dense dot cluster's edge re-triggers it repeatedly for
+// geometry that hasn't changed. Cache built meshes per iso3+viewMode (the
+// two projections aren't interchangeable) and only dispose on eviction,
+// not on every hover-out.
+const hoverFillCache = new Map(); // `${iso3}:${viewMode}` -> THREE.Mesh[]
+const HOVER_FILL_CACHE_LIMIT = 12;
 
 function pointSegmentDistanceSquared(point, start, end) {
   const dx = end[0] - start[0];
@@ -664,13 +672,12 @@ function positionsFor(country) {
 const HOVER_FILL_GLOBE_RADIUS = GLOBE_RADIUS + DOT_CONFIG.pulseAmplitude + 4;
 const HOVER_FILL_MAP_Z = 2;
 
+// Only detaches meshes from the scene — doesn't dispose them, since they
+// may still be sitting in hoverFillCache for reuse. Disposal happens solely
+// on cache eviction in showHoverCountryFill().
 function clearHoverCountryFill() {
   if (!hoverCountry) return;
-  hoverCountryGroup.children.slice().forEach((mesh) => {
-    hoverCountryGroup.remove(mesh);
-    mesh.geometry.dispose();
-    mesh.material.dispose();
-  });
+  hoverCountryGroup.clear();
   hoverCountry = null;
 }
 
@@ -688,10 +695,24 @@ function showHoverCountryFill(country) {
   hoverCountry = country;
   const rings = countryBorders?.[country.iso3];
   if (!rings) return;
-  // Same darkening CSS color-mix(in srgb, <color> 50%, black 50%) would
-  // produce — halving each channel toward black.
+
+  const cacheKey = `${country.iso3}:${viewMode}`;
+  const cached = hoverFillCache.get(cacheKey);
+  if (cached) {
+    cached.forEach((mesh) => hoverCountryGroup.add(mesh));
+    return;
+  }
+
+  // 5% toward black — enough to read as "darker" without muddying the
+  // region color.
   const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.05);
-  const fillRings = country.iso3 === "RUS" ? stitchOpenRings(rings) : rings;
+  // A no-op for countries with no antimeridian-split fragments (stitches
+  // only the open rings it finds, and passes closed ones through
+  // unchanged) — safe to call unconditionally rather than special-casing
+  // Russia by iso3, so any future country whose data ends up with open
+  // fragments gets the same fix automatically.
+  const fillRings = stitchOpenRings(rings);
+  const meshes = [];
   fillRings.forEach((ring) => {
     // A ring under 3 points can't form a polygon — shouldn't occur in the
     // shipped data, but cheap to guard against rather than handing
@@ -744,7 +765,21 @@ function showHoverCountryFill(country) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.renderOrder = 10;
     hoverCountryGroup.add(mesh);
+    meshes.push(mesh);
   });
+
+  hoverFillCache.set(cacheKey, meshes);
+  if (hoverFillCache.size > HOVER_FILL_CACHE_LIMIT) {
+    // Map iteration order is insertion order, so the first entry here is
+    // the oldest — evict it. The entry just inserted above is always last,
+    // so this can never evict what was just built.
+    const [oldestKey, oldestMeshes] = hoverFillCache.entries().next().value;
+    oldestMeshes.forEach((mesh) => {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    });
+    hoverFillCache.delete(oldestKey);
+  }
 }
 
 // Centroid of a country's precomputed dot cloud in the current view basis,
