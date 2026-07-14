@@ -22,6 +22,7 @@
     --letterspacing-uppercase: 0.01em;
     --overlay-width: 288px;
 
+    --trend-line-width: 4;
     --dash-size: 8px;
     --chart-stroke-width: clamp(1px, 1vw + 1px, 2.5px);
     --margin: 16px;
@@ -1131,7 +1132,7 @@ body.view-chart #calloutLayer {
 
 .trend-line {
     fill: none;
-    stroke-width: 3;
+    stroke-width: var(--trend-line-width);
     opacity: 0.9;
 }
 
@@ -1359,6 +1360,7 @@ body.detail #calloutLayer {
     pointer-events: auto;
     cursor: pointer;
     transform: translate(-50%, -100%);
+    box-shadow: 0 0 2px rgba(0,0,0,.5);
 }
 
 .peak-callout-label:focus-visible {
