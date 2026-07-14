@@ -400,6 +400,14 @@ button.milestone-nav-btn {
     white-space: nowrap;
 }
 
+.year-hover-value {
+    color: var(--color-muted);
+    font-weight: 500;
+    pointer-events: none;
+    background: rgba(255, 255, 255, .9);
+    padding: 0 4px;
+}
+
 .metric-range {
     margin-top: 1px;
     color: var(--color-subtle);

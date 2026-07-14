@@ -15,6 +15,7 @@ export function getAppElements(root = document) {
     chartTooltip: root.querySelector("#chartTooltip"),
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
+    yearHoverValue: root.querySelector("#yearHoverValue"),
     metrics: root.querySelector("#metrics"),
     metricPopulation: root.querySelector("#metricPopulation"),
     metricFertility: root.querySelector("#metricFertility"),

@@ -1226,6 +1226,31 @@ function updateYearLabels(year) {
   elements.yearValue.textContent = `${year}`;
 }
 
+function updateYearHoverLabel(event) {
+  const slider = elements.yearSlider;
+  const min = Number(slider.min);
+  const max = Number(slider.max);
+  const thumbSize = 8;
+  const rect = slider.getBoundingClientRect();
+  const trackWidth = Math.max(1, rect.width - thumbSize);
+  const ratio = Math.min(
+    1,
+    Math.max(0, (event.clientX - rect.left - thumbSize / 2) / trackWidth),
+  );
+  const year = Math.round(min + ratio * (max - min));
+  if (year === Number(slider.value)) {
+    elements.yearHoverValue.hidden = true;
+    return;
+  }
+  const thumbCenter = slider.offsetLeft + thumbSize / 2 + ratio * trackWidth;
+  elements.yearHoverValue.textContent = String(year);
+  elements.yearHoverValue.style.setProperty(
+    "--thumb-position",
+    `${thumbCenter}px`,
+  );
+  elements.yearHoverValue.hidden = false;
+}
+
 function legendEntriesFor(mode) {
   if (mode !== "income") return Object.entries(REGION_COLORS);
   return [
@@ -3042,6 +3067,10 @@ async function init() {
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
+    elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
+    elements.yearSlider.addEventListener("pointerleave", () => {
+      elements.yearHoverValue.hidden = true;
+    });
 
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
