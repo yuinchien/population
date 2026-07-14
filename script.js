@@ -2428,7 +2428,16 @@ function renderChartCountryChips() {
       const color = chartColorFor(country.iso3);
       const chip = document.createElement("span");
       chip.className = "chip";
-      if (color) chip.style.setProperty("--chart-line-color", color);
+      if (color) {
+        chip.style.setProperty("--chart-line-color", color);
+        const chipColor = new THREE.Color(resolveCssColor(color));
+        const yellow = new THREE.Color(
+          resolveCssColor("var(--color-yellow)"),
+        );
+        if (chipColor.getHex() === yellow.getHex()) {
+          chip.style.setProperty("--chip-text-color", "var(--color-bg)");
+        }
+      }
 
       const flag = document.createElement("span");
       flag.className = "chip-flag";

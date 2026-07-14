@@ -1246,6 +1246,7 @@ body.view-chart #calloutLayer {
     border-radius: 4px;
     padding: 3px 4px 3px 6px;
     background: color-mix(in srgb, var(--chart-line-color) 90%, white);
+    color: var(--chip-text-color, var(--color-text));
     font-weight: 500;
 }
 
