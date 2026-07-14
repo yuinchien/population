@@ -1014,10 +1014,11 @@ function applyYear(year, { instant = false } = {}) {
   if (!isFirstCall) triggerYearChangePulse();
   hoverFocusCountry = null;
   elements.tooltip.hidden = true;
-  // A slider move mid-transition invalidates the in-flight tween's index
-  // mapping (activeTotal/dotCountry are about to be rebuilt), so just cut
-  // straight to the target view's positions instead of finishing the morph.
-  transition = null;
+  // A slider move (or closing an initially deep-linked chart view) during a
+  // view transition invalidates the tween's dot-index mapping. Fully disable
+  // the GPU morph before rebuilding: merely nulling `transition` leaves
+  // uMorphActive enabled and freezes the dots at their last scramble frame.
+  settleViewTransition();
 
   const posAttr = pointsMesh.geometry.getAttribute("position");
   const colorAttr = pointsMesh.geometry.getAttribute("color");
@@ -2643,6 +2644,40 @@ function setMorphEndpoints(fromArr, toArr) {
   morphTo.needsUpdate = true;
 }
 
+function applySettledViewControls() {
+  controls.enabled = true;
+  if (viewMode === "globe") {
+    controls.enableRotate = true;
+    controls.enablePan = false;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = VIEW_CONFIG.globe.autoRotateSpeed;
+    controls.minDistance = VIEW_CONFIG.globe.minDistance;
+    controls.maxDistance = VIEW_CONFIG.globe.maxDistance;
+  } else {
+    controls.enableRotate = false;
+    controls.enablePan = true;
+    controls.autoRotate = false;
+    controls.minDistance = VIEW_CONFIG.map.minDistance;
+    controls.maxDistance = VIEW_CONFIG.map.maxDistance;
+  }
+}
+
+// Snaps an interrupted morph to the destination view. applyYear() immediately
+// rewrites the position buffer after this; this helper owns all the remaining
+// transition state that otherwise survives in the shader/camera/controls.
+function settleViewTransition() {
+  if (!transition) return;
+  camera.position.copy(transition.toCamPos);
+  controls.target.copy(transition.toTarget);
+  setDotSize(transition.toDotSize);
+  pointsMesh.material.uniforms.uMorphActive.value = 0;
+  pointsMesh.material.uniforms.uMorphT.value = 0;
+  transition = null;
+  isScrambledPhase = false;
+  isHoldPhase = false;
+  applySettledViewControls();
+}
+
 function setViewMode(mode) {
   if (mode === viewMode || !activeTotal) return;
 
@@ -2768,21 +2803,8 @@ function updateTransition() {
 
     transition = null;
     isScrambledPhase = false;
-    controls.enabled = true;
-    if (viewMode === "globe") {
-      controls.enableRotate = true;
-      controls.enablePan = false;
-      controls.autoRotate = true;
-      controls.autoRotateSpeed = VIEW_CONFIG.globe.autoRotateSpeed;
-      controls.minDistance = VIEW_CONFIG.globe.minDistance;
-      controls.maxDistance = VIEW_CONFIG.globe.maxDistance;
-    } else {
-      controls.enableRotate = false;
-      controls.enablePan = true;
-      controls.autoRotate = false;
-      controls.minDistance = VIEW_CONFIG.map.minDistance;
-      controls.maxDistance = VIEW_CONFIG.map.maxDistance;
-    }
+    isHoldPhase = false;
+    applySettledViewControls();
   }
 }
 
