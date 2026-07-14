@@ -489,7 +489,6 @@ body.country-detail #colorMode {
     margin-right: 6px;
     border-radius: 50%;
     background: var(--color-legend);
-    display: none;
 }
 
 .legend-item.active {
