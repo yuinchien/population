@@ -201,16 +201,13 @@ const DOT_VERTEX_SHADER = `
   attribute vec3 aMorphTo;
 
   attribute vec3 color;
-  attribute float aAlpha;
   attribute float aFrequency;
   attribute float aPhase;
 
   varying vec3 vColor;
-  varying float vAlpha;
 
   void main() {
     vColor = color;
-    vAlpha = aAlpha;
 
     vec3 basePos = uMorphActive > 0.5
       ? mix(aMorphFrom, aMorphTo, uMorphT)
@@ -242,11 +239,10 @@ const DOT_FRAGMENT_SHADER = `
   uniform float uOpacity;
 
   varying vec3 vColor;
-  varying float vAlpha;
 
   void main() {
     vec4 texColor = texture2D(map, gl_PointCoord);
-    gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * vAlpha * texColor.a);
+    gl_FragColor = vec4(vColor * texColor.rgb, uOpacity * texColor.a);
     // Three's THREE.Color stores values in linear space (color management
     // is on by default since r152) and built-in materials convert back to
     // the renderer's output color space via this exact chunk before
@@ -311,13 +307,11 @@ function updateMetricsPanel(year) {
 
 let pointsMesh = null;
 let basePositions = null; // pre-pulse baseline, rebuilt whenever the year changes
-let alphas = null;
 let frequencies = null;
 let phases = null;
 let currentDotSize = VIEW_CONFIG.globe.dotSize; // logical size (unscaled by pixelRatio)
 let dotCountry = [];
 let activeTotal = 0;
-let hoverFocusCountry = null;
 // Set once in setupScene() rather than rescanned on every legendEntriesFor()
 // call — the set of income labels present is fixed once countries load.
 let hasUnclassifiedIncome = false;
@@ -385,23 +379,6 @@ function writeDotColor(colorAttr, slot, country) {
   colorAttr.setXYZ(slot, color.r, color.g, color.b);
 }
 
-function writeDotAlpha(slot, country) {
-  alphas[slot] =
-    hoverFocusCountry && hoverFocusCountry !== country
-      ? DOT_CONFIG.hoverFadeAlpha
-      : 1;
-}
-
-function setHoverFocusCountry(country) {
-  if (hoverFocusCountry === country) return;
-  hoverFocusCountry = country;
-  if (!pointsMesh || !activeTotal) return;
-  for (let i = 0; i < activeTotal; i++) {
-    writeDotAlpha(i, dotCountry[i]);
-  }
-  pointsMesh.geometry.getAttribute("aAlpha").needsUpdate = true;
-}
-
 // Uniformly-distributed random points inside a sphere a bit smaller than
 // the globe itself — the "scrambled" mid-transition cloud.
 function computeScramblePositions(count) {
@@ -463,10 +440,6 @@ function setupScene(countries, incomeGroups) {
     new THREE.BufferAttribute(new Float32Array(maxTotal * 3), 3),
   );
   geometry.setAttribute(
-    "aAlpha",
-    new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
-  );
-  geometry.setAttribute(
     "aFrequency",
     new THREE.BufferAttribute(new Float32Array(maxTotal), 1),
   );
@@ -513,7 +486,6 @@ function setupScene(countries, incomeGroups) {
   scene.add(pointsMesh);
 
   basePositions = new Float32Array(maxTotal * 3);
-  alphas = geometry.getAttribute("aAlpha").array;
   frequencies = geometry.getAttribute("aFrequency").array;
   phases = geometry.getAttribute("aPhase").array;
   dotCountry = new Array(maxTotal);
@@ -609,14 +581,6 @@ function updatePeakCallouts(year) {
         "--color-callout",
         `#${dotColor.getHexString()}`,
       );
-      labelEl.addEventListener("pointerenter", () =>
-        setHoverFocusCountry(country),
-      );
-      labelEl.addEventListener("pointerleave", () =>
-        setHoverFocusCountry(null),
-      );
-      labelEl.addEventListener("focus", () => setHoverFocusCountry(country));
-      labelEl.addEventListener("blur", () => setHoverFocusCountry(null));
       labelEl.addEventListener("click", () => openCountryDetail(country));
       elements.calloutLayer.append(labelEl);
 
@@ -1060,7 +1024,6 @@ function applyYear(year, { instant = false } = {}) {
   // prior year for this one to visibly change *from*, so it would just
   // read as an unexplained flash rather than communicating a change.
   if (!isFirstCall) triggerYearChangePulse();
-  hoverFocusCountry = null;
   elements.tooltip.hidden = true;
   // A slider move (or closing an initially deep-linked chart view) during a
   // view transition invalidates the tween's dot-index mapping. Fully disable
@@ -1093,7 +1056,6 @@ function applyYear(year, { instant = false } = {}) {
       posAttr.array[i3 + 1] = y;
       posAttr.array[i3 + 2] = z;
       writeDotColor(colorAttr, cursor, country);
-      writeDotAlpha(cursor, country);
       frequencies[cursor] = country._freqs[i];
       phases[cursor] = country._phases[i];
       dotCountry[cursor] = country;
@@ -1106,7 +1068,6 @@ function applyYear(year, { instant = false } = {}) {
   pointsMesh.geometry.setDrawRange(0, activeTotal);
   posAttr.needsUpdate = true;
   colorAttr.needsUpdate = true;
-  pointsMesh.geometry.getAttribute("aAlpha").needsUpdate = true;
   pointsMesh.geometry.getAttribute("aFrequency").needsUpdate = true;
   pointsMesh.geometry.getAttribute("aPhase").needsUpdate = true;
 
@@ -3156,7 +3117,6 @@ renderer.domElement.addEventListener("pointerup", (event) => {
 // whole canvas, since most of it is just rotate/pan surface.
 function clearCanvasHover() {
   elements.tooltip.hidden = true;
-  setHoverFocusCountry(null);
   renderer.domElement.classList.remove("hovering-dot");
 }
 
@@ -3182,7 +3142,6 @@ function updateTooltip(event) {
     clearCanvasHover();
     return;
   }
-  setHoverFocusCountry(country);
   renderer.domElement.classList.add("hovering-dot");
 
   // A country with an active peak-year callout already shows its own

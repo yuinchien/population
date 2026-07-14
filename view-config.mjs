@@ -2,7 +2,6 @@ export const PEOPLE_PER_DOT = 500_000;
 
 export const DOT_CONFIG = {
   opacity: 0.9,
-  hoverFadeAlpha: 0.5,
   pulseAmplitude: 8,
   pulseFrequencyMin: 0.7,
   pulseFrequencyRange: 2.1,
