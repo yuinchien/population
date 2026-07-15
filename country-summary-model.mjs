@@ -67,7 +67,7 @@ export function buildCountrySummary({
   }
 
   return {
-    caption: isProjected ? "Projected" : "Historical",
+    caption: isProjected ? "Projection" : "Historical",
     flagUrl: iso2 ? `./flags/4x3/${iso2}.svg` : null,
     segments: [...lead, ...trend],
   };

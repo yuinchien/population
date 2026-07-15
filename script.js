@@ -2783,7 +2783,10 @@ function setChartTableSort(key) {
 
 function renderChartInsight() {
   const year = yearsData[currentYearIndex];
-  elements.chartInsightCaption.textContent = `${year}`;
+  // Same "Projection"/"Historical" pattern as the country detail view's own
+  // .caption badge (see buildCountrySummary in country-summary-model.mjs).
+  elements.chartInsightCaption.textContent =
+    year > historicalCutoffYear ? "Projection" : "Historical";
 
   const definition = METRICS[chartMetricKey];
   const ranked = chartCountryList()
@@ -2813,7 +2816,7 @@ function renderChartInsight() {
 
   if (chartMetricKey === "population") {
     elements.chartInsightText.textContent =
-      `${highest.country.name} leads at ${format(highest.value)}, followed by ` +
+      `In ${year}, ${highest.country.name} leads at ${format(highest.value)}, followed by ` +
       `${second.country.name} at ${format(second.value)}.`;
     return;
   }
@@ -2821,7 +2824,7 @@ function renderChartInsight() {
   const lowest = ranked.at(-1);
   const metricLabel = definition.label.toLowerCase();
   elements.chartInsightText.textContent =
-    `${highest.country.name} has the highest ${metricLabel} at ` +
+    `In ${year}, ${highest.country.name} has the highest ${metricLabel} at ` +
     `${format(highest.value)}, while ${lowest.country.name} has the lowest ` +
     `at ${format(lowest.value)}.`;
 }

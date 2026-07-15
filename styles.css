@@ -1199,7 +1199,6 @@ body.view-chart #calloutLayer {
     font: inherit;
     font-weight: 500;
     cursor: pointer;
-    appearance: none;
 }
 .projection-select:focus-visible {
     outline: var(--border);
