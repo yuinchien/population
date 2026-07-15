@@ -159,7 +159,6 @@ canvas.hovering-dot {
     font-family: var(--font-sans);
     font-size: 1.45rem;
     line-height: 1.4;
-    font-weight: 500;
 }
 
 .overlay {
@@ -251,7 +250,6 @@ h1 {
 }
 .status-wrapper p {
     margin: 10px 0 0 0;
-    font-weight: 500;
 }
 
 .milestone-nav {
@@ -511,7 +509,6 @@ body.country-detail #colorMode {
 }
 
 #legend {
-    pointer-events: none;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -673,7 +670,7 @@ body.country-detail #colorMode {
     background: transparent;
     cursor: pointer;
 }
-#chartViewClose {
+#chartPanelClose {
     position: fixed;
     right: 0;
     top: 0;
@@ -750,23 +747,34 @@ body.country-detail #colorMode {
 .detail-cell.country .detail-name {
     font-weight: 500;
 }
-.detail-cell.country:not(.sortable) .detail-name {
-    padding-left: 12px;
+#chartPanel .detail-cell.country:not(.sortable) .detail-name {
+    padding-left: 8px;
 }
-.detail-cell.country:before {
+#chartPanel .detail-cell.country:not(.sortable):before {
     content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: calc(var(--ratio, 0) * 100%);
+    width: 10px;
+    height: 10px;
+    border-radius: 10px;
     background-color: color-mix(
         in srgb,
-        var(--detail-color) 80%,
+        var(--detail-color) 90%,
+        white
+    );
+    z-index: -1;
+}
+#detailPanel .detail-cell.country:not(.sortable):before {
+    position: absolute;
+    content: "";
+    width: calc(var(--ratio, 0) * 100%);
+    height: 100%;
+    background-color: color-mix(
+        in srgb,
+        var(--detail-color) 50%,
         transparent
     );
     z-index: -1;
 }
+
 
 .detail-cell.number {
     justify-content: flex-end;
@@ -1163,9 +1171,9 @@ body.view-chart #calloutLayer {
 
 .topbar {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding: 0 80px 0 var(--margin);
-    height: calc(var(--margin)*2 + var(--button-size));
+    margin-top: calc(var(--margin) - 5px);
     gap: calc(var(--margin) / 2);
 }
 
@@ -1333,11 +1341,10 @@ select::picker(select) {
     flex-direction: row-reverse;
 }
 
-/* Equal split with .chart-card above (both flex: 1 from a 0 basis) — the
-   same .detail-table used by the group view, just reused here against
-   whichever countries are currently plotted. */
+/* Keep the supporting table compact so the time series remains the primary
+   visual and receives most of the horizontal space. */
 .chart-view .detail-table {
-    flex: .5;
+    flex: 0 0 clamp(280px, 32vw, 440px);
     min-height: 0;
     grid-template-rows: auto auto 1fr;
 }
@@ -1345,11 +1352,6 @@ select::picker(select) {
 .chart-insight {
     margin-top: 0;
     margin-bottom: calc(var(--margin) * 1.5);
-}
-
-.trend-line-label {
-    font-weight: 500;
-    fill: color-mix(in srgb, var(--color) 82%, var(--color-text));
 }
 
 .trend-chart {

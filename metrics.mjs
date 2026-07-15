@@ -134,4 +134,6 @@ export const DETAIL_METRIC_KEYS = [
   "fertility",
   "lifeExpectancy",
   "medianAge",
+  "ageDependencyRatio",
+  "netMigrationRate",
 ];

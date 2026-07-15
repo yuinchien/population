@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createCountryChartGeometry } from "../country-chart.mjs";
 import { createSparklineGeometry } from "../sparkline-chart.mjs";
-import { separateTrendLineLabels } from "../trend-chart.mjs";
 
 test("country chart geometry derives its cutoff, baseline, and coordinates", () => {
   const geometry = createCountryChartGeometry({
@@ -33,11 +32,4 @@ test("sparkline geometry builds line and closed area paths from one scale", () =
   assert.match(geometry.pathFor(0, 2), /^M /);
   assert.match(geometry.areaFor(0, 2), / Z$/);
   assert.equal(geometry.baselineValue, 1);
-});
-
-test("trend label layout separates overlapping endpoints without mutation", () => {
-  const labels = [{ y: 10 }, { y: 14 }, { y: 40 }];
-  const positioned = separateTrendLineLabels(labels, 13);
-  assert.deepEqual(positioned.map(({ y }) => y), [10, 23, 40]);
-  assert.deepEqual(labels.map(({ y }) => y), [10, 14, 40]);
 });

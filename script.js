@@ -42,10 +42,7 @@ import {
 } from "./tour-controller.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import { createSparklineGeometry } from "./sparkline-chart.mjs";
-import {
-  separateTrendLineLabels,
-  TREND_CHART_PADDING,
-} from "./trend-chart.mjs";
+import { TREND_CHART_PADDING } from "./trend-chart.mjs";
 import {
   cancelChartAnimations,
   runChartAnimation,
@@ -335,7 +332,7 @@ let countrySparklineInstances = [];
 const countryChartAnimationHandles = [];
 let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
-let chartViewActive = false;
+let chartPanelActive = false;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
@@ -957,9 +954,9 @@ function applyYear(year, { instant = false } = {}) {
   // so repositioning every dot on each year change here would be pure
   // wasted work — this keeps year-scrubbing (e.g. the draggable chart
   // marker) cheap by touching only what's actually visible. Closing the
-  // overlay (setChartViewActive) does one full applyYear() call to catch
+  // overlay (setchartPanelActive) does one full applyYear() call to catch
   // the 3D scene up to wherever this left it.
-  if (chartViewActive) {
+  if (chartPanelActive) {
     updateYearLabels(year);
     renderTrendChart();
     renderChartTable();
@@ -1469,7 +1466,7 @@ function closeCountryDetail() {
 // countries — instead of always landing back on the plain globe.
 function urlStateFromApp() {
   const state = { mode: viewMode };
-  if (chartViewActive) {
+  if (chartPanelActive) {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
@@ -1508,7 +1505,7 @@ function applyUrlStateFromLocation(search) {
     // visible — no need for a redundant plain re-render after it.
     if (state.metric) setChartMetric(state.metric);
     renderChartCountryChips();
-    setChartViewActive(true);
+    setchartPanelActive(true);
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -1609,7 +1606,7 @@ function openCountryDetail(country) {
   // A row click in the chart view's own table drills into the same full
   // country detail panel the group table uses — that panel and the chart
   // overlay are both full-screen, so the chart has to step aside first.
-  if (chartViewActive) setChartViewActive(false);
+  if (chartPanelActive) setchartPanelActive(false);
   tourController.stop();
   selectedCountry = country;
   elements.tooltip.hidden = true;
@@ -2203,7 +2200,7 @@ function groupMetricSeries(members, key) {
 // parameter) opens the right group instead of misreading this label under
 // whatever mode the globe happened to be left in.
 function openChartGroupDetail(legendMode, label, color) {
-  setChartViewActive(false);
+  setchartPanelActive(false);
   if (legendMode !== colorMode) setColorMode(legendMode);
   selectLegendItem(label, color);
 }
@@ -2522,8 +2519,8 @@ function renderTrendChart({ animate = false } = {}) {
   const n = yearsData.length;
   const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
   // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
-  // yrs"); the compact right padding only needs to fit the line-end labels
-  // (ISO alpha-2 in Country mode, the group name in Region/Income mode).
+  // yrs"). The right edge stays compact now that the chart does not render
+  // endpoint labels.
   const pad = TREND_CHART_PADDING;
   const chartTop = 4;
   const innerW = width - pad.left - pad.right;
@@ -2674,10 +2671,6 @@ function renderTrendChart({ animate = false } = {}) {
   labelLast.textContent = yearsData[n - 1];
   elementsToAppend.push(labelFirst, labelLast);
 
-  // Labeled directly off each line's own end point rather than through a
-  // separate legend — the chips above already double as one, so this is
-  // just about tying a color back to a country without eyeballing it.
-  const lineLabels = [];
   // Bottom of the plot area — every line starts flattened here and grows
   // up into its real shape below, when animate is on.
   const baselineY = pad.top + innerH;
@@ -2706,38 +2699,6 @@ function renderTrendChart({ animate = false } = {}) {
         { el: projectedPath, series, from: cutoffIndex, to: n - 1 },
       );
     }
-
-    let lastIndex = -1;
-    for (let i = n - 1; i >= 0; i--) {
-      if (series[i] != null) {
-        lastIndex = i;
-        break;
-      }
-    }
-    if (lastIndex !== -1) {
-      lineLabels.push({
-        item,
-        color,
-        x: xFor(lastIndex) + 6,
-        y: yFor(series[lastIndex]),
-      });
-    }
-  });
-
-  // Two lines ending at close values would otherwise print their labels
-  // right on top of each other — nudge later ones (in ascending y order)
-  // down just enough to keep each one legible.
-  separateTrendLineLabels(lineLabels).forEach(({ item, color, x, y }) => {
-    const label = svgEl("text", {
-      class: "trend-line-label",
-      x,
-      y: (y + 3).toFixed(1),
-      "text-anchor": "start",
-      // fill: color,
-    });
-    label.style.setProperty("--color", color);
-    label.textContent = item.label;
-    elementsToAppend.push(label);
   });
 
   // Marks the year the rest of the app (table below) is currently showing,
@@ -2876,7 +2837,7 @@ function setChartTableSort(key) {
   renderChartTable();
 }
 
-function renderChartInsight() {
+function renderChartInsight(items) {
   const year = yearsData[currentYearIndex];
   // Same isProjected split as buildCountrySummary in
   // country-summary-model.mjs — "is projected to X" for a future year
@@ -2888,7 +2849,7 @@ function renderChartInsight() {
     : "Historical";
 
   const definition = METRICS[chartMetricKey];
-  const ranked = chartItems()
+  const ranked = items
     .map((item) => ({
       item,
       value: item.series(chartMetricKey)[currentYearIndex],
@@ -2935,7 +2896,8 @@ function renderChartInsight() {
 // country, population, and the active chart metric.
 function renderChartTable() {
   if (!elements.chartTableRows) return;
-  renderChartInsight();
+  const items = chartItems();
+  renderChartInsight(items);
   const columns = chartTableColumns();
   if (!columns.some((column) => column.key === chartTableSort.key)) {
     chartTableSort = { key: "population", direction: "desc" };
@@ -2948,7 +2910,7 @@ function renderChartTable() {
     rowsEl: elements.chartTableRows,
     columns,
     sort: chartTableSort,
-    countries: chartItems(),
+    countries: items,
     onSort: setChartTableSort,
     onRowClick: (item) => item.onClick(),
     colorFor: (item) => item.color,
@@ -2960,10 +2922,10 @@ function renderChartTable() {
 // toggle's selection state — opening it never touches which of those two
 // is "active", so whichever was selected before is still the one shown
 // (and still marked active) once the overlay closes.
-function setChartViewActive(active) {
-  if (active === chartViewActive) return;
-  chartViewActive = active;
-  elements.chartView.hidden = !active;
+function setchartPanelActive(active) {
+  if (active === chartPanelActive) return;
+  chartPanelActive = active;
+  elements.chartPanel.hidden = !active;
   document.body.classList.toggle("view-chart", active);
   // #viewMode now stays visible while chart view is open rather than being
   // hidden behind it, so its active state needs to track "chart" here too —
@@ -3315,7 +3277,7 @@ async function init() {
     // refreshes whatever's already on screen once it lands.
     appData.countryDemographicMetricsPromise.then((data) => {
       countryDemographicMetrics = data;
-      if (chartViewActive) {
+      if (chartPanelActive) {
         renderTrendChart();
         renderChartTable();
       }
@@ -3395,15 +3357,15 @@ async function init() {
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.mode === "chart") {
-          setChartViewActive(true);
+          setchartPanelActive(true);
           return;
         }
-        setChartViewActive(false);
+        setchartPanelActive(false);
         setViewMode(btn.dataset.mode);
       });
     });
-    elements.chartViewClose.addEventListener("click", () =>
-      setChartViewActive(false),
+    elements.chartPanelClose.addEventListener("click", () =>
+      setchartPanelActive(false),
     );
     elements.chartProjectionScenario.value = chartProjectionScenario;
     updateProjectionScenarioVisibility();
@@ -3759,7 +3721,7 @@ window.addEventListener("resize", () => {
       updateCountryDetailForYear(yearsData[currentYearIndex]);
     }, 120);
   }
-  if (chartViewActive) {
+  if (chartPanelActive) {
     clearTimeout(countryChartResizeTimer);
     countryChartResizeTimer = setTimeout(renderTrendChart, 120);
   }
