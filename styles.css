@@ -3,7 +3,7 @@
     color-scheme: dark;
     --color-bg: #050505;
     --color-surface: #1f1f1f;
-    --color-surface-raised: #1a1a18;
+    --color-surface-raised: #222;
     --color-text: #f3f1ed;
     --color-muted: #aaa7a1;
     --color-subtle: #74716d;
@@ -158,7 +158,8 @@ canvas.hovering-dot {
 .paragraph {
     font-family: var(--font-sans);
     font-size: 1.45rem;
-    line-height: 1.35;
+    line-height: 1.4;
+    font-weight: 500;
 }
 
 .overlay {
@@ -219,10 +220,11 @@ h1 {
     position: fixed;
     z-index: var(--z-title);
     left: 0;
-    top: 2px;
-    margin: 16px var(--margin);
+    top: 0;
+    margin: var(--margin);
     font-size: 2rem;
     line-height: 1;
+    height: var(--button-size);
     font-weight: 500;
     font-family: var(--font-sans);
     text-decoration: underline;
@@ -237,7 +239,7 @@ h1 {
 .status-wrapper {
     position: fixed;
     left: var(--margin);
-    top: 58px;
+    top: calc(var(--margin) + var(--button-size));
     z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -248,7 +250,8 @@ h1 {
     overflow: initial;
 }
 .status-wrapper p {
-    margin: 0 0 4px;
+    margin: 10px 0 0 0;
+    font-weight: 500;
 }
 
 .milestone-nav {
@@ -512,6 +515,7 @@ body.country-detail #colorMode {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    margin-top: 8px;
 }
 .legend-item {
     display: flex;
@@ -670,8 +674,11 @@ body.country-detail #colorMode {
     cursor: pointer;
 }
 #chartViewClose {
+    position: fixed;
+    right: 0;
+    top: 0;
     align-self: flex-start;
-    margin-top: 4px;
+    margin: var(--margin);
 }
 
 
@@ -839,32 +846,44 @@ body.country-detail #colorMode {
 
 .tab-group {
     border-bottom: var(--border);
-    margin-bottom: 8px;
     display: flex;
+
+    button {
+        cursor: pointer;
+        position: relative;
+        font-family: var(--font-mono);
+        font-weight: 500;
+        font-size: 1rem;
+        border: none;
+        background: none;
+        height: var(--button-size);
+        padding: 0 12px;
+        opacity: .5;
+        &.active {
+            opacity: 1;
+        }
+        &.active:after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--color-text);
+        }
+    }
+
+    &.tall button {
+        height: 56px;
+        padding: 0 16px;
+        &.active:after {
+            height: 2px;
+        }
+    }
 }
-.tab-group button {
-    cursor: pointer;
-    position: relative;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    font-size: 1rem;
-    border: none;
-    background: none;
-    height: var(--button-size);
-    padding: 0 12px;
-    opacity: .5;
-    &.active {
-        opacity: 1;
-    }
-    &.active:after {
-        content: "";
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: var(--color-text);
-    }
+
+#chartMetricTabs {
+    padding: 0 var(--margin);
 }
 
 
@@ -1145,66 +1164,106 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--margin);
-    margin-top: -4px;
-    gap: var(--margin);
+    padding: 0 80px 0 var(--margin);
+    height: calc(var(--margin)*2 + var(--button-size));
+    gap: calc(var(--margin) / 2);
 }
 
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
+.custom-select {
+  &, &::picker(select) {
+    appearance: base-select;
+  }
 
-.projection-select-label {
-    position: absolute;
-    top: 0;
-    left: 60px;
-    z-index: 1;
-}
+  &::picker(select) {
+    transition:
+      opacity .2s ease,
+      transform .2s ease,
+      display .2s allow-discrete,
+      overlay .2s allow-discrete
+    ;
+  }
 
-.projection-select-label::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    right: 10px;
-    width: var(--icon-size);
-    height: var(--icon-size);
-    background-color: var(--color-text);
-    mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10h10l-5 5z'/%3E%3C/svg%3E") center / contain no-repeat;
-    transform: translateY(-50%);
-    pointer-events: none;
-}
-
-.projection-select-label[hidden] {
+  &::picker-icon {
     display: none;
+  }
+
+  &:open::picker-icon {
+    rotate: 180deg;
+  }
+
+  /* set the off stage styles */
+  &:not(:open)::picker(select) {
+    opacity: 0;
+    transform: scale(.95);
+  }
+
+  /* set the on stage styles */
+  &:open::picker(select) {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  > button {
+    > div {
+        inline-size: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+  }
+
+  min-height: 32px;
+  min-width: 180px;
+  padding: 8px 4px 8px 12px;
+  border: var(--border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+
+  option {
+      cursor: pointer;
+      padding: 10px;
+  }
+  /* The SVG's fill is baked into the data URI at parse time — it can't
+     reference var(--color-text) the way every other color in this file
+     does, so it was hardcoded to #1f1f1f (dark theme's --color-surface,
+     copied from wherever this icon was exported) and rendered invisible:
+     the same dark color as the checked option's own background. Hardcoded
+     to --color-text's dark-theme value here, with a light-theme override
+     below using its light-theme value instead. */
+  option::checkmark {
+      width: 24px;
+      height: 24px;
+      content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24px' viewBox='0 -960 960 960' width='24px' fill='%23f3f1ed'%3E%3Cpath d='M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z'/%3E%3C/svg%3E");
+  }
+
 }
 
-.projection-select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    height: 100%;
-    min-height: 38px;
-    padding: 8px 36px 8px 12px;
-    border: none;
-    border-radius: 8px;
-    color: var(--color-text);
-    background-color: var(--color-surface);
-    font: inherit;
-    font-weight: 500;
-    cursor: pointer;
+#chartProjectionScenario {
+    position: absolute;
+    left: 60px;
 }
-.projection-select:focus-visible {
+
+:root[data-theme="light"] .custom-select option::checkmark {
+    content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24px' viewBox='0 -960 960 960' width='24px' fill='%2317140f'%3E%3Cpath d='M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z'/%3E%3C/svg%3E");
+}
+
+select:focus-visible {
     outline: var(--border);
     outline-offset: 2px;
+}
+
+/* Style the dropdown list popup */
+select::picker(select) {
+  background-color: var(--color-surface);
+  border: none;
+  border-radius: 8px;
+  margin-top: 8px;
+  border: var(--border);
 }
 
 
@@ -1391,10 +1450,10 @@ body.view-chart #calloutLayer {
     gap: 8px;
     padding: 8px;
     border-radius: 8px;
+    border: var(--border);
     background: var(--color-surface);
     flex-shrink: 1;
-    /*width: 80%;*/
-    max-width: 960px;
+    max-width: 800px;
 }
 
 /* Collapsed (default): only the summary pill shows. Everything involved in
@@ -1607,7 +1666,7 @@ body.detail #calloutLayer {
 .peak-callout-label {
     appearance: none;
     position: fixed;
-    padding: 2px 4px;
+    padding: 0 4px;
     border-radius: 3px;
     color: var(--color-callout-text, var(--color-text));
     background: var(--color-callout);
@@ -1726,6 +1785,9 @@ body.menu-open .menu-toggle-icon::after {
     .btn-return {
         align-self: flex-start;
         margin-top: 4px;
+    }
+    .custom-select {
+        min-width: auto;
     }
     /* Pinned at the bottom of .chart-view (its last flex child, after
        .chart-card takes all the remaining space) — scrolls horizontally

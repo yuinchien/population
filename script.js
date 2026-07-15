@@ -1255,12 +1255,15 @@ function chartTableColumns() {
     "population",
     ...(chartMetricKey === "population" ? [] : [chartMetricKey]),
   ];
+  // metricFor/populationFor read off each item's own .series() rather than
+  // the global metricFor()/chartPopulationSeries(), so the same columns
+  // work whether rows are real countries (Country mode) or aggregated
+  // Region/Income groups (see chartItems()).
   return buildDetailColumns({
     currentYearIndex,
-    metricFor,
+    metricFor: (item, key) => item.series(key)[currentYearIndex],
     metricKeys,
-    populationFor: (country) =>
-      chartPopulationSeries(country)[currentYearIndex],
+    populationFor: (item) => item.series("population")[currentYearIndex],
   });
 }
 
@@ -2163,6 +2166,70 @@ function chartColorFor(iso3) {
   return CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
 }
 
+// Category aggregate for Region/Income mode: population sums across the
+// group's countries (matching how the app reports group/global totals
+// everywhere else), other metrics use a simple unweighted mean (matching
+// computeMetricStats() in status-insights.mjs's own group-vs-rest
+// comparisons, rather than introducing a second, population-weighted
+// convention just for this chart).
+function groupMetricSeries(members, key) {
+  const isPopulation = key === "population";
+  return yearsData.map((_, i) => {
+    const values = members
+      .map((country) => chartSeriesFor(country, key)[i])
+      .filter((value) => value != null);
+    if (!values.length) return null;
+    const sum = values.reduce((total, value) => total + value, 0);
+    return isPopulation ? sum : sum / values.length;
+  });
+}
+
+// .detail-panel and .chart-view are both full-screen overlays — same
+// reasoning as openCountryDetail() stepping the chart aside first. Also
+// switches colorMode to match so the globe/map's own Region/Income legend
+// (which selectLegendItem() reads via the ambient colorMode, not a
+// parameter) opens the right group instead of misreading this label under
+// whatever mode the globe happened to be left in.
+function openChartGroupDetail(legendMode, label, color) {
+  setChartViewActive(false);
+  if (legendMode !== colorMode) setColorMode(legendMode);
+  selectLegendItem(label, color);
+}
+
+// Country mode plots one line per hand-picked country; Region/Income modes
+// plot one aggregated line per category instead, with no picking needed
+// since that list is small and fixed. Both funnel through this same item
+// shape so renderTrendChart/renderChartTable/renderChartInsight don't need
+// to know or care which one is active.
+function chartItems() {
+  const mode = elements.selectChartContent.value;
+  if (mode === "country") {
+    return chartCountryList().map((country) => ({
+      name: country.name,
+      label: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
+      color: chartColorFor(country.iso3),
+      series: (key) => chartSeriesFor(country, key),
+      onClick: () => openCountryDetail(country),
+    }));
+  }
+  const legendMode = mode === "income-group" ? "income" : "region";
+  return legendEntriesFor(legendMode).map(([label, color]) => {
+    const members = countriesData.filter((country) =>
+      legendMode === "income"
+        ? country._incomeLabel === label
+        : country.region?.trim() === label,
+    );
+    const name = displayGroupLabel(label);
+    return {
+      name,
+      label: name,
+      color,
+      series: (key) => groupMetricSeries(members, key),
+      onClick: () => openChartGroupDetail(legendMode, label, color),
+    };
+  });
+}
+
 // Resolves any valid CSS <color> value (var(), color-mix(), etc.) to the
 // browser's own computed rgb() — lets foregroundForColor() work with a
 // color-mix() expression it can't parse directly (theme-colors.mjs only
@@ -2314,6 +2381,19 @@ function setChartCountryPickerExpanded(expanded) {
   }
 }
 
+// Region/Income group modes plot aggregate trend lines per category rather
+// than per hand-picked country, so the country picker (chip list + search)
+// only makes sense — and only shows — in Country mode. chartItems() (used
+// by renderTrendChart/renderChartTable) already reads the select's current
+// value directly, so switching modes just needs a plain re-render.
+function updateChartContentMode() {
+  const isCountryMode = elements.selectChartContent.value === "country";
+  elements.chartCountryPicker.hidden = !isCountryMode;
+  if (!isCountryMode) setChartCountryPickerExpanded(false);
+  renderTrendChart({ animate: true });
+  renderChartTable();
+}
+
 function selectChartCountrySuggestion(iso3) {
   addChartCountry(iso3);
   elements.chartCountrySearch.value = "";
@@ -2393,7 +2473,7 @@ function setChartMetric(key) {
 }
 
 function updateProjectionScenarioVisibility() {
-  elements.chartProjectionScenario.closest(".projection-select-label").hidden =
+  elements.chartProjectionScenario.hidden =
     chartMetricKey !== "population";
 }
 
@@ -2424,22 +2504,22 @@ function renderTrendChart({ animate = false } = {}) {
   const height = svg.clientHeight || 360;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
-  const countries = chartCountryList();
+  const items = chartItems();
   const key = chartMetricKey;
   const definition = METRICS[key];
   const n = yearsData.length;
   const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
   // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
-  // yrs"); the compact right padding only needs to fit the ISO alpha-2
-  // labels drawn directly off each line's end point.
+  // yrs"); the compact right padding only needs to fit the line-end labels
+  // (ISO alpha-2 in Country mode, the group name in Region/Income mode).
   const pad = TREND_CHART_PADDING;
   const chartTop = 4;
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
   const allValues = [];
-  countries.forEach((country) => {
-    chartSeriesFor(country, key).forEach((value) => {
+  items.forEach((item) => {
+    item.series(key).forEach((value) => {
       if (Number.isFinite(value)) allValues.push(value);
     });
   });
@@ -2590,9 +2670,9 @@ function renderTrendChart({ animate = false } = {}) {
   // up into its real shape below, when animate is on.
   const baselineY = pad.top + innerH;
   const growingLines = [];
-  countries.forEach((country) => {
-    const color = chartColorFor(country.iso3);
-    const series = chartSeriesFor(country, key);
+  items.forEach((item) => {
+    const color = item.color;
+    const series = item.series(key);
     const historicalPath = svgEl("path", {
       class: "trend-line historical",
       d: animate
@@ -2624,7 +2704,7 @@ function renderTrendChart({ animate = false } = {}) {
     }
     if (lastIndex !== -1) {
       lineLabels.push({
-        country,
+        item,
         color,
         x: xFor(lastIndex) + 6,
         y: yFor(series[lastIndex]),
@@ -2635,7 +2715,7 @@ function renderTrendChart({ animate = false } = {}) {
   // Two lines ending at close values would otherwise print their labels
   // right on top of each other — nudge later ones (in ascending y order)
   // down just enough to keep each one legible.
-  separateTrendLineLabels(lineLabels).forEach(({ country, color, x, y }) => {
+  separateTrendLineLabels(lineLabels).forEach(({ item, color, x, y }) => {
     const label = svgEl("text", {
       class: "trend-line-label",
       x,
@@ -2644,7 +2724,7 @@ function renderTrendChart({ animate = false } = {}) {
       // fill: color,
     });
     label.style.setProperty("--color", color);
-    label.textContent = convertAlpha3ToAlpha2(country.iso3) ?? country.iso3;
+    label.textContent = item.label;
     elementsToAppend.push(label);
   });
 
@@ -2792,10 +2872,10 @@ function renderChartInsight() {
     year > historicalCutoffYear ? "Projection" : "Historical";
 
   const definition = METRICS[chartMetricKey];
-  const ranked = chartCountryList()
-    .map((country) => ({
-      country,
-      value: chartSeriesFor(country, chartMetricKey)[currentYearIndex],
+  const ranked = chartItems()
+    .map((item) => ({
+      item,
+      value: item.series(chartMetricKey)[currentYearIndex],
     }))
     .filter(({ value }) => Number.isFinite(value))
     .sort((a, b) => b.value - a.value);
@@ -2813,22 +2893,22 @@ function renderChartInsight() {
   const [highest, second] = ranked;
   if (!second) {
     elements.chartInsightText.textContent =
-      `${highest.country.name} is at ${format(highest.value)}.`;
+      `${highest.item.name} is at ${format(highest.value)}.`;
     return;
   }
 
   if (chartMetricKey === "population") {
     elements.chartInsightText.textContent =
-      `In ${year}, ${highest.country.name} leads at ${format(highest.value)}, followed by ` +
-      `${second.country.name} at ${format(second.value)}.`;
+      `In ${year}, ${highest.item.name} leads at ${format(highest.value)}, followed by ` +
+      `${second.item.name} at ${format(second.value)}.`;
     return;
   }
 
   const lowest = ranked.at(-1);
   const metricLabel = definition.label.toLowerCase();
   elements.chartInsightText.textContent =
-    `In ${year}, ${highest.country.name} has the highest ${metricLabel} at ` +
-    `${format(highest.value)}, while ${lowest.country.name} has the lowest ` +
+    `In ${year}, ${highest.item.name} has the highest ${metricLabel} at ` +
+    `${format(highest.value)}, while ${lowest.item.name} has the lowest ` +
     `at ${format(lowest.value)}.`;
 }
 
@@ -2849,9 +2929,9 @@ function renderChartTable() {
     rowsEl: elements.chartTableRows,
     columns,
     sort: chartTableSort,
-    countries: chartCountryList(),
+    countries: chartItems(),
     onSort: setChartTableSort,
-    onRowClick: openCountryDetail,
+    onRowClick: (item) => item.onClick(),
     gridTemplateColumns,
   });
 }
@@ -3316,6 +3396,11 @@ async function init() {
     });
     renderChartMetricTabs();
     renderChartCountryChips();
+    updateChartContentMode();
+    elements.selectChartContent.addEventListener(
+      "change",
+      updateChartContentMode,
+    );
     elements.chartCountrySearch.addEventListener(
       "input",
       renderChartCountrySuggestions,
