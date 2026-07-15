@@ -928,13 +928,9 @@ function typeStatus(
 }
 
 function renderCountrySummary(summary) {
-  const meta = document.createElement("div");
-  meta.className = "country-summary-meta";
-
   const caption = document.createElement("div");
   caption.className = "caption mono-uppercase";
   caption.textContent = summary.caption;
-  meta.append(caption);
 
   if (summary.flagUrl) {
     elements.detailFlag.style.backgroundImage = `url(${summary.flagUrl})`;
@@ -945,7 +941,7 @@ function renderCountrySummary(summary) {
   }
 
   const copy = document.createElement("div");
-  copy.className = "country-summary-copy";
+  copy.className = "country-summary-copy paragraph";
   summary.segments.forEach((segment) => {
     if (!segment.className) {
       copy.append(document.createTextNode(segment.text));
@@ -956,7 +952,7 @@ function renderCountrySummary(summary) {
     span.textContent = segment.text;
     copy.append(span);
   });
-  elements.detailSummary.replaceChildren(meta, copy);
+  elements.detailSummary.replaceChildren(caption, copy);
 }
 
 function renderDetailStatus(status) {

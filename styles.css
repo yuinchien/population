@@ -23,7 +23,7 @@
     --color-scrim: rgba(12, 12, 11, 0.76);
     --color-scrim-strong: rgba(5, 5, 5, 0.9);
     --color-hover-value-bg: rgba(17, 17, 16, 0.92);
-    --text-shadow-legibility: 0 1px 1px rgba(0, 0, 0, 0.65);
+    --text-shadow-legibility: 0 0px 1px rgba(0, 0, 0, 0.4);
     --border: 1px solid var(--color-border);
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
@@ -155,6 +155,12 @@ canvas.hovering-dot {
     backdrop-filter: blur(16px);
 }
 
+.paragraph {
+    font-family: var(--font-sans);
+    font-size: 1.5rem;
+    line-height: 1.25;
+}
+
 .overlay {
     font-weight: 500;
     transition: transform 0.2s ease;
@@ -239,13 +245,10 @@ h1 {
        though the text itself is left-aligned, which defeats the point of
        switching away from right-align. */
     width: 420px;
-    font-weight: 500;
     overflow: initial;
 }
 .status-wrapper p {
     margin: 0 0 4px;
-    line-height: 1.4;
-    font-size: 1.25rem;
 }
 
 .milestone-nav {
@@ -323,15 +326,10 @@ button.milestone-nav-btn {
 
 #statusTitle,
 #status {
-    font-family: var(--font-sans);
     text-shadow: var(--text-shadow-legibility);
 }
 
 #statusTitle {
-    font-weight: 700;
-    /* Space before the status text that follows — a margin rather than a
-       trailing space in the span's own text content, so it isn't at the
-       mercy of whitespace-collapsing at the inline-element boundary. */
     margin-right: 0.3em;
 }
 
@@ -785,8 +783,6 @@ body.country-detail #colorMode {
 
 .detail-summary {
     color: var(--color-text);
-    line-height: 1.4em;
-    font-size: 1.6rem;
     max-width: 920px;
     /* A grid item's default min-width is auto (its content's min-content
        size), not 0 — without this, the summary paragraph refuses to wrap
@@ -809,19 +805,13 @@ body.country-detail #colorMode {
         border-radius: 20px;
         padding: 4px 8px;
         line-height: 1;
-        margin-bottom: 8px;
+        margin-bottom: 12px;
     }
     .country-summary-meta {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 8px;
     }
-
-    .country-summary-meta .caption {
-        margin-bottom: 0;
-    }
-
     .country-summary-copy {
         display: block;
         margin: 0;
@@ -1299,7 +1289,6 @@ body.view-chart #calloutLayer {
 }
 
 .chart-insight {
-    max-width: 38ch;
     margin-top: 0;
     margin-bottom: calc(var(--margin) * 1.5);
 }
@@ -1738,17 +1727,36 @@ body.menu-open .menu-toggle-icon::after {
     h1 {
         display: none;
     }
+    .paragraph {
+        font-size: 1.2rem;
+    }
     .btn-return {
         align-self: flex-start;
         margin-top: 4px;
     }
+    /* Pinned at the bottom of .chart-view (its last flex child, after
+       .chart-card takes all the remaining space) — scrolls horizontally
+       instead of wrapping, since wrapping to multiple rows on a narrow
+       screen would eat into the chart/table space above it. */
     #chartMetricTabs {
-        display: none;
+        display: flex;
+        flex: none;
+        flex-wrap: nowrap;
+        overflow-x: auto;
     }
     .chart-card {
         /*padding: 0;*/
         flex-direction: column;
         overflow: scroll;
+    }
+    /* .trend-chart-plot/.trend-chart's width: 0 is load-bearing on desktop
+       (flex-basis for the row layout's flex-grow) but becomes literal —
+       the chart renders 0px wide — once .chart-card switches to a column
+       direction above, where width is the cross axis rather than the
+       flex-grow axis. */
+    .trend-chart-plot,
+    .trend-chart {
+        width: 100%;
     }
     .timeline {
         width: auto;
@@ -1757,10 +1765,6 @@ body.menu-open .menu-toggle-icon::after {
 
     body.view-chart .detail-panel-header {
         height: auto;
-    }
-
-    #detailSummary.detail-summary, .status-wrapper p {
-        font-size: 1.2rem;
     }
 
     .country-chart {
