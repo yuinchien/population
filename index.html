@@ -225,6 +225,20 @@
             <div class="topbar">
 
                 <div id="chartCountryPicker" class="chip-input">
+                    <button
+                        id="chartCountryPickerSummary"
+                        class="chip-input-summary"
+                        type="button"
+                        aria-label="Edit country list"
+                    >
+                        <span
+                            id="chartCountryPickerSummaryFlags"
+                            class="chip-input-summary-flags"
+                        ></span>
+                        <span class="material-symbols-outlined" aria-hidden="true"
+                            >add</span
+                        >
+                    </button>
                     <div id="chartCountryChips" class="chip-input-chips"></div>
                     <input
                         id="chartCountrySearch"
@@ -233,6 +247,16 @@
                         autocomplete="off"
                         placeholder="Add country"
                     />
+                    <button
+                        id="chartCountryPickerCancel"
+                        class="chip-input-cancel"
+                        type="button"
+                        aria-label="Done editing countries"
+                    >
+                        <span class="material-symbols-outlined" aria-hidden="true"
+                            >close</span
+                        >
+                    </button>
                     <div
                         id="chartCountrySuggestions"
                         class="chip-suggestions no-scrollbar"

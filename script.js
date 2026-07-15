@@ -341,6 +341,10 @@ let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
 let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
+// Whether the picker shows the "Country list N" summary pill or the full
+// chip/search editor — collapsed by default so the topbar stays one line
+// regardless of how many countries are selected.
+let chartCountryPickerExpanded = false;
 // Separate from detailSort (the group table's own sort) so switching one
 // doesn't surprise the other the next time it's opened.
 let chartTableSort = { key: "population", direction: "desc" };
@@ -2217,6 +2221,14 @@ function removeChartCountry(iso3) {
 
 
 function renderChartCountryChips() {
+  elements.chartCountryPickerSummaryFlags.replaceChildren(
+    ...chartCountryList().map((country) => {
+      const flag = document.createElement("span");
+      flag.className = "chip-input-summary-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+      return flag;
+    }),
+  );
   elements.chartCountryChips.replaceChildren(
     ...chartCountryList().map((country) => {
       const color = chartColorFor(country.iso3);
@@ -2309,6 +2321,18 @@ function hideChartCountrySuggestions() {
   elements.chartCountrySuggestions.hidden = true;
   elements.chartCountrySuggestions.replaceChildren();
   chartSuggestionActiveIndex = -1;
+}
+
+function setChartCountryPickerExpanded(expanded) {
+  if (expanded === chartCountryPickerExpanded) return;
+  chartCountryPickerExpanded = expanded;
+  elements.chartCountryPicker.classList.toggle("expanded", expanded);
+  if (expanded) {
+    elements.chartCountrySearch.focus();
+  } else {
+    elements.chartCountrySearch.value = "";
+    hideChartCountrySuggestions();
+  }
 }
 
 function selectChartCountrySuggestion(iso3) {
@@ -2877,7 +2901,13 @@ function setChartViewActive(active) {
     tourController.stop();
     renderTrendChart({ animate: true });
     renderChartTable();
-  } else if (currentYearIndex >= 0) {
+  } else {
+    // Always reopens collapsed, regardless of how it was left — an editor
+    // left expanded from last time isn't state worth remembering the way
+    // the selected countries themselves are.
+    setChartCountryPickerExpanded(false);
+  }
+  if (!active && currentYearIndex >= 0) {
     trendChartAnimationHandle?.cancel();
     trendChartAnimationHandle = null;
     // While the overlay was open, applyYear() took its chart-only fast path
@@ -3343,12 +3373,32 @@ async function init() {
           selectedChartCountries[selectedChartCountries.length - 1],
         );
       } else if (event.key === "Escape") {
-        hideChartCountrySuggestions();
+        // First Escape just dismisses the suggestion list, matching how
+        // the rest of the app's autocomplete-style inputs behave; a second
+        // one (nothing left to dismiss) collapses the picker itself.
+        if (!elements.chartCountrySuggestions.hidden) {
+          hideChartCountrySuggestions();
+        } else {
+          setChartCountryPickerExpanded(false);
+        }
       }
     });
+    elements.chartCountryPickerSummary.addEventListener("click", () =>
+      setChartCountryPickerExpanded(true),
+    );
+    elements.chartCountryPickerCancel.addEventListener("click", () =>
+      setChartCountryPickerExpanded(false),
+    );
     document.addEventListener("click", (event) => {
-      if (!elements.chartCountryPicker.contains(event.target)) {
+      // composedPath(), not contains(event.target) — selecting a suggestion
+      // removes that button from the DOM (hideChartCountrySuggestions()'s
+      // replaceChildren()) before this bubble-phase listener runs, which
+      // detaches event.target and makes any contains() check on it false
+      // even though the click genuinely originated inside the picker.
+      // composedPath() is fixed at dispatch time, so it stays accurate.
+      if (!event.composedPath().includes(elements.chartCountryPicker)) {
         hideChartCountrySuggestions();
+        setChartCountryPickerExpanded(false);
       }
     });
     elements.detailClose.addEventListener("click", closeDetailPanel);

@@ -18,7 +18,7 @@ test("country summary describes a future selected year and peak", () => {
     historicalCutoffYear: 2023,
     formatPopulation: (value) => `${value}M`,
   });
-  assert.equal(summary.caption, "Projected");
+  assert.equal(summary.caption, "Projection");
   assert.equal(summary.flagUrl, "./flags/4x3/in.svg");
   assert.match(summaryText(summary), /India/);
   assert.match(summaryText(summary), /peaks near 1700M/);

@@ -7,7 +7,7 @@
     --color-text: #f3f1ed;
     --color-muted: #aaa7a1;
     --color-subtle: #74716d;
-    --color-border: color-mix(in srgb, var(--color-text) 15%, transparent);
+    --color-border: color-mix(in srgb, var(--color-text) 10%, transparent);
     --color-blue: #174fe5;
     --color-teal: #39b2a3;
     --color-pink: #d77dce;
@@ -676,6 +676,11 @@ body.country-detail #colorMode {
     background: transparent;
     cursor: pointer;
 }
+#chartViewClose {
+    align-self: flex-start;
+    margin-top: 4px;
+}
+
 
 .detail-table {
     display: grid;
@@ -700,6 +705,11 @@ body.country-detail #colorMode {
     grid-template-columns: minmax(220px, 1fr) 130px 132px 150px 160px 120px 166px 146px;
     align-items: stretch;
     min-height: 34px;
+    /* Same reasoning as .detail-summary above — this row's own fixed-width
+       columns add up to well more than the chart view's narrower half-width
+       table column actually has, and without this it forces that column
+       wider than its layout allows instead of scrolling/wrapping within it. */
+    min-width: 0;
 }
 
 .detail-row.header {
@@ -778,6 +788,13 @@ body.country-detail #colorMode {
     line-height: 1.4em;
     font-size: 1.6rem;
     max-width: 920px;
+    /* A grid item's default min-width is auto (its content's min-content
+       size), not 0 — without this, the summary paragraph refuses to wrap
+       narrower than that even when its actual grid track (e.g. the chart
+       view's half-width table column) has less room than that, and
+       overflows visibly into whatever sits next to it instead of wrapping
+       to fit. */
+    min-width: 0;
     font-family: var(--font-sans);
     letter-spacing: 0em;
     margin: 24px 0 12px 0;
@@ -1392,6 +1409,68 @@ body.view-chart #calloutLayer {
     border-radius: 8px;
     background: var(--color-surface);
     flex-shrink: 1;
+    /*width: 80%;*/
+    max-width: 960px;
+}
+
+/* Collapsed (default): only the summary pill shows. Everything involved in
+   actually editing the list stays out of flow — the whole point is that
+   the topbar never grows past one line just because more countries got
+   added, which the chips wrapping onto their own row used to do. */
+.chip-input:not(.expanded) .chip-input-chips,
+.chip-input:not(.expanded) .chip-input-field,
+.chip-input:not(.expanded) .chip-input-cancel,
+.chip-input:not(.expanded) .chip-suggestions {
+    display: none;
+}
+
+.chip-input-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.chip-input-summary .material-symbols-outlined {
+    margin-left: auto;
+    font-size: var(--icon-size);
+}
+
+.chip-input-summary-flags {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.chip-input-summary-flag {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+/* Expanded: the reverse — the summary pill steps aside and the real editor
+   (chips + search + cancel) takes over. Wrapping to as many lines as it
+   needs is fine here, since this is now a deliberate, temporary editing
+   state rather than permanent topbar real estate. */
+.chip-input.expanded .chip-input-summary {
+    display: none;
+}
+
+.chip-input.expanded {
+    padding-right: 40px; /* clears .chip-input-cancel */
 }
 
 .chip-input-chips {
@@ -1406,6 +1485,27 @@ body.view-chart #calloutLayer {
     background: transparent;
     color: var(--color-text);
     font: inherit;
+}
+
+.chip-input-cancel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--color-border);
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.chip-input-cancel .material-symbols-outlined {
+    font-size: 16px;
 }
 
 .chip {
@@ -1646,7 +1746,9 @@ body.menu-open .menu-toggle-icon::after {
         display: none;
     }
     .chart-card {
-        padding: 0;
+        /*padding: 0;*/
+        flex-direction: column;
+        overflow: scroll;
     }
     .timeline {
         width: auto;
