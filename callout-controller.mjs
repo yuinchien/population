@@ -63,10 +63,7 @@ export function createCalloutController({
   }
 
   function clear() {
-    callouts.forEach(({ line, labelEl }) => {
-      group.remove(line);
-      line.geometry.dispose();
-      line.material.dispose();
+    callouts.forEach(({ labelEl }) => {
       labelEl.remove();
     });
     callouts.length = 0;
@@ -83,14 +80,6 @@ export function createCalloutController({
         const anchor = computeAnchor(country, viewMode);
         const outward = computeOutwardPoint(anchor, viewMode);
         const color = getColor(country);
-        const geometry = new THREE.BufferGeometry().setFromPoints([anchor, outward]);
-        const material = new THREE.LineBasicMaterial({
-          color,
-          transparent: true,
-          opacity: 0.9,
-        });
-        const line = new THREE.Line(geometry, material);
-        group.add(line);
 
         const labelEl = document.createElement("button");
         labelEl.type = "button";
@@ -108,7 +97,6 @@ export function createCalloutController({
           country,
           anchor,
           outward,
-          line,
           labelEl,
           screenX: null,
           screenY: null,
@@ -124,9 +112,8 @@ export function createCalloutController({
     const transitioning = isTransitioning();
     const { width, height } = getViewport();
     callouts.forEach((callout) => {
-      const { anchor, outward, line, labelEl } = callout;
+      const { anchor, outward, labelEl } = callout;
       if (transitioning) {
-        line.visible = false;
         labelEl.hidden = true;
         resetPosition(callout);
         return;
@@ -137,13 +124,11 @@ export function createCalloutController({
           .normalize()
           .dot(cameraDirection);
         if (facing < 0.1) {
-          line.visible = false;
           labelEl.hidden = true;
           resetPosition(callout);
           return;
         }
       }
-      line.visible = true;
       labelEl.hidden = false;
       const projected = projectedPoint.copy(outward).project(camera);
       const targetX = Math.min(

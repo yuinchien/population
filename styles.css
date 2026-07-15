@@ -157,8 +157,8 @@ canvas.hovering-dot {
 
 .paragraph {
     font-family: var(--font-sans);
-    font-size: 1.5rem;
-    line-height: 1.25;
+    font-size: 1.45rem;
+    line-height: 1.35;
 }
 
 .overlay {
@@ -465,7 +465,7 @@ button.milestone-nav-btn {
     color: var(--color-muted);
     font-weight: 500;
     pointer-events: none;
-    background: var(--color-hover-value-bg);
+    background: var(--color-bg);
     padding: 0 4px;
 }
 
