@@ -540,7 +540,6 @@ body.country-detail #colorMode {
     flex: none;
     width: 8px;
     height: 8px;
-    margin-right: 4px;
     border-radius: 50%;
     background: var(--color-legend);
 }
@@ -603,6 +602,9 @@ body.country-detail #colorMode {
 }
 
 .tooltip-line {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     font-weight: 500;
 }
 
@@ -1378,6 +1380,13 @@ select::picker(select) {
 
 .trend-line.projected {
     stroke-dasharray: 8 8;
+}
+
+.trend-line-hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 16px;
+    pointer-events: stroke;
 }
 
 .trend-chart-baseline {

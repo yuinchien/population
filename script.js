@@ -1588,11 +1588,27 @@ const CHART_LINE_COLORS = [
 
 // A dedicated tooltip (separate from #tooltip, which the 3D canvas's own
 // hover system clears on a 100ms timer even while this panel is open) for
-// hovering the main chart's marker dot or a sparkline's current-value dot.
-function showChartTooltip(event, text) {
+// hovering a trend line, the main chart's marker dot, or a sparkline's
+// current-value dot.
+function createTooltipLine(text, color = null) {
+  const line = document.createElement("div");
+  line.className = "tooltip-line mono-uppercase";
+  if (color) {
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    swatch.style.setProperty("--color-legend", color);
+    line.append(swatch);
+  }
+  const label = document.createElement("span");
+  label.textContent = text;
+  line.append(label);
+  return line;
+}
+
+function showChartTooltip(event, text, color = null) {
   if (!text) return;
   elements.chartTooltip.hidden = false;
-  elements.chartTooltip.replaceChildren(document.createTextNode(text));
+  elements.chartTooltip.replaceChildren(createTooltipLine(text, color));
   elements.chartTooltip.style.left = `${event.clientX}px`;
   elements.chartTooltip.style.top = `${event.clientY}px`;
 }
@@ -2692,7 +2708,33 @@ function renderTrendChart({ animate = false } = {}) {
         : pathFor(series, cutoffIndex, n - 1),
       stroke: color,
     });
-    elementsToAppend.push(historicalPath, projectedPath);
+    // A transparent, wider copy of each path makes thin curves easy to hit
+    // without changing their appearance. Its tooltip uses item.name rather
+    // than the old abbreviated endpoint labels, so Country, Region, and
+    // Income group modes all expose a readable legend on demand.
+    const historicalHitPath = svgEl("path", {
+      class: "trend-line-hit",
+      d: pathFor(series, 0, cutoffIndex),
+    });
+    const projectedHitPath = svgEl("path", {
+      class: "trend-line-hit",
+      d: pathFor(series, cutoffIndex, n - 1),
+    });
+    [historicalHitPath, projectedHitPath].forEach((hitPath) => {
+      hitPath.addEventListener("pointerenter", (event) =>
+        showChartTooltip(event, item.name, color),
+      );
+      hitPath.addEventListener("pointermove", (event) =>
+        showChartTooltip(event, item.name, color),
+      );
+      hitPath.addEventListener("pointerleave", hideChartTooltip);
+    });
+    elementsToAppend.push(
+      historicalPath,
+      projectedPath,
+      historicalHitPath,
+      projectedHitPath,
+    );
     if (animate) {
       growingLines.push(
         { el: historicalPath, series, from: 0, to: cutoffIndex },
@@ -3630,16 +3672,11 @@ function updateTooltip(event) {
   const pop = country.populations[currentYearIndex] ?? country.population;
   const groupColor = colorFor(country);
 
-  const swatch = document.createElement("span");
-  swatch.className = "legend-swatch";
-  swatch.style.background = `#${groupColor.getHexString()}`;
-
-  const countryText = document.createElement("span");
-  countryText.textContent = `${country.name} ${formatPeakPopulation(pop)}`;
-
-  const line1 = document.createElement("div");
-  line1.className = "tooltip-line mono-uppercase";
-  line1.append(swatch, countryText);
+  const tooltipColor = `#${groupColor.getHexString()}`;
+  const line1 = createTooltipLine(
+    `${country.name} ${formatPeakPopulation(pop)}`,
+    tooltipColor,
+  );
 
   const lines = [line1];
 
@@ -3647,7 +3684,7 @@ function updateTooltip(event) {
   elements.tooltip.replaceChildren(...lines);
   elements.tooltip.style.setProperty(
     "--tooltip-color",
-    `#${groupColor.getHexString()}`,
+    tooltipColor,
   );
   const cursorX = event?.clientX ?? 0;
   const cursorY = event?.clientY ?? 0;
