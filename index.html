@@ -65,9 +65,25 @@
         </button>
         <div id="menuShim" class="menu-shim"></div>
         <div id="buttonsContainer" class="hide-for-detail hide-for-chart">
+            <!--<div class="footer mono-uppercase">
+                <a href="https://population.un.org/wpp/" target="_blank"
+                    >Data source</a
+                >
+            </div>-->
+            <!--<button
+                id="infoButton"
+                class="icon-button"
+                type="button"
+                aria-label="Info"
+                title="Info"
+            >
+                <span class="material-symbols-outlined" aria-hidden="true"
+                    >info_i</span
+                >
+            </button>-->
             <button
                 id="themeToggle"
-                class="theme-toggle"
+                class="icon-button"
                 type="button"
                 aria-label="Switch to light theme"
                 title="Switch theme"
@@ -77,6 +93,15 @@
                 >
             </button>
             <div id="viewMode" class="button-group" hidden>
+                <button
+                    type="button"
+                    data-mode="overview"
+                    class="mono-uppercase"
+                    aria-label="Overview"
+                    title="Overview"
+                >
+                    Overview
+                </button>
                 <button
                     type="button"
                     data-mode="globe"
@@ -210,16 +235,8 @@
             ></div>
         </div>
 
-            <!--<div class="footer mono-uppercase">
-                <a href="https://population.un.org/wpp/" target="_blank"
-                    >Data source</a
-                >
-            </div>-->
-
         <section id="chartPanel" class="chart-view glass" hidden>
-
             <div class="topbar">
-
                 <select id="selectChartContent" class="custom-select mono-uppercase">
                     <button>
                         <div>
@@ -273,7 +290,19 @@
                         hidden
                     ></div>
                 </div>
-
+                <select id="chartProjectionScenario" class="custom-select mono-uppercase">
+                    <button>
+                        <div>
+                            <selectedcontent> </selectedcontent>
+                            <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+                            </svg>
+                        </div>
+                    </button>
+                    <option value="high">High projection</option>
+                    <option value="medium" selected>Medium projection</option>
+                    <option value="low">Low projection</option>
+                </select>
             </div>
 
             <button id="chartPanelClose" class="btn-return" type="button" aria-label="Close chart view" title="Close">
@@ -282,21 +311,6 @@
 
             <div class="chart-card">
                 <div class="trend-chart-plot">
-
-                    <select id="chartProjectionScenario" class="custom-select mono-uppercase">
-                        <button>
-                            <div>
-                                <selectedcontent> </selectedcontent>
-                                <svg width="24" height="24" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="m7 10l5 5l5-5z"/>
-                                </svg>
-                            </div>
-                        </button>
-                        <option value="medium" selected>Medium projection</option>
-                        <option value="high">High projection</option>
-                        <option value="low">Low projection</option>
-                    </select>
-
                     <svg
                         id="trendChart"
                         class="trend-chart"

@@ -2238,6 +2238,12 @@ function chartItems() {
     }));
   }
   const legendMode = mode === "income-group" ? "income" : "region";
+  // groupMetricSeries() aggregates across every member country for every
+  // year — cheap once, but .series(key) gets called many times per render
+  // (sort comparisons, ratio-bar sizing, each row's own cell) for the same
+  // (group, key) pair. Cached per chartItems() call rather than at module
+  // scope: it only needs to survive one render pass, not outlive it.
+  const seriesCache = new Map();
   return legendEntriesFor(legendMode).map(([label, color]) => {
     const members = countriesData.filter((country) =>
       legendMode === "income"
@@ -2249,7 +2255,13 @@ function chartItems() {
       name,
       label: name,
       color,
-      series: (key) => groupMetricSeries(members, key),
+      series: (key) => {
+        const cacheKey = `${label}:${key}`;
+        if (!seriesCache.has(cacheKey)) {
+          seriesCache.set(cacheKey, groupMetricSeries(members, key));
+        }
+        return seriesCache.get(cacheKey);
+      },
       onClick: () => openChartGroupDetail(legendMode, label, color),
     };
   });

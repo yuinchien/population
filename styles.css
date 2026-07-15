@@ -359,7 +359,7 @@ button.milestone-nav-btn {
     right: 0;
     top: 0;
     margin: var(--margin);
-    /* Leaves room for .theme-toggle, which sits at the same right edge and
+    /* Leaves room for #themeToggle, which sits at the same right edge and
        needs to stay visible (and clickable) regardless of view/detail
        state — unlike this group, it isn't hidden by .hide-for-detail /
        .hide-for-chart. */
@@ -370,7 +370,7 @@ button.milestone-nav-btn {
     z-index: var(--z-panel);
 }
 
-.theme-toggle {
+.icon-button {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -384,7 +384,7 @@ button.milestone-nav-btn {
     cursor: pointer;
 }
 
-.theme-toggle .material-symbols-outlined {
+.icon-button .material-symbols-outlined {
     font-size: 18px;
 }
 
@@ -1214,17 +1214,35 @@ body.view-chart #calloutLayer {
   }
 
   > button {
+        display: block;
+        width: 100%;
+        overflow: hidden;
     > div {
+        min-width: 0;
         inline-size: 100%;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 8px;
     }
+    /* The truncation has to live here, not on an ancestor — selectedcontent
+       is a flex child of > div, and flex children default to min-width:
+       auto (their own content's intrinsic width), which stops them from
+       ever shrinking down to where an ancestor's text-overflow: ellipsis
+       could kick in. min-width: 0 overrides that default so this element
+       can actually shrink and truncate instead of forcing the row wider. */
+    selectedcontent {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        transform: translateY(1px);
+    }
   }
 
   min-height: 32px;
-  min-width: 220px;
+  min-width: 180;
   padding: 8px 4px 8px 12px;
   border: var(--border);
   border-radius: 8px;
@@ -1233,6 +1251,7 @@ body.view-chart #calloutLayer {
   font: inherit;
   font-weight: 500;
   cursor: pointer;
+  overflow: hidden;
 
   option {
       cursor: pointer;
@@ -1251,11 +1270,6 @@ body.view-chart #calloutLayer {
       content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='24px' viewBox='0 -960 960 960' width='24px' fill='%23f3f1ed'%3E%3Cpath d='M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z'/%3E%3C/svg%3E");
   }
 
-}
-
-#chartProjectionScenario {
-    position: absolute;
-    left: 60px;
 }
 
 :root[data-theme="light"] .custom-select option::checkmark {
@@ -1339,7 +1353,6 @@ select::picker(select) {
     min-width: 0;
     display: flex;
     padding: var(--margin);
-    margin-bottom: var(--margin);
     flex-direction: row-reverse;
 }
 
@@ -1376,6 +1389,7 @@ select::picker(select) {
     fill: none;
     stroke-width: var(--trend-line-width);
     opacity: 0.9;
+    stroke-linecap: round;
 }
 
 .trend-line.projected {
