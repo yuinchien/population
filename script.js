@@ -1264,12 +1264,12 @@ function chartTableColumns() {
   });
 }
 
-// Total age dependency ratio (children + elderly per 100 working-age
-// people): under 45 reads as a low support burden, over 70 as high. Life
-// expectancy thresholds are the UN Human Development Index bands (High:
-// 75-80 yrs, Low: <70 yrs). Both drawn as High/Low reference lines on the
-// trend chart's Y axis (see renderTrendChart).
+// Fixed reference lines for the trend chart's Y axis, keyed by metric.
+// Fertility's 2.1 is the UN's global replacement-level rate. Age dependency
+// ratio's 45/70 and life expectancy's bands are the UN Human Development
+// Index thresholds. Drawn in renderTrendChart.
 const CHART_BENCHMARK_LINES = {
+  fertility: [{ value: 2.1, label: "2.1" }],
   ageDependencyRatio: [
     { value: 70, label: "High" },
     { value: 45, label: "Low" },
@@ -2669,32 +2669,6 @@ function renderTrendChart({ animate = false } = {}) {
     });
     tickLabel.textContent = tickValue === 0 ? "0" : tickFormat(tickValue);
     elementsToAppend.push(tickLabel);
-  }
-
-  // Skipped when the reference value sits at the scale's own min/max — that
-  // only happens when it was the thing that extended the range to begin
-  // with (see min/max above), in which case a tick already labels it and
-  // a separate baseline would just double-print the same line and value.
-  if (referenceValue != null && referenceValue !== min && referenceValue !== max) {
-    const baselineY = yFor(referenceValue).toFixed(1);
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "trend-chart-baseline",
-        x1: pad.left,
-        x2: width - pad.right,
-        y1: baselineY,
-        y2: baselineY,
-      }),
-    );
-    const baselineLabel = svgEl("text", {
-      class: "trend-chart-baseline-label",
-      x: pad.left - 8,
-      y: Math.max(yFor(referenceValue) - 4, 12).toFixed(1),
-      "text-anchor": "end",
-    });
-    baselineLabel.textContent =
-      referenceValue === 0 ? "0" : tickFormat(referenceValue);
-    elementsToAppend.push(baselineLabel);
   }
 
   for (const benchmark of CHART_BENCHMARK_LINES[key] ?? []) {
