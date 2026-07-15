@@ -43,6 +43,7 @@ export function getAppElements(root = document) {
     chartInsightCaption: root.querySelector("#chartInsightCaption"),
     chartInsightText: root.querySelector("#chartInsightText"),
     chartCountryPicker: root.querySelector("#chartCountryPicker"),
+    chartProjectionScenario: root.querySelector("#chartProjectionScenario"),
     chartCountryChips: root.querySelector("#chartCountryChips"),
     chartCountrySearch: root.querySelector("#chartCountrySearch"),
     chartCountrySuggestions: root.querySelector("#chartCountrySuggestions"),

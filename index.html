@@ -245,11 +245,21 @@
             </div>
 
             <div class="chart-card">
-                <svg
-                    id="trendChart"
-                    class="trend-chart"
-                    preserveAspectRatio="none"
-                ></svg>
+                <div class="trend-chart-plot">
+                    <label class="projection-select-label" hidden>
+                        <span class="visually-hidden">Projection uncertainty</span>
+                        <select id="chartProjectionScenario" class="projection-select">
+                            <option value="medium" selected>Medium projection</option>
+                            <option value="high">High projection</option>
+                            <option value="low">Low projection</option>
+                        </select>
+                    </label>
+                    <svg
+                        id="trendChart"
+                        class="trend-chart"
+                        preserveAspectRatio="none"
+                    ></svg>
+                </div>
                 <div id="chartTable" class="detail-table">
                     <div class="detail-summary chart-insight">
                         <div

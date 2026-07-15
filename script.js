@@ -337,6 +337,7 @@ let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartViewActive = false;
 let chartMetricKey = "ageDependencyRatio";
+let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
 let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
@@ -1275,6 +1276,8 @@ function chartTableColumns() {
     currentYearIndex,
     metricFor,
     metricKeys,
+    populationFor: (country) =>
+      chartPopulationSeries(country)[currentYearIndex],
   });
 }
 
@@ -2151,8 +2154,18 @@ function updateCountryDetailForYear(year) {
 // built from); every other chart metric comes from the demographics file,
 // keyed and indexed identically to yearsData.
 function chartSeriesFor(country, key) {
-  if (key === "population") return country.populations;
+  if (key === "population") return chartPopulationSeries(country);
   return countryDemographicMetrics?.countries?.[country.iso3]?.[key] ?? [];
+}
+
+function chartPopulationSeries(country) {
+  if (chartProjectionScenario === "high") {
+    return country.populationsHigh ?? country.populations;
+  }
+  if (chartProjectionScenario === "low") {
+    return country.populationsLow ?? country.populations;
+  }
+  return country.populations;
 }
 
 function chartCountryList() {
@@ -2370,9 +2383,15 @@ function setChartMetric(key) {
   elements.chartMetricTabs.querySelectorAll("button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.key === key);
   });
+  updateProjectionScenarioVisibility();
   renderTrendChart();
   renderChartTable();
   syncUrlFromState();
+}
+
+function updateProjectionScenarioVisibility() {
+  elements.chartProjectionScenario.closest(".projection-select-label").hidden =
+    chartMetricKey !== "population";
 }
 
 function renderChartMetricTabs() {
@@ -3274,6 +3293,15 @@ async function init() {
     elements.chartViewClose.addEventListener("click", () =>
       setChartViewActive(false),
     );
+    elements.chartProjectionScenario.value = chartProjectionScenario;
+    updateProjectionScenarioVisibility();
+    elements.chartProjectionScenario.addEventListener("change", () => {
+      const scenario = elements.chartProjectionScenario.value;
+      if (!["medium", "high", "low"].includes(scenario)) return;
+      chartProjectionScenario = scenario;
+      renderTrendChart();
+      renderChartTable();
+    });
     renderChartMetricTabs();
     renderChartCountryChips();
     elements.chartCountrySearch.addEventListener(

@@ -4,6 +4,7 @@ export function buildDetailColumns({
   currentYearIndex,
   metricFor,
   metricKeys = DETAIL_METRIC_KEYS,
+  populationFor = (country) => country.populations[currentYearIndex],
 }) {
   return [
     {
@@ -23,7 +24,7 @@ export function buildDetailColumns({
         defaultDirection: definition.defaultDirection,
         value:
           key === "population"
-            ? (country) => country.populations[currentYearIndex]
+            ? populationFor
             : (country) => metricFor(country, key),
         format: definition.format,
       };
