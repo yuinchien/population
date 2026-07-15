@@ -815,7 +815,7 @@ body.country-detail #colorMode {
         background: var(--detail-color);
         color: var(--color-bg);
         border-radius: 20px;
-        padding: 4px 8px;
+        padding: 6px 8px 5px 8px;
         line-height: 1;
         margin-bottom: 12px;
     }
@@ -1366,7 +1366,7 @@ select::picker(select) {
 
 .chart-insight {
     margin-top: 0;
-    margin-bottom: calc(var(--margin) * 1.5);
+    margin-bottom: var(--margin);
 }
 
 .trend-chart {

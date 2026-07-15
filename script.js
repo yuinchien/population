@@ -2632,35 +2632,25 @@ function renderTrendChart({ animate = false } = {}) {
     }),
   );
 
-  // elementsToAppend.push(
-  //   svgEl("line", {
-  //     class: "trend-chart-axis",
-  //     x1: pad.left,
-  //     x2: width - pad.right,
-  //     y1: pad.top,
-  //     y2: pad.top,
-  //   }),
-  // );
-
   for (let i = 0; i < Y_TICK_COUNT; i++) {
     const tickValue = min + (range / (Y_TICK_COUNT - 1)) * i;
     const y = yFor(tickValue).toFixed(1);
-    // elementsToAppend.push(
-    //   svgEl("line", {
-    //     class: "trend-chart-tick-line",
-    //     x1: pad.left,
-    //     x2: width - pad.right,
-    //     y1: y,
-    //     y2: y,
-    //   }),
-    //   svgEl("line", {
-    //     class: "trend-chart-tick",
-    //     x1: pad.left - 4,
-    //     x2: pad.left,
-    //     y1: y,
-    //     y2: y,
-    //   }),
-    // );
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "trend-chart-tick-line",
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: y,
+        y2: y,
+      }),
+      svgEl("line", {
+        class: "trend-chart-tick",
+        x1: pad.left - 4,
+        x2: pad.left,
+        y1: y,
+        y2: y,
+      }),
+    );
     const tickLabel = svgEl("text", {
       class: "trend-chart-axis-label",
       x: pad.left - 8,
@@ -2685,7 +2675,7 @@ function renderTrendChart({ animate = false } = {}) {
     const benchmarkLabel = svgEl("text", {
       class: "trend-chart-baseline-label",
       x: pad.left - 8,
-      y: Math.max(yFor(benchmark.value) - 4, 12).toFixed(1),
+      y: Math.max(yFor(benchmark.value) +3, 12).toFixed(1),
       "text-anchor": "end",
     });
     benchmarkLabel.textContent = benchmark.label;
@@ -2901,59 +2891,25 @@ function setChartTableSort(key) {
   renderChartTable();
 }
 
-function renderChartInsight(items) {
-  const year = yearsData[currentYearIndex];
-  // Same isProjected split as buildCountrySummary in
-  // country-summary-model.mjs — "is projected to X" for a future year
-  // rather than flatly asserting it in the present/past tense, which reads
-  // as a claim of fact for a number that's actually a projection.
-  const isProjected = year > historicalCutoffYear;
-  elements.chartInsightCaption.textContent = isProjected
-    ? "Projection"
-    : "Historical";
+// What each metric measures and, where it has one, the key benchmark value
+// called out as a reference line on the chart (see CHART_BENCHMARK_LINES).
+// Static per metric — the table below already covers the selected
+// countries' actual numbers, so this teaches the metric itself instead of
+// repeating them.
+const CHART_METRIC_INSIGHTS = {
+  population: "Population size drives a country's economic scale, infrastructure needs, and geopolitical weight — but the raw number says little without its growth trajectory and age structure alongside it.",
+  populationGrowth: "Population growth rate measures how fast a population is expanding or shrinking each year. 0% is the natural threshold: above it, the population is still growing; below it, it's already shrinking (before accounting for migration).",
+  fertility: "The replacement rate is the average number of children a woman needs to have to keep the population size stable across generations. This benchmark is 2.1 children per woman in developed countries, higher where child mortality is greater.",
+  lifeExpectancy: "Life expectancy summarizes a population's overall health, nutrition, and access to care. The UN's Human Development Index treats 75 years and above as a high-development benchmark, and under 70 years as low.",
+  medianAge: "Median age splits a population exactly in half by age — as many people younger as older. A rising median age signals an aging society with a shrinking future workforce.",
+  ageDependencyRatio: "The age dependency ratio counts children and seniors per 100 working-age adults — how many dependents each worker effectively supports. Above 70 is considered a high dependency burden; below 45 is low.",
+  netMigrationRate: "Net migration rate is the balance of people moving in versus out, per 1,000 residents. 0 is the tipping point: positive means more arrivals than departures, negative means the reverse.",
+};
 
-  const definition = METRICS[chartMetricKey];
-  const ranked = items
-    .map((item) => ({
-      item,
-      value: item.series(chartMetricKey)[currentYearIndex],
-    }))
-    .filter(({ value }) => Number.isFinite(value))
-    .sort((a, b) => b.value - a.value);
-
-  if (!ranked.length) {
-    elements.chartInsightText.textContent =
-      "No comparable data is available for the selected countries.";
-    return;
-  }
-
-  const format =
-    chartMetricKey === "population"
-      ? formatPeakPopulation
-      : (definition.formatPanel ?? definition.format);
-  const [highest, second] = ranked;
-  if (!second) {
-    elements.chartInsightText.textContent = isProjected
-      ? `${highest.item.name} is projected to be at ${format(highest.value)}.`
-      : `${highest.item.name} was at ${format(highest.value)}.`;
-    return;
-  }
-
-  if (chartMetricKey === "population") {
-    const leadVerb = isProjected ? "is projected to lead" : "led";
-    elements.chartInsightText.textContent =
-      `In ${year}, ${highest.item.name} ${leadVerb} at ${format(highest.value)}, followed by ` +
-      `${second.item.name} at ${format(second.value)}.`;
-    return;
-  }
-
-  const lowest = ranked.at(-1);
-  const metricLabel = definition.label.toLowerCase();
-  const haveVerb = isProjected ? "is projected to have" : "had";
+function renderChartInsight() {
+  elements.chartInsightCaption.textContent = yearsData[currentYearIndex];
   elements.chartInsightText.textContent =
-    `In ${year}, ${highest.item.name} ${haveVerb} the highest ${metricLabel} at ` +
-    `${format(highest.value)}, while ${lowest.item.name} ${haveVerb} the lowest ` +
-    `at ${format(lowest.value)}.`;
+    CHART_METRIC_INSIGHTS[chartMetricKey] ?? "";
 }
 
 // The same sortable table component the group view uses, reduced here to
@@ -2961,7 +2917,7 @@ function renderChartInsight(items) {
 function renderChartTable() {
   if (!elements.chartTableRows) return;
   const items = chartItems();
-  renderChartInsight(items);
+  renderChartInsight();
   const columns = chartTableColumns();
   if (!columns.some((column) => column.key === chartTableSort.key)) {
     // Used to always fall back to "population" specifically, which stopped
