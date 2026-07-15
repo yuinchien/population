@@ -762,7 +762,7 @@ body.country-detail #colorMode {
     width: calc(var(--ratio, 0) * 100%);
     background-color: color-mix(
         in srgb,
-        var(--detail-color) 20%,
+        var(--detail-color) 80%,
         transparent
     );
     z-index: -1;
@@ -875,7 +875,7 @@ body.country-detail #colorMode {
 
     &.tall button {
         height: 56px;
-        padding: 0 16px;
+        padding: 0 var(--margin);
         &.active:after {
             height: 2px;
         }
@@ -883,7 +883,7 @@ body.country-detail #colorMode {
 }
 
 #chartMetricTabs {
-    padding: 0 var(--margin);
+    /*padding: 0 var(--margin);*/
 }
 
 
@@ -1214,7 +1214,7 @@ body.view-chart #calloutLayer {
   }
 
   min-height: 32px;
-  min-width: 180px;
+  min-width: 220px;
   padding: 8px 4px 8px 12px;
   border: var(--border);
   border-radius: 8px;

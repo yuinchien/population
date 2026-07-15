@@ -1291,6 +1291,14 @@ function renderSortableTable({
   onSort,
   onRowClick,
   gridTemplateColumns,
+  // Optional: per-row --detail-color (tints .detail-cell.country's ratio
+  // bar — see styles.css). Left unset, rows just inherit whatever
+  // --detail-color the panel around the table already has — the group
+  // table's one shared group color, unchanged from before this existed.
+  // The chart table passes each row its own item's line color instead,
+  // since a row there can represent any of several differently-colored
+  // countries or categories, not one shared group.
+  colorFor,
 }) {
   if (gridTemplateColumns) {
     headerEl.style.gridTemplateColumns = gridTemplateColumns;
@@ -1322,6 +1330,10 @@ function renderSortableTable({
     row.className = "detail-row";
     if (gridTemplateColumns) {
       row.style.gridTemplateColumns = gridTemplateColumns;
+    }
+    if (colorFor) {
+      const color = colorFor(detailRow.country);
+      if (color) row.style.setProperty("--detail-color", color);
     }
     row.append(
       ...detailRow.cells.map((cell) =>
@@ -2482,7 +2494,7 @@ function renderChartMetricTabs() {
     ...CHART_METRIC_KEYS.map((key) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      // btn.className = "mono-uppercase";
+      btn.className = "mono-uppercase";
       btn.dataset.key = key;
       btn.textContent = METRICS[key].label;
       btn.classList.toggle("active", key === chartMetricKey);
@@ -2866,10 +2878,14 @@ function setChartTableSort(key) {
 
 function renderChartInsight() {
   const year = yearsData[currentYearIndex];
-  // Same "Projection"/"Historical" pattern as the country detail view's own
-  // .caption badge (see buildCountrySummary in country-summary-model.mjs).
-  elements.chartInsightCaption.textContent =
-    year > historicalCutoffYear ? "Projection" : "Historical";
+  // Same isProjected split as buildCountrySummary in
+  // country-summary-model.mjs — "is projected to X" for a future year
+  // rather than flatly asserting it in the present/past tense, which reads
+  // as a claim of fact for a number that's actually a projection.
+  const isProjected = year > historicalCutoffYear;
+  elements.chartInsightCaption.textContent = isProjected
+    ? "Projection"
+    : "Historical";
 
   const definition = METRICS[chartMetricKey];
   const ranked = chartItems()
@@ -2892,23 +2908,26 @@ function renderChartInsight() {
       : (definition.formatPanel ?? definition.format);
   const [highest, second] = ranked;
   if (!second) {
-    elements.chartInsightText.textContent =
-      `${highest.item.name} is at ${format(highest.value)}.`;
+    elements.chartInsightText.textContent = isProjected
+      ? `${highest.item.name} is projected to be at ${format(highest.value)}.`
+      : `${highest.item.name} was at ${format(highest.value)}.`;
     return;
   }
 
   if (chartMetricKey === "population") {
+    const leadVerb = isProjected ? "is projected to lead" : "led";
     elements.chartInsightText.textContent =
-      `In ${year}, ${highest.item.name} leads at ${format(highest.value)}, followed by ` +
+      `In ${year}, ${highest.item.name} ${leadVerb} at ${format(highest.value)}, followed by ` +
       `${second.item.name} at ${format(second.value)}.`;
     return;
   }
 
   const lowest = ranked.at(-1);
   const metricLabel = definition.label.toLowerCase();
+  const haveVerb = isProjected ? "is projected to have" : "had";
   elements.chartInsightText.textContent =
-    `In ${year}, ${highest.item.name} has the highest ${metricLabel} at ` +
-    `${format(highest.value)}, while ${lowest.item.name} has the lowest ` +
+    `In ${year}, ${highest.item.name} ${haveVerb} the highest ${metricLabel} at ` +
+    `${format(highest.value)}, while ${lowest.item.name} ${haveVerb} the lowest ` +
     `at ${format(lowest.value)}.`;
 }
 
@@ -2932,6 +2951,7 @@ function renderChartTable() {
     countries: chartItems(),
     onSort: setChartTableSort,
     onRowClick: (item) => item.onClick(),
+    colorFor: (item) => item.color,
     gridTemplateColumns,
   });
 }
