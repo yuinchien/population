@@ -64,7 +64,7 @@
 :root[data-theme="light"] {
     color-scheme: light;
     --color-bg: #F2F1EF;
-    --color-surface: #FCF9EE;
+    --color-surface: #F4F2E9;
     --color-surface-raised: #ffffff;
     --color-text: #17140f;
     --color-muted: #5c5850;
@@ -1189,9 +1189,9 @@ body.view-chart #calloutLayer {
 
     &.active {
         opacity: 1;
-        background: var(--color-bg);
+        background: var(--color-text);
         border-radius: 20px;
-        color: var(--color-text);
+        color: var(--color-bg);
     }
 }
 

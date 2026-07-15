@@ -1161,12 +1161,14 @@ const SIMILAR_COUNTRY_METRIC_KEYS = [
   "medianAge",
   "lifeExpectancy",
   "populationGrowth",
+  "ageDependencyRatio",
 ];
 const SIMILAR_COUNTRY_METRIC_LABELS = {
   fertility: "fertility",
   medianAge: "median age",
   lifeExpectancy: "life expectancy",
   populationGrowth: "population growth",
+  ageDependencyRatio: "age dependency ratio",
 };
 const SIMILAR_COUNTRY_LIMIT = 4;
 
