@@ -1264,6 +1264,23 @@ function chartTableColumns() {
   });
 }
 
+// Total age dependency ratio (children + elderly per 100 working-age
+// people): under 45 reads as a low support burden, over 70 as high. Life
+// expectancy thresholds are the UN Human Development Index bands (High:
+// 75-80 yrs, Low: <70 yrs). Both drawn as High/Low reference lines on the
+// trend chart's Y axis (see renderTrendChart).
+const CHART_BENCHMARK_LINES = {
+  ageDependencyRatio: [
+    { value: 70, label: "High" },
+    { value: 45, label: "Low" },
+  ],
+  lifeExpectancy: [
+    { value: 80, label: "Very high" },
+    { value: 75, label: "High" },
+    { value: 70, label: "Low" },
+  ],
+};
+
 function createDetailCell(text, className = "") {
   const cell = document.createElement("div");
   cell.className = `detail-cell ${className}`.trim();
@@ -1333,9 +1350,7 @@ function renderSortableTable({
       if (color) row.style.setProperty("--detail-color", color);
     }
     row.append(
-      ...detailRow.cells.map((cell) =>
-        createDetailCell(cell.text, cell.className),
-      ),
+      ...detailRow.cells.map((cell) => createDetailCell(cell.text, cell.className)),
     );
     row.addEventListener("click", () => onRowClick(detailRow.country));
     return row;
@@ -2680,6 +2695,27 @@ function renderTrendChart({ animate = false } = {}) {
     baselineLabel.textContent =
       referenceValue === 0 ? "0" : tickFormat(referenceValue);
     elementsToAppend.push(baselineLabel);
+  }
+
+  for (const benchmark of CHART_BENCHMARK_LINES[key] ?? []) {
+    const benchmarkY = yFor(benchmark.value).toFixed(1);
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "trend-chart-baseline",
+        x1: pad.left,
+        x2: width - pad.right,
+        y1: benchmarkY,
+        y2: benchmarkY,
+      }),
+    );
+    const benchmarkLabel = svgEl("text", {
+      class: "trend-chart-baseline-label",
+      x: pad.left - 8,
+      y: Math.max(yFor(benchmark.value) - 4, 12).toFixed(1),
+      "text-anchor": "end",
+    });
+    benchmarkLabel.textContent = benchmark.label;
+    elementsToAppend.push(benchmarkLabel);
   }
 
   const axisY = height - 6;

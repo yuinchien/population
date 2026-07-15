@@ -91,6 +91,7 @@ export function buildDetailRows(countries, columns) {
         key: column.key,
         className: column.className,
         text: column.format(column.value(country)),
+        value: column.value(country),
       })),
     };
   });
