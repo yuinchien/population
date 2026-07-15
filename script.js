@@ -717,7 +717,6 @@ function buildGlobalPopulationStatus(year) {
 function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
-    setStatusTitle();
     updateMilestoneNav(null);
     renderCountrySummary(
       buildCountrySummary({
@@ -731,7 +730,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
     return;
   }
   if (selectedLegend && !elements.detailPanel.hidden) {
-    setStatusTitle();
     updateMilestoneNav(null);
     renderDetailStatus(
       buildDetailStatus({
@@ -751,7 +749,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
     (country) => country.peakYear === year,
   );
   const milestone = globalTrendMilestones.get(year);
-  setStatusTitle(milestone?.title);
   updateMilestoneNav(year);
   const leadText = milestone
     ? `${milestone.text}${
@@ -774,16 +771,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
     elements.status,
     { instant },
   );
-}
-
-function setStatusTitle(title = "") {
-  // The period turns the title into a sentence lead-in ("A Super-Aged
-  // Planet.") now that it sits inline ahead of the status text rather than
-  // standing alone as its own heading; the space after it is a CSS margin
-  // on the span (see styles.css) rather than trailing whitespace here, to
-  // avoid relying on whitespace-collapsing behavior at the span boundary.
-  elements.statusTitle.textContent = title ? `${title}.` : "";
-  elements.statusTitle.hidden = !title;
 }
 
 // Milestone years in chronological order, so "Milestone #N" counts forward
@@ -899,21 +886,17 @@ function typeStatus(
   { instant = false } = {},
 ) {
   const token = ++statusTypingToken;
-  // #statusTitle now lives inside #status as its lead-in span rather than
-  // as a separate element next to it — replaceChildren() below would
-  // otherwise throw it away along with whatever text was there before.
-  const titlePrefix = el === elements.status ? [elements.statusTitle] : [];
   if (instant) {
     const textNode = document.createElement("div");
     textNode.textContent = text;
-    el.replaceChildren(...titlePrefix, textNode);
+    el.replaceChildren(textNode);
     return;
   }
 
   const textNode = document.createTextNode("");
   const cursor = document.createElement("span");
   cursor.className = "status-cursor";
-  el.replaceChildren(...titlePrefix, textNode, cursor);
+  el.replaceChildren(textNode, cursor);
 
   let i = 0;
   const step = () => {

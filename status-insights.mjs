@@ -24,11 +24,17 @@ function firstMetricYear(globalData, key, predicate) {
   return metricRows(globalData, key).find(({ value }) => predicate(value));
 }
 
+// title reads as the milestone's headline sentence, folded directly into
+// its own text rather than kept as a separate field — #statusTitle used to
+// render it as its own lead-in span ahead of the description, but that
+// meant every consumer of a milestone's text had to know to stitch the two
+// back together in the right order; a single combined string can't drift
+// out of sync with itself.
 function addMilestone(milestones, year, title, text, priority = 0) {
   if (!Number.isFinite(year)) return;
   const current = milestones.get(year);
   if (!current || priority > current.priority) {
-    milestones.set(year, { title, text, priority });
+    milestones.set(year, { text: `${title}. ${text}`, priority });
   }
 }
 

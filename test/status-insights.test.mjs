@@ -25,30 +25,33 @@ test("computeGlobalTrendMilestones finds the expected WPP global trend years", a
     [...milestones.keys()].sort((a, b) => a - b),
     [2037, 2047, 2050, 2061, 2063, 2070, 2080, 2081, 2084],
   );
-  assert.equal(milestones.get(2037).title, "The Next Billion");
-  assert.match(milestones.get(2037).text, /crosses 9B/);
-  assert.equal(milestones.get(2047).title, "Slower Growth Era");
-  assert.match(milestones.get(2047).text, /falls below 0\.5%/);
-  assert.equal(milestones.get(2050).title, "Below Replacement");
-  assert.match(milestones.get(2050).text, /below replacement/);
-  assert.equal(milestones.get(2061).title, "Ten Billion World");
-  assert.match(milestones.get(2061).text, /above 10B/);
-  assert.equal(milestones.get(2063).title, "The Great Age Inversion");
+  assert.match(milestones.get(2037).text, /^The Next Billion\..*crosses 9B/s);
+  assert.match(
+    milestones.get(2047).text,
+    /^Slower Growth Era\..*falls below 0\.5%/s,
+  );
+  assert.match(
+    milestones.get(2050).text,
+    /^Below Replacement\..*below replacement/s,
+  );
+  assert.match(milestones.get(2061).text, /^Ten Billion World\..*above 10B/s);
   assert.match(
     milestones.get(2063).text,
-    /65 and older outnumber children under 15/,
+    /^The Great Age Inversion\..*65 and older outnumber children under 15/s,
   );
-  assert.equal(milestones.get(2070).title, "A Super-Aged Planet");
-  assert.match(milestones.get(2070).text, /super-aged society/);
-  assert.equal(milestones.get(2080).title, "Seniors Outnumber Youth");
+  assert.match(
+    milestones.get(2070).text,
+    /^A Super-Aged Planet\..*super-aged society/s,
+  );
   assert.match(
     milestones.get(2080).text,
-    /permanently outnumber all children and teenagers under 18/,
+    /^Seniors Outnumber Youth\..*permanently outnumber all children and teenagers under 18/s,
   );
-  assert.equal(milestones.get(2081).title, "Longer Lives");
-  assert.match(milestones.get(2081).text, /life expectancy reaches 80 years/);
-  assert.equal(milestones.get(2084).title, "Peak Humanity");
-  assert.match(milestones.get(2084).text, /turning point/);
+  assert.match(
+    milestones.get(2081).text,
+    /^Longer Lives\..*life expectancy reaches 80 years/s,
+  );
+  assert.match(milestones.get(2084).text, /^Peak Humanity\..*turning point/s);
   assert.deepEqual(
     prioritizedMilestoneYears(milestones),
     [2084, 2037, 2050, 2061, 2063, 2070, 2080, 2047, 2081],
@@ -85,7 +88,7 @@ test("computeGlobalTrendMilestones adds The African Century when country data is
   );
 
   const africanCentury = [...milestones.entries()].find(
-    ([, milestone]) => milestone.title === "The African Century",
+    ([, milestone]) => milestone.text.startsWith("The African Century."),
   );
   assert.ok(africanCentury, "expected an African Century milestone");
   const [year, milestone] = africanCentury;
@@ -96,8 +99,8 @@ test("computeGlobalTrendMilestones adds The African Century when country data is
   // shouldn't add or crash on this milestone — it simply can't be computed.
   const withoutCountries = computeGlobalTrendMilestones(globalData);
   assert.ok(
-    ![...withoutCountries.values()].some(
-      (m) => m.title === "The African Century",
+    ![...withoutCountries.values()].some((m) =>
+      m.text.startsWith("The African Century."),
     ),
   );
 });

@@ -10,7 +10,6 @@ export function getAppElements(root = document) {
     milestoneCaption: root.querySelector("#milestoneCaption"),
     milestoneProgressFill: root.querySelector("#milestoneProgressFill"),
     exploreMilestones: root.querySelector("#exploreMilestones"),
-    statusTitle: root.querySelector("#statusTitle"),
     status: root.querySelector("#status"),
     tooltip: root.querySelector("#tooltip"),
     chartTooltip: root.querySelector("#chartTooltip"),

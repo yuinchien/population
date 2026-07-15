@@ -91,5 +91,5 @@ test("loadPopulationData fetches and prepares app data", async () => {
   assert.equal(data.globalMetricsByYear.get(2001).population, 2);
   assert.equal(data.highMetricsByYear.get(2002).population, 3);
   assert.equal(data.lowMetricsByYear.get(2002).population, 1);
-  assert.equal(data.globalTrendMilestones.get(2001).title, "Peak Humanity");
+  assert.match(data.globalTrendMilestones.get(2001).text, /^Peak Humanity\./);
 });

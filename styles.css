@@ -81,7 +81,7 @@
     --color-scrim: rgba(255, 255, 255, 0.76);
     --color-scrim-strong: rgba(255, 255, 255, 0.9);
     --color-hover-value-bg: rgba(255, 255, 255, 0.92);
-    --text-shadow-legibility: 0 1px 1px rgba(255, 255, 255, 0.5);
+    --text-shadow-legibility: 0 0px 1px rgba(255, 255, 255, 0.8);
 
 }
 
@@ -324,13 +324,8 @@ button.milestone-nav-btn {
     cursor: not-allowed;
 }
 
-#statusTitle,
 #status {
     text-shadow: var(--text-shadow-legibility);
-}
-
-#statusTitle {
-    margin-right: 0.3em;
 }
 
 .status-cursor {
@@ -1625,9 +1620,7 @@ body.detail #calloutLayer {
     top: 0;
     will-change: transform;
     transform: translate3d(var(--callout-x, 0), var(--callout-y, 0), 0);
-
-        border: var(--border);
-    /*box-shadow: var(--text-shadow-legibility);*/
+    border: var(--border);
 }
 
 .peak-callout-label:focus-visible {
