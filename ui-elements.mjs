@@ -2,6 +2,7 @@ export function getAppElements(root = document) {
   return {
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
+    themeToggle: root.querySelector("#themeToggle"),
     milestoneTour: root.querySelector("#milestoneTour"),
     milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
     milestonePrev: root.querySelector("#milestonePrev"),
@@ -33,6 +34,8 @@ export function getAppElements(root = document) {
     countryDetail: root.querySelector("#countryDetail"),
     countryChart: root.querySelector("#countryChart"),
     countrySparklines: root.querySelector("#countrySparklines"),
+    countrySimilar: root.querySelector("#countrySimilar"),
+    countrySimilarList: root.querySelector("#countrySimilarList"),
     chartView: root.querySelector("#chartView"),
     chartViewClose: root.querySelector("#chartViewClose"),
     chartMetricTabs: root.querySelector("#chartMetricTabs"),

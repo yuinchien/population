@@ -316,6 +316,9 @@ let countryDemographicMetrics = null;
 // before then just doesn't draw a fill for that hover, same tradeoff as the
 // demographic-metrics deferred load.
 let countryBorders = null;
+// Set synchronously in <head> (before this module even loads) so first
+// paint never flashes the wrong theme — this just picks it up.
+let currentTheme = document.documentElement.dataset.theme || "dark";
 let colorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
@@ -509,6 +512,19 @@ function clearHoverCountryFill() {
   if (!hoverCountry) return;
   hoverCountryGroup.clear();
   hoverCountry = null;
+}
+
+// Every cached mesh's material.color was baked from whatever theme was
+// active when it was built — a theme change makes the whole cache stale at
+// once, unlike a normal per-country eviction.
+function clearHoverFillCache() {
+  hoverFillCache.forEach((meshes) =>
+    meshes.forEach((mesh) => {
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+    }),
+  );
+  hoverFillCache.clear();
 }
 
 // Fills a country's outline (one shape per ring — most countries are a
@@ -1137,6 +1153,96 @@ function metricFor(country, key) {
   ];
 }
 
+// Demographic shape, not raw scale — deliberately excludes population size
+// itself, which would just cluster large countries together regardless of
+// how their populations are actually trending.
+const SIMILAR_COUNTRY_METRIC_KEYS = [
+  "fertility",
+  "medianAge",
+  "lifeExpectancy",
+  "populationGrowth",
+];
+const SIMILAR_COUNTRY_METRIC_LABELS = {
+  fertility: "fertility",
+  medianAge: "median age",
+  lifeExpectancy: "life expectancy",
+  populationGrowth: "population growth",
+};
+const SIMILAR_COUNTRY_LIMIT = 4;
+
+// Nearest neighbors by current-year demographic profile — each metric
+// normalized by its spread across all countries this year (min-max, not
+// z-score: simple and enough here) so life expectancy's ~40-90yr range
+// doesn't dominate population growth's sub-1% range just by having bigger
+// raw numbers. Read once when a country opens (via currentYearIndex at that
+// moment) rather than kept live on every slider tick — a "next to see" list
+// that keeps reshuffling under someone scrubbing the year would read as
+// noise, not a suggestion.
+function computeSimilarCountries(country) {
+  if (!countryDemographicMetrics) return [];
+  const target = SIMILAR_COUNTRY_METRIC_KEYS.map((key) => metricFor(country, key));
+  if (target.some((value) => value == null)) return [];
+
+  const ranges = SIMILAR_COUNTRY_METRIC_KEYS.map((key) => {
+    const values = countriesData
+      .map((candidate) => metricFor(candidate, key))
+      .filter((value) => value != null);
+    return Math.max(...values) - Math.min(...values) || 1;
+  });
+
+  return countriesData
+    .filter((candidate) => candidate.iso3 !== country.iso3)
+    .map((candidate) => {
+      const values = SIMILAR_COUNTRY_METRIC_KEYS.map((key) =>
+        metricFor(candidate, key),
+      );
+      if (values.some((value) => value == null)) return null;
+      let distanceSquared = 0;
+      let closestKey = null;
+      let closestDiff = Infinity;
+      values.forEach((value, i) => {
+        const diff = Math.abs(value - target[i]) / ranges[i];
+        distanceSquared += diff * diff;
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestKey = SIMILAR_COUNTRY_METRIC_KEYS[i];
+        }
+      });
+      return { country: candidate, distance: Math.sqrt(distanceSquared), closestKey };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, SIMILAR_COUNTRY_LIMIT);
+}
+
+function renderSimilarCountries(country) {
+  const matches = computeSimilarCountries(country);
+  elements.countrySimilar.hidden = matches.length === 0;
+  if (!matches.length) return;
+  elements.countrySimilarList.replaceChildren(
+    ...matches.map(({ country: match, closestKey }) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "country-similar-item";
+      const flag = document.createElement("span");
+      flag.className = "country-similar-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(match.iso3)})`;
+      const text = document.createElement("span");
+      text.className = "country-similar-text";
+      const name = document.createElement("span");
+      name.className = "country-similar-name";
+      name.textContent = match.name;
+      // const reason = document.createElement("span");
+      // reason.className = "country-similar-reason";
+      // reason.textContent = `Similar ${SIMILAR_COUNTRY_METRIC_LABELS[closestKey]}`;
+      text.append(name);
+      item.append(flag, text);
+      item.addEventListener("click", () => openCountryDetail(match));
+      return item;
+    }),
+  );
+}
+
 function selectedCountries() {
   if (!selectedLegend) return [];
   return selectDetailCountries({
@@ -1540,6 +1646,7 @@ function renderCountryDetail() {
   updateStatusPanel(year);
   buildCountryCharts(country, { animate: true });
   updateCountryDetailForYear(year);
+  renderSimilarCountries(country);
   updateViewModeAvailability();
 }
 
@@ -2058,6 +2165,22 @@ function chartColorFor(iso3) {
   return CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
 }
 
+// Resolves any valid CSS <color> value (var(), color-mix(), etc.) to the
+// browser's own computed rgb() — lets foregroundForColor() work with a
+// color-mix() expression it can't parse directly (theme-colors.mjs only
+// understands hex/rgb and var() references, not color-mix() syntax), by
+// letting the real CSS engine do the resolving instead of reimplementing
+// color-mix's math in JS.
+function resolveComputedColor(cssColorValue) {
+  const probe = document.createElement("span");
+  probe.style.display = "none";
+  probe.style.color = cssColorValue;
+  document.body.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  return resolved;
+}
+
 function addChartCountry(iso3) {
   if (selectedChartCountries.includes(iso3)) return;
   selectedChartCountries.push(iso3);
@@ -2086,7 +2209,27 @@ function renderChartCountryChips() {
       chip.className = "chip";
       if (color) {
         chip.style.setProperty("--chart-line-color", color);
-        chip.style.setProperty("--chip-text-color", foregroundForColor(color));
+        // .chip's own background lightens `color` via color-mix() (see
+        // styles.css) — picking a readable text color against the
+        // *unmixed* line color picks wrong for anything color-mix
+        // lightens substantially, so resolve the actual rendered
+        // background first. Wrapped defensively: this ran once,
+        // unconditionally, during init (line below), and a computed-style
+        // format this doesn't recognize previously threw there and took
+        // the whole app's init down with it — a decorative contrast pick
+        // should never be able to do that. Falls back to the CSS
+        // default (--color-text) on any failure.
+        try {
+          const background = resolveComputedColor(
+            `color-mix(in srgb, ${color} 90%, white)`,
+          );
+          chip.style.setProperty(
+            "--chip-text-color",
+            foregroundForColor(background),
+          );
+        } catch (error) {
+          console.error("chip text-color contrast pick failed:", error);
+        }
       }
 
       const flag = document.createElement("span");
@@ -2724,6 +2867,64 @@ function setChartViewActive(active) {
   syncUrlFromState();
 }
 
+const THEME_STORAGE_KEY = "theme"; // must match the inline <head> script in index.html
+
+function updateThemeToggleUI() {
+  const isLight = currentTheme === "light";
+  elements.themeToggle.setAttribute(
+    "aria-label",
+    isLight ? "Switch to dark theme" : "Switch to light theme",
+  );
+  elements.themeToggle.querySelector(".material-symbols-outlined").textContent =
+    isLight ? "dark_mode" : "light_mode";
+}
+
+// Most of the app's colors are plain CSS var() references (region/income
+// swatches, chart lines, group-detail panels) and repaint for free the
+// instant the theme's custom properties change, via the ordinary cascade —
+// no JS involved. The few exceptions are values baked into something other
+// than a live CSS property at the moment they were built: the GPU dot color
+// buffer, cached hover-fill mesh materials, peak-callout label colors, and
+// (only while a single country's own detail panel is open) --detail-color,
+// which is resolved to a literal hex rather than left as a var() reference
+// because colorFor() also has to double as a THREE.Color for the globe.
+// Those are exactly what this re-derives and pushes out again.
+function applyTheme(theme, { persist = true } = {}) {
+  if (theme === currentTheme) return;
+  currentTheme = theme;
+  document.documentElement.dataset.theme = theme;
+  if (persist) localStorage.setItem(THEME_STORAGE_KEY, theme);
+  updateThemeToggleUI();
+
+  if (!countriesData.length) return; // toggled before data loaded — nothing baked yet
+  countriesData.forEach((country) => {
+    country._regionColor = regionColor(country.region);
+    country._incomeColor = incomeColor(country._incomeLabel);
+  });
+  clearHoverCountryFill();
+  clearHoverFillCache();
+  recolor();
+  if (currentYearIndex >= 0) {
+    calloutController.rebuild(yearsData[currentYearIndex]);
+  }
+  if (selectedCountry && !elements.detailPanel.hidden) {
+    elements.detailPanel.style.setProperty(
+      "--detail-color",
+      `#${colorFor(selectedCountry).getHexString()}`,
+    );
+  }
+  // Chart-view line/legend colors are var() references too, except the chip
+  // text color — chosen per-chip by contrast against the chip's background
+  // at render time, and *baked in as one of two variable names*
+  // (--color-bg/--color-text). Those two swap which one is actually the
+  // darker/lighter option between themes, so a decision made before this
+  // toggle is now backwards, not just stale — this needs to re-run
+  // regardless of whether chart view happens to be open right now, or it
+  // stays wrong (inverted, not just outdated) until something else happens
+  // to touch the chip list (adding/removing a country).
+  renderChartCountryChips();
+}
+
 function setColorMode(mode) {
   if (mode === colorMode) return;
   const keepDetailOpen = selectedLegend && !elements.detailPanel.hidden;
@@ -3139,6 +3340,10 @@ async function init() {
     elements.menuShim.addEventListener("click", () => {
       document.body.classList.remove("menu-open");
       elements.menuToggle.setAttribute("aria-expanded", "false");
+    });
+    updateThemeToggleUI();
+    elements.themeToggle.addEventListener("click", () => {
+      applyTheme(currentTheme === "light" ? "dark" : "light");
     });
     updateSliderProgress();
     applyYear(defaultYear);

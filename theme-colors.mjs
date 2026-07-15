@@ -19,6 +19,14 @@ function parseColor(color, styles) {
   }
   const rgb = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(resolved);
   if (rgb) return rgb.slice(1, 4).map((channel) => Number(channel) / 255);
+  // getComputedStyle() can normalize a resolved color to the CSS Color 4
+  // color(srgb r g b) function instead of rgb() — observed on colors that
+  // came from a color-mix() expression. Its r/g/b are already 0-1 floats
+  // (that's the format's whole point), unlike hex/rgb() above.
+  const colorFn = /^color\(\s*srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/i.exec(
+    resolved,
+  );
+  if (colorFn) return colorFn.slice(1, 4).map(Number);
   throw new TypeError(`Unsupported CSS color: ${resolved}`);
 }
 

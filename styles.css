@@ -16,6 +16,14 @@
     --color-purple: #8070dd;
     --color-teal-dark: #168271;
     --color-milestone: var(--color-pink);
+    /* Dark-background-only scrims/shadows the light theme below overrides —
+       named so `.glass`/`.chart-view`/etc. don't hardcode a color that'd
+       otherwise be wrong (a black-tinted backdrop, a shadow meant to help
+       light text pop) once the page itself goes light. */
+    --color-scrim: rgba(12, 12, 11, 0.76);
+    --color-scrim-strong: rgba(5, 5, 5, 0.9);
+    --color-hover-value-bg: rgba(17, 17, 16, 0.92);
+    --text-shadow-legibility: 0 1px 1px rgba(0, 0, 0, 0.65);
     --border: 1px solid var(--color-border);
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
@@ -29,6 +37,8 @@
     --icon-size: 24px;
     --button-size: 32px;
 
+    --shadow: 0 0 2px rgba(0,0,0,.4);
+
     /* A single documented stacking order instead of hand-picked numbers
        scattered through the file — each tier's comment says what it needs
        to sit above/below, so a new fixed-position element can be slotted
@@ -37,11 +47,42 @@
     --z-status: 100; /* .status-wrapper — narrative text overlay */
     --z-title: 999; /* h1 */
     --z-dock: 1000; /* .timeline, .chart-view — sit above the canvas/title */
-    --z-panel: 1001; /* #viewMode, .detail-panel — above .chart-view/.timeline */
+    --z-panel: 1001; /* #buttonsContainer, .detail-panel — above .chart-view/.timeline */
     --z-tooltip: 1002; /* #tooltip, #chartTooltip — above every panel above */
     --z-menu-shim: 9999; /* .menu-shim — mobile menu backdrop */
     --z-menu: 10000; /* .menu-toggle, .overlay — above the shim */
     --z-panel-over-menu: 10001; /* .detail-panel override — above the mobile menu itself */
+}
+
+/* Every color that isn't derived from one of these (via var()/color-mix())
+   needs its own line here — anything hardcoded elsewhere in this file (a
+   literal hex, an rgba(0,0,0,...) shadow assuming a dark backdrop) silently
+   stays wrong when this theme is active. Accent hues keep the same family
+   as the dark theme so region/income colors still "read" as the same
+   category across both, just re-tuned for contrast against a light surface
+   instead of near-black. */
+:root[data-theme="light"] {
+    color-scheme: light;
+    --color-bg: #F2F1EF;
+    --color-surface: #FCF9EE;
+    --color-surface-raised: #ffffff;
+    --color-text: #17140f;
+    --color-muted: #5c5850;
+    --color-subtle: #8c8779;
+    --color-blue: #6695F7;
+    --color-teal: #E0DE55;
+    /*#FFA88F;*/
+    --color-pink: #FEBAED;
+    --color-yellow: #07B582;
+    /*FFA88F*/
+    --color-orange: #FF7D39;
+    --color-purple: #dbb8ff;
+    --color-teal-dark: #08DEAA;
+    --color-scrim: rgba(255, 255, 255, 0.76);
+    --color-scrim-strong: rgba(255, 255, 255, 0.9);
+    --color-hover-value-bg: rgba(255, 255, 255, 0.92);
+    --text-shadow-legibility: 0 1px 1px rgba(255, 255, 255, 0.5);
+
 }
 
 html,
@@ -108,8 +149,8 @@ canvas.hovering-dot {
 }
 
 .glass {
-    background: rgba(12, 12, 11, 0.76);
-    border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+    background: var(--color-scrim);
+    /*border: 1px solid color-mix(in srgb, var(--color-bg) 12%, transparent);*/
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
@@ -283,7 +324,7 @@ button.milestone-nav-btn {
 #statusTitle,
 #status {
     font-family: var(--font-sans);
-    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
+    text-shadow: var(--text-shadow-legibility);
 }
 
 #statusTitle {
@@ -315,16 +356,42 @@ button.milestone-nav-btn {
     }
 }
 
-#viewMode {
+#buttonsContainer {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--margin) / 2);
     border: none;
     position: fixed;
     right: 0;
     top: 0;
     margin: var(--margin);
+    /* Leaves room for .theme-toggle, which sits at the same right edge and
+       needs to stay visible (and clickable) regardless of view/detail
+       state — unlike this group, it isn't hidden by .hide-for-detail /
+       .hide-for-chart. */
+    /*margin-right: calc(var(--margin) + var(--button-size) + 8px);*/
     /* --z-panel, above --z-dock's .chart-view — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
     z-index: var(--z-panel);
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: var(--border);
+    background: none;
+    width: var(--button-size);
+    height: var(--button-size);
+    padding: 0;
+    border-radius: 50%;
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.theme-toggle .material-symbols-outlined {
+    font-size: 18px;
 }
 
 .slider-container {
@@ -400,13 +467,13 @@ button.milestone-nav-btn {
     color: var(--color-muted);
     font-weight: 500;
     pointer-events: none;
-    background: rgba(17, 17, 16, .92);
+    background: var(--color-hover-value-bg);
     padding: 0 4px;
 }
 
 .button-group {
     display: flex;
-    gap: calc(var(--margin) / 2);
+    gap: 4px;
 }
 
 button {
@@ -522,7 +589,7 @@ body.country-detail #colorMode {
     border-radius: 12px;
     white-space: nowrap;
     pointer-events: none;
-    /* --z-tooltip — above --z-panel (.detail-panel/#viewMode), both can be
+    /* --z-tooltip — above --z-panel (.detail-panel/#buttonsContainer), both can be
        open while a chart underneath them (sparklines, the trend chart) is
        hovered, and this tooltip needs to paint over them, not get hidden
        behind. */
@@ -903,7 +970,7 @@ body.country-detail #colorMode {
 .country-sparklines {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: var(--margin);
     flex: none;
     grid-column: 1 / -1;
 }
@@ -987,6 +1054,74 @@ body.country-detail #colorMode {
     fill: var(--detail-color);
 }
 
+.country-similar {
+    grid-column: 1 / -1;
+    flex: none;
+    margin-top: 4px;
+    margin-bottom: var(--margin);
+    padding-top: 16px;
+    border-top: var(--border);
+}
+
+.country-similar-label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--color-muted);
+}
+
+.country-similar-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--margin) / 2);
+}
+
+.country-similar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px 6px 6px;
+    border: none;
+    border-radius: 8px;
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.country-similar-item:hover {
+    background: var(--color-border);
+}
+
+.country-similar-flag {
+    flex: none;
+    width: 20px;
+    height: 15px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.country-similar-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.country-similar-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.country-similar-reason {
+    color: var(--color-muted);
+    font-size: 11px;
+}
+
 /* opacity/max-height rather than display:none — matches .hide-for-detail's
    technique, needed since these elements animate open/closed rather than
    just toggling instantly. */
@@ -1015,7 +1150,10 @@ body.view-chart #calloutLayer {
 }
 
 .chart-view {
-    --detail-color: #fff;
+    /* Fallback for chart lines before JS assigns a real per-country color —
+       var(--color-text) reads correctly on either theme, unlike a hardcoded
+       white would once the page itself goes light. */
+    --detail-color: var(--color-text);
     position: fixed;
     top: 0;
     right: 0;
@@ -1023,7 +1161,7 @@ body.view-chart #calloutLayer {
     left: 0;
     z-index: var(--z-dock);
     display: flex;
-    background: rgba(5, 5, 5, 0.9);
+    background: var(--color-scrim-strong);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1053,7 +1191,7 @@ body.view-chart #calloutLayer {
         opacity: 1;
         background: var(--color-bg);
         border-radius: 20px;
-        color: white;
+        color: var(--color-text);
     }
 }
 
@@ -1333,9 +1471,10 @@ body.detail #calloutLayer {
     left: 0;
     top: 0;
     will-change: transform;
-    transform: translate3d(var(--callout-x, 0), var(--callout-y, 0), 0)
-        translate(-50%, -100%);
-    box-shadow: 0 0 2px rgba(0,0,0,.5);
+    transform: translate3d(var(--callout-x, 0), var(--callout-y, 0), 0);
+
+        border: var(--border);
+    /*box-shadow: var(--text-shadow-legibility);*/
 }
 
 .peak-callout-label:focus-visible {
@@ -1481,11 +1620,11 @@ body.menu-open .menu-toggle-icon::after {
     body:not(.view-chart) .menu-toggle {
         display: block;
     }
-    #viewMode {
+    #buttonsContainer {
         top: 0;
         right: 0;
     }
-    body.menu-open.view-chart #viewMode {
+    body.menu-open.view-chart #buttonsContainer {
         display: none;
     }
 
@@ -1500,7 +1639,7 @@ body.menu-open .menu-toggle-icon::after {
         transform: translateX(-120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
 
-        background: rgba(12, 12, 11, 0.9);
+        background: var(--color-scrim-strong);
         -webkit-backdrop-filter: blur(16px);
         backdrop-filter: blur(16px);
     }

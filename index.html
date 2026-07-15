@@ -16,6 +16,21 @@
             gtag("config", "G-B7JVVPGL92");
         </script>
         <meta charset="utf-8" />
+        <script>
+            // Runs before styles.css paints anything, so the correct theme
+            // is already on <html> by first paint — doing this later (e.g.
+            // in script.js, a deferred module) would flash the default
+            // theme first on every load for users who picked the other one.
+            (function () {
+                var stored = localStorage.getItem("theme");
+                var theme =
+                    stored ||
+                    (matchMedia("(prefers-color-scheme: light)").matches
+                        ? "light"
+                        : "dark");
+                document.documentElement.dataset.theme = theme;
+            })();
+        </script>
         <link
             rel="icon"
             type="image/png"
@@ -49,34 +64,47 @@
             <span class="menu-toggle-icon"></span>
         </button>
         <div id="menuShim" class="menu-shim"></div>
-        <div id="viewMode" class="button-group hide-for-detail hide-for-chart" hidden>
+        <div id="buttonsContainer" class="hide-for-detail hide-for-chart">
             <button
+                id="themeToggle"
+                class="theme-toggle"
                 type="button"
-                data-mode="globe"
-                class="active mono-uppercase"
-                aria-label="Globe view"
-                title="Globe"
+                aria-label="Switch to light theme"
+                title="Switch theme"
             >
-                Globe
+                <span class="material-symbols-outlined" aria-hidden="true"
+                    >light_mode</span
+                >
             </button>
-            <button
-                type="button"
-                data-mode="map"
-                aria-label="Map view"
-                title="Map"
-                class="mono-uppercase"
-            >
-                Map
-            </button>
-            <button
-                type="button"
-                data-mode="chart"
-                aria-label="Chart view"
-                title="Chart"
-                class="mono-uppercase"
-            >
-                Chart
-            </button>
+            <div id="viewMode" class="button-group" hidden>
+                <button
+                    type="button"
+                    data-mode="globe"
+                    class="active mono-uppercase"
+                    aria-label="Globe view"
+                    title="Globe"
+                >
+                    Globe
+                </button>
+                <button
+                    type="button"
+                    data-mode="map"
+                    aria-label="Map view"
+                    title="Map"
+                    class="mono-uppercase"
+                >
+                    Map
+                </button>
+                <button
+                    type="button"
+                    data-mode="chart"
+                    aria-label="Chart view"
+                    title="Chart"
+                    class="mono-uppercase"
+                >
+                    Chart
+                </button>
+            </div>
         </div>
 
         <div id="timelineContainer" class="timeline hide-for-chart">
@@ -252,8 +280,8 @@
                         aria-hidden="true"
                         hidden
                     ></span>
-                    <h2 id="detailTitle" class="mono-uppercase"></h2>
-                    <p id="detailSubtitle" class="mono-uppercase"></p>
+                    <h2 id="detailTitle"></h2>
+                    <p id="detailSubtitle"></p>
                 </div>
                 <button
                     id="detailClose"
@@ -280,6 +308,12 @@
                     ></svg>
                 </div>
                 <div id="countrySparklines" class="country-sparklines"></div>
+                <div id="countrySimilar" class="country-similar" hidden>
+                    <span class="country-similar-label mono-uppercase"
+                        >Related countries</span
+                    >
+                    <div id="countrySimilarList" class="country-similar-list"></div>
+                </div>
             </div>
         </section>
         <div id="tooltip" class="glass" hidden></div>
