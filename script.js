@@ -1,13 +1,14 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { createCountryFillGeometries } from "./country-fill-geometry.mjs";
+import { createCalloutController } from "./callout-controller.mjs";
+import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 import {
   buildDetailStatus,
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
 import {
-  GLOBAL_METRIC_KEYS,
   METRICS,
   formatCount,
 } from "./metrics.mjs";
@@ -32,7 +33,7 @@ import {
   UNCLASSIFIED_INCOME,
   VIEW_CONFIG,
 } from "./view-config.mjs";
-import { getAppElements, getMetricValueElements } from "./ui-elements.mjs";
+import { getAppElements } from "./ui-elements.mjs";
 import { buildCountrySummary } from "./country-summary-model.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
@@ -85,7 +86,6 @@ const CHART_MARKER_FADE_IN_MS = 320;
 const CALLOUT_LEFT_CLEARANCE = 260;
 
 const elements = getAppElements();
-const METRIC_VALUE_ELEMENTS = getMetricValueElements(elements);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -101,9 +101,23 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const calloutGroup = new THREE.Group();
-scene.add(calloutGroup);
-let peakCallouts = []; // { country, anchor, outward, line, labelEl }
+const calloutController = createCalloutController({
+  camera,
+  layer: elements.calloutLayer,
+  globeRadius: GLOBE_RADIUS,
+  viewConfig: VIEW_CONFIG,
+  leftClearance: CALLOUT_LEFT_CLEARANCE,
+  getCountries: () => countriesData,
+  getViewMode: () => viewMode,
+  isTransitioning: () => !!transition,
+  getColor: colorFor,
+  getPopulation: (country) => country.populations[currentYearIndex],
+  formatPopulation: formatPeakPopulation,
+  getTextColor: (color) =>
+    foregroundForColor(`#${color.getHexString()}`),
+  onOpenCountry: openCountryDetail,
+});
+scene.add(calloutController.group);
 
 const hoverCountryGroup = new THREE.Group();
 scene.add(hoverCountryGroup);
@@ -149,14 +163,6 @@ function latLonToMapVector3(lat, lon) {
     (lat / 90) * (VIEW_CONFIG.map.height / 2),
     0,
   );
-}
-
-function resolveCssColor(color) {
-  const variable = /^var\((--[^)]+)\)$/.exec(color)?.[1];
-  if (!variable) return color;
-  return getComputedStyle(document.documentElement)
-    .getPropertyValue(variable)
-    .trim();
 }
 
 function regionColor(region) {
@@ -284,49 +290,6 @@ function formatPeakPopulation(value) {
     nullFallback: "N/A",
     roundWholeNumbers: true,
   });
-}
-
-// Writes a metric's headline value, plus — for projected years — a
-// smaller "Low – High" range line sourced from the UN's Low/High variant
-// scenarios, so the further out the slider goes, the more visibly
-// uncertain the number becomes (instead of reading as a flat fact).
-function setMetricValue(el, mainText, rangeText) {
-  el.textContent = "";
-  el.append(document.createTextNode(mainText));
-  if (rangeText) {
-    const rangeEl = document.createElement("span");
-    rangeEl.className = "metric-range";
-    rangeEl.textContent = rangeText;
-    el.append(rangeEl);
-  }
-}
-
-function updateMetricsPanel(year) {
-  const metrics = globalMetricsByYear.get(year);
-  if (!metrics) {
-    elements.metrics.hidden = true;
-    return;
-  }
-  elements.metrics.hidden = false;
-
-  const isProjected = year > historicalCutoffYear;
-  const hi = isProjected ? highMetricsByYear.get(year) : null;
-  const lo = isProjected ? lowMetricsByYear.get(year) : null;
-
-  function apply(key) {
-    const definition = METRICS[key];
-    const el = METRIC_VALUE_ELEMENTS[key];
-    const formatMain = definition.formatPanel ?? definition.format;
-    const formatRange = definition.formatRange ?? formatMain;
-    const mainText = formatMain(metrics[key]);
-    let rangeText = "";
-    if (hi && lo && hi[key] != null && lo[key] != null) {
-      rangeText = `${formatRange(lo[key])} — ${formatRange(hi[key])}`;
-    }
-    setMetricValue(el, mainText, rangeText);
-  }
-
-  GLOBAL_METRIC_KEYS.forEach(apply);
 }
 
 let pointsMesh = null;
@@ -614,181 +577,6 @@ function showHoverCountryFill(country) {
     });
     hoverFillCache.delete(oldestKey);
   }
-}
-
-// Centroid of a country's precomputed dot cloud in the current view basis,
-// re-projected onto the globe's surface (averaging points on a sphere
-// lands inside it, not on it) or left on the flat map plane as-is.
-function computeCountryAnchor(country) {
-  const src = viewMode === "map" ? country._xyzMap : country._xyzGlobe;
-  const n = src.length / 3;
-  let x = 0;
-  let y = 0;
-  let z = 0;
-  for (let i = 0; i < n; i++) {
-    x += src[i * 3];
-    y += src[i * 3 + 1];
-    z += src[i * 3 + 2];
-  }
-  const v = new THREE.Vector3(x / n, y / n, z / n);
-  if (viewMode !== "map") v.normalize().multiplyScalar(GLOBE_RADIUS);
-  return v;
-}
-
-function computeOutwardPoint(anchor) {
-  if (viewMode === "map") {
-    return anchor
-      .clone()
-      .add(new THREE.Vector3(0, 0, VIEW_CONFIG.map.calloutExtend));
-  }
-  return anchor
-    .clone()
-    .normalize()
-    .multiplyScalar(VIEW_CONFIG.globe.calloutExtend);
-}
-
-function clearPeakCallouts() {
-  peakCallouts.forEach(({ line, labelEl }) => {
-    calloutGroup.remove(line);
-    line.geometry.dispose();
-    line.material.dispose();
-    labelEl.remove();
-  });
-  peakCallouts = [];
-}
-
-// Rebuilds the leader-line + label for every country whose peak year
-// matches the year currently on the slider. Also called from setViewMode()
-// since the anchor/outward points depend on the globe/map basis.
-function updatePeakCallouts(year) {
-  clearPeakCallouts();
-  if (!countriesData.length) return;
-
-  countriesData
-    .filter((country) => country.peakYear === year)
-    .forEach((country) => {
-      const anchor = computeCountryAnchor(country);
-      const outward = computeOutwardPoint(anchor);
-      const dotColor = colorFor(country);
-
-      const geometry = new THREE.BufferGeometry().setFromPoints([
-        anchor,
-        outward,
-      ]);
-      const material = new THREE.LineBasicMaterial({
-        color: dotColor,
-        transparent: true,
-        opacity: 0.9,
-      });
-      const line = new THREE.Line(geometry, material);
-      calloutGroup.add(line);
-
-      const labelEl = document.createElement("button");
-      labelEl.type = "button";
-      labelEl.className = "peak-callout-label glass";
-      labelEl.setAttribute("aria-label", `Open ${country.name} details`);
-      labelEl.textContent = `${country.name} ${formatPeakPopulation(
-        country.populations[currentYearIndex],
-      )}`;
-      labelEl.style.setProperty(
-        "--color-callout",
-        `#${dotColor.getHexString()}`,
-      );
-      const yellow = new THREE.Color(
-        resolveCssColor("var(--color-yellow)"),
-      );
-      labelEl.style.setProperty(
-        "--color-callout-text",
-        dotColor.getHex() === yellow.getHex()
-          ? "var(--color-bg)"
-          : "var(--color-text)",
-      );
-      labelEl.addEventListener("click", () => openCountryDetail(country));
-      elements.calloutLayer.append(labelEl);
-
-      peakCallouts.push({
-        country,
-        anchor,
-        outward,
-        line,
-        labelEl,
-        screenX: null,
-        screenY: null,
-        lastFrameTime: null,
-      });
-    });
-}
-
-// Projects each callout's outward endpoint to screen space every frame
-// (the camera orbits continuously, so this can't be computed just once).
-// On the globe, a callout for a country currently on the far side is
-// hidden — its anchor direction points away from the camera direction.
-// The three Vector3s below are scratch space reused every call instead of
-// .clone()'d fresh each time — this runs once per frame for every active
-// callout, so a fresh allocation per vector per callout adds up to steady
-// GC churn in the render loop.
-const calloutCamDir = new THREE.Vector3();
-const calloutFacing = new THREE.Vector3();
-const calloutProjected = new THREE.Vector3();
-
-const CALLOUT_SMOOTHING_MS = 90;
-
-function updateCalloutLabels(timestamp) {
-  if (!peakCallouts.length) return;
-  calloutCamDir.copy(camera.position).normalize();
-  // A callout's line/label are anchored to the resting globe/map position,
-  // which doesn't exist mid-transition (dots are off in the scrambled
-  // cloud) — so both are hidden together rather than left pointing at a
-  // now-stale spot, which reads as broken/frozen rather than "in motion".
-  const inTransition = !!transition;
-  peakCallouts.forEach((callout) => {
-    const { anchor, outward, line, labelEl } = callout;
-    if (inTransition) {
-      line.visible = false;
-      labelEl.hidden = true;
-      callout.screenX = null;
-      callout.screenY = null;
-      callout.lastFrameTime = null;
-      return;
-    }
-    if (viewMode !== "map") {
-      const facing = calloutFacing.copy(anchor).normalize().dot(calloutCamDir);
-      if (facing < 0.1) {
-        line.visible = false;
-        labelEl.hidden = true;
-        callout.screenX = null;
-        callout.screenY = null;
-        callout.lastFrameTime = null;
-        return;
-      }
-    }
-    line.visible = true;
-    labelEl.hidden = false;
-    const projected = calloutProjected.copy(outward).project(camera);
-    const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
-    const margin = 12;
-    const targetX = Math.min(
-      Math.max(x, CALLOUT_LEFT_CLEARANCE),
-      window.innerWidth - margin,
-    );
-    const targetY = Math.min(
-      Math.max(y, margin + 20),
-      window.innerHeight - margin,
-    );
-    if (callout.screenX == null || callout.lastFrameTime == null) {
-      callout.screenX = targetX;
-      callout.screenY = targetY;
-    } else {
-      const elapsed = Math.min(50, Math.max(0, timestamp - callout.lastFrameTime));
-      const blend = 1 - Math.exp(-elapsed / CALLOUT_SMOOTHING_MS);
-      callout.screenX += (targetX - callout.screenX) * blend;
-      callout.screenY += (targetY - callout.screenY) * blend;
-    }
-    callout.lastFrameTime = timestamp;
-    labelEl.style.setProperty("--callout-x", `${callout.screenX}px`);
-    labelEl.style.setProperty("--callout-y", `${callout.screenY}px`);
-  });
 }
 
 const formatter = new Intl.ListFormat("en", {
@@ -1235,7 +1023,6 @@ function applyYear(year, { instant = false } = {}) {
   isProjectedYear = isProjected;
 
   updateYearLabels(year);
-  updateMetricsPanel(year);
   renderDetailPanel();
   if (selectedCountry) {
     updateCountryDetailForYear(year);
@@ -1243,7 +1030,7 @@ function applyYear(year, { instant = false } = {}) {
   } else if (!selectedLegend) {
     updateStatusPanel(year, { instant });
   }
-  updatePeakCallouts(year);
+  calloutController.rebuild(year);
   syncUrlFromState();
 }
 
@@ -2299,13 +2086,7 @@ function renderChartCountryChips() {
       chip.className = "chip";
       if (color) {
         chip.style.setProperty("--chart-line-color", color);
-        const chipColor = new THREE.Color(resolveCssColor(color));
-        const yellow = new THREE.Color(
-          resolveCssColor("var(--color-yellow)"),
-        );
-        if (chipColor.getHex() === yellow.getHex()) {
-          chip.style.setProperty("--chip-text-color", "var(--color-bg)");
-        }
+        chip.style.setProperty("--chip-text-color", foregroundForColor(color));
       }
 
       const flag = document.createElement("span");
@@ -2966,7 +2747,7 @@ function setColorMode(mode) {
   }
   recolor();
   if (keepDetailOpen) renderDetailPanel();
-  updatePeakCallouts(yearsData[currentYearIndex]);
+  calloutController.rebuild(yearsData[currentYearIndex]);
   syncUrlFromState();
 }
 
@@ -3065,7 +2846,7 @@ function setViewMode(mode) {
   viewMode = mode;
   // Anchors are computed from the globe/map basis, so a mode toggle needs
   // its own rebuild even though the selected year hasn't changed.
-  updatePeakCallouts(yearsData[currentYearIndex]);
+  calloutController.rebuild(yearsData[currentYearIndex]);
 
   const fromTarget = controls.target.clone();
   const toTarget = new THREE.Vector3(0, 0, 0);
@@ -3507,7 +3288,7 @@ function updateTooltip(event) {
   // A country with an active peak-year callout already shows its own
   // "name: population" label on the globe — stacking the hover tooltip
   // right next to it just duplicates the same text.
-  if (peakCallouts.some((callout) => callout.country === country)) {
+  if (calloutController.hasCountry(country)) {
     elements.tooltip.hidden = true;
     return;
   }
@@ -3572,7 +3353,7 @@ function animate(timestamp) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
   }
-  updateCalloutLabels(timestamp);
+  calloutController.update(timestamp);
   renderer.render(scene, camera);
 }
 

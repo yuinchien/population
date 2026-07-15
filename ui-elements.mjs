@@ -16,12 +16,6 @@ export function getAppElements(root = document) {
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
     yearHoverValue: root.querySelector("#yearHoverValue"),
-    metrics: root.querySelector("#metrics"),
-    metricPopulation: root.querySelector("#metricPopulation"),
-    metricFertility: root.querySelector("#metricFertility"),
-    metricLifeExpectancy: root.querySelector("#metricLifeExpectancy"),
-    metricMedianAge: root.querySelector("#metricMedianAge"),
-    metricPopulationGrowth: root.querySelector("#metricPopulationGrowth"),
     colorMode: root.querySelector("#colorMode"),
     legend: root.querySelector("#legend"),
     viewMode: root.querySelector("#viewMode"),
@@ -51,15 +45,5 @@ export function getAppElements(root = document) {
     chartCountrySuggestions: root.querySelector("#chartCountrySuggestions"),
     chartTableHeader: root.querySelector("#chartTableHeader"),
     chartTableRows: root.querySelector("#chartTableRows"),
-  };
-}
-
-export function getMetricValueElements(elements) {
-  return {
-    population: elements.metricPopulation,
-    fertility: elements.metricFertility,
-    lifeExpectancy: elements.metricLifeExpectancy,
-    medianAge: elements.metricMedianAge,
-    populationGrowth: elements.metricPopulationGrowth,
   };
 }

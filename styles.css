@@ -7,7 +7,7 @@
     --color-text: #f3f1ed;
     --color-muted: #aaa7a1;
     --color-subtle: #74716d;
-    --color-border: rgba(243, 241, 237, 0.15);
+    --color-border: color-mix(in srgb, var(--color-text) 15%, transparent);
     --color-blue: #174fe5;
     --color-teal: #39b2a3;
     --color-pink: #d77dce;
@@ -28,6 +28,20 @@
     --margin: 24px;
     --icon-size: 24px;
     --button-size: 32px;
+
+    /* A single documented stacking order instead of hand-picked numbers
+       scattered through the file — each tier's comment says what it needs
+       to sit above/below, so a new fixed-position element can be slotted
+       in without guessing. */
+    --z-callouts: 5; /* #calloutLayer — country labels on the globe/map */
+    --z-status: 100; /* .status-wrapper — narrative text overlay */
+    --z-title: 999; /* h1 */
+    --z-dock: 1000; /* .timeline, .chart-view — sit above the canvas/title */
+    --z-panel: 1001; /* #viewMode, .detail-panel — above .chart-view/.timeline */
+    --z-tooltip: 1002; /* #tooltip, #chartTooltip — above every panel above */
+    --z-menu-shim: 9999; /* .menu-shim — mobile menu backdrop */
+    --z-menu: 10000; /* .menu-toggle, .overlay — above the shim */
+    --z-panel-over-menu: 10001; /* .detail-panel override — above the mobile menu itself */
 }
 
 html,
@@ -95,7 +109,7 @@ canvas.hovering-dot {
 
 .glass {
     background: rgba(12, 12, 11, 0.76);
-    border: 1px solid rgba(243, 241, 237, 0.12);
+    border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
@@ -156,7 +170,7 @@ body.detail .detail-back {
 
 h1 {
     position: fixed;
-    z-index: 999;
+    z-index: var(--z-title);
     left: 0;
     top: 2px;
     margin: 16px var(--margin);
@@ -165,13 +179,6 @@ h1 {
     font-weight: 500;
     font-family: var(--font-sans);
     text-decoration: underline;
-    /*border: 3px solid var(--color-text);*/
-    /*border-radius: 24px;*/
-    /*padding: 6px 10px 4px 10px;*/
-    /*line-height: 0.8em;*/
-    /*background-color: #222;*/
-    /*color:white;*/
-    /*box-sizing: border-box;*/
 }
 
 .title-year {
@@ -184,7 +191,7 @@ h1 {
     position: fixed;
     left: var(--margin);
     top: 58px;
-    z-index: 100;
+    z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
        a shrink-to-fit box would still creep leftward as content grows even
@@ -212,9 +219,7 @@ h1 {
     gap: 6px;
     padding: 6px 12px;
     border-radius: 18px;
-    color: var(--color-text);
     background: transparent;
-    border: none;
     font: inherit;
     font-size: 13px;
     font-weight: 500;
@@ -228,7 +233,6 @@ h1 {
 .milestone-progress {
     position: fixed;
     height: 2px;
-    /*background: var(--color-border);*/
     overflow: hidden;
     bottom: 0;
     left: 0;
@@ -317,10 +321,10 @@ button.milestone-nav-btn {
     right: 0;
     top: 0;
     margin: var(--margin);
-    /* Above .chart-view's own z-index (999) — otherwise the chart panel,
+    /* --z-panel, above --z-dock's .chart-view — otherwise the chart panel,
        which needs to cover the canvas the same way the detail panel does,
        covers this toggle too and there'd be no way back to Globe/Map. */
-    z-index: 1001;
+    z-index: var(--z-panel);
 }
 
 .slider-container {
@@ -380,25 +384,6 @@ button.milestone-nav-btn {
     cursor: pointer;
 }
 
-#metrics {
-    display: grid;
-    margin-top: -4px;
-    display: none;
-}
-
-.metric {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-top: var(--border);
-}
-
-.metric-label {
-    color: var(--color-muted);
-    font-size: 0.9rem;
-}
-
 .metric-value {
     position: absolute;
     left: var(--thumb-position, 50%);
@@ -417,17 +402,6 @@ button.milestone-nav-btn {
     pointer-events: none;
     background: rgba(17, 17, 16, .92);
     padding: 0 4px;
-}
-
-.metric-range {
-    margin-top: 1px;
-    color: var(--color-subtle);
-    font-weight: 400;
-    white-space: normal;
-    display: none;
-}
-#yearControl {
-    margin-bottom: 10px;
 }
 
 .button-group {
@@ -531,7 +505,7 @@ body.country-detail #colorMode {
    avoids. */
 .timeline {
     position: fixed;
-    z-index: 1000;
+    z-index: var(--z-dock);
     bottom: 0;
     right: 0;
     padding: var(--margin);
@@ -548,10 +522,11 @@ body.country-detail #colorMode {
     border-radius: 12px;
     white-space: nowrap;
     pointer-events: none;
-    /* Above .detail-panel/#viewMode (1001) — both can be open while a
-       chart underneath them (sparklines, the trend chart) is hovered, and
-       this tooltip needs to paint over them, not get hidden behind. */
-    z-index: 1002;
+    /* --z-tooltip — above --z-panel (.detail-panel/#viewMode), both can be
+       open while a chart underneath them (sparklines, the trend chart) is
+       hovered, and this tooltip needs to paint over them, not get hidden
+       behind. */
+    z-index: var(--z-tooltip);
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -577,7 +552,7 @@ body.country-detail #colorMode {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 1001;
+    z-index: var(--z-panel);
     display: grid;
     grid-template-rows: auto auto 1fr;
     grid-template-columns: minmax(0, 1fr);
@@ -619,16 +594,6 @@ body.country-detail #colorMode {
 #detailSubtitle {
     margin-top: 0;
     font-size: 1.1rem;
-}
-
-.detail-summary {
-    color: var(--color-text);
-    line-height: 1.4em;
-    font-size: 1.6rem;
-    max-width: 920px;
-    font-family: var(--font-sans);
-    letter-spacing: 0em;
-    margin: 24px 0 12px 0;
 }
 
 .btn-return,
@@ -742,14 +707,21 @@ body.country-detail #colorMode {
 }
 
 .detail-summary {
+    color: var(--color-text);
+    line-height: 1.4em;
+    font-size: 1.6rem;
+    max-width: 920px;
+    font-family: var(--font-sans);
+    letter-spacing: 0em;
+    margin: 24px 0 12px 0;
+
     .caption {
         display: table;
-        font-family: 'DM Mono';
+        font-family: var(--font-mono);
         font-size: 1rem;
         font-weight: 700;
         background: var(--detail-color);
         color: var(--color-bg);
-        /*color-mix(in srgb, var(--detail-color) 62%, var(--color-surface-raised));*/
         border-radius: 20px;
         padding: 4px 8px;
         line-height: 1;
@@ -1016,8 +988,8 @@ body.country-detail #colorMode {
 }
 
 /* opacity/max-height rather than display:none — matches .hide-for-detail's
-   technique, which also sidesteps #metrics's own `display: grid` (an ID
-   selector would otherwise outrank a plain class-based display override). */
+   technique, needed since these elements animate open/closed rather than
+   just toggling instantly. */
    .hide-for-chart {
        transition: .2s all;
    }
@@ -1049,7 +1021,7 @@ body.view-chart #calloutLayer {
     right: 0;
     bottom: 0;
     left: 0;
-    z-index: 1000;
+    z-index: var(--z-dock);
     display: flex;
     background: rgba(5, 5, 5, 0.9);
     flex-direction: column;
@@ -1089,7 +1061,6 @@ body.view-chart #calloutLayer {
     flex: 1;
     min-height: 0;
     width: 100%;
-    /*max-width: 1440px;*/
     display: flex;
     flex-direction: column;
     margin: 0 auto;
@@ -1112,7 +1083,6 @@ body.view-chart #calloutLayer {
 .chart-view .detail-table {
     flex: .5;
     min-height: 0;
-    /*padding: calc(var(--margin) * 1);*/
     grid-template-rows: auto auto 1fr;
 }
 
@@ -1211,7 +1181,6 @@ body.view-chart #calloutLayer {
 
 .chip-input {
     position: relative;
-    flex: none;
     flex: 1;
     display: flex;
     flex-wrap: wrap;
@@ -1220,7 +1189,6 @@ body.view-chart #calloutLayer {
     padding: 8px;
     border-radius: 8px;
     background: var(--color-surface);
-    /*box-shadow: 0 0 0 1px var(--color-border);*/
     flex-shrink: 1;
 }
 
@@ -1338,7 +1306,7 @@ body.view-chart #calloutLayer {
 #calloutLayer {
     position: fixed;
     inset: 0;
-    z-index: 5;
+    z-index: var(--z-callouts);
     pointer-events: none;
     font-weight: 500;
 }
@@ -1380,14 +1348,14 @@ body.detail #calloutLayer {
     position: fixed;
     top: var(--margin);
     left: var(--margin);
-    z-index: 10000;
+    z-index: var(--z-menu);
     width: var(--button-size);
     height: var(--button-size);
     padding: 0;
     border-radius: 24px;
     border: none;
     color: var(--color-text);
-    background: rgba(243, 241, 237, 0.1);
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
     cursor: pointer;
 }
 
@@ -1441,7 +1409,7 @@ body.menu-open .menu-toggle-icon::after {
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: var(--z-menu-shim);
     background: rgba(0, 0, 0, 0.3);
     opacity: 0;
     transition: opacity 0.2s ease;
@@ -1523,13 +1491,12 @@ body.menu-open .menu-toggle-icon::after {
 
     .overlay {
         position: fixed;
-        z-index: 10000;
+        z-index: var(--z-menu);
         top: 0;
         bottom: 0;
         left: 0;
         width: var(--overlay-width);
         padding: var(--margin);
-        width: 288px;
         transform: translateX(-120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
 
@@ -1540,13 +1507,8 @@ body.menu-open .menu-toggle-icon::after {
 
     .detail-panel {
         left: 0;
-        z-index: 10001;
+        z-index: var(--z-panel-over-menu);
     }
-
-    /*.chip-input {
-        align-self: flex-start;
-        margin-top: var(--margin);
-    }*/
 
     .chart-view {
         left: 0;

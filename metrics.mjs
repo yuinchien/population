@@ -128,14 +128,6 @@ export const METRICS = {
   },
 };
 
-export const GLOBAL_METRIC_KEYS = [
-  "population",
-  "fertility",
-  "lifeExpectancy",
-  "medianAge",
-  "populationGrowth",
-];
-
 export const DETAIL_METRIC_KEYS = [
   "population",
   "populationGrowth",

@@ -9,7 +9,6 @@ import {
 } from "../status-insights.mjs";
 import {
   DETAIL_METRIC_KEYS,
-  GLOBAL_METRIC_KEYS,
   METRICS,
 } from "../metrics.mjs";
 
@@ -207,13 +206,6 @@ test("displayGroupLabel removes income suffixes and shortens long MENA labels", 
 });
 
 test("METRICS centralizes shared metric order, labels, and formatters", () => {
-  assert.deepEqual(GLOBAL_METRIC_KEYS, [
-    "population",
-    "fertility",
-    "lifeExpectancy",
-    "medianAge",
-    "populationGrowth",
-  ]);
   assert.deepEqual(DETAIL_METRIC_KEYS, [
     "population",
     "populationGrowth",
