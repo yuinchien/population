@@ -1248,10 +1248,10 @@ function detailColumns() {
 // country and population are always present, followed by the selected
 // metric when it is not population itself.
 function chartTableColumns() {
-  const metricKeys = [
-    "population",
-    ...(chartMetricKey === "population" ? [] : [chartMetricKey]),
-  ];
+  // Country + whichever metric #chartMetricTabs currently has active — not
+  // Population plus that metric, which crowded the table with a column
+  // most tabs don't need repeated alongside their own.
+  const metricKeys = [chartMetricKey];
   // metricFor/populationFor read off each item's own .series() rather than
   // the global metricFor()/chartPopulationSeries(), so the same columns
   // work whether rows are real countries (Country mode) or aggregated
@@ -2954,7 +2954,13 @@ function renderChartTable() {
   renderChartInsight(items);
   const columns = chartTableColumns();
   if (!columns.some((column) => column.key === chartTableSort.key)) {
-    chartTableSort = { key: "population", direction: "desc" };
+    // Used to always fall back to "population" specifically, which stopped
+    // being a safe assumption once the table dropped its always-present
+    // Population column — falls back to whichever metric column is
+    // actually here instead (the "name" one is never a useful sort
+    // default, so it's excluded).
+    const fallback = columns.find((column) => column.key !== "name");
+    chartTableSort = { key: fallback.key, direction: fallback.defaultDirection };
   }
   const metricColumnCount = columns.length - 1;
   const gridTemplateColumns =
