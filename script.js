@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { TessellateModifier } from "three/addons/modifiers/TessellateModifier.js";
+import { createCountryFillGeometries } from "./country-fill-geometry.mjs";
 import {
   buildDetailStatus,
   displayGroupLabel,
@@ -108,7 +108,6 @@ let peakCallouts = []; // { country, anchor, outward, line, labelEl }
 const hoverCountryGroup = new THREE.Group();
 scene.add(hoverCountryGroup);
 let hoverCountry = null;
-const globeFillTessellator = new TessellateModifier(5, 8);
 // Rebuilding a large country's fill — especially the globe tessellation
 // pass — on every single re-hover gets expensive fast, and jittering the
 // mouse across a dense dot cluster's edge re-triggers it repeatedly for
@@ -117,138 +116,6 @@ const globeFillTessellator = new TessellateModifier(5, 8);
 // not on every hover-out.
 const hoverFillCache = new Map(); // `${iso3}:${viewMode}` -> THREE.Mesh[]
 const HOVER_FILL_CACHE_LIMIT = 12;
-
-function pointSegmentDistanceSquared(point, start, end) {
-  const dx = end[0] - start[0];
-  const dy = end[1] - start[1];
-  if (dx === 0 && dy === 0) {
-    return (point[0] - start[0]) ** 2 + (point[1] - start[1]) ** 2;
-  }
-  const amount = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) /
-        (dx * dx + dy * dy),
-    ),
-  );
-  const x = start[0] + amount * dx;
-  const y = start[1] + amount * dy;
-  return (point[0] - x) ** 2 + (point[1] - y) ** 2;
-}
-
-function simplifyRing(ring, tolerance = 0.18) {
-  if (ring.length < 12) return ring;
-  const points =
-    ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1]
-      ? ring.slice(0, -1)
-      : ring.slice();
-  const keep = new Uint8Array(points.length);
-  keep[0] = 1;
-  keep[points.length - 1] = 1;
-  const stack = [[0, points.length - 1]];
-  const toleranceSquared = tolerance * tolerance;
-  while (stack.length) {
-    const [startIndex, endIndex] = stack.pop();
-    let furthestIndex = -1;
-    let furthestDistance = toleranceSquared;
-    for (let i = startIndex + 1; i < endIndex; i++) {
-      const distance = pointSegmentDistanceSquared(
-        points[i],
-        points[startIndex],
-        points[endIndex],
-      );
-      if (distance > furthestDistance) {
-        furthestDistance = distance;
-        furthestIndex = i;
-      }
-    }
-    if (furthestIndex !== -1) {
-      keep[furthestIndex] = 1;
-      stack.push([startIndex, furthestIndex], [furthestIndex, endIndex]);
-    }
-  }
-  return points.filter((_, index) => keep[index]);
-}
-
-function ringNeedsGlobeTessellation(ring) {
-  let minLon = Infinity;
-  let maxLon = -Infinity;
-  let minLat = Infinity;
-  let maxLat = -Infinity;
-  ring.forEach(([lon, lat]) => {
-    minLon = Math.min(minLon, lon);
-    maxLon = Math.max(maxLon, lon);
-    minLat = Math.min(minLat, lat);
-    maxLat = Math.max(maxLat, lat);
-  });
-  return ring.length > 80 || maxLon - minLon > 20 || maxLat - minLat > 20;
-}
-
-function wrappedPointDistanceSquared(a, b) {
-  const lonDistance = Math.abs(a[0] - b[0]);
-  const wrappedLonDistance = Math.min(lonDistance, 360 - lonDistance);
-  return wrappedLonDistance ** 2 + (a[1] - b[1]) ** 2;
-}
-
-function unwrapLongitudes(ring) {
-  if (!ring.length) return ring;
-  const unwrapped = [[...ring[0]]];
-  for (let i = 1; i < ring.length; i++) {
-    let [lon, lat] = ring[i];
-    const previousLon = unwrapped.at(-1)[0];
-    while (lon - previousLon > 180) lon -= 360;
-    while (lon - previousLon < -180) lon += 360;
-    unwrapped.push([lon, lat]);
-  }
-  return unwrapped;
-}
-
-function stitchOpenRings(rings) {
-  const closed = [];
-  const open = [];
-  rings.forEach((ring) => {
-    if (
-      ring[0][0] === ring.at(-1)[0] &&
-      ring[0][1] === ring.at(-1)[1]
-    ) {
-      closed.push(ring);
-    } else {
-      open.push(ring);
-    }
-  });
-  while (open.length) {
-    const stitched = open.shift().slice();
-    while (open.length) {
-      const end = stitched.at(-1);
-      let matchIndex = -1;
-      let reverseMatch = false;
-      let nearest = 1;
-      open.forEach((candidate, index) => {
-        const startDistance = wrappedPointDistanceSquared(end, candidate[0]);
-        const endDistance = wrappedPointDistanceSquared(end, candidate.at(-1));
-        if (startDistance < nearest) {
-          nearest = startDistance;
-          matchIndex = index;
-          reverseMatch = false;
-        }
-        if (endDistance < nearest) {
-          nearest = endDistance;
-          matchIndex = index;
-          reverseMatch = true;
-        }
-      });
-      if (matchIndex === -1) break;
-      const fragment = open.splice(matchIndex, 1)[0];
-      stitched.push(...(reverseMatch ? fragment.reverse() : fragment));
-      if (wrappedPointDistanceSquared(stitched[0], stitched.at(-1)) < 1) {
-        break;
-      }
-    }
-    closed.push(unwrapLongitudes(stitched));
-  }
-  return closed;
-}
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -706,49 +573,16 @@ function showHoverCountryFill(country) {
   // 5% toward black — enough to read as "darker" without muddying the
   // region color.
   const color = colorFor(country).clone().lerp(new THREE.Color(0x000000), 0.05);
-  // A no-op for countries with no antimeridian-split fragments (stitches
-  // only the open rings it finds, and passes closed ones through
-  // unchanged) — safe to call unconditionally rather than special-casing
-  // Russia by iso3, so any future country whose data ends up with open
-  // fragments gets the same fix automatically.
-  const fillRings = stitchOpenRings(rings);
   const meshes = [];
-  fillRings.forEach((ring) => {
-    // A ring under 3 points can't form a polygon — shouldn't occur in the
-    // shipped data, but cheap to guard against rather than handing
-    // THREE.Shape/ShapeGeometry a degenerate triangulation.
-    if (ring.length < 3) return;
-    // Triangulated in plain (lon, lat) space — flat and not geographically
-    // accurate for a very large country, but plenty close at the size a
-    // hover highlight actually needs to read correctly at.
-    const simplifiedRing = simplifyRing(ring);
-    const shape = new THREE.Shape(
-      simplifiedRing.map(([lon, lat]) => new THREE.Vector2(lon, lat)),
-    );
-    let geometry = new THREE.ShapeGeometry(shape);
-    if (
-      viewMode === "globe" &&
-      ringNeedsGlobeTessellation(simplifiedRing)
-    ) {
-      const flatGeometry = geometry;
-      geometry = globeFillTessellator.modify(flatGeometry);
-      flatGeometry.dispose();
-    }
-    // Re-project every triangulated vertex from (lon, lat) onto the globe
-    // surface or flat map, same basis the dots themselves use.
-    const pos = geometry.getAttribute("position");
-    for (let i = 0; i < pos.count; i++) {
-      const lon = pos.getX(i);
-      const lat = pos.getY(i);
-      const p =
-        viewMode === "map"
-          ? latLonToMapVector3(lat, lon).setZ(HOVER_FILL_MAP_Z)
-          : latLonToVector3(lat, lon, HOVER_FILL_GLOBE_RADIUS);
-      pos.setXYZ(i, p.x, p.y, p.z);
-    }
-    pos.needsUpdate = true;
-    geometry.computeVertexNormals();
-
+  const geometries = createCountryFillGeometries({
+    rings,
+    viewMode,
+    projectPoint: (lon, lat) =>
+      viewMode === "map"
+        ? latLonToMapVector3(lat, lon).setZ(HOVER_FILL_MAP_Z)
+        : latLonToVector3(lat, lon, HOVER_FILL_GLOBE_RADIUS),
+  });
+  geometries.forEach((geometry) => {
     const material = new THREE.MeshBasicMaterial({
       color,
       transparent: true,
