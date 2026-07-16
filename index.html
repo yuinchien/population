@@ -64,12 +64,7 @@
             <span class="menu-toggle-icon"></span>
         </button>
         <div id="menuShim" class="menu-shim"></div>
-        <div id="buttonsContainer" class="hide-for-detail hide-for-chart">
-            <!--<div class="footer mono-uppercase">
-                <a href="https://population.un.org/wpp/" target="_blank"
-                    >Data source</a
-                >
-            </div>-->
+        <div id="buttonsContainer" class="hide-for-detail ">
             <!--<button
                 id="infoButton"
                 class="icon-button"
@@ -95,15 +90,6 @@
             <div id="viewMode" class="button-group" hidden>
                 <button
                     type="button"
-                    data-mode="cluster"
-                    class="mono-uppercase"
-                    aria-label="Cluster"
-                    title="Cluster"
-                >
-                    Cluster
-                </button>
-                <button
-                    type="button"
                     data-mode="chart"
                     aria-label="Chart view"
                     title="Chart"
@@ -112,14 +98,13 @@
                     Chart
                 </button>
                 <button
-                    hidden
                     type="button"
-                    data-mode="plot"
+                    data-mode="cluster"
                     class="mono-uppercase"
-                    aria-label="Plot"
-                    title="Plot"
+                    aria-label="Cluster"
+                    title="Cluster"
                 >
-                    Plot
+                    Cluster
                 </button>
                 <button
                     type="button"
@@ -142,40 +127,6 @@
             </div>
         </div>
 
-        <section id="plotView" class="plot-view glass" hidden>
-            <div class="plot-summary no-scrollbar">
-                <div id="plotGroupMode" class="tab-group">
-                    <button
-                        type="button"
-                        data-mode="region"
-                        class="active mono-uppercase"
-                        aria-label="Region"
-                        title="Region"
-                    >
-                        Region
-                    </button>
-                    <button
-                        type="button"
-                        data-mode="income"
-                        class="mono-uppercase"
-                        aria-label="Income group"
-                        title="Income group"
-                    >
-                        Income group
-                    </button>
-                </div>
-                <div id="plotGroups" class="plot-groups"></div>
-            </div>
-            <div class="plot-canvas">
-                <svg
-                    id="plotGrid"
-                    class="plot-grid"
-                    preserveAspectRatio="none"
-                ></svg>
-                <div id="plotCards" class="plot-cards"></div>
-            </div>
-        </section>
-
         <section id="clusterView" class="cluster-view glass" hidden>
             <div class="cluster-canvas">
                 <canvas id="clusterCanvas"></canvas>
@@ -185,7 +136,7 @@
         <div id="timelineContainer" class="timeline hide-for-chart">
             <button
                 id="milestoneTour"
-                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
+                class="milestone-nav-btn hide-for-chart hide-for-cluster"
                 type="button"
                 aria-label="Play milestone tour"
                 title="Play tour"
@@ -213,7 +164,7 @@
             </div>
             <button
                 id="milestonePrev"
-                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
+                class="milestone-nav-btn hide-for-chart hide-for-cluster"
                 type="button"
                 aria-label="Previous milestone"
             >
@@ -223,7 +174,7 @@
             </button>
             <button
                 id="milestoneNext"
-                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
+                class="milestone-nav-btn hide-for-chart hide-for-cluster"
                 type="button"
                 aria-label="Next milestone"
             >
@@ -355,9 +306,9 @@
                 </select>
             </div>
 
-            <button id="chartPanelClose" class="btn-return" type="button" aria-label="Close chart view" title="Close">
+            <!--<button hidden id="chartPanelClose" class="btn-return" type="button" aria-label="Close chart view" title="Close">
                 <span class="material-symbols-outlined">close</span>
-            </button>
+            </button>-->
 
             <div class="chart-card">
                 <div class="trend-chart-plot">

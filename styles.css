@@ -201,7 +201,6 @@ body.view-cluster #legend {
     transition: all 0.15s;
 }
 
-body.view-plot .hide-for-plot,
 body.view-cluster .hide-for-cluster,
 body.detail .hide-for-detail {
     opacity: 0;
@@ -684,13 +683,13 @@ body.country-detail #colorMode {
     background: transparent;
     cursor: pointer;
 }
-#chartPanelClose {
+/*#chartPanelClose {
     position: fixed;
     right: 0;
     top: 0;
     align-self: flex-start;
     margin: var(--margin);
-}
+}*/
 
 
 .detail-table {
@@ -1186,7 +1185,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: flex-start;
-    padding: 0 80px 0 var(--margin);
+    padding: 0 400px 0 var(--margin);
     margin-top: calc(var(--margin) - 5px);
     gap: calc(var(--margin) / 2);
 }
@@ -1376,219 +1375,6 @@ select::picker(select) {
     grid-template-rows: auto auto 1fr;
 }
 
-/* Placed earlier in the DOM than #timelineContainer so the two land in the
-   same stacking tier (--z-dock) but the timeline — plot's own year
-   control — still paints on top of it without needing a separate z tier. */
-.plot-view {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: var(--z-dock);
-    display: flex;
-    background: var(--color-scrim-strong);
-    overflow: hidden;
-}
-
-.plot-summary {
-    flex: 0 0 clamp(320px, 28vw, 360px);
-    min-height: 0;
-    overflow-y: auto;
-    padding: calc(var(--margin) * 2 + var(--button-size) - 8px) 0 var(--margin) var(--margin);
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 360px;
-    z-index: 10000;
-}
-
-.plot-summary-intro {
-    font-size: 1rem;
-    line-height: 1.5;
-    color: var(--color-muted);
-    margin: 0 0 24px 0;
-}
-
-.plot-groups {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-}
-
-#plotGroupMode {
-    margin-bottom: 12px;
-}
-
-.plot-group-item {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 100%;
-    border: 0;
-    border-radius: 8px;
-    padding: 4px 4px;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: .25s all ease-out;
-    opacity: .7;
-
-    .plot-group-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-weight: 500;
-    }
-
-    .plot-group-summary {
-        padding-left: 20px;
-        color: var(--color-muted);
-        height: 0;
-        opacity: 0;
-        transition: .25s all ease-out;
-        margin: 0;
-        transform: translate3d(0,0,0);
-        position: relative;
-    }
-    .plot-group-summary:before {
-        position: absolute;
-        left: 3px;
-        top: 0;
-        bottom: 0;
-        width: 1px;
-        content: "";
-        background: var(--color-text);
-    }
-
-    .legend-swatch {
-        background: var(--color-legend);
-        /*border: 1px solid var(--color-legend);*/
-    }
-}
-
-.plot-group-item.active {
-    opacity: 1;
-
-    .legend-swatch {
-        background: var(--color-legend);
-    }
-    .plot-group-summary {
-        height: auto;
-        opacity: 1;
-        margin-bottom: 12px;
-    }
-}
-
-
-.plot-canvas {
-    position: relative;
-    flex: 1 1 0;
-    min-width: 0;
-}
-
-.plot-grid {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-}
-
-.plot-grid-line {
-    stroke: var(--color-border);
-    stroke-width: 1;
-}
-
-.plot-axis-line {
-    stroke: color-mix(in srgb, var(--color-muted) 40%, transparent);
-    stroke-width: 2;
-}
-
-.plot-axis-label {
-    font-size: 11px;
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: var(--letterspacing-uppercase);
-    fill: var(--color-text);
-    font-weight: 500;
-}
-
-.plot-tick-label {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    fill: var(--color-muted);
-    display: none;
-}
-
-.plot-cards {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-.plot-card {
-    position: absolute;
-    top: 0;
-    left: 0;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    /*padding: 2px 7px 2px 3px;*/
-    /*border-radius: 999px;*/
-    /*background: color-mix(in srgb, var(--card-color) 25%, var(--color-bg) 75%);*/
-    /*border: 1px solid white;*/
-    color: var(--color-text);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    white-space: nowrap;
-    cursor: pointer;
-    pointer-events: auto;
-    transition: transform 0.25s ease, opacity 0.25s ease;
-    will-change: transform;
-}
-
-/* During the region-select auto-play sweep (playPlotTimelineOnce),
-   positions already update every ~16ms via JS — the transition above just
-   fights that with pointless retargeting/resampling on ~200 elements at
-   once. Off for the sweep's duration; back on for occasional updates
-   (a manual drag, a single click) where it's actually useful. */
-.plot-cards.is-playing .plot-card {
-    transition: none;
-}
-
-.plot-card:hover {
-    /*background: color-mix(in srgb, var(--card-color) 45%, var(--color-bg) 55%);*/
-    /* The standalone `scale` property (not transform: scale(), which is
-       already doing double duty for JS-driven positioning) composes with
-       that positioning transform instead of clobbering it. Combined with
-       the z-index bump, this lets a single card be picked out of a dense
-       cluster on hover without disturbing its neighbors' layout. */
-    /*scale: 1.25;*/
-    /*z-index: 99999 !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);*/
-}
-
-.plot-card-flag {
-    --width: 48px;
-    flex: none;
-    width: var(--width);
-    height: calc(var(--width) * 0.75);
-    background-size: cover;
-    background-position: center;
-    border-radius: 4px;
-    transform: rotateX(60deg) rotateZ(45deg);
-    transform-style: preserve-3d;
-    /*box-shadow: var(--shadow);*/
-    /*border: 4px solid var(--card-color);*/
-    outline: 4px solid var(--color-bg);
-    box-sizing: border-box;
-}
-
 .chart-insight {
     margin-top: 0;
     margin-bottom: var(--margin);
@@ -1627,10 +1413,6 @@ select::picker(select) {
     stroke: transparent;
     stroke-width: 16px;
     pointer-events: stroke;
-}
-
-.plot-card-name {
-    display: none;
 }
 
 .cluster-view {
