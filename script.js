@@ -58,7 +58,7 @@ import {
   classifyCountry,
   forceStrengthFor,
   radiusForPopulation,
-  refineGrowthArchetype,
+  refineArchetypeForPhase,
   PHASE_ONE_START_YEAR,
   PHASE_ONE_END_YEAR,
 } from "./cluster-model.mjs";
@@ -3923,13 +3923,8 @@ function setPlotActive(active) {
 // literal 3-axis mapping, a country's position here is emergent: which well
 // it's pulled toward is reclassified fresh every year from its own
 // fertility/migration/life-expectancy data, not a direct metric->pixel
-// formula, so the 1950->2100 "phases" (Phase 1's Golden Boom/Emerging Surge
-// split -> the Migrant Buffers/Silver Decline split -> the
-// migration-vs-aging divide -> near-universal convergence) fall out of the
-// classifier rather than being hardcoded. "growth", "goldenBoom", and
-// "emergingSurge" are mutually exclusive across years (see
-// refineGrowthArchetype): only "growth" is reachable outside 1950-1980,
-// only the other two inside it.
+// formula. Phase 1 (1950-1999) exposes Golden Boom/Emerging Surge; Phase 2
+// (2000-2100) exposes Growth/Migrant Buffers/Silver Decline.
 const CLUSTER_AXES = {
   fertility: "fertility",
   migration: "netMigrationRate",
@@ -3977,7 +3972,7 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
 // bottom-left and Silver Decline bottom-right mirror the left/right split in
 // the reference mockup. Golden Boom/Emerging Surge flank that same top
 // band left/right — they're never on screen at the same time as Growth
-// (see refineGrowthArchetype), so reusing that vertical position is safe.
+// (see refineArchetypeForPhase), so reusing that vertical position is safe.
 const CLUSTER_ANCHOR_RATIOS = {
   goldenBoom: { x: 0.35, y: 0.22 },
   emergingSurge: { x: 0.65, y: 0.22 },
@@ -3995,8 +3990,6 @@ const CLUSTER_LABEL_PARTICLE_GAP = 6;
 const CLUSTER_PHASE_ONE_KEYS = new Set([
   "goldenBoom",
   "emergingSurge",
-  "bufferedGrowth",
-  "silverDecline",
 ]);
 const CLUSTER_DEFAULT_PHASE_KEYS = new Set([
   "growth",
@@ -4329,7 +4322,7 @@ function updateClusterNodesForYear(yearIndex) {
       yearIndex,
       population,
     );
-    node.archetype = refineGrowthArchetype(
+    node.archetype = refineArchetypeForPhase(
       classifyCountry({
         fertility,
         netMigrationRate,

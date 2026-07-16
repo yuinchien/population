@@ -136,31 +136,28 @@ export function classifyCountry({
     : "silverDecline";
 }
 
-// Phase 1 window — see refineGrowthArchetype.
+// Phase 1 ends before 2000; the year 2000 is the first year of Phase 2.
 export const PHASE_ONE_START_YEAR = 1950;
-export const PHASE_ONE_END_YEAR = 1980;
+export const PHASE_ONE_END_YEAR = 1999;
 // Life expectancy dividing line for Phase 1's two "growth" stories. Western
 // Europe/North America were already ~65-72 years across 1950-1980 (the
 // post-war "Golden Age"); most of the Global South was still ~35-55 and
 // climbing fast over the same period — this threshold sits between them.
 export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 
-// Splits the coarse "growth" archetype into two Phase 1 (1950-1980)
-// narratives using life expectancy as the distinguishing axis: "goldenBoom"
-// for longer-lived populations and "emergingSurge" for populations earlier
-// in the mortality transition. This only touches nodes already classified
-// as Growth; every other archetype, year outside the window, and missing
-// life-expectancy value passes through unchanged.
-export function refineGrowthArchetype(archetype, year, lifeExpectancy) {
-  if (archetype !== "growth") return archetype;
-  if (
-    year == null ||
-    year < PHASE_ONE_START_YEAR ||
-    year > PHASE_ONE_END_YEAR
-  ) {
-    return archetype;
-  }
-  if (lifeExpectancy == null) return archetype;
+// Phase 1 deliberately exposes only two narratives. Every country that can
+// be classified is routed into Golden Boom or Emerging Surge by life
+// expectancy, regardless of which Phase 2 archetype its fertility/growth
+// profile would otherwise imply. From 2000 onward, the coarse classifier's
+// Growth/Migrant Buffers/Silver Decline result passes through unchanged.
+export function refineArchetypeForPhase(archetype, year, lifeExpectancy) {
+  if (archetype == null) return null;
+  const isPhaseOne =
+    year != null &&
+    year >= PHASE_ONE_START_YEAR &&
+    year <= PHASE_ONE_END_YEAR;
+  if (!isPhaseOne) return archetype;
+  if (lifeExpectancy == null) return null;
   return lifeExpectancy >= GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD
     ? "goldenBoom"
     : "emergingSurge";
