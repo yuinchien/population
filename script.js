@@ -326,6 +326,7 @@ let countryBorders = null;
 // paint never flashes the wrong theme — this just picks it up.
 let currentTheme = document.documentElement.dataset.theme || "dark";
 let colorMode = "region";
+let clusterColorMode = "region";
 let viewMode = "globe";
 let selectedLegend = null;
 // A single country "drill-down" view, entered either straight from a dot
@@ -378,8 +379,8 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function colorFor(country) {
-  return colorMode === "income" ? country._incomeColor : country._regionColor;
+function colorFor(country, mode = colorMode) {
+  return mode === "income" ? country._incomeColor : country._regionColor;
 }
 
 function writeDotColor(colorAttr, slot, country) {
@@ -1137,8 +1138,9 @@ function legendEntriesFor(mode) {
   ];
 }
 
-function renderLegend() {
-  const entries = legendEntriesFor(colorMode);
+function renderLegend(modeOverride = null) {
+  const mode = modeOverride ?? (clusterActive ? clusterColorMode : colorMode);
+  const entries = legendEntriesFor(mode);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
       const item = document.createElement("button");
@@ -1147,7 +1149,7 @@ function renderLegend() {
       item.dataset.label = label;
       item.classList.toggle(
         "active",
-        selectedLegend?.mode === colorMode && selectedLegend?.label === label,
+        selectedLegend?.mode === mode && selectedLegend?.label === label,
       );
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
@@ -1155,7 +1157,10 @@ function renderLegend() {
       const text = document.createElement("span");
       text.textContent = displayGroupLabel(label);
       item.append(swatch, text);
-      item.addEventListener("click", () => selectLegendItem(label, color));
+      item.addEventListener("click", () => {
+        if (clusterActive) setClusterActive(false);
+        selectLegendItem(label, color, mode);
+      });
       return item;
     }),
   );
@@ -1578,14 +1583,14 @@ function applyUrlStateFromLocation(search) {
   }
 }
 
-function selectLegendItem(label, color) {
-  if (selectedLegend?.mode === colorMode && selectedLegend?.label === label) {
+function selectLegendItem(label, color, mode = colorMode) {
+  if (selectedLegend?.mode === mode && selectedLegend?.label === label) {
     closeDetailPanel();
     return;
   }
   tourController.stop();
-  selectedLegend = { mode: colorMode, label, color };
-  renderLegend();
+  selectedLegend = { mode, label, color };
+  renderLegend(mode);
   renderDetailPanel();
   syncUrlFromState();
 }
@@ -4359,7 +4364,7 @@ function updateClusterYear(year) {
 function drawClusterNode(ctx, node) {
   ctx.beginPath();
   ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-  const fill = `#${colorFor(node.country).getHexString()}`;
+  const fill = `#${colorFor(node.country, clusterColorMode).getHexString()}`;
   ctx.fillStyle = fill;
   ctx.fill();
   if (node === clusterHoveredNode) {
@@ -4444,7 +4449,7 @@ function setupClusterCanvasInteraction() {
       showChartTooltip(
         event,
         node.country.name,
-        `#${colorFor(node.country).getHexString()}`,
+        `#${colorFor(node.country, clusterColorMode).getHexString()}`,
       );
     } else {
       hideChartTooltip();
@@ -4516,6 +4521,8 @@ function setClusterActive(active) {
   );
   if (active) {
     tourController.stop();
+    updateColorModeControls(clusterColorMode);
+    renderLegend();
     renderClusterLayout();
   } else {
     // A persistent physics loop (forceSimulation's own internal d3-timer),
@@ -4526,6 +4533,8 @@ function setClusterActive(active) {
     clusterSimulation = null;
     clusterForceX = null;
     clusterForceY = null;
+    updateColorModeControls(colorMode);
+    renderLegend();
     if (currentYearIndex >= 0) {
       // Cluster took applyYear()'s cheap fast path (see there) while open,
       // leaving the 3D scene stale — catch it up now that it's visible
@@ -4699,15 +4708,27 @@ function applyTheme(theme, { persist = true } = {}) {
   renderChartCountryChips();
 }
 
-function setColorMode(mode) {
-  if (mode === colorMode) return;
-  const keepDetailOpen = selectedLegend && !elements.detailPanel.hidden;
-  colorMode = mode;
+function updateColorModeControls(mode) {
   elements.colorMode
     .querySelectorAll("button")
     .forEach((btn) =>
       btn.classList.toggle("active", btn.dataset.mode === mode),
     );
+}
+
+function setClusterColorMode(mode) {
+  if (mode === clusterColorMode) return;
+  clusterColorMode = mode;
+  updateColorModeControls(mode);
+  renderLegend();
+  renderClusterFrame();
+}
+
+function setColorMode(mode) {
+  if (mode === colorMode) return;
+  const keepDetailOpen = selectedLegend && !elements.detailPanel.hidden;
+  colorMode = mode;
+  updateColorModeControls(mode);
 
   if (keepDetailOpen) {
     // Switching Region/Income while browsing a group's detail should let
@@ -5036,7 +5057,13 @@ async function init() {
 
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => setColorMode(btn.dataset.mode));
+      btn.addEventListener("click", () => {
+        if (clusterActive) {
+          setClusterColorMode(btn.dataset.mode);
+        } else {
+          setColorMode(btn.dataset.mode);
+        }
+      });
     });
 
     elements.viewMode.hidden = false;

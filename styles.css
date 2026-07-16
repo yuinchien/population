@@ -177,6 +177,11 @@ canvas.hovering-dot {
     padding: var(--margin);
 }
 
+body.view-cluster #overlayMain {
+    z-index: var(--z-panel);
+    pointer-events: auto;
+}
+
 .footer {
     flex: 1;
     display: flex;
