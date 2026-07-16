@@ -29,6 +29,13 @@ const RADIUS_OPTIONS = { minRadius: 9, maxRadius: 128 };
 const LABEL_HEIGHT = 32;
 const LABEL_PADDING_X = 14;
 const LABEL_PARTICLE_GAP = 14;
+// Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
+// DECLINE, ...) with the letters butted right up against each other —
+// noticeably tighter than the same font/weight would ever read as body
+// text, since there's no CSS letter-spacing equivalent by default. Applied
+// wherever this text is measured (updateLabelRects) or drawn (drawLabels)
+// so the two stay in sync.
+const TITLE_LETTER_SPACING = "1.5px";
 
 function percentile(sortedValues, fraction) {
   if (!sortedValues.length) return null;
@@ -142,7 +149,9 @@ export function createClusterController({
 
   function updateLabelRects(activeKeys) {
     if (!context || !anchors) return;
+    context.save();
     context.font = ensureTitleFont();
+    context.letterSpacing = TITLE_LETTER_SPACING;
     labelRects = [...activeKeys].map((archetype) => {
       const anchor = anchors[archetype];
       const label = CLUSTER_ARCHETYPES[archetype].label;
@@ -157,6 +166,7 @@ export function createClusterController({
         height: LABEL_HEIGHT,
       };
     });
+    context.restore();
   }
 
   function updateAnnotationVisibility(year) {
@@ -390,6 +400,7 @@ export function createClusterController({
   function drawLabels() {
     context.save();
     context.font = ensureTitleFont();
+    context.letterSpacing = TITLE_LETTER_SPACING;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineWidth = 1;
