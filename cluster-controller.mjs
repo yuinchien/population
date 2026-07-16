@@ -515,6 +515,15 @@ export function createClusterController({
     isActive: () => active,
     getColorMode: () => colorMode,
     render: renderLayout,
+    // Repaints the current frame with whatever colors resolveCssColor()
+    // reads right now — no rebuild, no simulation restart. Distinct from
+    // `render` (aliased to the heavier renderLayout, which also rebuilds
+    // nodes and reheats the simulation): callers that only need the
+    // baked-in canvas pixels to reflect a CSS custom-property change (e.g.
+    // a light/dark theme toggle) should use this instead, since the
+    // simulation may already be settled/stopped and nothing else would
+    // otherwise trigger a redraw.
+    redraw: render,
     resize,
     setColorMode,
     setYear,

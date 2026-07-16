@@ -3385,10 +3385,15 @@ function updateThemeToggleUI() {
 // instant the theme's custom properties change, via the ordinary cascade —
 // no JS involved. The few exceptions are values baked into something other
 // than a live CSS property at the moment they were built: the GPU dot color
-// buffer, cached hover-fill mesh materials, peak-callout label colors, and
+// buffer, cached hover-fill mesh materials, peak-callout label colors,
 // (only while a single country's own detail panel is open) --detail-color,
 // which is resolved to a literal hex rather than left as a var() reference
-// because colorFor() also has to double as a THREE.Color for the globe.
+// because colorFor() also has to double as a THREE.Color for the globe, and
+// the Cluster view's canvas — its archetype titles and particle labels are
+// resolveCssColor()'d straight to literal pixels at draw time, which only
+// happens on the next simulation tick; once the simulation settles (alpha
+// decays to 0) nothing repaints it on its own, so a toggle while Cluster is
+// open would otherwise leave stale-theme text frozen on screen.
 // Those are exactly what this re-derives and pushes out again.
 function applyTheme(theme, { persist = true } = {}) {
   if (theme === currentTheme) return;
@@ -3414,6 +3419,7 @@ function applyTheme(theme, { persist = true } = {}) {
       `#${colorFor(selectedCountry).getHexString()}`,
     );
   }
+  if (clusterController.isActive()) clusterController.redraw();
   // Chart-view line/legend colors are var() references too, except the chip
   // text color — chosen per-chip by contrast against the chip's background
   // at render time, and *baked in as one of two variable names*
