@@ -193,7 +193,7 @@ canvas.hovering-dot {
     transition: all 0.15s;
 }
 
-body.view-plot .hide-for-cosmo,
+body.view-plot .hide-for-plot,
 body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
@@ -1407,13 +1407,8 @@ select::picker(select) {
     gap: 0;
 }
 
-.plot-group-section {
-    color: var(--color-muted);
-    margin: 12px 0 8px 0;
-}
-
-.plot-group-section:first-child {
-    margin-top: 0;
+#plotGroupMode {
+    margin-bottom: 12px;
 }
 
 .plot-group-item {
@@ -1460,8 +1455,8 @@ select::picker(select) {
     }
 
     .legend-swatch {
-        border: 1px solid var(--color-text);
-        background: none;
+        background: var(--color-legend);
+        /*border: 1px solid var(--color-legend);*/
     }
 }
 
@@ -1469,7 +1464,7 @@ select::picker(select) {
     opacity: 1;
 
     .legend-swatch {
-        background: var(--color-text);
+        background: var(--color-legend);
     }
     .plot-group-summary {
         height: auto;

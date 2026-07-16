@@ -59,5 +59,6 @@ export function getAppElements(root = document) {
     plotGrid: root.querySelector("#plotGrid"),
     plotCards: root.querySelector("#plotCards"),
     plotGroups: root.querySelector("#plotGroups"),
+    plotGroupMode: root.querySelector("#plotGroupMode"),
   };
 }

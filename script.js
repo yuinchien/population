@@ -3202,7 +3202,7 @@ let plotCardsBuilt = false;
 let plotCardEntries = []; // [{ country, el }]
 let plotLayoutCache = null; // { scale, centerX, centerY } from the last renderPlotGrid()
 
-const COSMOS_AXES = { x: "fertility", y: "lifeExpectancy", z: "netMigrationRate" };
+const PLOT_AXES = { x: "fertility", y: "lifeExpectancy", z: "netMigrationRate" };
 // Classic 30° axonometric projection (rotate the ground plane 45°, squash
 // vertically) — baked-in constants rather than recomputed every call.
 const ISO_COS30 = Math.cos(Math.PI / 6);
@@ -3211,14 +3211,14 @@ const ISO_SIN30 = Math.sin(Math.PI / 6);
 // plane's own diagonal span. 1 keeps the whole iso-space symmetric around
 // the origin (see plotLayout), which is what makes centering it in the
 // viewport a matter of just centering on iso (0, 0).
-const COSMOS_HEIGHT_SCALE = 1;
+const PLOT_HEIGHT_SCALE = 1;
 // Kept tight — every pixel handed back here goes straight into scale (see
 // plotLayout), which is what actually makes a given year-to-year data
 // change move a card further. Sized just wide/tall enough for the
-// shortened axis-name labels (COSMOS_AXIS_LABELS) plus their min/max
+// shortened axis-name labels (PLOT_AXIS_LABELS) plus their min/max
 // ticks, not the full METRICS[key].label + value strings used elsewhere.
-const COSMOS_MARGIN = { top: 60, right: 0, bottom: 0, left: 0 };
-const COSMOS_GRID_DIVISIONS = 3;
+const PLOT_MARGIN = { top: 60, right: 0, bottom: 0, left: 0 };
+const PLOT_GRID_DIVISIONS = 3;
 // Depth-sort buckets for z-index (see positionPlotCards) — deliberately
 // coarse. z-index has no interpolation, so every reorder is an instant,
 // visible cut; a fine-grained bucket count reshuffles ~200 overlapping
@@ -3226,21 +3226,21 @@ const COSMOS_GRID_DIVISIONS = 3;
 // (playPlotTimelineOnce), which reads as flicker. This few buckets is
 // still plenty to keep "further toward the viewer" cards on top — exact
 // ordering within a band doesn't matter for a cluster of flag icons.
-const COSMOS_ZINDEX_BUCKETS = 20;
+const PLOT_ZINDEX_BUCKETS = 20;
 // With tick values hidden, the axis/grid only need to communicate
 // direction, not a precise scale — so cards (not the axis lines or their
 // labels, which stay at the literal [0,1] mapping) get stretched away from
 // the center of each axis to amplify how far a country's position and
 // year-to-year movement actually read. 1 is a no-op; >1 exaggerates.
-const COSMOS_MOVEMENT_SCALE = 1.1;
+const PLOT_MOVEMENT_SCALE = 1.1;
 
 function amplifyPlotMovement(normalized) {
-  return 0.5 + (normalized - 0.5) * COSMOS_MOVEMENT_SCALE;
+  return 0.5 + (normalized - 0.5) * PLOT_MOVEMENT_SCALE;
 }
 // Shorter than METRICS[key].label ("Net migration rate" etc.) — every
 // character here is width the axis's own margin has to reserve, at the
 // direct expense of the plot's scale.
-const COSMOS_AXIS_LABELS = {
+const PLOT_AXIS_LABELS = {
   fertility: "Fertility rate",
   lifeExpectancy: "Life expectancy",
   netMigrationRate: "Migration rate",
@@ -3251,7 +3251,7 @@ const COSMOS_AXIS_LABELS = {
 // left-panel list this drives doubles as a filter (see
 // setPlotGroupFilter): every country is always plotted, selecting one of
 // these just hides the rest so a single cluster is easier to pick out.
-const COSMOS_REGIONS = [
+const PLOT_REGIONS = [
   {
     label: "Sub-Saharan Africa",
     summary: "Still-rising fertility and the fastest population growth of any region.",
@@ -3291,7 +3291,7 @@ const COSMOS_REGIONS = [
 // on the same underlying countries/cards, not a second independent filter
 // (see plotSelectedGroup — only one of region/income can be active at
 // once).
-const COSMOS_INCOME_GROUPS = [
+const PLOT_INCOME_GROUPS = [
   {
     label: "High-income countries",
     summary: "Sub-replacement fertility and historic longevity. An aging demographic relying on net migration to sustain its peak.",
@@ -3311,11 +3311,18 @@ const COSMOS_INCOME_GROUPS = [
   color: INCOME_GROUP_COLORS[group.label] ?? DEFAULT_COLOR,
 }));
 
-// null = every country visible; otherwise one entry from COSMOS_REGIONS or
-// COSMOS_INCOME_GROUPS, and every country outside it has its card hidden
+// null = every country visible; otherwise one entry from PLOT_REGIONS or
+// PLOT_INCOME_GROUPS, and every country outside it has its card hidden
 // (see positionPlotCards). Reset whenever Plot closes (setPlotActive)
 // so each visit starts unfiltered.
 let plotSelectedGroup = null;
+// Which of PLOT_REGIONS/PLOT_INCOME_GROUPS the summary panel currently
+// shows — a separate, Plot-local concept from plotSelectedGroup (which
+// filter is applied to the cards) and from the Globe/Map legend's own
+// colorMode: the two panels look alike (both reuse .tab-group) but Plot's
+// filter+replay click behavior has nothing to do with colorMode's
+// recolor+drill-down, so they don't share state or DOM.
+let plotGroupTab = "region";
 
 function plotGroupKey(group) {
   return `${group.kind}:${group.label}`;
@@ -3334,18 +3341,18 @@ function normalizePlotValue(value, domain) {
 // (life expectancy), each normalized to [0, 1].
 function plotProject(nx, ny, nz) {
   const isoX = (nx - nz) * ISO_COS30;
-  const isoY = (nx + nz) * ISO_SIN30 - ny * COSMOS_HEIGHT_SCALE;
+  const isoY = (nx + nz) * ISO_SIN30 - ny * PLOT_HEIGHT_SCALE;
   return { isoX, isoY };
 }
 
 // iso (0,0) sits at the pixel center of the available plot area — the
 // bounding box is symmetric in both isoX ([-cos30, cos30]) and isoY
-// ([-1, 1]) around that point (see COSMOS_HEIGHT_SCALE), so this also
+// ([-1, 1]) around that point (see PLOT_HEIGHT_SCALE), so this also
 // happens to be the geometric center of the whole shape, not just the
 // origin corner's own projection.
 function plotLayout(width, height) {
-  const availW = width - COSMOS_MARGIN.left - COSMOS_MARGIN.right;
-  const availH = height - COSMOS_MARGIN.top - COSMOS_MARGIN.bottom;
+  const availW = width - PLOT_MARGIN.left - PLOT_MARGIN.right;
+  const availH = height - PLOT_MARGIN.top - PLOT_MARGIN.bottom;
   const isoWidthUnits = 2 * ISO_COS30;
   const isoHeightUnits = 2;
   const scale = Math.max(
@@ -3355,7 +3362,7 @@ function plotLayout(width, height) {
   return {
     scale,
     centerX: width / 2,
-    centerY: COSMOS_MARGIN.top + availH / 2,
+    centerY: PLOT_MARGIN.top + availH / 2,
   };
 }
 
@@ -3396,7 +3403,7 @@ function percentile(sortedValues, p) {
 // null if the (lazily loaded) demographics data isn't in yet.
 function computePlotDomains() {
   const domains = {};
-  for (const key of Object.values(COSMOS_AXES)) {
+  for (const key of Object.values(PLOT_AXES)) {
     const values = [];
     countriesData.forEach((country) => {
       chartSeriesFor(country, key).forEach((value) => {
@@ -3503,37 +3510,37 @@ function positionPlotCards(yearIndex) {
         return;
       }
     }
-    const x = valueAtFractionalYear(country, COSMOS_AXES.x, yearIndex);
-    const y = valueAtFractionalYear(country, COSMOS_AXES.y, yearIndex);
-    const z = valueAtFractionalYear(country, COSMOS_AXES.z, yearIndex);
+    const x = valueAtFractionalYear(country, PLOT_AXES.x, yearIndex);
+    const y = valueAtFractionalYear(country, PLOT_AXES.y, yearIndex);
+    const z = valueAtFractionalYear(country, PLOT_AXES.z, yearIndex);
     if (![x, y, z].every(Number.isFinite)) {
       el.style.opacity = "0";
       el.style.pointerEvents = "none";
       return;
     }
-    // Amplified (see COSMOS_MOVEMENT_SCALE) for the card's own position and
+    // Amplified (see PLOT_MOVEMENT_SCALE) for the card's own position and
     // depth sort — the axis lines/grid/ticks below are built separately in
     // renderPlotGrid, from the un-amplified [0,1] mapping, and are
     // unaffected by this.
     const nx = amplifyPlotMovement(
-      normalizePlotValue(x, plotDomains[COSMOS_AXES.x]),
+      normalizePlotValue(x, plotDomains[PLOT_AXES.x]),
     );
     const ny = amplifyPlotMovement(
-      normalizePlotValue(y, plotDomains[COSMOS_AXES.y]),
+      normalizePlotValue(y, plotDomains[PLOT_AXES.y]),
     );
     const nz = amplifyPlotMovement(
-      normalizePlotValue(z, plotDomains[COSMOS_AXES.z]),
+      normalizePlotValue(z, plotDomains[PLOT_AXES.z]),
     );
     const point = plotPixel(nx, ny, nz, plotLayoutCache);
     el.style.transform = `translate3d(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
     // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
     // should — one further "toward the viewer" (bigger nx+nz, lower on
     // screen) overlaps one further back, regardless of paint order. Written
-    // only when the (coarse — see COSMOS_ZINDEX_BUCKETS) bucket actually
+    // only when the (coarse — see PLOT_ZINDEX_BUCKETS) bucket actually
     // changes: touching z-index forces the browser to re-evaluate
     // stacking/paint order even when the value is identical, worth
     // skipping on a property this many elements update every drag frame.
-    const zIndex = Math.round((nx + nz) * COSMOS_ZINDEX_BUCKETS);
+    const zIndex = Math.round((nx + nz) * PLOT_ZINDEX_BUCKETS);
     if (entry.lastZIndex !== zIndex) {
       el.style.zIndex = String(zIndex);
       entry.lastZIndex = zIndex;
@@ -3559,7 +3566,7 @@ function renderPlotGrid() {
   // then snap that range to the same spacing the [0,1] cube already uses
   // so the two look like one continuous grid rather than two mismatched
   // ones.
-  const spacing = 1 / COSMOS_GRID_DIVISIONS;
+  const spacing = 1 / PLOT_GRID_DIVISIONS;
   const corners = [
     plotUnproject(0, 0, layout),
     plotUnproject(width, 0, layout),
@@ -3604,9 +3611,9 @@ function renderPlotGrid() {
 
   const origin = plotPixel(0, 0, 0, layout);
   const axisEnds = {
-    [COSMOS_AXES.x]: { end: plotPixel(1, 0, 0, layout), anchor: "start", dx: 10, dy: 4 },
-    [COSMOS_AXES.z]: { end: plotPixel(0, 0, 1, layout), anchor: "end", dx: -10, dy: 4 },
-    [COSMOS_AXES.y]: { end: plotPixel(0, 1, 0, layout), anchor: "middle", dx: 0, dy: -12 },
+    [PLOT_AXES.x]: { end: plotPixel(1, 0, 0, layout), anchor: "start", dx: 10, dy: 4 },
+    [PLOT_AXES.z]: { end: plotPixel(0, 0, 1, layout), anchor: "end", dx: -10, dy: 4 },
+    [PLOT_AXES.y]: { end: plotPixel(0, 1, 0, layout), anchor: "middle", dx: 0, dy: -12 },
   };
 
   Object.entries(axisEnds).forEach(([key, { end, anchor, dx, dy }]) => {
@@ -3622,7 +3629,7 @@ function renderPlotGrid() {
     const definition = METRICS[key];
     const domain = plotDomains?.[key];
     // Name only (no value) right at the endpoint — kept short so
-    // COSMOS_MARGIN can stay tight; the actual min/max values live in the
+    // PLOT_MARGIN can stay tight; the actual min/max values live in the
     // two ticks below instead.
     const nameLabel = svgEl("text", {
       class: "plot-axis-label",
@@ -3630,7 +3637,7 @@ function renderPlotGrid() {
       y: (end.y + dy).toFixed(1),
       "text-anchor": anchor,
     });
-    nameLabel.textContent = COSMOS_AXIS_LABELS[key];
+    nameLabel.textContent = PLOT_AXIS_LABELS[key];
     elementsToAppend.push(nameLabel);
     if (!domain) return;
     // Both ticks sit a little way in from their respective ends, along
@@ -3643,9 +3650,9 @@ function renderPlotGrid() {
       { t: 0.82, value: domain.max, offset: 0.75 },
     ].forEach(({ t, value, offset }) => {
       const point = plotPixel(
-        key === COSMOS_AXES.x ? t : 0,
-        key === COSMOS_AXES.y ? t : 0,
-        key === COSMOS_AXES.z ? t : 0,
+        key === PLOT_AXES.x ? t : 0,
+        key === PLOT_AXES.y ? t : 0,
+        key === PLOT_AXES.z ? t : 0,
         layout,
       );
       const tick = svgEl("text", {
@@ -3664,7 +3671,7 @@ function renderPlotGrid() {
 
 let plotSummaryBuilt = false;
 let plotPlaybackFrame = null;
-const COSMOS_PLAYBACK_DURATION_MS = 9000;
+const PLOT_PLAYBACK_DURATION_MS = 9000;
 
 function stopPlotPlayback() {
   // .plot-card's own transition (a nicety for occasional updates — a
@@ -3696,8 +3703,8 @@ function playPlotTimelineOnce() {
   const startTime = performance.now();
 
   function frame(now) {
-    const t = Math.min(1, (now - startTime) / COSMOS_PLAYBACK_DURATION_MS);
-    // 150 years over COSMOS_PLAYBACK_DURATION_MS is only ~60ms per whole
+    const t = Math.min(1, (now - startTime) / PLOT_PLAYBACK_DURATION_MS);
+    // 150 years over PLOT_PLAYBACK_DURATION_MS is only ~60ms per whole
     // year — rounding to the nearest year index before positioning cards
     // meant most of the 60fps rAF frames recomputed the exact same
     // position, then jumped a visible amount every ~4th frame once the
@@ -3756,31 +3763,49 @@ function setPlotGroupFilter(group) {
   }
 }
 
-function buildPlotGroupSection(title, groups) {
-  const heading = document.createElement("div");
-  heading.className = "plot-group-section mono-uppercase";
-  heading.textContent = title;
-  const items = groups.map((group) => {
-    const item = document.createElement("button");
-    item.type = "button";
-    item.className = "plot-group-item";
-    item.dataset.groupKey = plotGroupKey(group);
-    item.style.setProperty("--color-legend", group.color);
-    const header = document.createElement("div");
-    header.className = "plot-group-header";
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-    const label = document.createElement("span");
-    label.textContent = displayGroupLabel(group.label);
-    header.append(swatch, label);
-    const summary = document.createElement("p");
-    summary.className = "plot-group-summary paragraph";
-    summary.textContent = group.summary;
-    item.append(header, summary);
-    item.addEventListener("click", () => setPlotGroupFilter(group));
-    return item;
+function buildPlotGroupList(groups) {
+  const list = document.createElement("div");
+  list.className = "plot-group-list";
+  list.append(
+    ...groups.map((group) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "plot-group-item";
+      item.dataset.groupKey = plotGroupKey(group);
+      item.style.setProperty("--color-legend", group.color);
+      const header = document.createElement("div");
+      header.className = "plot-group-header";
+      const swatch = document.createElement("span");
+      swatch.className = "legend-swatch";
+      const label = document.createElement("span");
+      label.textContent = displayGroupLabel(group.label);
+      header.append(swatch, label);
+      const summary = document.createElement("p");
+      summary.className = "plot-group-summary paragraph";
+      summary.textContent = group.summary;
+      item.append(header, summary);
+      item.addEventListener("click", () => setPlotGroupFilter(group));
+      return item;
+    }),
+  );
+  return list;
+}
+
+// Switches which of PLOT_REGIONS/PLOT_INCOME_GROUPS the panel shows — both
+// lists are built once (see renderPlotSummary) and just toggled via
+// [hidden], the same way the item summaries below stay in the DOM
+// (collapsed via CSS) rather than getting torn down, so an expanded
+// description or the active filter's highlight survives switching tabs and
+// back.
+function setPlotGroupTab(tab) {
+  if (tab === plotGroupTab) return;
+  plotGroupTab = tab;
+  elements.plotGroupMode.querySelectorAll("button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mode === tab);
   });
-  return [heading, ...items];
+  elements.plotGroups.querySelectorAll(".plot-group-list").forEach((list) => {
+    list.hidden = list.dataset.tab !== tab;
+  });
 }
 
 // Static explanation of each region/income group — doesn't depend on year
@@ -3788,10 +3813,15 @@ function buildPlotGroupSection(title, groups) {
 // as that group's filter trigger (setPlotGroupFilter).
 function renderPlotSummary() {
   if (plotSummaryBuilt) return;
-  elements.plotGroups.replaceChildren(
-    ...buildPlotGroupSection("Region", COSMOS_REGIONS),
-    ...buildPlotGroupSection("Income group", COSMOS_INCOME_GROUPS),
-  );
+  const regionList = buildPlotGroupList(PLOT_REGIONS);
+  regionList.dataset.tab = "region";
+  const incomeList = buildPlotGroupList(PLOT_INCOME_GROUPS);
+  incomeList.dataset.tab = "income";
+  incomeList.hidden = true;
+  elements.plotGroups.replaceChildren(regionList, incomeList);
+  elements.plotGroupMode.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => setPlotGroupTab(btn.dataset.mode));
+  });
   plotSummaryBuilt = true;
 }
 
@@ -3838,14 +3868,15 @@ function setPlotActive(active) {
     renderPlotLayout();
   } else {
     stopPlotPlayback();
-    // Each visit starts unfiltered rather than remembering the last
-    // group — the summary panel's DOM is only built once (plotSummaryBuilt),
-    // so its buttons' .active class needs clearing by hand here too, not
-    // just the underlying state.
+    // Each visit starts unfiltered, on the Region tab, rather than
+    // remembering the last group/tab — the summary panel's DOM is only
+    // built once (plotSummaryBuilt), so this needs to clear things by hand
+    // rather than just resetting the underlying state.
     plotSelectedGroup = null;
     elements.plotGroups
       .querySelectorAll(".plot-group-item.active")
       .forEach((item) => item.classList.remove("active"));
+    setPlotGroupTab("region");
     if (currentYearIndex >= 0) {
       // Plot took applyYear()'s cheap fast path (see there) while open,
       // leaving the 3D scene stale — catch it up now that it's visible

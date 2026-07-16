@@ -134,9 +134,26 @@
 
         <section id="plotView" class="plot-view glass" hidden>
             <div class="plot-summary no-scrollbar">
-                <!--<p class="paragraph">
-                    Select a region below to explore the change.
-                </p>-->
+                <div id="plotGroupMode" class="tab-group">
+                    <button
+                        type="button"
+                        data-mode="region"
+                        class="active mono-uppercase"
+                        aria-label="Region"
+                        title="Region"
+                    >
+                        Region
+                    </button>
+                    <button
+                        type="button"
+                        data-mode="income"
+                        class="mono-uppercase"
+                        aria-label="Income group"
+                        title="Income group"
+                    >
+                        Income group
+                    </button>
+                </div>
                 <div id="plotGroups" class="plot-groups"></div>
             </div>
             <div class="plot-canvas">
@@ -152,7 +169,7 @@
         <div id="timelineContainer" class="timeline hide-for-chart">
             <button
                 id="milestoneTour"
-                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
+                class="milestone-nav-btn hide-for-chart hide-for-plot"
                 type="button"
                 aria-label="Play milestone tour"
                 title="Play tour"
@@ -180,7 +197,7 @@
             </div>
             <button
                 id="milestonePrev"
-                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
+                class="milestone-nav-btn hide-for-chart hide-for-plot"
                 type="button"
                 aria-label="Previous milestone"
             >
@@ -190,7 +207,7 @@
             </button>
             <button
                 id="milestoneNext"
-                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
+                class="milestone-nav-btn hide-for-chart hide-for-plot"
                 type="button"
                 aria-label="Next milestone"
             >
