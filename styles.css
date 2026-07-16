@@ -1685,6 +1685,7 @@ select::picker(select) {
     color: var(--color-muted);
     font-size: 12px;
     line-height: 1.6;
+    display: none;
 }
 
 .radar-grid-ring {

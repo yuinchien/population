@@ -3928,6 +3928,7 @@ function setPlotActive(active) {
 const CLUSTER_AXES = {
   fertility: "fertility",
   migration: "netMigrationRate",
+  growth: "populationGrowth",
   age: "medianAge",
   population: "population",
   lifeExpectancy: "lifeExpectancy",
@@ -3938,7 +3939,7 @@ const CLUSTER_ARCHETYPE_LABELS = {
   emergingSurge: "Emerging Surge",
   growth: "Growth",
   resilient: "Resilient",
-  silverDecline: "Contraction",
+  silverDecline: "Silver Decline",
 };
 const CLUSTER_ARCHETYPE_SUMMARIES = {
   goldenBoom: [
@@ -3951,20 +3952,24 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
     "Rapidly rising life expectancy",
     "Falling mortality fuels a youth surge",
   ],
-  growth: ["Above-replacement fertility", "Young, fast-growing population"],
+  growth: [
+    "Stable, above-replacement fertility",
+    "Positive natural increase",
+    "Young, growing population"
+  ],
   resilient: [
     "Below-replacement fertility",
-    "Positive net migration",
-    "Sustained population growth",
+    "Strong, net-positive immigration",
+    "Migration offsets natural decline",
   ],
   silverDecline: [
-    "Below-replacement fertility",
-    "Little or negative migration",
+    "Ultra-low, sub-replacement fertility",
+    "Minimal to negative net migration",
     "Aging, shrinking population",
   ],
 };
 // Growth sits top-center (where almost everyone starts, in 1950); Resilient
-// bottom-left and Contraction bottom-right mirror the left/right split in
+// bottom-left and Silver Decline bottom-right mirror the left/right split in
 // the reference mockup. Golden Boom/Emerging Surge flank that same top
 // band left/right — they're never on screen at the same time as Growth
 // (see refineGrowthArchetype), so reusing that vertical position is safe.
@@ -3984,7 +3989,7 @@ const CLUSTER_ANNOTATION_OFFSETS = {
 };
 // Which annotation cards are relevant for a given year — Growth's card only
 // makes sense outside Phase 1, Golden Boom/Emerging Surge only inside it;
-// Resilient/Contraction are always potentially relevant (see
+// Resilient/Silver Decline are always potentially relevant (see
 // classifyCountry — a country can dip below replacement any year).
 const CLUSTER_PHASE_ONE_KEYS = new Set([
   "goldenBoom",
@@ -4183,6 +4188,11 @@ function updateClusterNodesForYear(yearIndex) {
       CLUSTER_AXES.migration,
       yearIndex,
     );
+    const populationGrowth = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.growth,
+      yearIndex,
+    );
     const medianAge = valueAtFractionalYear(
       node.country,
       CLUSTER_AXES.age,
@@ -4199,7 +4209,7 @@ function updateClusterNodesForYear(yearIndex) {
       yearIndex,
     );
     node.archetype = refineGrowthArchetype(
-      classifyCountry({ fertility, netMigrationRate }),
+      classifyCountry({ fertility, netMigrationRate, populationGrowth }),
       year,
       lifeExpectancy,
     );

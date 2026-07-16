@@ -31,7 +31,43 @@ test("classifyCountry sorts by fertility first, then migration", () => {
   );
   assert.equal(
     classifyCountry({ fertility: 1.5, netMigrationRate: -0.1 }),
-    "contraction",
+    "silverDecline",
+  );
+  assert.equal(
+    classifyCountry({
+      fertility: 1.47,
+      netMigrationRate: 0.96,
+      populationGrowth: -0.5,
+    }),
+    "silverDecline",
+    "decline takes precedence when migration does not prevent contraction",
+  );
+  assert.equal(
+    classifyCountry({
+      fertility: 1.91,
+      netMigrationRate: 0.123,
+      populationGrowth: 0.023,
+    }),
+    "growth",
+    "Nigeria still has positive natural increase in 2100",
+  );
+  assert.equal(
+    classifyCountry({
+      fertility: 1.88,
+      netMigrationRate: 0.362,
+      populationGrowth: 0.484,
+    }),
+    "growth",
+    "Ethiopia still has positive natural increase in 2100",
+  );
+  assert.equal(
+    classifyCountry({
+      fertility: 1.6,
+      netMigrationRate: 4,
+      populationGrowth: 0.2,
+    }),
+    "resilient",
+    "migration-supported growth is resilient rather than natural growth",
   );
 });
 
@@ -66,16 +102,16 @@ test("contractionAgeIntensity clamps to [0,1] and handles degenerate domains", (
   );
 });
 
-test("forceStrengthFor only lets medianAge modulate the contraction archetype", () => {
+test("forceStrengthFor only lets medianAge modulate Silver Decline", () => {
   const domain = { min: 20, max: 40 };
   assert.equal(forceStrengthFor("growth", 40, domain), 0.05);
   assert.equal(forceStrengthFor("resilient", 40, domain), 0.05);
-  const young = forceStrengthFor("contraction", 20, domain);
-  const old = forceStrengthFor("contraction", 40, domain);
+  const young = forceStrengthFor("silverDecline", 20, domain);
+  const old = forceStrengthFor("silverDecline", 40, domain);
   assert.equal(young, 0.05);
   assert.ok(
     old > young,
-    "an older contraction-cluster country should pull stronger toward its well",
+    "an older Silver Decline country should pull stronger toward its well",
   );
   assert.equal(old, 0.05 + 0.12);
 });
@@ -100,7 +136,10 @@ test("refineGrowthArchetype only ever touches the growth archetype", () => {
     "resilient",
     "non-growth archetypes pass through unchanged",
   );
-  assert.equal(refineGrowthArchetype("contraction", 1960, 30), "contraction");
+  assert.equal(
+    refineGrowthArchetype("silverDecline", 1960, 30),
+    "silverDecline",
+  );
   assert.equal(refineGrowthArchetype(null, 1960, 70), null);
 });
 

@@ -8,17 +8,34 @@ export const FERTILITY_REPLACEMENT_THRESHOLD = 2.1;
 // Net-zero migration (inflow exactly offsetting outflow) — matches
 // METRICS.netMigrationRate.referenceValue in metrics.mjs.
 export const MIGRATION_BALANCE_THRESHOLD = 0;
+// netMigrationRate is expressed per 1,000 people while populationGrowth is
+// percent, so divide migration by 10 before comparing their contributions.
+export const MIGRATION_PER_THOUSAND_TO_PERCENT = 10;
 
 // Which of the three demographic "gravity wells" a country belongs to this
-// year. Returns null when there isn't enough data to place it — the caller
-// hides/fades that country's particle for the year rather than guessing.
-export function classifyCountry({ fertility, netMigrationRate }) {
+// year. Actual population decline takes precedence over a slightly positive
+// migration rate: immigration that is not enough to prevent contraction
+// should not make an aging, shrinking country read as Resilient.
+export function classifyCountry({
+  fertility,
+  netMigrationRate,
+  populationGrowth,
+}) {
   if (fertility == null) return null;
+  if (populationGrowth != null && populationGrowth < 0) {
+    return "silverDecline";
+  }
   if (fertility >= FERTILITY_REPLACEMENT_THRESHOLD) return "growth";
+  if (populationGrowth != null && netMigrationRate != null) {
+    const naturalIncrease =
+      populationGrowth -
+      netMigrationRate / MIGRATION_PER_THOUSAND_TO_PERCENT;
+    return naturalIncrease >= 0 ? "growth" : "resilient";
+  }
   if (netMigrationRate == null) return null;
   return netMigrationRate >= MIGRATION_BALANCE_THRESHOLD
     ? "resilient"
-    : "contraction";
+    : "silverDecline";
 }
 
 // Phase 1 window — see refineGrowthArchetype.
@@ -67,7 +84,7 @@ export function contractionAgeIntensity(medianAge, domain) {
 
 // Modulates the pull *strength* toward a country's current archetype
 // anchor, not its target position — a higher median age settles a
-// Contraction-cluster country deeper/more centrally in that well purely
+// Silver Decline country deeper/more centrally in that well purely
 // through the physics, rather than needing a separate "how severely aged"
 // archetype or a per-country placement hack.
 export function forceStrengthFor(
@@ -76,7 +93,7 @@ export function forceStrengthFor(
   domain,
   { base = 0.05, ageBoost = 0.12 } = {},
 ) {
-  if (archetype !== "contraction") return base;
+  if (archetype !== "silverDecline") return base;
   return base + ageBoost * contractionAgeIntensity(medianAge, domain);
 }
 
