@@ -35,7 +35,7 @@ const ANCHOR_RATIOS = {
 };
 const LABEL_HEIGHT = 32;
 const LABEL_PADDING_X = 14;
-const LABEL_PARTICLE_GAP = 6;
+const LABEL_PARTICLE_GAP = 14;
 const PHASE_ONE_KEYS = new Set(["goldenBoom", "emergingSurge"]);
 const PHASE_TWO_KEYS = new Set([
   "growth",
@@ -214,11 +214,18 @@ export function createClusterController({
           const nearest = distances.reduce((best, candidate) =>
             candidate.distance < best.distance ? candidate : best,
           );
-          const strength = 0.7 + alpha * 0.3;
+          // Use damped repulsion instead of snapping positions directly to
+          // the boundary. Snapping fights the anchor/collision forces on
+          // alternating ticks and makes nearby particles visibly vibrate.
+          // The larger exclusion gap above gives this softer force room to
+          // settle before a circle reaches the visible rectangle.
+          const strength = 0.18 + alpha * 0.22;
           if (nearest.axis === "x") {
-            node.vx += (nearest.target - node.x) * strength;
+            node.vx =
+              node.vx * 0.65 + (nearest.target - node.x) * strength;
           } else {
-            node.vy += (nearest.target - node.y) * strength;
+            node.vy =
+              node.vy * 0.65 + (nearest.target - node.y) * strength;
           }
         });
       });
@@ -396,9 +403,15 @@ export function createClusterController({
     context.font = ensureTitleFont();
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.lineWidth = 0;
-    context.fillStyle = resolveCssColor("var(--color-text)");
+    context.lineWidth = 1;
+    context.strokeStyle = "#fff";
+    const background = resolveCssColor("var(--color-scrim-strong)");
+    const textColor = resolveCssColor("var(--color-text)");
     labelRects.forEach((rect) => {
+      context.fillStyle = background;
+      context.fillRect(rect.x, rect.y, rect.width, rect.height);
+      context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      context.fillStyle = textColor;
       context.fillText(
         rect.label.toUpperCase(),
         rect.x + rect.width / 2,
