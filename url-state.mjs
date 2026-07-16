@@ -13,8 +13,8 @@ export function serializeUrlState(state) {
     params.set("view", "group");
     params.set("groupMode", state.groupMode);
     params.set("group", state.group);
-  } else if (state.view === "cosmos") {
-    params.set("view", "cosmos");
+  } else if (state.view === "plot") {
+    params.set("view", "plot");
   }
 
   if (state.year != null) params.set("year", String(state.year));
@@ -51,8 +51,8 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
       state.groupMode = groupMode;
       state.group = group;
     }
-  } else if (view === "cosmos") {
-    state.view = "cosmos";
+  } else if (view === "plot") {
+    state.view = "plot";
   }
   return state;
 }

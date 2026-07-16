@@ -333,7 +333,7 @@ const countryChartAnimationHandles = [];
 let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
-let cosmosActive = false;
+let plotActive = false;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
@@ -966,12 +966,12 @@ function applyYear(year, { instant = false } = {}) {
   }
 
   // Same reasoning as the chartPanelActive branch above — the 3D scene is
-  // hidden behind the cosmos overlay, so it's cheaper to skip it and just
-  // reposition the (already-built) cards. setCosmosActive(false) does the
+  // hidden behind the plot overlay, so it's cheaper to skip it and just
+  // reposition the (already-built) cards. setPlotActive(false) does the
   // 3D catch-up when the overlay closes.
-  if (cosmosActive) {
+  if (plotActive) {
     updateYearLabels(year);
-    updateCosmosYear(year);
+    updatePlotYear(year);
     syncUrlFromState();
     return;
   }
@@ -1499,8 +1499,8 @@ function urlStateFromApp() {
   const state = { mode: viewMode };
   if (chartPanelActive) {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
-  } else if (cosmosActive) {
-    Object.assign(state, { view: "cosmos" });
+  } else if (plotActive) {
+    Object.assign(state, { view: "plot" });
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
@@ -1539,8 +1539,8 @@ function applyUrlStateFromLocation(search) {
     if (state.metric) setChartMetric(state.metric);
     renderChartCountryChips();
     setchartPanelActive(true);
-  } else if (state.view === "cosmos") {
-    setCosmosActive(true);
+  } else if (state.view === "plot") {
+    setPlotActive(true);
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -3190,17 +3190,17 @@ function renderRadarChart() {
   svg.replaceChildren(...elementsToAppend);
 }
 
-// --- Cosmos view (Globe/Map/Chart's fourth mode) --------------------------
+// --- Plot view (Globe/Map/Chart's fourth mode) --------------------------
 // A hybrid 2D isometric world: a native SVG grid floor + axes, overlaid
 // with GPU-accelerated HTML cards (one per country, positioned via CSS
 // transform) placed by three demographic metrics at once — fertility (X),
 // life expectancy (Y, vertical), and net migration rate (Z). The year
 // slider drives every card's position simultaneously, so a trend reads as
 // motion through the grid rather than a redrawn chart.
-let cosmosDomains = null; // { fertility: {min,max}, ... } — global across every country/year, computed once
-let cosmosCardsBuilt = false;
-let cosmosCardEntries = []; // [{ country, el }]
-let cosmosLayoutCache = null; // { scale, centerX, centerY } from the last renderCosmosGrid()
+let plotDomains = null; // { fertility: {min,max}, ... } — global across every country/year, computed once
+let plotCardsBuilt = false;
+let plotCardEntries = []; // [{ country, el }]
+let plotLayoutCache = null; // { scale, centerX, centerY } from the last renderPlotGrid()
 
 const COSMOS_AXES = { x: "fertility", y: "lifeExpectancy", z: "netMigrationRate" };
 // Classic 30° axonometric projection (rotate the ground plane 45°, squash
@@ -3209,21 +3209,21 @@ const ISO_COS30 = Math.cos(Math.PI / 6);
 const ISO_SIN30 = Math.sin(Math.PI / 6);
 // How tall the Y (life expectancy) axis reads relative to the ground
 // plane's own diagonal span. 1 keeps the whole iso-space symmetric around
-// the origin (see cosmosLayout), which is what makes centering it in the
+// the origin (see plotLayout), which is what makes centering it in the
 // viewport a matter of just centering on iso (0, 0).
 const COSMOS_HEIGHT_SCALE = 1;
 // Kept tight — every pixel handed back here goes straight into scale (see
-// cosmosLayout), which is what actually makes a given year-to-year data
+// plotLayout), which is what actually makes a given year-to-year data
 // change move a card further. Sized just wide/tall enough for the
 // shortened axis-name labels (COSMOS_AXIS_LABELS) plus their min/max
 // ticks, not the full METRICS[key].label + value strings used elsewhere.
 const COSMOS_MARGIN = { top: 60, right: 0, bottom: 0, left: 0 };
 const COSMOS_GRID_DIVISIONS = 3;
-// Depth-sort buckets for z-index (see positionCosmosCards) — deliberately
+// Depth-sort buckets for z-index (see positionPlotCards) — deliberately
 // coarse. z-index has no interpolation, so every reorder is an instant,
 // visible cut; a fine-grained bucket count reshuffles ~200 overlapping
 // cards on nearly every frame during the region-select timeline sweep
-// (playCosmosTimelineOnce), which reads as flicker. This few buckets is
+// (playPlotTimelineOnce), which reads as flicker. This few buckets is
 // still plenty to keep "further toward the viewer" cards on top — exact
 // ordering within a band doesn't matter for a cluster of flag icons.
 const COSMOS_ZINDEX_BUCKETS = 20;
@@ -3234,7 +3234,7 @@ const COSMOS_ZINDEX_BUCKETS = 20;
 // year-to-year movement actually read. 1 is a no-op; >1 exaggerates.
 const COSMOS_MOVEMENT_SCALE = 1.1;
 
-function amplifyCosmosMovement(normalized) {
+function amplifyPlotMovement(normalized) {
   return 0.5 + (normalized - 0.5) * COSMOS_MOVEMENT_SCALE;
 }
 // Shorter than METRICS[key].label ("Net migration rate" etc.) — every
@@ -3248,10 +3248,9 @@ const COSMOS_AXIS_LABELS = {
 
 // One entry per real region (same taxonomy as REGION_COLORS/the Globe-Map
 // legend, plus a one-line summary of that region's demographic story) — the
-// left-panel list this drives doubles as a region filter (see
-// setCosmosRegionFilter): every country is always plotted, selecting one
-// of these just hides the rest so a single region's cluster is easier to
-// pick out.
+// left-panel list this drives doubles as a filter (see
+// setPlotGroupFilter): every country is always plotted, selecting one of
+// these just hides the rest so a single cluster is easier to pick out.
 const COSMOS_REGIONS = [
   {
     label: "Sub-Saharan Africa",
@@ -3282,28 +3281,58 @@ const COSMOS_REGIONS = [
     summary: "The world's most populous region, now mid-transition as fertility falls.",
   },
 ].map((region) => ({
-  ...region,
+  kind: "region",
+  label: region.label,
+  summary: region.summary,
   color: REGION_COLORS[region.label] ?? DEFAULT_COLOR,
 }));
 
-// null = every country visible; otherwise a region label from
-// COSMOS_REGIONS, and every other country's card is hidden (see
-// positionCosmosCards). Reset whenever Cosmos closes (setCosmosActive) so
-// each visit starts unfiltered.
-let cosmosSelectedRegion = null;
+// Same idea, sliced by income tier instead of geography — a different lens
+// on the same underlying countries/cards, not a second independent filter
+// (see plotSelectedGroup — only one of region/income can be active at
+// once).
+const COSMOS_INCOME_GROUPS = [
+  {
+    label: "High-income countries",
+    summary: "Where wealth peaks, birth rates fall, lifespans stretch, and the future relies on migration.",
+  },
+  {
+    label: "Middle-income countries",
+    summary: "The largest group by population — mid-transition on every axis, driving most of the world's remaining growth.",
+  },
+  {
+    label: "Low-income countries",
+    summary: "Still-high fertility and the shortest life expectancy — concentrated in, but not limited to, Sub-Saharan Africa.",
+  },
+].map((group) => ({
+  kind: "income",
+  label: group.label,
+  summary: group.summary,
+  color: INCOME_GROUP_COLORS[group.label] ?? DEFAULT_COLOR,
+}));
 
-function normalizeCosmosValue(value, domain) {
+// null = every country visible; otherwise one entry from COSMOS_REGIONS or
+// COSMOS_INCOME_GROUPS, and every country outside it has its card hidden
+// (see positionPlotCards). Reset whenever Plot closes (setPlotActive)
+// so each visit starts unfiltered.
+let plotSelectedGroup = null;
+
+function plotGroupKey(group) {
+  return `${group.kind}:${group.label}`;
+}
+
+function normalizePlotValue(value, domain) {
   if (!domain) return 0.5;
   const { min, max } = domain;
   if (max === min) return 0.5;
-  // Values outside the percentile-clipped domain (see computeCosmosDomains)
+  // Values outside the percentile-clipped domain (see computePlotDomains)
   // pin to the edge rather than pushing a card off the grid entirely.
   return Math.min(1, Math.max(0, (value - min) / (max - min)));
 }
 
 // nx/nz are the ground-plane axes (fertility/migration), ny is height
 // (life expectancy), each normalized to [0, 1].
-function cosmosProject(nx, ny, nz) {
+function plotProject(nx, ny, nz) {
   const isoX = (nx - nz) * ISO_COS30;
   const isoY = (nx + nz) * ISO_SIN30 - ny * COSMOS_HEIGHT_SCALE;
   return { isoX, isoY };
@@ -3314,7 +3343,7 @@ function cosmosProject(nx, ny, nz) {
 // ([-1, 1]) around that point (see COSMOS_HEIGHT_SCALE), so this also
 // happens to be the geometric center of the whole shape, not just the
 // origin corner's own projection.
-function cosmosLayout(width, height) {
+function plotLayout(width, height) {
   const availW = width - COSMOS_MARGIN.left - COSMOS_MARGIN.right;
   const availH = height - COSMOS_MARGIN.top - COSMOS_MARGIN.bottom;
   const isoWidthUnits = 2 * ISO_COS30;
@@ -3330,19 +3359,19 @@ function cosmosLayout(width, height) {
   };
 }
 
-function cosmosPixel(nx, ny, nz, layout) {
-  const { isoX, isoY } = cosmosProject(nx, ny, nz);
+function plotPixel(nx, ny, nz, layout) {
+  const { isoX, isoY } = plotProject(nx, ny, nz);
   return {
     x: layout.centerX + isoX * layout.scale,
     y: layout.centerY + isoY * layout.scale,
   };
 }
 
-// Inverse of cosmosPixel at floor level (ny = 0) — given a pixel, which
+// Inverse of plotPixel at floor level (ny = 0) — given a pixel, which
 // ground-plane (nx, nz) projects there. Used only to figure out how far the
-// grid floor (see renderCosmosGrid) needs to extend to cover a canvas
+// grid floor (see renderPlotGrid) needs to extend to cover a canvas
 // corner; not needed for card placement, which only ever goes pixel-space.
-function cosmosUnproject(pixelX, pixelY, layout) {
+function plotUnproject(pixelX, pixelY, layout) {
   const isoX = (pixelX - layout.centerX) / layout.scale;
   const isoY = (pixelY - layout.centerY) / layout.scale;
   // Inverting isoX = (nx-nz)*cos30, isoY = (nx+nz)*sin30.
@@ -3365,7 +3394,7 @@ function percentile(sortedValues, p) {
 // year — the space itself needs to stay fixed for a year change to read as
 // motion through it rather than the grid rescaling under the cards. Returns
 // null if the (lazily loaded) demographics data isn't in yet.
-function computeCosmosDomains() {
+function computePlotDomains() {
   const domains = {};
   for (const key of Object.values(COSMOS_AXES)) {
     const values = [];
@@ -3385,7 +3414,7 @@ function computeCosmosDomains() {
     // collapse every other country into one corner of the grid. Clipping
     // to the 3rd/97th percentile keeps the space readable for the vast
     // majority; genuine outliers just sit pinned at the edge instead of
-    // dictating the whole scale (see normalizeCosmosValue's clamp).
+    // dictating the whole scale (see normalizePlotValue's clamp).
     const min = percentile(values, 0.03);
     const max = percentile(values, 0.97);
     domains[key] =
@@ -3396,28 +3425,28 @@ function computeCosmosDomains() {
   return Object.values(domains).every(Boolean) ? domains : null;
 }
 
-function ensureCosmosDomains() {
-  if (cosmosDomains) return true;
-  cosmosDomains = computeCosmosDomains();
-  return cosmosDomains != null;
+function ensurePlotDomains() {
+  if (plotDomains) return true;
+  plotDomains = computePlotDomains();
+  return plotDomains != null;
 }
 
-function cosmosRegionColor(country) {
+function plotRegionColor(country) {
   return REGION_COLORS[country.region?.trim()] ?? DEFAULT_COLOR;
 }
 
-function buildCosmosCards() {
-  if (cosmosCardsBuilt) return;
-  cosmosCardEntries = countriesData.map((country) => {
-    const color = cosmosRegionColor(country);
+function buildPlotCards() {
+  if (plotCardsBuilt) return;
+  plotCardEntries = countriesData.map((country) => {
+    const color = plotRegionColor(country);
     const el = document.createElement("div");
-    el.className = "cosmos-card";
+    el.className = "plot-card";
     el.style.setProperty("--card-color", color);
     const flag = document.createElement("span");
-    flag.className = "cosmos-card-flag";
+    flag.className = "plot-card-flag";
     flag.style.backgroundImage = `url(${flagIconUrl(country.iso3, false)})`;
     const name = document.createElement("span");
-    name.className = "cosmos-card-name";
+    name.className = "plot-card-name";
     name.textContent = country.name;
     el.append(flag, name);
     el.addEventListener("pointerenter", (event) =>
@@ -3428,21 +3457,21 @@ function buildCosmosCards() {
     );
     el.addEventListener("pointerleave", hideChartTooltip);
     // el.addEventListener("click", () => {
-    //   setCosmosActive(false);
+    //   setPlotActive(false);
     //   openCountryDetail(country);
     // });
     return { country, el, lastZIndex: null };
   });
-  elements.cosmosCards.replaceChildren(
-    ...cosmosCardEntries.map((entry) => entry.el),
+  elements.plotCards.replaceChildren(
+    ...plotCardEntries.map((entry) => entry.el),
   );
-  cosmosCardsBuilt = true;
+  plotCardsBuilt = true;
 }
 
 // Cheap per-year update: only moves/recolors existing cards, never touches
 // the grid or rebuilds any DOM — safe to call on every year-slider "input"
 // frame while dragging.
-// yearIndex may be fractional (see playCosmosTimelineOnce) — years data
+// yearIndex may be fractional (see playPlotTimelineOnce) — years data
 // only has one value per whole year, so a fractional index linearly
 // interpolates between the two nearest years' values instead of picking
 // one. A whole-number index (every other caller) degenerates to exactly
@@ -3459,17 +3488,20 @@ function valueAtFractionalYear(country, key, yearIndex) {
   return a + (b - a) * (yearIndex - lower);
 }
 
-function positionCosmosCards(yearIndex) {
-  if (!cosmosLayoutCache || yearIndex == null || yearIndex < 0) return;
-  cosmosCardEntries.forEach((entry) => {
+function positionPlotCards(yearIndex) {
+  if (!plotLayoutCache || yearIndex == null || yearIndex < 0) return;
+  plotCardEntries.forEach((entry) => {
     const { country, el } = entry;
-    if (
-      cosmosSelectedRegion &&
-      country.region?.trim() !== cosmosSelectedRegion
-    ) {
-      el.style.opacity = "0";
-      el.style.pointerEvents = "none";
-      return;
+    if (plotSelectedGroup) {
+      const value =
+        plotSelectedGroup.kind === "income"
+          ? country._incomeLabel
+          : country.region?.trim();
+      if (value !== plotSelectedGroup.label) {
+        el.style.opacity = "0";
+        el.style.pointerEvents = "none";
+        return;
+      }
     }
     const x = valueAtFractionalYear(country, COSMOS_AXES.x, yearIndex);
     const y = valueAtFractionalYear(country, COSMOS_AXES.y, yearIndex);
@@ -3481,18 +3513,18 @@ function positionCosmosCards(yearIndex) {
     }
     // Amplified (see COSMOS_MOVEMENT_SCALE) for the card's own position and
     // depth sort — the axis lines/grid/ticks below are built separately in
-    // renderCosmosGrid, from the un-amplified [0,1] mapping, and are
+    // renderPlotGrid, from the un-amplified [0,1] mapping, and are
     // unaffected by this.
-    const nx = amplifyCosmosMovement(
-      normalizeCosmosValue(x, cosmosDomains[COSMOS_AXES.x]),
+    const nx = amplifyPlotMovement(
+      normalizePlotValue(x, plotDomains[COSMOS_AXES.x]),
     );
-    const ny = amplifyCosmosMovement(
-      normalizeCosmosValue(y, cosmosDomains[COSMOS_AXES.y]),
+    const ny = amplifyPlotMovement(
+      normalizePlotValue(y, plotDomains[COSMOS_AXES.y]),
     );
-    const nz = amplifyCosmosMovement(
-      normalizeCosmosValue(z, cosmosDomains[COSMOS_AXES.z]),
+    const nz = amplifyPlotMovement(
+      normalizePlotValue(z, plotDomains[COSMOS_AXES.z]),
     );
-    const point = cosmosPixel(nx, ny, nz, cosmosLayoutCache);
+    const point = plotPixel(nx, ny, nz, plotLayoutCache);
     el.style.transform = `translate3d(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
     // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
     // should — one further "toward the viewer" (bigger nx+nz, lower on
@@ -3511,13 +3543,13 @@ function positionCosmosCards(yearIndex) {
   });
 }
 
-function renderCosmosGrid() {
-  const svg = elements.cosmosGrid;
+function renderPlotGrid() {
+  const svg = elements.plotGrid;
   const width = svg.clientWidth || 900;
   const height = svg.clientHeight || 600;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-  const layout = cosmosLayout(width, height);
-  cosmosLayoutCache = layout;
+  const layout = plotLayout(width, height);
+  plotLayoutCache = layout;
 
   const elementsToAppend = [];
 
@@ -3529,10 +3561,10 @@ function renderCosmosGrid() {
   // ones.
   const spacing = 1 / COSMOS_GRID_DIVISIONS;
   const corners = [
-    cosmosUnproject(0, 0, layout),
-    cosmosUnproject(width, 0, layout),
-    cosmosUnproject(0, height, layout),
-    cosmosUnproject(width, height, layout),
+    plotUnproject(0, 0, layout),
+    plotUnproject(width, 0, layout),
+    plotUnproject(0, height, layout),
+    plotUnproject(width, height, layout),
   ];
   const nxMin = Math.floor(Math.min(...corners.map((c) => c.nx)) / spacing) * spacing;
   const nxMax = Math.ceil(Math.max(...corners.map((c) => c.nx)) / spacing) * spacing;
@@ -3544,11 +3576,11 @@ function renderCosmosGrid() {
   // not just its own, since drawing a little past the visible edge is
   // harmless (the SVG's overflow: visible just lets it run off).
   for (let nz = nzMin; nz <= nzMax + spacing / 2; nz += spacing) {
-    const a = cosmosPixel(nxMin, 0, nz, layout);
-    const b = cosmosPixel(nxMax, 0, nz, layout);
+    const a = plotPixel(nxMin, 0, nz, layout);
+    const b = plotPixel(nxMax, 0, nz, layout);
     elementsToAppend.push(
       svgEl("line", {
-        class: "cosmos-grid-line",
+        class: "plot-grid-line",
         x1: a.x.toFixed(1),
         y1: a.y.toFixed(1),
         x2: b.x.toFixed(1),
@@ -3557,11 +3589,11 @@ function renderCosmosGrid() {
     );
   }
   for (let nx = nxMin; nx <= nxMax + spacing / 2; nx += spacing) {
-    const c = cosmosPixel(nx, 0, nzMin, layout);
-    const d = cosmosPixel(nx, 0, nzMax, layout);
+    const c = plotPixel(nx, 0, nzMin, layout);
+    const d = plotPixel(nx, 0, nzMax, layout);
     elementsToAppend.push(
       svgEl("line", {
-        class: "cosmos-grid-line",
+        class: "plot-grid-line",
         x1: c.x.toFixed(1),
         y1: c.y.toFixed(1),
         x2: d.x.toFixed(1),
@@ -3570,17 +3602,17 @@ function renderCosmosGrid() {
     );
   }
 
-  const origin = cosmosPixel(0, 0, 0, layout);
+  const origin = plotPixel(0, 0, 0, layout);
   const axisEnds = {
-    [COSMOS_AXES.x]: { end: cosmosPixel(1, 0, 0, layout), anchor: "start", dx: 10, dy: 4 },
-    [COSMOS_AXES.z]: { end: cosmosPixel(0, 0, 1, layout), anchor: "end", dx: -10, dy: 4 },
-    [COSMOS_AXES.y]: { end: cosmosPixel(0, 1, 0, layout), anchor: "middle", dx: 0, dy: -12 },
+    [COSMOS_AXES.x]: { end: plotPixel(1, 0, 0, layout), anchor: "start", dx: 10, dy: 4 },
+    [COSMOS_AXES.z]: { end: plotPixel(0, 0, 1, layout), anchor: "end", dx: -10, dy: 4 },
+    [COSMOS_AXES.y]: { end: plotPixel(0, 1, 0, layout), anchor: "middle", dx: 0, dy: -12 },
   };
 
   Object.entries(axisEnds).forEach(([key, { end, anchor, dx, dy }]) => {
     elementsToAppend.push(
       svgEl("line", {
-        class: "cosmos-axis-line",
+        class: "plot-axis-line",
         x1: origin.x.toFixed(1),
         y1: origin.y.toFixed(1),
         x2: end.x.toFixed(1),
@@ -3588,12 +3620,12 @@ function renderCosmosGrid() {
       }),
     );
     const definition = METRICS[key];
-    const domain = cosmosDomains?.[key];
+    const domain = plotDomains?.[key];
     // Name only (no value) right at the endpoint — kept short so
     // COSMOS_MARGIN can stay tight; the actual min/max values live in the
     // two ticks below instead.
     const nameLabel = svgEl("text", {
-      class: "cosmos-axis-label",
+      class: "plot-axis-label",
       x: (end.x + dx).toFixed(1),
       y: (end.y + dy).toFixed(1),
       "text-anchor": anchor,
@@ -3610,14 +3642,14 @@ function renderCosmosGrid() {
       { t: 0.12, value: domain.min, offset: 0.6 },
       { t: 0.82, value: domain.max, offset: 0.75 },
     ].forEach(({ t, value, offset }) => {
-      const point = cosmosPixel(
+      const point = plotPixel(
         key === COSMOS_AXES.x ? t : 0,
         key === COSMOS_AXES.y ? t : 0,
         key === COSMOS_AXES.z ? t : 0,
         layout,
       );
       const tick = svgEl("text", {
-        class: "cosmos-tick-label",
+        class: "plot-tick-label",
         x: (point.x + dx * offset).toFixed(1),
         y: (point.y + dy * offset + 3).toFixed(1),
         "text-anchor": anchor,
@@ -3630,12 +3662,12 @@ function renderCosmosGrid() {
   svg.replaceChildren(...elementsToAppend);
 }
 
-let cosmosSummaryBuilt = false;
-let cosmosPlaybackFrame = null;
+let plotSummaryBuilt = false;
+let plotPlaybackFrame = null;
 const COSMOS_PLAYBACK_DURATION_MS = 9000;
 
-function stopCosmosPlayback() {
-  // .cosmos-card's own transition (a nicety for occasional updates — a
+function stopPlotPlayback() {
+  // .plot-card's own transition (a nicety for occasional updates — a
   // manual drag, a single click) actively works against a 60fps JS-driven
   // sweep: every position write mid-transition forces the compositor to
   // resample and retarget instead of just jumping to the new value, and
@@ -3644,10 +3676,10 @@ function stopCosmosPlayback() {
   // starting a second overlapping retarget chain right on top of the
   // first's still-settling one — is-playing turns the transition off for
   // the whole sweep instead, so there's nothing left to retarget.
-  elements.cosmosCards.classList.remove("is-playing");
-  if (cosmosPlaybackFrame == null) return;
-  cancelAnimationFrame(cosmosPlaybackFrame);
-  cosmosPlaybackFrame = null;
+  elements.plotCards.classList.remove("is-playing");
+  if (plotPlaybackFrame == null) return;
+  cancelAnimationFrame(plotPlaybackFrame);
+  plotPlaybackFrame = null;
 }
 
 // Sweeps the year slider from the very first year to the very last, once,
@@ -3656,10 +3688,10 @@ function stopCosmosPlayback() {
 // Mirrors the trend chart's own scrubber: cheap live updates (slider
 // value/labels/card positions) every frame, committed through the real
 // applyYear pipeline (goToYear) only once, at the end.
-function playCosmosTimelineOnce() {
-  stopCosmosPlayback();
-  if (!cosmosActive || yearsData.length < 2) return;
-  elements.cosmosCards.classList.add("is-playing");
+function playPlotTimelineOnce() {
+  stopPlotPlayback();
+  if (!plotActive || yearsData.length < 2) return;
+  elements.plotCards.classList.add("is-playing");
   const lastYear = yearsData[yearsData.length - 1];
   const startTime = performance.now();
 
@@ -3669,7 +3701,7 @@ function playCosmosTimelineOnce() {
     // year — rounding to the nearest year index before positioning cards
     // meant most of the 60fps rAF frames recomputed the exact same
     // position, then jumped a visible amount every ~4th frame once the
-    // rounded index finally ticked over. positionCosmosCards now accepts a
+    // rounded index finally ticked over. positionPlotCards now accepts a
     // fractional index and interpolates between the two nearest years, so
     // every single frame moves cards a little instead of most doing
     // nothing and one doing a lot — the slider/label still snap to whole
@@ -3680,126 +3712,142 @@ function playCosmosTimelineOnce() {
     elements.yearSlider.value = year;
     updateSliderProgress();
     updateYearLabels(year);
-    positionCosmosCards(fractionalIndex);
+    positionPlotCards(fractionalIndex);
     if (t < 1) {
-      cosmosPlaybackFrame = requestAnimationFrame(frame);
+      plotPlaybackFrame = requestAnimationFrame(frame);
     } else {
-      cosmosPlaybackFrame = null;
-      elements.cosmosCards.classList.remove("is-playing");
+      plotPlaybackFrame = null;
+      elements.plotCards.classList.remove("is-playing");
       goToYear(lastYear);
     }
   }
-  cosmosPlaybackFrame = requestAnimationFrame(frame);
+  plotPlaybackFrame = requestAnimationFrame(frame);
 }
 
-// Toggles the region filter (see cosmosSelectedRegion/positionCosmosCards):
-// clicking the already-selected region clears it, same as the Globe/Map
-// legend's own selectLegendItem toggle. Cheap — only touches existing
-// cards' opacity/transform, never rebuilds the grid or DOM. Selecting a
-// region (not clearing one) also replays the whole timeline once, so its
-// cluster's trend is visible immediately rather than needing a manual drag.
-function setCosmosRegionFilter(region) {
-  const isDeselecting = cosmosSelectedRegion === region;
-  cosmosSelectedRegion = isDeselecting ? null : region;
-  elements.cosmosGroups.querySelectorAll(".cosmos-group-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.region === cosmosSelectedRegion);
+// Toggles the region/income filter (see plotSelectedGroup/
+// positionPlotCards): clicking the already-selected group clears it, same
+// as the Globe/Map legend's own selectLegendItem toggle. Cheap — only
+// touches existing cards' opacity/transform, never rebuilds the grid or
+// DOM. Selecting a group (not clearing one) also replays the whole timeline
+// once, so its cluster's trend is visible immediately rather than needing a
+// manual drag.
+function setPlotGroupFilter(group) {
+  const isDeselecting =
+    plotSelectedGroup != null &&
+    plotGroupKey(plotSelectedGroup) === plotGroupKey(group);
+  plotSelectedGroup = isDeselecting ? null : group;
+  elements.plotGroups.querySelectorAll(".plot-group-item").forEach((item) => {
+    item.classList.toggle(
+      "active",
+      plotSelectedGroup != null &&
+        item.dataset.groupKey === plotGroupKey(plotSelectedGroup),
+    );
   });
   if (isDeselecting) {
-    stopCosmosPlayback();
-    positionCosmosCards(currentYearIndex);
+    stopPlotPlayback();
+    positionPlotCards(currentYearIndex);
   } else {
-    // No positionCosmosCards(currentYearIndex) call here — during an
+    // No positionPlotCards(currentYearIndex) call here — during an
     // active sweep currentYearIndex is stale (the sweep drives the slider
     // directly, not through applyYear, until it commits at the end), so
     // that call would only draw one frame at the wrong year immediately
-    // before playCosmosTimelineOnce's own first frame overwrote it anyway.
-    playCosmosTimelineOnce();
+    // before playPlotTimelineOnce's own first frame overwrote it anyway.
+    playPlotTimelineOnce();
   }
 }
 
-// Static explanation of each region (see COSMOS_REGIONS) — doesn't depend
-// on year or domains, so it's built once and left alone; each button also
-// doubles as the region filter's trigger (setCosmosRegionFilter).
-function renderCosmosSummary() {
-  if (cosmosSummaryBuilt) return;
-  elements.cosmosGroups.replaceChildren(
-    ...COSMOS_REGIONS.map((region) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "cosmos-group-item";
-      item.dataset.region = region.label;
-      item.style.setProperty("--color-legend", region.color);
-      const header = document.createElement("div");
-      header.className = "cosmos-group-header";
-      const swatch = document.createElement("span");
-      swatch.className = "legend-swatch";
-      const label = document.createElement("span");
-      label.textContent = displayGroupLabel(region.label);
-      header.append(swatch, label);
-      const summary = document.createElement("p");
-      summary.className = "cosmos-group-summary paragraph";
-      summary.textContent = region.summary;
-      item.append(header, summary);
-      item.addEventListener("click", () => setCosmosRegionFilter(region.label));
-      return item;
-    }),
+function buildPlotGroupSection(title, groups) {
+  const heading = document.createElement("div");
+  heading.className = "plot-group-section mono-uppercase";
+  heading.textContent = title;
+  const items = groups.map((group) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "plot-group-item";
+    item.dataset.groupKey = plotGroupKey(group);
+    item.style.setProperty("--color-legend", group.color);
+    const header = document.createElement("div");
+    header.className = "plot-group-header";
+    const swatch = document.createElement("span");
+    swatch.className = "legend-swatch";
+    const label = document.createElement("span");
+    label.textContent = displayGroupLabel(group.label);
+    header.append(swatch, label);
+    const summary = document.createElement("p");
+    summary.className = "plot-group-summary paragraph";
+    summary.textContent = group.summary;
+    item.append(header, summary);
+    item.addEventListener("click", () => setPlotGroupFilter(group));
+    return item;
+  });
+  return [heading, ...items];
+}
+
+// Static explanation of each region/income group — doesn't depend on year
+// or domains, so it's built once and left alone; each button also doubles
+// as that group's filter trigger (setPlotGroupFilter).
+function renderPlotSummary() {
+  if (plotSummaryBuilt) return;
+  elements.plotGroups.replaceChildren(
+    ...buildPlotGroupSection("Region", COSMOS_REGIONS),
+    ...buildPlotGroupSection("Income group", COSMOS_INCOME_GROUPS),
   );
-  cosmosSummaryBuilt = true;
+  plotSummaryBuilt = true;
 }
 
 // Full (re)build: grid + card DOM + initial positions. Only needed once per
 // activation or resize — the domains (and so the coordinate space itself)
-// never change between frames, only the year does (see updateCosmosYear).
-function renderCosmosLayout() {
-  if (!cosmosActive) return;
-  renderCosmosSummary();
-  if (!ensureCosmosDomains()) {
+// never change between frames, only the year does (see updatePlotYear).
+function renderPlotLayout() {
+  if (!plotActive) return;
+  renderPlotSummary();
+  if (!ensurePlotDomains()) {
     // Demographics data hasn't loaded yet — the countryDemographicMetrics
     // promise handler retries this once it resolves.
-    elements.cosmosCards.replaceChildren();
-    elements.cosmosGrid.replaceChildren();
+    elements.plotCards.replaceChildren();
+    elements.plotGrid.replaceChildren();
     return;
   }
-  buildCosmosCards();
-  renderCosmosGrid();
-  positionCosmosCards(currentYearIndex);
+  buildPlotCards();
+  renderPlotGrid();
+  positionPlotCards(currentYearIndex);
 }
 
-function updateCosmosYear(year) {
-  if (!cosmosActive || !cosmosDomains) return;
+function updatePlotYear(year) {
+  if (!plotActive || !plotDomains) return;
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1) return;
-  positionCosmosCards(yearIndex);
+  positionPlotCards(yearIndex);
 }
 
-function setCosmosActive(active) {
-  if (active === cosmosActive) return;
-  cosmosActive = active;
-  elements.cosmosView.hidden = !active;
-  document.body.classList.toggle("view-cosmos", active);
+function setPlotActive(active) {
+  if (active === plotActive) return;
+  plotActive = active;
+  elements.plotView.hidden = !active;
+  document.body.classList.toggle("view-plot", active);
   // setViewMode() only ever toggles between "globe"/"map" — same reasoning
   // as setchartPanelActive's own #viewMode resync.
   elements.viewMode.querySelectorAll("button").forEach((btn) =>
     btn.classList.toggle(
       "active",
-      btn.dataset.mode === (active ? "cosmos" : viewMode),
+      btn.dataset.mode === (active ? "plot" : viewMode),
     ),
   );
   if (active) {
     tourController.stop();
-    renderCosmosLayout();
+    renderPlotLayout();
   } else {
-    stopCosmosPlayback();
+    stopPlotPlayback();
     // Each visit starts unfiltered rather than remembering the last
-    // region — the summary panel's DOM is only built once (cosmosSummaryBuilt),
+    // group — the summary panel's DOM is only built once (plotSummaryBuilt),
     // so its buttons' .active class needs clearing by hand here too, not
     // just the underlying state.
-    cosmosSelectedRegion = null;
-    elements.cosmosGroups
-      .querySelectorAll(".cosmos-group-item.active")
+    plotSelectedGroup = null;
+    elements.plotGroups
+      .querySelectorAll(".plot-group-item.active")
       .forEach((item) => item.classList.remove("active"));
     if (currentYearIndex >= 0) {
-      // Cosmos took applyYear()'s cheap fast path (see there) while open,
+      // Plot took applyYear()'s cheap fast path (see there) while open,
       // leaving the 3D scene stale — catch it up now that it's visible
       // again.
       applyYear(yearsData[currentYearIndex], { instant: true });
@@ -4232,7 +4280,7 @@ async function init() {
         renderTrendChart();
         renderChartTable();
       }
-      if (cosmosActive) renderCosmosLayout();
+      if (plotActive) renderPlotLayout();
       if (selectedCountry) {
         renderCountryDetail();
       } else if (selectedLegend) {
@@ -4284,11 +4332,11 @@ async function init() {
     elements.yearSlider.addEventListener("input", () => {
       updateSliderProgress();
       updateYearLabels(Number(elements.yearSlider.value));
-      // Cosmos cards are cheap to reposition (no dot-buffer rewrite like the
+      // Plot cards are cheap to reposition (no dot-buffer rewrite like the
       // 3D scene needs), so — unlike the globe/map content below — they get
       // to move live during the drag itself rather than waiting for
       // "change".
-      if (cosmosActive) updateCosmosYear(Number(elements.yearSlider.value));
+      if (plotActive) updatePlotYear(Number(elements.yearSlider.value));
     });
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
@@ -4296,9 +4344,9 @@ async function init() {
     // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps. Same
-    // reasoning applies to the cosmos region-select playback below.
+    // reasoning applies to the plot region-select playback below.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
-    elements.yearSlider.addEventListener("pointerdown", stopCosmosPlayback);
+    elements.yearSlider.addEventListener("pointerdown", stopPlotPlayback);
     elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
     elements.yearSlider.addEventListener("pointerleave", () => {
       elements.yearHoverValue.hidden = true;
@@ -4316,17 +4364,17 @@ async function init() {
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.mode === "chart") {
-          setCosmosActive(false);
+          setPlotActive(false);
           setchartPanelActive(true);
           return;
         }
-        if (btn.dataset.mode === "cosmos") {
+        if (btn.dataset.mode === "plot") {
           setchartPanelActive(false);
-          setCosmosActive(true);
+          setPlotActive(true);
           return;
         }
         setchartPanelActive(false);
-        setCosmosActive(false);
+        setPlotActive(false);
         setViewMode(btn.dataset.mode);
       });
     });
@@ -4686,9 +4734,9 @@ window.addEventListener("resize", () => {
     clearTimeout(countryChartResizeTimer);
     countryChartResizeTimer = setTimeout(renderTrendChart, 120);
   }
-  if (cosmosActive) {
+  if (plotActive) {
     clearTimeout(countryChartResizeTimer);
-    countryChartResizeTimer = setTimeout(renderCosmosLayout, 120);
+    countryChartResizeTimer = setTimeout(renderPlotLayout, 120);
   }
 });
 

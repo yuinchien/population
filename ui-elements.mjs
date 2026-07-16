@@ -55,9 +55,9 @@ export function getAppElements(root = document) {
     chartCountrySuggestions: root.querySelector("#chartCountrySuggestions"),
     chartTableHeader: root.querySelector("#chartTableHeader"),
     chartTableRows: root.querySelector("#chartTableRows"),
-    cosmosView: root.querySelector("#cosmosView"),
-    cosmosGrid: root.querySelector("#cosmosGrid"),
-    cosmosCards: root.querySelector("#cosmosCards"),
-    cosmosGroups: root.querySelector("#cosmosGroups"),
+    plotView: root.querySelector("#plotView"),
+    plotGrid: root.querySelector("#plotGrid"),
+    plotCards: root.querySelector("#plotCards"),
+    plotGroups: root.querySelector("#plotGroups"),
   };
 }

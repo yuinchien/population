@@ -147,6 +147,7 @@ canvas.hovering-dot {
     font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: var(--letterspacing-uppercase);
+    font-weight: 500;
 }
 
 .glass {
@@ -192,7 +193,7 @@ canvas.hovering-dot {
     transition: all 0.15s;
 }
 
-body.view-cosmos .hide-for-cosmo,
+body.view-plot .hide-for-cosmo,
 body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
@@ -1367,9 +1368,9 @@ select::picker(select) {
 }
 
 /* Placed earlier in the DOM than #timelineContainer so the two land in the
-   same stacking tier (--z-dock) but the timeline — cosmos's own year
+   same stacking tier (--z-dock) but the timeline — plot's own year
    control — still paints on top of it without needing a separate z tier. */
-.cosmos-view {
+.plot-view {
     position: fixed;
     top: 0;
     right: 0;
@@ -1381,32 +1382,41 @@ select::picker(select) {
     overflow: hidden;
 }
 
-.cosmos-summary {
+.plot-summary {
     flex: 0 0 clamp(320px, 28vw, 360px);
     min-height: 0;
     overflow-y: auto;
-    padding: calc(var(--margin) * 2 + var(--button-size)) 0 var(--margin) var(--margin);
+    padding: calc(var(--margin) * 2 + var(--button-size) - 8px) 0 var(--margin) var(--margin);
     position: absolute;
     left: 0;
     top: 0;
-    width: 400px;
+    width: 360px;
     z-index: 10000;
 }
 
-.cosmos-summary-intro {
+.plot-summary-intro {
     font-size: 1rem;
     line-height: 1.5;
     color: var(--color-muted);
     margin: 0 0 24px 0;
 }
 
-.cosmos-groups {
+.plot-groups {
     display: flex;
     flex-direction: column;
     gap: 0;
 }
 
-.cosmos-group-item {
+.plot-group-section {
+    color: var(--color-muted);
+    margin: 12px 0 8px 0;
+}
+
+.plot-group-section:first-child {
+    margin-top: 0;
+}
+
+.plot-group-item {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1422,14 +1432,14 @@ select::picker(select) {
     transition: .25s all ease-out;
     opacity: .7;
 
-    .cosmos-group-header {
+    .plot-group-header {
         display: flex;
         align-items: center;
         gap: 12px;
         font-weight: 500;
     }
 
-    .cosmos-group-summary {
+    .plot-group-summary {
         padding-left: 20px;
         color: var(--color-muted);
         height: 0;
@@ -1439,7 +1449,7 @@ select::picker(select) {
         transform: translate3d(0,0,0);
         position: relative;
     }
-    .cosmos-group-summary:before {
+    .plot-group-summary:before {
         position: absolute;
         left: 3px;
         top: 0;
@@ -1455,13 +1465,13 @@ select::picker(select) {
     }
 }
 
-.cosmos-group-item.active {
+.plot-group-item.active {
     opacity: 1;
 
     .legend-swatch {
         background: var(--color-text);
     }
-    .cosmos-group-summary {
+    .plot-group-summary {
         height: auto;
         opacity: 1;
         margin-bottom: 12px;
@@ -1469,13 +1479,13 @@ select::picker(select) {
 }
 
 
-.cosmos-plot {
+.plot-canvas {
     position: relative;
     flex: 1 1 0;
     min-width: 0;
 }
 
-.cosmos-grid {
+.plot-grid {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1483,17 +1493,17 @@ select::picker(select) {
     overflow: visible;
 }
 
-.cosmos-grid-line {
+.plot-grid-line {
     stroke: var(--color-border);
     stroke-width: 1;
 }
 
-.cosmos-axis-line {
+.plot-axis-line {
     stroke: color-mix(in srgb, var(--color-muted) 40%, transparent);
     stroke-width: 2;
 }
 
-.cosmos-axis-label {
+.plot-axis-label {
     font-size: 11px;
     font-family: var(--font-mono);
     text-transform: uppercase;
@@ -1502,14 +1512,14 @@ select::picker(select) {
     font-weight: 500;
 }
 
-.cosmos-tick-label {
+.plot-tick-label {
     font-size: 10px;
     font-family: var(--font-mono);
     fill: var(--color-muted);
     display: none;
 }
 
-.cosmos-cards {
+.plot-cards {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1517,7 +1527,7 @@ select::picker(select) {
     pointer-events: none;
 }
 
-.cosmos-card {
+.plot-card {
     position: absolute;
     top: 0;
     left: 0;
@@ -1538,16 +1548,16 @@ select::picker(select) {
     will-change: transform;
 }
 
-/* During the region-select auto-play sweep (playCosmosTimelineOnce),
+/* During the region-select auto-play sweep (playPlotTimelineOnce),
    positions already update every ~16ms via JS — the transition above just
    fights that with pointless retargeting/resampling on ~200 elements at
    once. Off for the sweep's duration; back on for occasional updates
    (a manual drag, a single click) where it's actually useful. */
-.cosmos-cards.is-playing .cosmos-card {
+.plot-cards.is-playing .plot-card {
     transition: none;
 }
 
-.cosmos-card:hover {
+.plot-card:hover {
     /*background: color-mix(in srgb, var(--card-color) 45%, var(--color-bg) 55%);*/
     /* The standalone `scale` property (not transform: scale(), which is
        already doing double duty for JS-driven positioning) composes with
@@ -1559,14 +1569,14 @@ select::picker(select) {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);*/
 }
 
-.cosmos-card-flag {
-    --width: 64px;
+.plot-card-flag {
+    --width: 48px;
     flex: none;
     width: var(--width);
     height: calc(var(--width) * 0.75);
     background-size: cover;
     background-position: center;
-    border-radius: 8px;
+    border-radius: 4px;
     transform: rotateX(60deg) rotateZ(45deg);
     transform-style: preserve-3d;
     /*box-shadow: var(--shadow);*/
@@ -1615,7 +1625,7 @@ select::picker(select) {
     pointer-events: stroke;
 }
 
-.cosmos-card-name {
+.plot-card-name {
     display: none;
 }
 

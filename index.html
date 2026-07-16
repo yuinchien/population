@@ -95,12 +95,12 @@
             <div id="viewMode" class="button-group" hidden>
                 <button
                     type="button"
-                    data-mode="cosmos"
+                    data-mode="plot"
                     class="mono-uppercase"
-                    aria-label="Cosmos"
-                    title="Cosmos"
+                    aria-label="Plot"
+                    title="Plot"
                 >
-                    Distribution
+                    Plot
                 </button>
                 <button
                     type="button"
@@ -132,20 +132,20 @@
             </div>
         </div>
 
-        <section id="cosmosView" class="cosmos-view glass" hidden>
-            <div class="cosmos-summary no-scrollbar">
+        <section id="plotView" class="plot-view glass" hidden>
+            <div class="plot-summary no-scrollbar">
                 <!--<p class="paragraph">
                     Select a region below to explore the change.
                 </p>-->
-                <div id="cosmosGroups" class="cosmos-groups"></div>
+                <div id="plotGroups" class="plot-groups"></div>
             </div>
-            <div class="cosmos-plot">
+            <div class="plot-canvas">
                 <svg
-                    id="cosmosGrid"
-                    class="cosmos-grid"
+                    id="plotGrid"
+                    class="plot-grid"
                     preserveAspectRatio="none"
                 ></svg>
-                <div id="cosmosCards" class="cosmos-cards"></div>
+                <div id="plotCards" class="plot-cards"></div>
             </div>
         </section>
 
