@@ -333,11 +333,12 @@ const countryChartAnimationHandles = [];
 let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
+let cosmosActive = false;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
-let selectedChartCountries = ["USA", "CHN", "IND", "DEU", "NGA"];
+let selectedChartCountries = ["USA", "JPN", "IND", "DEU", "NGA"];
 // Whether the picker shows the "Country list N" summary pill or the full
 // chip/search editor — collapsed by default so the topbar stays one line
 // regardless of how many countries are selected.
@@ -964,6 +965,17 @@ function applyYear(year, { instant = false } = {}) {
     return;
   }
 
+  // Same reasoning as the chartPanelActive branch above — the 3D scene is
+  // hidden behind the cosmos overlay, so it's cheaper to skip it and just
+  // reposition the (already-built) cards. setCosmosActive(false) does the
+  // 3D catch-up when the overlay closes.
+  if (cosmosActive) {
+    updateYearLabels(year);
+    updateCosmosYear(year);
+    syncUrlFromState();
+    return;
+  }
+
   if (!pointsMesh) return;
   // Skip the pulse on the very first call (initial page load) — there's no
   // prior year for this one to visibly change *from*, so it would just
@@ -1250,8 +1262,12 @@ function detailColumns() {
 function chartTableColumns() {
   // Country + whichever metric #chartMetricTabs currently has active — not
   // Population plus that metric, which crowded the table with a column
-  // most tabs don't need repeated alongside their own.
-  const metricKeys = [chartMetricKey];
+  // most tabs don't need repeated alongside their own. The radar tab plots
+  // five metrics at once, so it gets all five columns instead of one.
+  const metricKeys =
+    chartMetricKey === CHART_RADAR_KEY
+      ? RADAR_CHART_METRICS
+      : [chartMetricKey];
   // metricFor/populationFor read off each item's own .series() rather than
   // the global metricFor()/chartPopulationSeries(), so the same columns
   // work whether rows are real countries (Country mode) or aggregated
@@ -1483,6 +1499,8 @@ function urlStateFromApp() {
   const state = { mode: viewMode };
   if (chartPanelActive) {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
+  } else if (cosmosActive) {
+    Object.assign(state, { view: "cosmos" });
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
@@ -1521,6 +1539,8 @@ function applyUrlStateFromLocation(search) {
     if (state.metric) setChartMetric(state.metric);
     renderChartCountryChips();
     setchartPanelActive(true);
+  } else if (state.view === "cosmos") {
+    setCosmosActive(true);
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -1585,6 +1605,23 @@ const CHART_METRIC_KEYS = [
   "lifeExpectancy",
   "ageDependencyRatio",
 ];
+// A radar/spider snapshot tab, alongside the time-series metric tabs above
+// — not a real entry in METRICS since it plots five metrics against each
+// other at once rather than being one itself. Kept as its own sentinel key
+// so chartMetricKey, the tab list, and the table columns can each
+// special-case it in one place.
+const CHART_RADAR_KEY = "radar";
+// Clockwise from the top spoke — see renderRadarChart's angleFor.
+const RADAR_CHART_METRICS = [
+  "populationGrowth",
+  "fertility",
+  "netMigrationRate",
+  "lifeExpectancy",
+  "ageDependencyRatio",
+];
+// Generous left/right padding: axis labels like "Age dependency ratio" run
+// off the side spokes horizontally rather than wrapping.
+const RADAR_CHART_PADDING = { top: 56, right: 132, bottom: 48, left: 132 };
 // A plain categorical color set assigned by selection order, not by the
 // country's actual region — two countries in the same region are a
 // near-certainty among any handful of selections, so coloring by region
@@ -2513,7 +2550,9 @@ function renderChartCountrySuggestions() {
 }
 
 function setChartMetric(key) {
-  if (key === chartMetricKey || !METRICS[key]) return;
+  if (key === chartMetricKey || (!METRICS[key] && key !== CHART_RADAR_KEY)) {
+    return;
+  }
   chartMetricKey = key;
   elements.chartMetricTabs.querySelectorAll("button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.key === key);
@@ -2531,12 +2570,17 @@ function updateProjectionScenarioVisibility() {
 
 function renderChartMetricTabs() {
   elements.chartMetricTabs.replaceChildren(
+    // The radar tab (see renderRadarChart/CHART_RADAR_KEY) is implemented
+    // but temporarily withheld from this list pending a visual pass —
+    // switch this back to [...CHART_METRIC_KEYS, CHART_RADAR_KEY] once
+    // it's ready.
     ...CHART_METRIC_KEYS.map((key) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "mono-uppercase";
       btn.dataset.key = key;
-      btn.textContent = METRICS[key].label;
+      btn.textContent =
+        key === CHART_RADAR_KEY ? "Radar chart" : METRICS[key].label;
       btn.classList.toggle("active", key === chartMetricKey);
       btn.addEventListener("click", () => setChartMetric(key));
       return btn;
@@ -2549,8 +2593,24 @@ function renderChartMetricTabs() {
 // a full rebuild is simpler and cheap at this scale (a handful of countries
 // × 151 years).
 function renderTrendChart({ animate = false } = {}) {
+  // The radar tab swaps in a completely different chart type (a single-year
+  // snapshot plotted on five metrics at once, not a time series) rather
+  // than being a variant of the line chart below — renderRadarChart owns
+  // its own SVG so the two don't have to share layout logic that doesn't
+  // apply to both.
+  const isRadar = chartMetricKey === CHART_RADAR_KEY;
+  // Plain .hidden assignment doesn't reliably reflect to the `hidden`
+  // content attribute on SVG elements in every engine — setAttribute/
+  // removeAttribute always does, so the [hidden] CSS rule actually applies.
+  elements.trendChart.toggleAttribute("hidden", isRadar);
+  elements.radarChart.toggleAttribute("hidden", !isRadar);
   trendChartAnimationHandle?.cancel();
   trendChartAnimationHandle = null;
+  if (isRadar) {
+    renderRadarChart();
+    return;
+  }
+
   const svg = elements.trendChart;
   const width = svg.clientWidth || 900;
   const height = svg.clientHeight || 360;
@@ -2884,6 +2944,681 @@ function renderTrendChart({ animate = false } = {}) {
   }
 }
 
+// A radar/spider chart plotting five metrics as spokes around a wheel for
+// every selected item at the currently selected year — a snapshot, not a
+// time series, so unlike renderTrendChart this rebuilds completely on every
+// year change rather than owning a persistent line shape that a year
+// marker slides across. Chosen over a bubble/scatter layout because a
+// scatter plot reads poorly with only a couple of points selected; a
+// radar chart's shape comparison still works with as few as two items.
+function renderRadarChart() {
+  const svg = elements.radarChart;
+  const width = svg.clientWidth || 900;
+  const height = svg.clientHeight || 360;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+  const items = chartItems();
+  const n = yearsData.length;
+  const pad = RADAR_CHART_PADDING;
+  const innerW = width - pad.left - pad.right;
+  const plotHeight = height - pad.top - pad.bottom;
+  const cx = pad.left + innerW / 2;
+  const cy = pad.top + plotHeight / 2;
+  const maxR = Math.max(20, Math.min(innerW, plotHeight) / 2);
+  const axisCount = RADAR_CHART_METRICS.length;
+
+  // Clockwise from the top: population growth, fertility, migration, life
+  // expectancy, dependency ratio.
+  function angleFor(i) {
+    return (-90 + (360 / axisCount) * i) * (Math.PI / 180);
+  }
+  function spokePoint(i, r) {
+    const angle = angleFor(i);
+    return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  }
+
+  const points = items
+    .map((item) => ({
+      item,
+      values: RADAR_CHART_METRICS.map(
+        (key) => item.series(key)[currentYearIndex],
+      ),
+    }))
+    // A radar polygon needs all five vertices — one missing metric leaves no
+    // sensible way to draw that item's shape, so it's dropped rather than
+    // interpolated or zeroed.
+    .filter(({ values }) => values.every(Number.isFinite));
+
+  const elementsToAppend = [];
+
+  // The year scrubber (see below) still needs to render even with no
+  // plottable points, so it's built after this early return rather than
+  // wrapping the whole function.
+  if (!points.length) {
+    const message = svgEl("text", {
+      class: "trend-chart-axis-label",
+      x: (width / 2).toFixed(1),
+      y: (height / 2).toFixed(1),
+      "text-anchor": "middle",
+    });
+    message.textContent =
+      "No comparable data is available for the selected countries.";
+    elementsToAppend.push(message);
+  } else {
+    // Each spoke is normalized independently against the selected items'
+    // own min/max — a radar chart's shape only means something relative to
+    // what's actually plotted, not against each metric's global range, and
+    // the five metrics don't share units anyway.
+    const domains = RADAR_CHART_METRICS.map((_, axisIndex) => {
+      const values = points.map((p) => p.values[axisIndex]);
+      return { min: Math.min(...values), max: Math.max(...values) };
+    });
+    function normalize(value, axisIndex) {
+      const { min, max } = domains[axisIndex];
+      return max === min ? 0.5 : (value - min) / (max - min);
+    }
+
+    // Concentric rings at 25/50/75/100% give the eye a scale to read
+    // distance-from-center against, the same role the trend chart's Y
+    // ticks play.
+    [0.25, 0.5, 0.75, 1].forEach((fraction) => {
+      const ringPoints = RADAR_CHART_METRICS.map((_, i) => {
+        const p = spokePoint(i, maxR * fraction);
+        return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      }).join(" ");
+      elementsToAppend.push(
+        svgEl("circle", { class: "radar-grid-ring", cx: width/2, cy: height/2, r: fraction*maxR }),
+        // svgEl("polygon", { class: "radar-grid-ring", points: ringPoints }),
+      );
+    });
+
+    RADAR_CHART_METRICS.forEach((key, i) => {
+      const outer = spokePoint(i, maxR);
+      elementsToAppend.push(
+        svgEl("line", {
+          class: "trend-chart-axis",
+          x1: cx.toFixed(1),
+          y1: cy.toFixed(1),
+          x2: outer.x.toFixed(1),
+          y2: outer.y.toFixed(1),
+        }),
+      );
+      const labelPoint = spokePoint(i, maxR + 14);
+      const cos = Math.cos(angleFor(i));
+      const anchor = cos > 0.3 ? "start" : cos < -0.3 ? "end" : "middle";
+      const label = svgEl("text", {
+        class: "trend-chart-axis-label",
+        x: labelPoint.x.toFixed(1),
+        y: (labelPoint.y + 4).toFixed(1),
+        "text-anchor": anchor,
+      });
+      label.textContent = METRICS[key].label;
+      elementsToAppend.push(label);
+    });
+
+    points.forEach(({ item, values }) => {
+      const vertices = values.map((value, axisIndex) =>
+        spokePoint(axisIndex, normalize(value, axisIndex) * maxR),
+      );
+      const polygon = svgEl("polygon", {
+        class: "radar-polygon",
+        points: vertices
+          .map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+          .join(" "),
+        fill: item.color,
+        stroke: item.color,
+      });
+      polygon.addEventListener("pointerenter", (event) =>
+        showChartTooltip(event, item.name, item.color),
+      );
+      polygon.addEventListener("pointermove", (event) =>
+        showChartTooltip(event, item.name, item.color),
+      );
+      polygon.addEventListener("pointerleave", hideChartTooltip);
+      elementsToAppend.push(polygon);
+      vertices.forEach((p) => {
+        elementsToAppend.push(
+          svgEl("circle", {
+            class: "radar-vertex",
+            cx: p.x.toFixed(1),
+            cy: p.y.toFixed(1),
+            r: 2.5,
+            fill: item.color,
+          }),
+        );
+      });
+    });
+  }
+
+  // A compact year scrubber along the top edge — the only way to change
+  // year while this tab is active, since #timelineContainer stays hidden
+  // for the whole chart view and every polygon's shape (unlike the trend
+  // chart's lines) is itself year-dependent. Mirrors renderTrendChart's own
+  // marker: cheap live-drag preview that only moves the pill and
+  // live-updates the table, committing the actual polygons through
+  // goToYear()'s full pipeline at drag end — re-rendering this SVG
+  // mid-drag would drop the pointer capture the drag depends on.
+  if (currentYearIndex >= 0 && currentYearIndex < n) {
+    const scrubberY = 4;
+    const pillWidth = 32;
+    const pillHeight = 18;
+    const scrubberX = chartXFor(currentYearIndex, n, innerW, pad.left).toFixed(1);
+    const scrubberLine = svgEl("line", {
+      class: "trend-chart-year-marker",
+      x1: scrubberX,
+      x2: scrubberX,
+      y1: scrubberY + pillHeight,
+      y2: scrubberY + pillHeight + 6,
+    });
+    const scrubberPill = svgEl("rect", {
+      class: "trend-chart-year-pill",
+      x: (Number(scrubberX) - pillWidth / 2).toFixed(1),
+      y: scrubberY,
+      width: pillWidth,
+      height: pillHeight,
+      rx: 4,
+    });
+    const scrubberLabel = svgEl("text", {
+      class: "trend-chart-year-label",
+      x: scrubberX,
+      y: scrubberY + 13,
+      "text-anchor": "middle",
+    });
+    scrubberLabel.textContent = yearsData[currentYearIndex];
+    const DRAG_HIT_HALF_WIDTH = 10;
+    const scrubberDragHit = svgEl("rect", {
+      class: "trend-chart-year-drag",
+      x: (Number(scrubberX) - DRAG_HIT_HALF_WIDTH).toFixed(1),
+      y: scrubberY,
+      width: DRAG_HIT_HALF_WIDTH * 2,
+      height: pillHeight + 6,
+    });
+
+    function yearForClientX(clientX) {
+      const rect = svg.getBoundingClientRect();
+      const localX = ((clientX - rect.left) / rect.width) * width;
+      const ratio = (localX - pad.left) / innerW;
+      const index = Math.round(ratio * (n - 1));
+      return yearsData[Math.min(n - 1, Math.max(0, index))];
+    }
+
+    let chartTableRenderScheduled = false;
+    function previewYear(year) {
+      const index = yearsData.indexOf(year);
+      if (index === -1 || index === currentYearIndex) return;
+      const x = chartXFor(index, n, innerW, pad.left).toFixed(1);
+      scrubberLine.setAttribute("x1", x);
+      scrubberLine.setAttribute("x2", x);
+      scrubberPill.setAttribute("x", (Number(x) - pillWidth / 2).toFixed(1));
+      scrubberLabel.setAttribute("x", x);
+      scrubberLabel.textContent = year;
+      scrubberDragHit.setAttribute(
+        "x",
+        (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1),
+      );
+      currentYearIndex = index;
+      if (!chartTableRenderScheduled) {
+        chartTableRenderScheduled = true;
+        requestAnimationFrame(() => {
+          chartTableRenderScheduled = false;
+          renderChartTable();
+        });
+      }
+    }
+
+    let dragging = false;
+    scrubberDragHit.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      tourController.stop();
+      scrubberDragHit.setPointerCapture(event.pointerId);
+      previewYear(yearForClientX(event.clientX));
+    });
+    scrubberDragHit.addEventListener("pointermove", (event) => {
+      if (dragging) previewYear(yearForClientX(event.clientX));
+    });
+    const endDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      goToYear(yearsData[currentYearIndex]);
+    };
+    scrubberDragHit.addEventListener("pointerup", endDrag);
+    scrubberDragHit.addEventListener("pointercancel", endDrag);
+
+    elementsToAppend.push(scrubberLine, scrubberPill, scrubberLabel, scrubberDragHit);
+  }
+
+  svg.replaceChildren(...elementsToAppend);
+}
+
+// --- Cosmos view (Globe/Map/Chart's fourth mode) --------------------------
+// A hybrid 2D isometric world: a native SVG grid floor + axes, overlaid
+// with GPU-accelerated HTML cards (one per country, positioned via CSS
+// transform) placed by three demographic metrics at once — fertility (X),
+// life expectancy (Y, vertical), and net migration rate (Z). The year
+// slider drives every card's position simultaneously, so a trend reads as
+// motion through the grid rather than a redrawn chart.
+let cosmosDomains = null; // { fertility: {min,max}, ... } — global across every country/year, computed once
+let cosmosCardsBuilt = false;
+let cosmosCardEntries = []; // [{ country, el }]
+let cosmosLayoutCache = null; // { scale, centerX, centerY } from the last renderCosmosGrid()
+
+const COSMOS_AXES = { x: "fertility", y: "lifeExpectancy", z: "netMigrationRate" };
+// Classic 30° axonometric projection (rotate the ground plane 45°, squash
+// vertically) — baked-in constants rather than recomputed every call.
+const ISO_COS30 = Math.cos(Math.PI / 6);
+const ISO_SIN30 = Math.sin(Math.PI / 6);
+// How tall the Y (life expectancy) axis reads relative to the ground
+// plane's own diagonal span. 1 keeps the whole iso-space symmetric around
+// the origin (see cosmosLayout), which is what makes centering it in the
+// viewport a matter of just centering on iso (0, 0).
+const COSMOS_HEIGHT_SCALE = 1;
+// Kept tight — every pixel handed back here goes straight into scale (see
+// cosmosLayout), which is what actually makes a given year-to-year data
+// change move a card further. Sized just wide/tall enough for the
+// shortened axis-name labels (COSMOS_AXIS_LABELS) plus their min/max
+// ticks, not the full METRICS[key].label + value strings used elsewhere.
+const COSMOS_MARGIN = { top: 28, right: 112, bottom: 18, left: 112 };
+const COSMOS_GRID_DIVISIONS = 4;
+// Shorter than METRICS[key].label ("Net migration rate" etc.) — every
+// character here is width the axis's own margin has to reserve, at the
+// direct expense of the plot's scale.
+const COSMOS_AXIS_LABELS = {
+  fertility: "Fertility rate",
+  lifeExpectancy: "Life expectancy",
+  netMigrationRate: "Migration rate",
+};
+
+// A hand-picked ~20 countries rather than the full ~200 — enough to read as
+// distinct regional clusters instead of one dense, unreadable cloud, and
+// chosen specifically to contrast diverging demographic trajectories (e.g.
+// Sub-Saharan Africa's still-rising fertility against East Asia's aging,
+// shrinking populations) rather than just "well-known" countries. Colors
+// reuse the app's existing REGION_COLORS hues where the group lines up with
+// an actual region, for visual continuity with Globe/Map.
+const COSMOS_COUNTRY_GROUPS = [
+  {
+    label: "Sub-Saharan Africa",
+    color: "var(--color-teal-dark)",
+    summary:
+      "Still-rising fertility and the fastest population growth of any region — watch this cluster drift toward high fertility as the others settle.",
+    countries: ["NGA", "COD", "ETH", "NER", "TZA", "UGA"],
+  },
+  {
+    label: "East Asia",
+    color: "var(--color-blue)",
+    summary:
+      "Ultra-low fertility and the world's longest life expectancies — an aging, shrinking cluster at the opposite extreme from Sub-Saharan Africa.",
+    countries: ["JPN", "KOR", "CHN"],
+  },
+  {
+    label: "Europe",
+    color: "var(--color-orange)",
+    summary:
+      "Aging populations kept from shrinking mainly by immigration rather than fertility.",
+    countries: ["DEU", "ITA", "GBR"],
+  },
+  {
+    label: "North America",
+    color: "var(--color-yellow)",
+    summary: "Steady growth driven by immigration rather than fertility.",
+    countries: ["USA", "CAN"],
+  },
+  {
+    label: "South Asia",
+    color: "var(--color-teal)",
+    summary:
+      "The world's most populous region, now mid-transition as fertility falls.",
+    countries: ["IND", "PAK", "BGD"],
+  },
+  {
+    label: "Latin America",
+    color: "var(--color-purple)",
+    summary:
+      "Fertility moderating quickly, tracking a generation or two behind East Asia.",
+    countries: ["BRA", "MEX"],
+  },
+  {
+    label: "Gulf outlier",
+    color: "var(--color-pink)",
+    summary:
+      "Extreme net migration from labor immigration sets it apart from every other cluster.",
+    countries: ["ARE"],
+  },
+];
+const COSMOS_COUNTRY_GROUP_BY_ISO3 = new Map(
+  COSMOS_COUNTRY_GROUPS.flatMap((group) =>
+    group.countries.map((iso3) => [iso3, group]),
+  ),
+);
+
+function normalizeCosmosValue(value, domain) {
+  if (!domain) return 0.5;
+  const { min, max } = domain;
+  if (max === min) return 0.5;
+  // Values outside the percentile-clipped domain (see computeCosmosDomains)
+  // pin to the edge rather than pushing a card off the grid entirely.
+  return Math.min(1, Math.max(0, (value - min) / (max - min)));
+}
+
+// nx/nz are the ground-plane axes (fertility/migration), ny is height
+// (life expectancy), each normalized to [0, 1].
+function cosmosProject(nx, ny, nz) {
+  const isoX = (nx - nz) * ISO_COS30;
+  const isoY = (nx + nz) * ISO_SIN30 - ny * COSMOS_HEIGHT_SCALE;
+  return { isoX, isoY };
+}
+
+// iso (0,0) sits at the pixel center of the available plot area — the
+// bounding box is symmetric in both isoX ([-cos30, cos30]) and isoY
+// ([-1, 1]) around that point (see COSMOS_HEIGHT_SCALE), so this also
+// happens to be the geometric center of the whole shape, not just the
+// origin corner's own projection.
+function cosmosLayout(width, height) {
+  const availW = width - COSMOS_MARGIN.left - COSMOS_MARGIN.right;
+  const availH = height - COSMOS_MARGIN.top - COSMOS_MARGIN.bottom;
+  const isoWidthUnits = 2 * ISO_COS30;
+  const isoHeightUnits = 2;
+  const scale = Math.max(
+    20,
+    Math.min(availW / isoWidthUnits, availH / isoHeightUnits),
+  );
+  return {
+    scale,
+    centerX: width / 2,
+    centerY: COSMOS_MARGIN.top + availH / 2,
+  };
+}
+
+function cosmosPixel(nx, ny, nz, layout) {
+  const { isoX, isoY } = cosmosProject(nx, ny, nz);
+  return {
+    x: layout.centerX + isoX * layout.scale,
+    y: layout.centerY + isoY * layout.scale,
+  };
+}
+
+// Global (not per-year) domain per axis, across every curated country (see
+// COSMOS_COUNTRY_GROUPS) and every year — the space itself needs to stay
+// fixed for a year change to read as motion through it rather than the
+// grid rescaling under the cards. Plain min/max, not percentile-clipped:
+// unlike the full ~200-country set, every country here was hand-picked
+// specifically to show a distinctive (sometimes extreme) trajectory — e.g.
+// the Gulf outlier's migration spike is the point, not noise to clip away.
+// Returns null if the (lazily loaded) demographics data isn't in yet.
+function computeCosmosDomains() {
+  const domains = {};
+  for (const key of Object.values(COSMOS_AXES)) {
+    let min = Infinity;
+    let max = -Infinity;
+    countriesData.forEach((country) => {
+      if (!COSMOS_COUNTRY_GROUP_BY_ISO3.has(country.iso3)) return;
+      chartSeriesFor(country, key).forEach((value) => {
+        if (!Number.isFinite(value)) return;
+        if (value < min) min = value;
+        if (value > max) max = value;
+      });
+    });
+    domains[key] = min < max ? { min, max } : null;
+  }
+  return Object.values(domains).every(Boolean) ? domains : null;
+}
+
+function ensureCosmosDomains() {
+  if (cosmosDomains) return true;
+  cosmosDomains = computeCosmosDomains();
+  return cosmosDomains != null;
+}
+
+function buildCosmosCards() {
+  if (cosmosCardsBuilt) return;
+  const curatedCountries = countriesData.filter((country) =>
+    COSMOS_COUNTRY_GROUP_BY_ISO3.has(country.iso3),
+  );
+  cosmosCardEntries = curatedCountries.map((country) => {
+    const group = COSMOS_COUNTRY_GROUP_BY_ISO3.get(country.iso3);
+    const el = document.createElement("div");
+    el.className = "cosmos-card";
+    // Fixed per group rather than per country — colorFor()'s region/income
+    // colors don't line up with these hand-picked groupings (e.g. the Gulf
+    // outlier is its own group, not lumped into the rest of its region).
+    el.style.setProperty("--card-color", group.color);
+    const flag = document.createElement("span");
+    flag.className = "cosmos-card-flag";
+    flag.style.backgroundImage = `url(${flagIconUrl(country.iso3, false)})`;
+    const name = document.createElement("span");
+    name.className = "cosmos-card-name";
+    name.textContent = country.name;
+    el.append(flag, name);
+    el.addEventListener("pointerenter", (event) =>
+      showChartTooltip(event, country.name, group.color),
+    );
+    el.addEventListener("pointermove", (event) =>
+      showChartTooltip(event, country.name, group.color),
+    );
+    el.addEventListener("pointerleave", hideChartTooltip);
+    // el.addEventListener("click", () => {
+    //   setCosmosActive(false);
+    //   openCountryDetail(country);
+    // });
+    return { country, el, lastZIndex: null };
+  });
+  elements.cosmosCards.replaceChildren(
+    ...cosmosCardEntries.map((entry) => entry.el),
+  );
+  cosmosCardsBuilt = true;
+}
+
+// Cheap per-year update: only moves/recolors existing cards, never touches
+// the grid or rebuilds any DOM — safe to call on every year-slider "input"
+// frame while dragging.
+function positionCosmosCards(yearIndex) {
+  if (!cosmosLayoutCache || yearIndex == null || yearIndex < 0) return;
+  cosmosCardEntries.forEach((entry) => {
+    const { country, el } = entry;
+    const x = chartSeriesFor(country, COSMOS_AXES.x)[yearIndex];
+    const y = chartSeriesFor(country, COSMOS_AXES.y)[yearIndex];
+    const z = chartSeriesFor(country, COSMOS_AXES.z)[yearIndex];
+    if (![x, y, z].every(Number.isFinite)) {
+      el.style.opacity = "0";
+      el.style.pointerEvents = "none";
+      return;
+    }
+    const nx = normalizeCosmosValue(x, cosmosDomains[COSMOS_AXES.x]);
+    const ny = normalizeCosmosValue(y, cosmosDomains[COSMOS_AXES.y]);
+    const nz = normalizeCosmosValue(z, cosmosDomains[COSMOS_AXES.z]);
+    const point = cosmosPixel(nx, ny, nz, cosmosLayoutCache);
+    // el.style.setProperty("--card-color", `#${colorFor(country).getHexString()}`);
+    el.style.transform = `translate3d(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
+    // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
+    // should — one further "toward the viewer" (bigger nx+nz, lower on
+    // screen) overlaps one further back, regardless of paint order. Written
+    // only when the rounded bucket actually changes: a year-to-year delta
+    // is usually small enough that most of the ~200 cards land back in the
+    // same integer bucket, and touching z-index forces the browser to
+    // re-evaluate stacking/paint order even when the value is identical —
+    // worth skipping on a property this many elements update every drag
+    // frame.
+    const zIndex = Math.round((nx + nz) * 1000);
+    if (entry.lastZIndex !== zIndex) {
+      el.style.zIndex = String(zIndex);
+      entry.lastZIndex = zIndex;
+    }
+    el.style.opacity = "1";
+    el.style.pointerEvents = "auto";
+  });
+}
+
+function renderCosmosGrid() {
+  const svg = elements.cosmosGrid;
+  const width = svg.clientWidth || 900;
+  const height = svg.clientHeight || 600;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  const layout = cosmosLayout(width, height);
+  cosmosLayoutCache = layout;
+
+  const elementsToAppend = [];
+
+  for (let i = 0; i <= COSMOS_GRID_DIVISIONS; i++) {
+    const t = i / COSMOS_GRID_DIVISIONS;
+    const a = cosmosPixel(0, 0, t, layout);
+    const b = cosmosPixel(1, 0, t, layout);
+    const c = cosmosPixel(t, 0, 0, layout);
+    const d = cosmosPixel(t, 0, 1, layout);
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "cosmos-grid-line",
+        x1: a.x.toFixed(1),
+        y1: a.y.toFixed(1),
+        x2: b.x.toFixed(1),
+        y2: b.y.toFixed(1),
+      }),
+      svgEl("line", {
+        class: "cosmos-grid-line",
+        x1: c.x.toFixed(1),
+        y1: c.y.toFixed(1),
+        x2: d.x.toFixed(1),
+        y2: d.y.toFixed(1),
+      }),
+    );
+  }
+
+  const origin = cosmosPixel(0, 0, 0, layout);
+  const axisEnds = {
+    [COSMOS_AXES.x]: { end: cosmosPixel(1, 0, 0, layout), anchor: "start", dx: 10, dy: 4 },
+    [COSMOS_AXES.z]: { end: cosmosPixel(0, 0, 1, layout), anchor: "end", dx: -10, dy: 4 },
+    [COSMOS_AXES.y]: { end: cosmosPixel(0, 1, 0, layout), anchor: "middle", dx: 0, dy: -12 },
+  };
+
+  Object.entries(axisEnds).forEach(([key, { end, anchor, dx, dy }]) => {
+    elementsToAppend.push(
+      svgEl("line", {
+        class: "cosmos-axis-line",
+        x1: origin.x.toFixed(1),
+        y1: origin.y.toFixed(1),
+        x2: end.x.toFixed(1),
+        y2: end.y.toFixed(1),
+      }),
+    );
+    const definition = METRICS[key];
+    const domain = cosmosDomains?.[key];
+    // Name only (no value) right at the endpoint — kept short so
+    // COSMOS_MARGIN can stay tight; the actual min/max values live in the
+    // two ticks below instead.
+    const nameLabel = svgEl("text", {
+      class: "cosmos-axis-label",
+      x: (end.x + dx).toFixed(1),
+      y: (end.y + dy).toFixed(1),
+      "text-anchor": anchor,
+    });
+    nameLabel.textContent = COSMOS_AXIS_LABELS[key];
+    elementsToAppend.push(nameLabel);
+    if (!domain) return;
+    // Both ticks sit a little way in from their respective ends, along
+    // this axis's own direction — close enough to read as "the start/end
+    // of this spoke" without the three axes' ticks overlapping each other
+    // at the shared origin, and without the max tick colliding with the
+    // name label right at the endpoint.
+    [
+      { t: 0.12, value: domain.min, offset: 0.6 },
+      { t: 0.82, value: domain.max, offset: 0.75 },
+    ].forEach(({ t, value, offset }) => {
+      const point = cosmosPixel(
+        key === COSMOS_AXES.x ? t : 0,
+        key === COSMOS_AXES.y ? t : 0,
+        key === COSMOS_AXES.z ? t : 0,
+        layout,
+      );
+      const tick = svgEl("text", {
+        class: "cosmos-tick-label",
+        x: (point.x + dx * offset).toFixed(1),
+        y: (point.y + dy * offset + 3).toFixed(1),
+        "text-anchor": anchor,
+      });
+      tick.textContent = definition.format(value);
+      elementsToAppend.push(tick);
+    });
+  });
+
+  svg.replaceChildren(...elementsToAppend);
+}
+
+let cosmosSummaryBuilt = false;
+
+// Static explanation of the curated groups (see COSMOS_COUNTRY_GROUPS) —
+// doesn't depend on year or domains, so it's built once and left alone.
+function renderCosmosSummary() {
+  if (cosmosSummaryBuilt) return;
+  elements.cosmosGroups.replaceChildren(
+    ...COSMOS_COUNTRY_GROUPS.map((group) => {
+      const item = document.createElement("div");
+      item.className = "cosmos-group-item";
+      const header = document.createElement("div");
+      header.className = "cosmos-group-header";
+      const swatch = document.createElement("span");
+      swatch.className = "legend-swatch";
+      swatch.style.setProperty("--color-legend", group.color);
+      const label = document.createElement("span");
+      label.textContent = group.label;
+      header.append(swatch, label);
+      const summary = document.createElement("p");
+      summary.className = "cosmos-group-summary";
+      summary.textContent = group.summary;
+      item.append(header, summary);
+      return item;
+    }),
+  );
+  cosmosSummaryBuilt = true;
+}
+
+// Full (re)build: grid + card DOM + initial positions. Only needed once per
+// activation or resize — the domains (and so the coordinate space itself)
+// never change between frames, only the year does (see updateCosmosYear).
+function renderCosmosLayout() {
+  if (!cosmosActive) return;
+  renderCosmosSummary();
+  if (!ensureCosmosDomains()) {
+    // Demographics data hasn't loaded yet — the countryDemographicMetrics
+    // promise handler retries this once it resolves.
+    elements.cosmosCards.replaceChildren();
+    elements.cosmosGrid.replaceChildren();
+    return;
+  }
+  buildCosmosCards();
+  renderCosmosGrid();
+  positionCosmosCards(currentYearIndex);
+}
+
+function updateCosmosYear(year) {
+  if (!cosmosActive || !cosmosDomains) return;
+  const yearIndex = yearsData.indexOf(year);
+  if (yearIndex === -1) return;
+  positionCosmosCards(yearIndex);
+}
+
+function setCosmosActive(active) {
+  if (active === cosmosActive) return;
+  cosmosActive = active;
+  elements.cosmosView.hidden = !active;
+  document.body.classList.toggle("view-cosmos", active);
+  // setViewMode() only ever toggles between "globe"/"map" — same reasoning
+  // as setchartPanelActive's own #viewMode resync.
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle(
+      "active",
+      btn.dataset.mode === (active ? "cosmos" : viewMode),
+    ),
+  );
+  if (active) {
+    tourController.stop();
+    renderCosmosLayout();
+  } else if (currentYearIndex >= 0) {
+    // Cosmos took applyYear()'s cheap fast path (see there) while open,
+    // leaving the 3D scene stale — catch it up now that it's visible again.
+    applyYear(yearsData[currentYearIndex], { instant: true });
+  }
+  syncUrlFromState();
+}
+
 function setChartTableSort(key) {
   const next = nextSortState(chartTableSort, key, chartTableColumns());
   if (!next) return;
@@ -2904,6 +3639,7 @@ const CHART_METRIC_INSIGHTS = {
   medianAge: "Median age splits a population exactly in half by age — as many people younger as older. A rising median age signals an aging society with a shrinking future workforce.",
   ageDependencyRatio: "The age dependency ratio counts children and seniors per 100 working-age adults — how many dependents each worker effectively supports. Above 70 is considered a high dependency burden; below 45 is low.",
   netMigrationRate: "Net migration rate is the balance of people moving in versus out, per 1,000 residents. 0 is the tipping point: positive means more arrivals than departures, negative means the reverse.",
+  radar: "This radar chart plots five metrics as spokes around a wheel — population growth, fertility, migration, life expectancy, and dependency ratio — so each country or region's overall demographic shape can be compared at a glance.",
 };
 
 function renderChartInsight() {
@@ -3307,6 +4043,7 @@ async function init() {
         renderTrendChart();
         renderChartTable();
       }
+      if (cosmosActive) renderCosmosLayout();
       if (selectedCountry) {
         renderCountryDetail();
       } else if (selectedLegend) {
@@ -3358,6 +4095,11 @@ async function init() {
     elements.yearSlider.addEventListener("input", () => {
       updateSliderProgress();
       updateYearLabels(Number(elements.yearSlider.value));
+      // Cosmos cards are cheap to reposition (no dot-buffer rewrite like the
+      // 3D scene needs), so — unlike the globe/map content below — they get
+      // to move live during the drag itself rather than waiting for
+      // "change".
+      if (cosmosActive) updateCosmosYear(Number(elements.yearSlider.value));
     });
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
@@ -3383,10 +4125,17 @@ async function init() {
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.mode === "chart") {
+          setCosmosActive(false);
           setchartPanelActive(true);
           return;
         }
+        if (btn.dataset.mode === "cosmos") {
+          setchartPanelActive(false);
+          setCosmosActive(true);
+          return;
+        }
         setchartPanelActive(false);
+        setCosmosActive(false);
         setViewMode(btn.dataset.mode);
       });
     });
@@ -3745,6 +4494,10 @@ window.addEventListener("resize", () => {
   if (chartPanelActive) {
     clearTimeout(countryChartResizeTimer);
     countryChartResizeTimer = setTimeout(renderTrendChart, 120);
+  }
+  if (cosmosActive) {
+    clearTimeout(countryChartResizeTimer);
+    countryChartResizeTimer = setTimeout(renderCosmosLayout, 120);
   }
 });
 

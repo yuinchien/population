@@ -36,6 +36,7 @@
     --margin: 24px;
     --icon-size: 24px;
     --button-size: 32px;
+    --flag-size: 24px;
 
     --shadow: 0 0 2px rgba(0,0,0,.4);
 
@@ -191,6 +192,7 @@ canvas.hovering-dot {
     transition: all 0.15s;
 }
 
+body.view-cosmos .hide-for-cosmo,
 body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
@@ -511,13 +513,13 @@ body.country-detail #colorMode {
 #legend {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
     margin-top: 8px;
 }
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
     box-sizing: border-box;
     width: 100%;
     font-weight: 500;
@@ -1364,6 +1366,157 @@ select::picker(select) {
     grid-template-rows: auto auto 1fr;
 }
 
+/* Placed earlier in the DOM than #timelineContainer so the two land in the
+   same stacking tier (--z-dock) but the timeline — cosmos's own year
+   control — still paints on top of it without needing a separate z tier. */
+.cosmos-view {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: var(--z-dock);
+    display: flex;
+    background: var(--color-scrim-strong);
+    overflow: hidden;
+}
+
+.cosmos-summary {
+    flex: 0 0 clamp(260px, 28vw, 360px);
+    min-height: 0;
+    overflow-y: auto;
+    padding: calc(var(--margin) * 2 + var(--button-size)) var(--margin) var(--margin);
+}
+
+.cosmos-summary-intro {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-muted);
+    margin: 0 0 24px 0;
+}
+
+.cosmos-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.cosmos-group-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cosmos-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+}
+
+.cosmos-group-summary {
+    margin: 0;
+    padding-left: 16px;
+    color: var(--color-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.cosmos-plot {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.cosmos-grid {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.cosmos-grid-line {
+    stroke: var(--color-border);
+    stroke-width: 1;
+}
+
+.cosmos-axis-line {
+    stroke: color-mix(in srgb, var(--color-muted) 30%, transparent);
+    stroke-width: 1.5;
+}
+
+.cosmos-axis-label {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: var(--letterspacing-uppercase);
+    fill: var(--color-text);
+    font-weight: 500;
+}
+
+.cosmos-tick-label {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    fill: var(--color-muted);
+}
+
+.cosmos-cards {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.cosmos-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    /*padding: 2px 7px 2px 3px;*/
+    /*border-radius: 999px;*/
+    /*background: color-mix(in srgb, var(--card-color) 25%, var(--color-bg) 75%);*/
+    /*border: 1px solid white;*/
+    color: var(--color-text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    white-space: nowrap;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    will-change: transform;
+}
+
+.cosmos-card:hover {
+    /*background: color-mix(in srgb, var(--card-color) 45%, var(--color-bg) 55%);*/
+    /* The standalone `scale` property (not transform: scale(), which is
+       already doing double duty for JS-driven positioning) composes with
+       that positioning transform instead of clobbering it. Combined with
+       the z-index bump, this lets a single card be picked out of a dense
+       cluster on hover without disturbing its neighbors' layout. */
+    /*scale: 1.25;*/
+    /*z-index: 99999 !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);*/
+}
+
+.cosmos-card-flag {
+    flex: none;
+    width: 96px;
+    height: 72px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+    transform: rotateX(60deg) rotateZ(45deg);
+    transform-style: preserve-3d;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    border: 4px solid var(--card-color);
+    box-sizing: border-box;
+}
+
 .chart-insight {
     margin-top: 0;
     margin-bottom: var(--margin);
@@ -1402,6 +1555,33 @@ select::picker(select) {
     stroke: transparent;
     stroke-width: 16px;
     pointer-events: stroke;
+}
+
+.cosmos-card-name {
+    display: none;
+}
+
+.radar-grid-ring {
+    fill: none;
+    stroke: var(--color-border);
+    stroke-width: 1;
+}
+
+.radar-polygon {
+    fill-opacity: 0.1;
+    stroke-width: 1.5;
+    stroke-opacity: 0.9;
+    cursor: pointer;
+    transition: fill-opacity 0.15s ease, stroke-opacity 0.15s ease;
+}
+
+.radar-polygon:hover {
+    fill-opacity: 0.3;
+    stroke-opacity: 1;
+}
+
+.radar-vertex {
+    pointer-events: none;
 }
 
 .trend-chart-baseline {
@@ -1479,7 +1659,7 @@ select::picker(select) {
     border: var(--border);
     background: var(--color-surface);
     flex-shrink: 1;
-    max-width: 800px;
+    max-width: 960px;
 }
 
 /* Collapsed (default): only the summary pill shows. Everything involved in

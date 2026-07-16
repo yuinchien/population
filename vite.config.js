@@ -15,6 +15,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "index.html"),
         colors: resolve(__dirname, "colors.html"),
+        cosmo: resolve(__dirname, "cosmo.html"),
       },
     },
   },

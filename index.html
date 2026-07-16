@@ -93,15 +93,15 @@
                 >
             </button>
             <div id="viewMode" class="button-group" hidden>
-                <!--<button
+                <button
                     type="button"
-                    data-mode="overview"
+                    data-mode="cosmos"
                     class="mono-uppercase"
-                    aria-label="Overview"
-                    title="Overview"
+                    aria-label="Cosmos"
+                    title="Cosmos"
                 >
-                    Overview
-                </button>-->
+                    Cosmos
+                </button>
                 <button
                     type="button"
                     data-mode="globe"
@@ -132,10 +132,29 @@
             </div>
         </div>
 
+        <section id="cosmosView" class="cosmos-view glass" hidden>
+            <div class="cosmos-summary no-scrollbar">
+                <p class="cosmos-summary-intro paragraph">
+                    A curated set of countries plotted by fertility, life
+                    expectancy, and net migration — grouped to show how
+                    different regions' demographic trajectories diverge.
+                </p>
+                <div id="cosmosGroups" class="cosmos-groups"></div>
+            </div>
+            <div class="cosmos-plot">
+                <svg
+                    id="cosmosGrid"
+                    class="cosmos-grid"
+                    preserveAspectRatio="none"
+                ></svg>
+                <div id="cosmosCards" class="cosmos-cards"></div>
+            </div>
+        </section>
+
         <div id="timelineContainer" class="timeline hide-for-chart">
             <button
                 id="milestoneTour"
-                class="milestone-nav-btn hide-for-chart"
+                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
                 type="button"
                 aria-label="Play milestone tour"
                 title="Play tour"
@@ -163,7 +182,7 @@
             </div>
             <button
                 id="milestonePrev"
-                class="milestone-nav-btn hide-for-chart"
+                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
                 type="button"
                 aria-label="Previous milestone"
             >
@@ -173,7 +192,7 @@
             </button>
             <button
                 id="milestoneNext"
-                class="milestone-nav-btn hide-for-chart"
+                class="milestone-nav-btn hide-for-chart hide-for-cosmo"
                 type="button"
                 aria-label="Next milestone"
             >
@@ -315,6 +334,12 @@
                         id="trendChart"
                         class="trend-chart"
                         preserveAspectRatio="none"
+                    ></svg>
+                    <svg
+                        id="radarChart"
+                        class="trend-chart radar-chart"
+                        preserveAspectRatio="none"
+                        hidden
                     ></svg>
                 </div>
                 <div id="chartTable" class="detail-table">
