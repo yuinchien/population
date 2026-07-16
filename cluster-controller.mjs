@@ -283,7 +283,7 @@ export function createClusterController({
       .force("collide", collideForce)
       .force("label-avoidance", labelAvoidanceForce)
       .alphaTarget(0)
-      .on("tick", render);
+      .on("tick", paintFrame);
   }
 
   function declineContext(country, yearIndex, population) {
@@ -410,7 +410,7 @@ export function createClusterController({
     context.restore();
   }
 
-  function render() {
+  function paintFrame() {
     if (!context || !anchors) return;
     context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     sortedNodes = nodes
@@ -439,7 +439,7 @@ export function createClusterController({
       const node = nodeAtClientPoint(event.clientX, event.clientY);
       const hoverChanged = node !== hoveredNode;
       hoveredNode = node;
-      if (hoverChanged) render();
+      if (hoverChanged) paintFrame();
       canvas.style.cursor = node ? "pointer" : "default";
       if (node) {
         showTooltip(event, node.country.name, colorFor(node.country, colorMode));
@@ -450,7 +450,7 @@ export function createClusterController({
     canvas.addEventListener("pointerleave", () => {
       const hover = resolveClusterHover(hoveredNode, null);
       hoveredNode = hover.node;
-      if (hover.changed) render();
+      if (hover.changed) paintFrame();
       hideTooltip();
     });
     canvas.addEventListener("click", (event) => {
@@ -506,7 +506,7 @@ export function createClusterController({
   function setColorMode(mode) {
     if (mode === colorMode) return;
     colorMode = mode;
-    render();
+    paintFrame();
   }
 
   return {
@@ -523,7 +523,7 @@ export function createClusterController({
     // a light/dark theme toggle) should use this instead, since the
     // simulation may already be settled/stopped and nothing else would
     // otherwise trigger a redraw.
-    redraw: render,
+    redraw: paintFrame,
     resize,
     setColorMode,
     setYear,
