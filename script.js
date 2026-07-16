@@ -4410,27 +4410,6 @@ function setClusterActive(active) {
   syncUrlFromState();
 }
 
-window.__clusterOverlapCheck = () => {
-  let maxOverlap = 0;
-  let overlapCount = 0;
-  for (let i = 0; i < clusterNodes.length; i++) {
-    for (let j = i + 1; j < clusterNodes.length; j++) {
-      const a = clusterNodes[i];
-      const b = clusterNodes[j];
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const minDist = a.radius + b.radius;
-      const overlap = minDist - dist;
-      if (overlap > 0.5) {
-        overlapCount++;
-        if (overlap > maxOverlap) maxOverlap = overlap;
-      }
-    }
-  }
-  return { overlapCount, maxOverlap, nodeCount: clusterNodes.length };
-};
-
 function setChartTableSort(key) {
   const next = nextSortState(chartTableSort, key, chartTableColumns());
   if (!next) return;
