@@ -21,6 +21,39 @@ export function classifyCountry({ fertility, netMigrationRate }) {
     : "contraction";
 }
 
+// Phase 1 window — see refineGrowthArchetype.
+export const PHASE_ONE_START_YEAR = 1950;
+export const PHASE_ONE_END_YEAR = 1980;
+// Life expectancy dividing line for Phase 1's two "growth" stories. Western
+// Europe/North America were already ~65-72 years across 1950-1980 (the
+// post-war "Golden Age"); most of the Global South was still ~35-55 and
+// climbing fast over the same period — this threshold sits between them.
+export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
+
+// Splits the coarse "growth" archetype into two Phase 1 (1950-1980)
+// narratives using life expectancy as the distinguishing axis: "goldenBoom"
+// (post-war affluent nations — the Baby Boom atop already-high life
+// expectancy) vs. "emergingSurge" (the Global South — extreme fertility
+// atop rapidly-falling mortality, still climbing toward that same level).
+// Both require above-replacement fertility (see classifyCountry), so this
+// only ever touches "growth" nodes; every other archetype, any year outside
+// the window, and missing life-expectancy data all pass through unchanged
+// rather than guessing.
+export function refineGrowthArchetype(archetype, year, lifeExpectancy) {
+  if (archetype !== "growth") return archetype;
+  if (
+    year == null ||
+    year < PHASE_ONE_START_YEAR ||
+    year > PHASE_ONE_END_YEAR
+  ) {
+    return archetype;
+  }
+  if (lifeExpectancy == null) return archetype;
+  return lifeExpectancy >= GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD
+    ? "goldenBoom"
+    : "emergingSurge";
+}
+
 // t in [0,1] for how far into the (global, percentile-clipped) median-age
 // range a value sits — not a gate, just an intensity used to modulate force
 // strength (see forceStrengthFor).

@@ -5,6 +5,10 @@ import {
   contractionAgeIntensity,
   forceStrengthFor,
   radiusForPopulation,
+  refineGrowthArchetype,
+  PHASE_ONE_START_YEAR,
+  PHASE_ONE_END_YEAR,
+  GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD,
 } from "../cluster-model.mjs";
 
 test("classifyCountry sorts by fertility first, then migration", () => {
@@ -88,4 +92,60 @@ test("radiusForPopulation sqrt-scales so area, not diameter, tracks population",
   assert.equal(radiusForPopulation(null, domainMax), 3);
   assert.equal(radiusForPopulation(-5, domainMax), 3);
   assert.equal(radiusForPopulation(10_000, 0), 3, "no domain, no crash");
+});
+
+test("refineGrowthArchetype only ever touches the growth archetype", () => {
+  assert.equal(
+    refineGrowthArchetype("resilient", 1960, 70),
+    "resilient",
+    "non-growth archetypes pass through unchanged",
+  );
+  assert.equal(refineGrowthArchetype("contraction", 1960, 30), "contraction");
+  assert.equal(refineGrowthArchetype(null, 1960, 70), null);
+});
+
+test("refineGrowthArchetype splits Phase 1 growth by life expectancy", () => {
+  assert.equal(
+    refineGrowthArchetype("growth", 1960, GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD),
+    "goldenBoom",
+    "at-threshold life expectancy counts as Golden Boom",
+  );
+  assert.equal(
+    refineGrowthArchetype("growth", 1960, 70),
+    "goldenBoom",
+    "high life expectancy is the post-war Golden Age story",
+  );
+  assert.equal(
+    refineGrowthArchetype("growth", 1960, 40),
+    "emergingSurge",
+    "low life expectancy is the Global South story",
+  );
+});
+
+test("refineGrowthArchetype only applies inside the Phase 1 year window", () => {
+  assert.equal(
+    refineGrowthArchetype("growth", PHASE_ONE_START_YEAR, 70),
+    "goldenBoom",
+    "window start is inclusive",
+  );
+  assert.equal(
+    refineGrowthArchetype("growth", PHASE_ONE_END_YEAR, 70),
+    "goldenBoom",
+    "window end is inclusive",
+  );
+  assert.equal(
+    refineGrowthArchetype("growth", PHASE_ONE_START_YEAR - 1, 70),
+    "growth",
+    "before the window, plain growth is unchanged",
+  );
+  assert.equal(
+    refineGrowthArchetype("growth", PHASE_ONE_END_YEAR + 1, 40),
+    "growth",
+    "after the window, plain growth is unchanged even for low life expectancy",
+  );
+  assert.equal(refineGrowthArchetype("growth", null, 70), "growth");
+});
+
+test("refineGrowthArchetype falls back to plain growth when life expectancy is missing", () => {
+  assert.equal(refineGrowthArchetype("growth", 1965, null), "growth");
 });

@@ -58,6 +58,9 @@ import {
   classifyCountry,
   forceStrengthFor,
   radiusForPopulation,
+  refineGrowthArchetype,
+  PHASE_ONE_START_YEAR,
+  PHASE_ONE_END_YEAR,
 } from "./cluster-model.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
@@ -3910,35 +3913,51 @@ function setPlotActive(active) {
 }
 
 // --- Cluster view (physics-based demographic clustering) -----------------
-// Every country is a particle pulled toward one of three named "gravity
-// wells" (growth/resilient/contraction — see cluster-model.mjs) by a
-// d3-force simulation. Unlike Plot's literal 3-axis mapping, a country's
-// position here is emergent: which well it's pulled toward is reclassified
-// fresh every year from its own fertility/migration data, not a direct
-// metric->pixel formula, so the 1950->2100 "phases" (near-universal growth
-// -> the developed/developing split -> the migration-vs-aging divide ->
-// near-universal convergence) fall out of the classifier rather than being
-// hardcoded.
+// Every country is a particle pulled toward one of several named "gravity
+// wells" (see cluster-model.mjs) by a d3-force simulation. Unlike Plot's
+// literal 3-axis mapping, a country's position here is emergent: which well
+// it's pulled toward is reclassified fresh every year from its own
+// fertility/migration/life-expectancy data, not a direct metric->pixel
+// formula, so the 1950->2100 "phases" (Phase 1's Golden Boom/Emerging Surge
+// split -> the developed/developing (resilient/silverDecline) split -> the
+// migration-vs-aging divide -> near-universal convergence) fall out of the
+// classifier rather than being hardcoded. "growth", "goldenBoom", and
+// "emergingSurge" are mutually exclusive across years (see
+// refineGrowthArchetype): only "growth" is reachable outside 1950-1980,
+// only the other two inside it.
 const CLUSTER_AXES = {
   fertility: "fertility",
   migration: "netMigrationRate",
   age: "medianAge",
   population: "population",
+  lifeExpectancy: "lifeExpectancy",
 };
-const CLUSTER_RADIUS_OPTIONS = { minRadius: 6, maxRadius: 60 };
+const CLUSTER_RADIUS_OPTIONS = { minRadius: 6, maxRadius: 96 };
 const CLUSTER_ARCHETYPE_LABELS = {
+  goldenBoom: "Golden Boom",
+  emergingSurge: "Emerging Surge",
   growth: "Growth",
   resilient: "Resilient",
-  contraction: "Contraction",
+  silverDecline: "Contraction",
 };
 const CLUSTER_ARCHETYPE_SUMMARIES = {
+  goldenBoom: [
+    "Above-replacement fertility",
+    "High life expectancy",
+    "Post-war boom, rising living standards",
+  ],
+  emergingSurge: [
+    "Extreme fertility",
+    "Rapidly rising life expectancy",
+    "Falling mortality fuels a youth surge",
+  ],
   growth: ["Above-replacement fertility", "Young, fast-growing population"],
   resilient: [
     "Below-replacement fertility",
     "Positive net migration",
     "Sustained population growth",
   ],
-  contraction: [
+  silverDecline: [
     "Below-replacement fertility",
     "Little or negative migration",
     "Aging, shrinking population",
@@ -3946,17 +3965,44 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
 };
 // Growth sits top-center (where almost everyone starts, in 1950); Resilient
 // bottom-left and Contraction bottom-right mirror the left/right split in
-// the reference mockup.
+// the reference mockup. Golden Boom/Emerging Surge flank that same top
+// band left/right — they're never on screen at the same time as Growth
+// (see refineGrowthArchetype), so reusing that vertical position is safe.
 const CLUSTER_ANCHOR_RATIOS = {
+  goldenBoom: { x: 0.35, y: 0.22 },
+  emergingSurge: { x: 0.65, y: 0.22 },
   growth: { x: 0.5, y: 0.22 },
   resilient: { x: 0.28, y: 0.75 },
-  contraction: { x: 0.72, y: 0.75 },
+  silverDecline: { x: 0.72, y: 0.75 },
 };
 const CLUSTER_ANNOTATION_OFFSETS = {
+  goldenBoom: { dx: 0, dy: -70 },
+  emergingSurge: { dx: 0, dy: -70 },
   growth: { dx: 0, dy: -70 },
   resilient: { dx: 0, dy: 60 },
-  contraction: { dx: 0, dy: 60 },
+  silverDecline: { dx: 0, dy: 60 },
 };
+// Which annotation cards are relevant for a given year — Growth's card only
+// makes sense outside Phase 1, Golden Boom/Emerging Surge only inside it;
+// Resilient/Contraction are always potentially relevant (see
+// classifyCountry — a country can dip below replacement any year).
+const CLUSTER_PHASE_ONE_KEYS = new Set([
+  "goldenBoom",
+  "emergingSurge",
+  "resilient",
+  "silverDecline",
+]);
+const CLUSTER_DEFAULT_PHASE_KEYS = new Set([
+  "growth",
+  "resilient",
+  "silverDecline",
+]);
+
+function isClusterPhaseOneYear(year) {
+  return (
+    year != null && year >= PHASE_ONE_START_YEAR && year <= PHASE_ONE_END_YEAR
+  );
+}
 
 let clusterCanvasCtx = null;
 let clusterSimulation = null;
@@ -3964,12 +4010,13 @@ let clusterNodes = [];
 let clusterNodesBuilt = false;
 let clusterInteractionBound = false;
 let clusterAnnotationsBuilt = false;
-let clusterAnchors = null; // { growth: {x,y}, resilient: {x,y}, contraction: {x,y} } — fixed pixel coords, recomputed on resize
+let clusterAnchors = null; // { growth: {x,y}, resilient: {x,y}, silverDecline: {x,y} } — fixed pixel coords, recomputed on resize
 let clusterMedianAgeDomain = null; // { min, max } — global, percentile-clipped, computed once
 let clusterPopulationMax = null; // global max population across every country/year
 let clusterHoveredNode = null;
 let clusterSortedNodes = []; // descending-by-radius draw order, reused for hit-testing
 let clusterFont = null;
+let clusterAnnotationPhaseIsOne = null; // tracks which annotation cards are shown; null forces the first sync
 
 // Global (not per-year) domains, mirroring computePlotDomains's reasoning —
 // the space itself needs to stay fixed so a year change reads as motion
@@ -4124,6 +4171,7 @@ function reinitializeClusterForces() {
 // two nearest years for any (country, key) pair, not just Plot's own axes.
 function updateClusterNodesForYear(yearIndex) {
   if (yearIndex == null || yearIndex < 0) return;
+  const year = yearsData[Math.round(yearIndex)] ?? null;
   clusterNodes.forEach((node) => {
     const fertility = valueAtFractionalYear(
       node.country,
@@ -4145,7 +4193,16 @@ function updateClusterNodesForYear(yearIndex) {
       CLUSTER_AXES.population,
       yearIndex,
     );
-    node.archetype = classifyCountry({ fertility, netMigrationRate });
+    const lifeExpectancy = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.lifeExpectancy,
+      yearIndex,
+    );
+    node.archetype = refineGrowthArchetype(
+      classifyCountry({ fertility, netMigrationRate }),
+      year,
+      lifeExpectancy,
+    );
     node.medianAge = medianAge;
     node.radius = radiusForPopulation(
       population,
@@ -4154,6 +4211,7 @@ function updateClusterNodesForYear(yearIndex) {
     );
   });
   reinitializeClusterForces();
+  updateClusterAnnotationVisibility(year);
 }
 
 // Discrete year-change path (manual drag, keyboard step, deep-link jump) —
@@ -4253,9 +4311,12 @@ function setupClusterCanvasInteraction() {
   clusterInteractionBound = true;
 }
 
-// Static per-archetype copy — doesn't depend on year, built once and left
-// alone, positioned near that archetype's anchor (repositioned on resize —
-// see positionClusterAnnotations).
+// Static per-archetype copy for all 5 possible archetypes — doesn't depend
+// on year, built once and left alone, positioned near that archetype's
+// anchor (repositioned on resize — see positionClusterAnnotations). Which
+// of the 5 cards are actually visible for the current year is handled
+// separately by updateClusterAnnotationVisibility, since Growth vs. Golden
+// Boom/Emerging Surge is a per-year toggle, not a one-time layout.
 function buildClusterAnnotations() {
   if (clusterAnnotationsBuilt) return;
   elements.clusterAnnotations.replaceChildren(
@@ -4292,6 +4353,26 @@ function positionClusterAnnotations() {
       if (!anchor || !offset) return;
       block.style.left = `${anchor.x + offset.dx}px`;
       block.style.top = `${anchor.y + offset.dy}px`;
+    });
+}
+
+// Growth's card only makes sense outside Phase 1, Golden Boom/Emerging
+// Surge only inside it (see refineGrowthArchetype) — toggled instead of
+// rebuilt so a year change never has to touch the annotation DOM structure,
+// only `hidden`. Guarded on the phase actually changing since this runs
+// from updateClusterNodesForYear, which fires every frame during the
+// timeline sweep.
+function updateClusterAnnotationVisibility(year) {
+  const isPhaseOne = isClusterPhaseOneYear(year);
+  if (isPhaseOne === clusterAnnotationPhaseIsOne) return;
+  clusterAnnotationPhaseIsOne = isPhaseOne;
+  const activeKeys = isPhaseOne
+    ? CLUSTER_PHASE_ONE_KEYS
+    : CLUSTER_DEFAULT_PHASE_KEYS;
+  elements.clusterAnnotations
+    .querySelectorAll(".cluster-annotation")
+    .forEach((block) => {
+      block.hidden = !activeKeys.has(block.dataset.archetype);
     });
 }
 
