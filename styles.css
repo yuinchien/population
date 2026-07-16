@@ -757,6 +757,7 @@ body.country-detail #colorMode {
 .detail-cell.country .detail-name {
     font-weight: 500;
 }
+#detailPanel .detail-cell.country:not(.sortable) .detail-name,
 #chartPanel .detail-cell.country:not(.sortable) .detail-name {
     padding-left: 8px;
 }
