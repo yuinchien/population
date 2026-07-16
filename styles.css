@@ -1386,6 +1386,11 @@ select::picker(select) {
     min-height: 0;
     overflow-y: auto;
     padding: calc(var(--margin) * 2 + var(--button-size)) 0 var(--margin) var(--margin);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 400px;
+    z-index: 10000;
 }
 
 .cosmos-summary-intro {
@@ -1404,7 +1409,7 @@ select::picker(select) {
 .cosmos-group-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
     width: 100%;
     border: 0;
     border-radius: 8px;
@@ -1422,7 +1427,6 @@ select::picker(select) {
         align-items: center;
         gap: 12px;
         font-weight: 500;
-        /*height: 28px;*/
     }
 
     .cosmos-group-summary {
@@ -1433,6 +1437,16 @@ select::picker(select) {
         transition: .25s all ease-out;
         margin: 0;
         transform: translate3d(0,0,0);
+        position: relative;
+    }
+    .cosmos-group-summary:before {
+        position: absolute;
+        left: 3px;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        content: "";
+        background: var(--color-text);
     }
 
     .legend-swatch {
@@ -1475,8 +1489,8 @@ select::picker(select) {
 }
 
 .cosmos-axis-line {
-    stroke: color-mix(in srgb, var(--color-muted) 30%, transparent);
-    stroke-width: 1.5;
+    stroke: color-mix(in srgb, var(--color-muted) 40%, transparent);
+    stroke-width: 2;
 }
 
 .cosmos-axis-label {
@@ -1492,6 +1506,7 @@ select::picker(select) {
     font-size: 10px;
     font-family: var(--font-mono);
     fill: var(--color-muted);
+    display: none;
 }
 
 .cosmos-cards {
@@ -1521,6 +1536,15 @@ select::picker(select) {
     pointer-events: auto;
     transition: transform 0.25s ease, opacity 0.25s ease;
     will-change: transform;
+}
+
+/* During the region-select auto-play sweep (playCosmosTimelineOnce),
+   positions already update every ~16ms via JS — the transition above just
+   fights that with pointless retargeting/resampling on ~200 elements at
+   once. Off for the sweep's duration; back on for occasional updates
+   (a manual drag, a single click) where it's actually useful. */
+.cosmos-cards.is-playing .cosmos-card {
+    transition: none;
 }
 
 .cosmos-card:hover {

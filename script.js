@@ -3217,8 +3217,8 @@ const COSMOS_HEIGHT_SCALE = 1;
 // change move a card further. Sized just wide/tall enough for the
 // shortened axis-name labels (COSMOS_AXIS_LABELS) plus their min/max
 // ticks, not the full METRICS[key].label + value strings used elsewhere.
-const COSMOS_MARGIN = { top: 28, right: 112, bottom: 18, left: 112 };
-const COSMOS_GRID_DIVISIONS = 4;
+const COSMOS_MARGIN = { top: 60, right: 0, bottom: 0, left: 0 };
+const COSMOS_GRID_DIVISIONS = 3;
 // Depth-sort buckets for z-index (see positionCosmosCards) — deliberately
 // coarse. z-index has no interpolation, so every reorder is an instant,
 // visible cut; a fine-grained bucket count reshuffles ~200 overlapping
@@ -3227,6 +3227,16 @@ const COSMOS_GRID_DIVISIONS = 4;
 // still plenty to keep "further toward the viewer" cards on top — exact
 // ordering within a band doesn't matter for a cluster of flag icons.
 const COSMOS_ZINDEX_BUCKETS = 20;
+// With tick values hidden, the axis/grid only need to communicate
+// direction, not a precise scale — so cards (not the axis lines or their
+// labels, which stay at the literal [0,1] mapping) get stretched away from
+// the center of each axis to amplify how far a country's position and
+// year-to-year movement actually read. 1 is a no-op; >1 exaggerates.
+const COSMOS_MOVEMENT_SCALE = 1.2;
+
+function amplifyCosmosMovement(normalized) {
+  return 0.5 + (normalized - 0.5) * COSMOS_MOVEMENT_SCALE;
+}
 // Shorter than METRICS[key].label ("Net migration rate" etc.) — every
 // character here is width the axis's own margin has to reserve, at the
 // direct expense of the plot's scale.
@@ -3326,6 +3336,19 @@ function cosmosPixel(nx, ny, nz, layout) {
     x: layout.centerX + isoX * layout.scale,
     y: layout.centerY + isoY * layout.scale,
   };
+}
+
+// Inverse of cosmosPixel at floor level (ny = 0) — given a pixel, which
+// ground-plane (nx, nz) projects there. Used only to figure out how far the
+// grid floor (see renderCosmosGrid) needs to extend to cover a canvas
+// corner; not needed for card placement, which only ever goes pixel-space.
+function cosmosUnproject(pixelX, pixelY, layout) {
+  const isoX = (pixelX - layout.centerX) / layout.scale;
+  const isoY = (pixelY - layout.centerY) / layout.scale;
+  // Inverting isoX = (nx-nz)*cos30, isoY = (nx+nz)*sin30.
+  const nx = (isoX / ISO_COS30 + isoY / ISO_SIN30) / 2;
+  const nz = (isoY / ISO_SIN30 - isoX / ISO_COS30) / 2;
+  return { nx, nz };
 }
 
 function percentile(sortedValues, p) {
@@ -3439,9 +3462,19 @@ function positionCosmosCards(yearIndex) {
       el.style.pointerEvents = "none";
       return;
     }
-    const nx = normalizeCosmosValue(x, cosmosDomains[COSMOS_AXES.x]);
-    const ny = normalizeCosmosValue(y, cosmosDomains[COSMOS_AXES.y]);
-    const nz = normalizeCosmosValue(z, cosmosDomains[COSMOS_AXES.z]);
+    // Amplified (see COSMOS_MOVEMENT_SCALE) for the card's own position and
+    // depth sort — the axis lines/grid/ticks below are built separately in
+    // renderCosmosGrid, from the un-amplified [0,1] mapping, and are
+    // unaffected by this.
+    const nx = amplifyCosmosMovement(
+      normalizeCosmosValue(x, cosmosDomains[COSMOS_AXES.x]),
+    );
+    const ny = amplifyCosmosMovement(
+      normalizeCosmosValue(y, cosmosDomains[COSMOS_AXES.y]),
+    );
+    const nz = amplifyCosmosMovement(
+      normalizeCosmosValue(z, cosmosDomains[COSMOS_AXES.z]),
+    );
     const point = cosmosPixel(nx, ny, nz, cosmosLayoutCache);
     el.style.transform = `translate3d(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
     // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
@@ -3471,12 +3504,31 @@ function renderCosmosGrid() {
 
   const elementsToAppend = [];
 
-  for (let i = 0; i <= COSMOS_GRID_DIVISIONS; i++) {
-    const t = i / COSMOS_GRID_DIVISIONS;
-    const a = cosmosPixel(0, 0, t, layout);
-    const b = cosmosPixel(1, 0, t, layout);
-    const c = cosmosPixel(t, 0, 0, layout);
-    const d = cosmosPixel(t, 0, 1, layout);
+  // The grid floor covers the whole canvas, not just the [0,1] cube the
+  // axes/data actually span — unproject the four canvas corners back to
+  // ground-plane coordinates to find how far out each line needs to run,
+  // then snap that range to the same spacing the [0,1] cube already uses
+  // so the two look like one continuous grid rather than two mismatched
+  // ones.
+  const spacing = 1 / COSMOS_GRID_DIVISIONS;
+  const corners = [
+    cosmosUnproject(0, 0, layout),
+    cosmosUnproject(width, 0, layout),
+    cosmosUnproject(0, height, layout),
+    cosmosUnproject(width, height, layout),
+  ];
+  const nxMin = Math.floor(Math.min(...corners.map((c) => c.nx)) / spacing) * spacing;
+  const nxMax = Math.ceil(Math.max(...corners.map((c) => c.nx)) / spacing) * spacing;
+  const nzMin = Math.floor(Math.min(...corners.map((c) => c.nz)) / spacing) * spacing;
+  const nzMax = Math.ceil(Math.max(...corners.map((c) => c.nz)) / spacing) * spacing;
+
+  // Lines of constant nz, spanning the full nx range (and vice versa) —
+  // each line only needs to be as long as the whole canvas's nx/nz extent,
+  // not just its own, since drawing a little past the visible edge is
+  // harmless (the SVG's overflow: visible just lets it run off).
+  for (let nz = nzMin; nz <= nzMax + spacing / 2; nz += spacing) {
+    const a = cosmosPixel(nxMin, 0, nz, layout);
+    const b = cosmosPixel(nxMax, 0, nz, layout);
     elementsToAppend.push(
       svgEl("line", {
         class: "cosmos-grid-line",
@@ -3485,6 +3537,12 @@ function renderCosmosGrid() {
         x2: b.x.toFixed(1),
         y2: b.y.toFixed(1),
       }),
+    );
+  }
+  for (let nx = nxMin; nx <= nxMax + spacing / 2; nx += spacing) {
+    const c = cosmosPixel(nx, 0, nzMin, layout);
+    const d = cosmosPixel(nx, 0, nzMax, layout);
+    elementsToAppend.push(
       svgEl("line", {
         class: "cosmos-grid-line",
         x1: c.x.toFixed(1),
@@ -3560,6 +3618,16 @@ let cosmosPlaybackFrame = null;
 const COSMOS_PLAYBACK_DURATION_MS = 9000;
 
 function stopCosmosPlayback() {
+  // .cosmos-card's own transition (a nicety for occasional updates — a
+  // manual drag, a single click) actively works against a 60fps JS-driven
+  // sweep: every position write mid-transition forces the compositor to
+  // resample and retarget instead of just jumping to the new value, and
+  // that retargeting cost compounds across ~200 cards every ~16ms for the
+  // full 9s sweep. Switching regions mid-sweep used to make this worse by
+  // starting a second overlapping retarget chain right on top of the
+  // first's still-settling one — is-playing turns the transition off for
+  // the whole sweep instead, so there's nothing left to retarget.
+  elements.cosmosCards.classList.remove("is-playing");
   if (cosmosPlaybackFrame == null) return;
   cancelAnimationFrame(cosmosPlaybackFrame);
   cosmosPlaybackFrame = null;
@@ -3574,6 +3642,7 @@ function stopCosmosPlayback() {
 function playCosmosTimelineOnce() {
   stopCosmosPlayback();
   if (!cosmosActive || yearsData.length < 2) return;
+  elements.cosmosCards.classList.add("is-playing");
   const lastYear = yearsData[yearsData.length - 1];
   const startTime = performance.now();
 
@@ -3589,6 +3658,7 @@ function playCosmosTimelineOnce() {
       cosmosPlaybackFrame = requestAnimationFrame(frame);
     } else {
       cosmosPlaybackFrame = null;
+      elements.cosmosCards.classList.remove("is-playing");
       goToYear(lastYear);
     }
   }
@@ -3607,10 +3677,15 @@ function setCosmosRegionFilter(region) {
   elements.cosmosGroups.querySelectorAll(".cosmos-group-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.region === cosmosSelectedRegion);
   });
-  positionCosmosCards(currentYearIndex);
   if (isDeselecting) {
     stopCosmosPlayback();
+    positionCosmosCards(currentYearIndex);
   } else {
+    // No positionCosmosCards(currentYearIndex) call here — during an
+    // active sweep currentYearIndex is stale (the sweep drives the slider
+    // directly, not through applyYear, until it commits at the end), so
+    // that call would only draw one frame at the wrong year immediately
+    // before playCosmosTimelineOnce's own first frame overwrote it anyway.
     playCosmosTimelineOnce();
   }
 }
