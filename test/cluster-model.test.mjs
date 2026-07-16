@@ -83,7 +83,7 @@ test("classifyCountry uses measured change before fallback indicators", () => {
   );
 });
 
-test("Migrant Buffers recognizes immigration-buffered country profiles", () => {
+test("Migrant Momentum recognizes immigration-buffered country profiles", () => {
   const profiles = [
     ["United States", 1.622, 3.723, 0.548],
     ["Canada", 1.343, 9.275, 1.026],

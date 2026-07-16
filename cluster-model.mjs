@@ -153,7 +153,7 @@ export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 // be classified is routed into Golden Boom or Emerging Surge by life
 // expectancy, regardless of which Phase 2 archetype its fertility/growth
 // profile would otherwise imply. From 2000 onward, the coarse classifier's
-// Growth/Migrant Buffers/Silver Decline result passes through unchanged.
+// Natural Expansion/Migrant Momentum/Silver Decline result passes through unchanged.
 export function refineArchetypeForPhase(archetype, year, lifeExpectancy) {
   if (archetype == null) return null;
   const isPhaseOne =

@@ -18,7 +18,7 @@ export const CLUSTER_ARCHETYPES = {
     ],
   },
   growth: {
-    label: "Growth",
+    label: "Natural Expansion",
     anchor: { x: 0.25, y: 0.38 },
     summary: [
       "Positive natural increase",
@@ -27,7 +27,7 @@ export const CLUSTER_ARCHETYPES = {
     ],
   },
   bufferedGrowth: {
-    label: "Migrant Buffers",
+    label: "Migrant Momentum",
     anchor: { x: 0.5, y: 0.8 },
     summary: [
       "Natural change is negative or near zero",
