@@ -3294,16 +3294,16 @@ const COSMOS_REGIONS = [
 const COSMOS_INCOME_GROUPS = [
   {
     label: "High-income countries",
-    summary: "Where wealth peaks, birth rates fall, lifespans stretch, and the future relies on migration.",
+    summary: "Sub-replacement fertility and historic longevity. An aging demographic relying on net migration to sustain its peak.",
   },
   {
     label: "Middle-income countries",
-    summary: "The largest group by population — mid-transition on every axis, driving most of the world's remaining growth.",
+    summary: "The global engine. A vast, mid-transition population driving the bulk of current urban and economic expansion.",
   },
   {
     label: "Low-income countries",
-    summary: "Still-high fertility and the shortest life expectancy — concentrated in, but not limited to, Sub-Saharan Africa.",
-  },
+    summary: "High fertility paired with emerging lifespans. A highly youthful, rapidly growing tier concentrated in Sub-Saharan Africa.",
+  }
 ].map((group) => ({
   kind: "income",
   label: group.label,
