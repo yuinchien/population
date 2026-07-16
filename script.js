@@ -3228,68 +3228,51 @@ const COSMOS_AXIS_LABELS = {
   netMigrationRate: "Migration rate",
 };
 
-// A hand-picked ~20 countries rather than the full ~200 — enough to read as
-// distinct regional clusters instead of one dense, unreadable cloud, and
-// chosen specifically to contrast diverging demographic trajectories (e.g.
-// Sub-Saharan Africa's still-rising fertility against East Asia's aging,
-// shrinking populations) rather than just "well-known" countries. Colors
-// reuse the app's existing REGION_COLORS hues where the group lines up with
-// an actual region, for visual continuity with Globe/Map.
-const COSMOS_COUNTRY_GROUPS = [
+// One entry per real region (same taxonomy as REGION_COLORS/the Globe-Map
+// legend, plus a one-line summary of that region's demographic story) — the
+// left-panel list this drives doubles as a region filter (see
+// setCosmosRegionFilter): every country is always plotted, selecting one
+// of these just hides the rest so a single region's cluster is easier to
+// pick out.
+const COSMOS_REGIONS = [
   {
     label: "Sub-Saharan Africa",
-    color: "var(--color-teal-dark)",
-    summary:
-      "Still-rising fertility and the fastest population growth of any region — watch this cluster drift toward high fertility as the others settle.",
-    countries: ["NGA", "COD", "ETH", "NER", "TZA", "UGA"],
+    summary: "Still-rising fertility and the fastest population growth of any region.",
   },
   {
-    label: "East Asia",
-    color: "var(--color-blue)",
-    summary:
-      "Ultra-low fertility and the world's longest life expectancies — an aging, shrinking cluster at the opposite extreme from Sub-Saharan Africa.",
-    countries: ["JPN", "KOR", "CHN"],
+    label: "East Asia & Pacific",
+    summary: "A wide mix — China and Japan's ultra-low fertility alongside Pacific islands with very different profiles.",
   },
   {
-    label: "Europe",
-    color: "var(--color-orange)",
-    summary:
-      "Aging populations kept from shrinking mainly by immigration rather than fertility.",
-    countries: ["DEU", "ITA", "GBR"],
+    label: "Europe & Central Asia",
+    summary: "Aging populations kept from shrinking mainly by immigration rather than fertility.",
+  },
+  {
+    label: "Latin America & Caribbean",
+    summary: "Fertility moderating quickly, tracking a generation or two behind East Asia.",
+  },
+  {
+    label: "Middle East, North Africa, Afghanistan & Pakistan",
+    summary: "A wide range — Gulf states with extreme migration inflows alongside still-high-fertility Afghanistan and Pakistan.",
   },
   {
     label: "North America",
-    color: "var(--color-yellow)",
     summary: "Steady growth driven by immigration rather than fertility.",
-    countries: ["USA", "CAN"],
   },
   {
     label: "South Asia",
-    color: "var(--color-teal)",
-    summary:
-      "The world's most populous region, now mid-transition as fertility falls.",
-    countries: ["IND", "PAK", "BGD"],
+    summary: "The world's most populous region, now mid-transition as fertility falls.",
   },
-  {
-    label: "Latin America",
-    color: "var(--color-purple)",
-    summary:
-      "Fertility moderating quickly, tracking a generation or two behind East Asia.",
-    countries: ["BRA", "MEX"],
-  },
-  {
-    label: "Gulf outlier",
-    color: "var(--color-pink)",
-    summary:
-      "Extreme net migration from labor immigration sets it apart from every other cluster.",
-    countries: ["ARE"],
-  },
-];
-const COSMOS_COUNTRY_GROUP_BY_ISO3 = new Map(
-  COSMOS_COUNTRY_GROUPS.flatMap((group) =>
-    group.countries.map((iso3) => [iso3, group]),
-  ),
-);
+].map((region) => ({
+  ...region,
+  color: REGION_COLORS[region.label] ?? DEFAULT_COLOR,
+}));
+
+// null = every country visible; otherwise a region label from
+// COSMOS_REGIONS, and every other country's card is hidden (see
+// positionCosmosCards). Reset whenever Cosmos closes (setCosmosActive) so
+// each visit starts unfiltered.
+let cosmosSelectedRegion = null;
 
 function normalizeCosmosValue(value, domain) {
   if (!domain) return 0.5;
@@ -3337,28 +3320,47 @@ function cosmosPixel(nx, ny, nz, layout) {
   };
 }
 
-// Global (not per-year) domain per axis, across every curated country (see
-// COSMOS_COUNTRY_GROUPS) and every year — the space itself needs to stay
-// fixed for a year change to read as motion through it rather than the
-// grid rescaling under the cards. Plain min/max, not percentile-clipped:
-// unlike the full ~200-country set, every country here was hand-picked
-// specifically to show a distinctive (sometimes extreme) trajectory — e.g.
-// the Gulf outlier's migration spike is the point, not noise to clip away.
-// Returns null if the (lazily loaded) demographics data isn't in yet.
+function percentile(sortedValues, p) {
+  const index = (sortedValues.length - 1) * p;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return sortedValues[lower];
+  return (
+    sortedValues[lower] * (upper - index) + sortedValues[upper] * (index - lower)
+  );
+}
+
+// Global (not per-year) domain per axis, across every country and every
+// year — the space itself needs to stay fixed for a year change to read as
+// motion through it rather than the grid rescaling under the cards. Returns
+// null if the (lazily loaded) demographics data isn't in yet.
 function computeCosmosDomains() {
   const domains = {};
   for (const key of Object.values(COSMOS_AXES)) {
-    let min = Infinity;
-    let max = -Infinity;
+    const values = [];
     countriesData.forEach((country) => {
-      if (!COSMOS_COUNTRY_GROUP_BY_ISO3.has(country.iso3)) return;
       chartSeriesFor(country, key).forEach((value) => {
-        if (!Number.isFinite(value)) return;
-        if (value < min) min = value;
-        if (value > max) max = value;
+        if (Number.isFinite(value)) values.push(value);
       });
     });
-    domains[key] = min < max ? { min, max } : null;
+    if (!values.length) {
+      domains[key] = null;
+      continue;
+    }
+    values.sort((a, b) => a - b);
+    // A handful of tiny-population territories post extreme swings
+    // (especially in migration rate — a huge percentage move on a tiny
+    // population base) that would otherwise stretch the whole axis and
+    // collapse every other country into one corner of the grid. Clipping
+    // to the 3rd/97th percentile keeps the space readable for the vast
+    // majority; genuine outliers just sit pinned at the edge instead of
+    // dictating the whole scale (see normalizeCosmosValue's clamp).
+    const min = percentile(values, 0.03);
+    const max = percentile(values, 0.97);
+    domains[key] =
+      min < max
+        ? { min, max }
+        : { min: values[0], max: values[values.length - 1] };
   }
   return Object.values(domains).every(Boolean) ? domains : null;
 }
@@ -3369,19 +3371,17 @@ function ensureCosmosDomains() {
   return cosmosDomains != null;
 }
 
+function cosmosRegionColor(country) {
+  return REGION_COLORS[country.region?.trim()] ?? DEFAULT_COLOR;
+}
+
 function buildCosmosCards() {
   if (cosmosCardsBuilt) return;
-  const curatedCountries = countriesData.filter((country) =>
-    COSMOS_COUNTRY_GROUP_BY_ISO3.has(country.iso3),
-  );
-  cosmosCardEntries = curatedCountries.map((country) => {
-    const group = COSMOS_COUNTRY_GROUP_BY_ISO3.get(country.iso3);
+  cosmosCardEntries = countriesData.map((country) => {
+    const color = cosmosRegionColor(country);
     const el = document.createElement("div");
     el.className = "cosmos-card";
-    // Fixed per group rather than per country — colorFor()'s region/income
-    // colors don't line up with these hand-picked groupings (e.g. the Gulf
-    // outlier is its own group, not lumped into the rest of its region).
-    el.style.setProperty("--card-color", group.color);
+    el.style.setProperty("--card-color", color);
     const flag = document.createElement("span");
     flag.className = "cosmos-card-flag";
     flag.style.backgroundImage = `url(${flagIconUrl(country.iso3, false)})`;
@@ -3390,10 +3390,10 @@ function buildCosmosCards() {
     name.textContent = country.name;
     el.append(flag, name);
     el.addEventListener("pointerenter", (event) =>
-      showChartTooltip(event, country.name, group.color),
+      showChartTooltip(event, country.name, color),
     );
     el.addEventListener("pointermove", (event) =>
-      showChartTooltip(event, country.name, group.color),
+      showChartTooltip(event, country.name, color),
     );
     el.addEventListener("pointerleave", hideChartTooltip);
     // el.addEventListener("click", () => {
@@ -3415,6 +3415,14 @@ function positionCosmosCards(yearIndex) {
   if (!cosmosLayoutCache || yearIndex == null || yearIndex < 0) return;
   cosmosCardEntries.forEach((entry) => {
     const { country, el } = entry;
+    if (
+      cosmosSelectedRegion &&
+      country.region?.trim() !== cosmosSelectedRegion
+    ) {
+      el.style.opacity = "0";
+      el.style.pointerEvents = "none";
+      return;
+    }
     const x = chartSeriesFor(country, COSMOS_AXES.x)[yearIndex];
     const y = chartSeriesFor(country, COSMOS_AXES.y)[yearIndex];
     const z = chartSeriesFor(country, COSMOS_AXES.z)[yearIndex];
@@ -3427,7 +3435,6 @@ function positionCosmosCards(yearIndex) {
     const ny = normalizeCosmosValue(y, cosmosDomains[COSMOS_AXES.y]);
     const nz = normalizeCosmosValue(z, cosmosDomains[COSMOS_AXES.z]);
     const point = cosmosPixel(nx, ny, nz, cosmosLayoutCache);
-    // el.style.setProperty("--card-color", `#${colorFor(country).getHexString()}`);
     el.style.transform = `translate3d(${point.x.toFixed(1)}px, ${point.y.toFixed(1)}px, 0) translate(-50%, -50%)`;
     // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
     // should — one further "toward the viewer" (bigger nx+nz, lower on
@@ -3544,26 +3551,42 @@ function renderCosmosGrid() {
 
 let cosmosSummaryBuilt = false;
 
-// Static explanation of the curated groups (see COSMOS_COUNTRY_GROUPS) —
-// doesn't depend on year or domains, so it's built once and left alone.
+// Toggles the region filter (see cosmosSelectedRegion/positionCosmosCards):
+// clicking the already-selected region clears it, same as the Globe/Map
+// legend's own selectLegendItem toggle. Cheap — only touches existing
+// cards' opacity/transform, never rebuilds the grid or DOM.
+function setCosmosRegionFilter(region) {
+  cosmosSelectedRegion = cosmosSelectedRegion === region ? null : region;
+  elements.cosmosGroups.querySelectorAll(".cosmos-group-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.region === cosmosSelectedRegion);
+  });
+  positionCosmosCards(currentYearIndex);
+}
+
+// Static explanation of each region (see COSMOS_REGIONS) — doesn't depend
+// on year or domains, so it's built once and left alone; each button also
+// doubles as the region filter's trigger (setCosmosRegionFilter).
 function renderCosmosSummary() {
   if (cosmosSummaryBuilt) return;
   elements.cosmosGroups.replaceChildren(
-    ...COSMOS_COUNTRY_GROUPS.map((group) => {
-      const item = document.createElement("div");
+    ...COSMOS_REGIONS.map((region) => {
+      const item = document.createElement("button");
+      item.type = "button";
       item.className = "cosmos-group-item";
+      item.dataset.region = region.label;
+      item.style.setProperty("--color-legend", region.color);
       const header = document.createElement("div");
       header.className = "cosmos-group-header";
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
-      swatch.style.setProperty("--color-legend", group.color);
       const label = document.createElement("span");
-      label.textContent = group.label;
+      label.textContent = displayGroupLabel(region.label);
       header.append(swatch, label);
       const summary = document.createElement("p");
       summary.className = "cosmos-group-summary";
-      summary.textContent = group.summary;
+      summary.textContent = region.summary;
       item.append(header, summary);
+      item.addEventListener("click", () => setCosmosRegionFilter(region.label));
       return item;
     }),
   );
@@ -3611,10 +3634,21 @@ function setCosmosActive(active) {
   if (active) {
     tourController.stop();
     renderCosmosLayout();
-  } else if (currentYearIndex >= 0) {
-    // Cosmos took applyYear()'s cheap fast path (see there) while open,
-    // leaving the 3D scene stale — catch it up now that it's visible again.
-    applyYear(yearsData[currentYearIndex], { instant: true });
+  } else {
+    // Each visit starts unfiltered rather than remembering the last
+    // region — the summary panel's DOM is only built once (cosmosSummaryBuilt),
+    // so its buttons' .active class needs clearing by hand here too, not
+    // just the underlying state.
+    cosmosSelectedRegion = null;
+    elements.cosmosGroups
+      .querySelectorAll(".cosmos-group-item.active")
+      .forEach((item) => item.classList.remove("active"));
+    if (currentYearIndex >= 0) {
+      // Cosmos took applyYear()'s cheap fast path (see there) while open,
+      // leaving the 3D scene stale — catch it up now that it's visible
+      // again.
+      applyYear(yearsData[currentYearIndex], { instant: true });
+    }
   }
   syncUrlFromState();
 }
