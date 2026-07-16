@@ -3974,11 +3974,11 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
 // band left/right — they're never on screen at the same time as Growth
 // (see refineArchetypeForPhase), so reusing that vertical position is safe.
 const CLUSTER_ANCHOR_RATIOS = {
-  goldenBoom: { x: 0.3, y: 0.4 },
-  emergingSurge: { x: 0.7, y: 0.6 },
-  growth: { x: 0.25, y: 0.34 },
-  bufferedGrowth: { x: 0.5, y: 0.8 },
-  silverDecline: { x: 0.8, y: 0.5 },
+  emergingSurge: { x: 0.4, y: 0.4 },
+  goldenBoom: { x: 0.8, y: 0.6 },
+  growth: { x: 0.25, y: 0.38 },
+  bufferedGrowth: { x: 0.45, y: 0.8 },
+  silverDecline: { x: 0.78, y: 0.5 },
 };
 const CLUSTER_LABEL_HEIGHT = 32;
 const CLUSTER_LABEL_PADDING_X = 14;
