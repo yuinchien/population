@@ -3232,7 +3232,7 @@ const COSMOS_ZINDEX_BUCKETS = 20;
 // labels, which stay at the literal [0,1] mapping) get stretched away from
 // the center of each axis to amplify how far a country's position and
 // year-to-year movement actually read. 1 is a no-op; >1 exaggerates.
-const COSMOS_MOVEMENT_SCALE = 1.2;
+const COSMOS_MOVEMENT_SCALE = 1.1;
 
 function amplifyCosmosMovement(normalized) {
   return 0.5 + (normalized - 0.5) * COSMOS_MOVEMENT_SCALE;
@@ -3442,6 +3442,23 @@ function buildCosmosCards() {
 // Cheap per-year update: only moves/recolors existing cards, never touches
 // the grid or rebuilds any DOM — safe to call on every year-slider "input"
 // frame while dragging.
+// yearIndex may be fractional (see playCosmosTimelineOnce) — years data
+// only has one value per whole year, so a fractional index linearly
+// interpolates between the two nearest years' values instead of picking
+// one. A whole-number index (every other caller) degenerates to exactly
+// that year's value, so this is a drop-in generalization, not a behavior
+// change for them.
+function valueAtFractionalYear(country, key, yearIndex) {
+  const series = chartSeriesFor(country, key);
+  const lower = Math.floor(yearIndex);
+  const upper = Math.min(series.length - 1, lower + 1);
+  const a = series[lower];
+  const b = series[upper];
+  if (!Number.isFinite(a)) return b;
+  if (!Number.isFinite(b)) return a;
+  return a + (b - a) * (yearIndex - lower);
+}
+
 function positionCosmosCards(yearIndex) {
   if (!cosmosLayoutCache || yearIndex == null || yearIndex < 0) return;
   cosmosCardEntries.forEach((entry) => {
@@ -3454,9 +3471,9 @@ function positionCosmosCards(yearIndex) {
       el.style.pointerEvents = "none";
       return;
     }
-    const x = chartSeriesFor(country, COSMOS_AXES.x)[yearIndex];
-    const y = chartSeriesFor(country, COSMOS_AXES.y)[yearIndex];
-    const z = chartSeriesFor(country, COSMOS_AXES.z)[yearIndex];
+    const x = valueAtFractionalYear(country, COSMOS_AXES.x, yearIndex);
+    const y = valueAtFractionalYear(country, COSMOS_AXES.y, yearIndex);
+    const z = valueAtFractionalYear(country, COSMOS_AXES.z, yearIndex);
     if (![x, y, z].every(Number.isFinite)) {
       el.style.opacity = "0";
       el.style.pointerEvents = "none";
@@ -3648,12 +3665,22 @@ function playCosmosTimelineOnce() {
 
   function frame(now) {
     const t = Math.min(1, (now - startTime) / COSMOS_PLAYBACK_DURATION_MS);
-    const index = Math.round(t * (yearsData.length - 1));
+    // 150 years over COSMOS_PLAYBACK_DURATION_MS is only ~60ms per whole
+    // year — rounding to the nearest year index before positioning cards
+    // meant most of the 60fps rAF frames recomputed the exact same
+    // position, then jumped a visible amount every ~4th frame once the
+    // rounded index finally ticked over. positionCosmosCards now accepts a
+    // fractional index and interpolates between the two nearest years, so
+    // every single frame moves cards a little instead of most doing
+    // nothing and one doing a lot — the slider/label still snap to whole
+    // years since that's the only unit yearsData actually has.
+    const fractionalIndex = t * (yearsData.length - 1);
+    const index = Math.round(fractionalIndex);
     const year = yearsData[index];
     elements.yearSlider.value = year;
     updateSliderProgress();
     updateYearLabels(year);
-    positionCosmosCards(index);
+    positionCosmosCards(fractionalIndex);
     if (t < 1) {
       cosmosPlaybackFrame = requestAnimationFrame(frame);
     } else {
