@@ -36,7 +36,6 @@ export function getAppElements(root = document) {
     countrySimilar: root.querySelector("#countrySimilar"),
     countrySimilarList: root.querySelector("#countrySimilarList"),
     chartPanel: root.querySelector("#chartPanel"),
-    // chartPanelClose: root.querySelector("#chartPanelClose"),
     chartMetricTabs: root.querySelector("#chartMetricTabs"),
     trendChart: root.querySelector("#trendChart"),
     radarChart: root.querySelector("#radarChart"),

@@ -3808,9 +3808,6 @@ async function init() {
         setViewMode(btn.dataset.mode);
       });
     });
-    // elements.chartPanelClose.addEventListener("click", () =>
-    //   setchartPanelActive(false),
-    // );
     elements.chartProjectionScenario.value = chartProjectionScenario;
     updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
