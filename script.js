@@ -3919,7 +3919,7 @@ function setPlotActive(active) {
 // it's pulled toward is reclassified fresh every year from its own
 // fertility/migration/life-expectancy data, not a direct metric->pixel
 // formula, so the 1950->2100 "phases" (Phase 1's Golden Boom/Emerging Surge
-// split -> the developed/developing (resilient/silverDecline) split -> the
+// split -> the Buffered Growth/Silver Decline split -> the
 // migration-vs-aging divide -> near-universal convergence) fall out of the
 // classifier rather than being hardcoded. "growth", "goldenBoom", and
 // "emergingSurge" are mutually exclusive across years (see
@@ -3938,37 +3938,37 @@ const CLUSTER_ARCHETYPE_LABELS = {
   goldenBoom: "Golden Boom",
   emergingSurge: "Emerging Surge",
   growth: "Growth",
-  resilient: "Resilient",
+  bufferedGrowth: "Buffered Growth",
   silverDecline: "Silver Decline",
 };
 const CLUSTER_ARCHETYPE_SUMMARIES = {
   goldenBoom: [
-    "Above-replacement fertility",
-    "High life expectancy",
-    "Post-war boom, rising living standards",
+    "Positive natural increase",
+    "Life expectancy of 65 years or more",
+    "Post-war growth in longer-lived populations",
   ],
   emergingSurge: [
-    "Extreme fertility",
-    "Rapidly rising life expectancy",
-    "Falling mortality fuels a youth surge",
+    "Positive natural increase",
+    "Life expectancy below 65 years",
+    "Earlier-stage mortality transition",
   ],
   growth: [
-    "Stable, above-replacement fertility",
     "Positive natural increase",
-    "Young, growing population"
+    "Population grows without migration support",
+    "Includes demographic momentum below replacement",
   ],
-  resilient: [
-    "Below-replacement fertility",
-    "Strong, net-positive immigration",
-    "Migration offsets natural decline",
+  bufferedGrowth: [
+    "Natural change is negative or near zero",
+    "High net-positive immigration",
+    "Total population remains stable or growing",
   ],
   silverDecline: [
-    "Ultra-low, sub-replacement fertility",
-    "Minimal to negative net migration",
-    "Aging, shrinking population",
+    "Net population decline",
+    "Migration is insufficient to prevent contraction",
+    "Includes sustained, significant loss from peak",
   ],
 };
-// Growth sits top-center (where almost everyone starts, in 1950); Resilient
+// Growth sits top-center (where almost everyone starts, in 1950); Buffered Growth
 // bottom-left and Silver Decline bottom-right mirror the left/right split in
 // the reference mockup. Golden Boom/Emerging Surge flank that same top
 // band left/right — they're never on screen at the same time as Growth
@@ -3977,29 +3977,25 @@ const CLUSTER_ANCHOR_RATIOS = {
   goldenBoom: { x: 0.35, y: 0.22 },
   emergingSurge: { x: 0.65, y: 0.22 },
   growth: { x: 0.5, y: 0.22 },
-  resilient: { x: 0.28, y: 0.75 },
+  bufferedGrowth: { x: 0.28, y: 0.75 },
   silverDecline: { x: 0.72, y: 0.75 },
 };
-const CLUSTER_ANNOTATION_OFFSETS = {
-  goldenBoom: { dx: 0, dy: -70 },
-  emergingSurge: { dx: 0, dy: -70 },
-  growth: { dx: 0, dy: -70 },
-  resilient: { dx: 0, dy: 60 },
-  silverDecline: { dx: 0, dy: 60 },
-};
+const CLUSTER_LABEL_HEIGHT = 32;
+const CLUSTER_LABEL_PADDING_X = 14;
+const CLUSTER_LABEL_PARTICLE_GAP = 6;
 // Which annotation cards are relevant for a given year — Growth's card only
 // makes sense outside Phase 1, Golden Boom/Emerging Surge only inside it;
-// Resilient/Silver Decline are always potentially relevant (see
+// Buffered Growth/Silver Decline are always potentially relevant (see
 // classifyCountry — a country can dip below replacement any year).
 const CLUSTER_PHASE_ONE_KEYS = new Set([
   "goldenBoom",
   "emergingSurge",
-  "resilient",
+  "bufferedGrowth",
   "silverDecline",
 ]);
 const CLUSTER_DEFAULT_PHASE_KEYS = new Set([
   "growth",
-  "resilient",
+  "bufferedGrowth",
   "silverDecline",
 ]);
 
@@ -4014,14 +4010,15 @@ let clusterSimulation = null;
 let clusterNodes = [];
 let clusterNodesBuilt = false;
 let clusterInteractionBound = false;
-let clusterAnnotationsBuilt = false;
-let clusterAnchors = null; // { growth: {x,y}, resilient: {x,y}, silverDecline: {x,y} } — fixed pixel coords, recomputed on resize
+let clusterAnchors = null; // { growth: {x,y}, bufferedGrowth: {x,y}, silverDecline: {x,y} } — fixed pixel coords, recomputed on resize
+let clusterLabelRects = [];
 let clusterMedianAgeDomain = null; // { min, max } — global, percentile-clipped, computed once
 let clusterPopulationMax = null; // global max population across every country/year
 let clusterHoveredNode = null;
 let clusterSortedNodes = []; // descending-by-radius draw order, reused for hit-testing
 let clusterFont = null;
-let clusterAnnotationPhaseIsOne = null; // tracks which annotation cards are shown; null forces the first sync
+let clusterTitleFont = null;
+let clusterAnnotationPhaseIsOne = null; // tracks which canvas titles are shown; null forces the first sync
 
 // Global (not per-year) domains, mirroring computePlotDomains's reasoning —
 // the space itself needs to stay fixed so a year change reads as motion
@@ -4077,6 +4074,36 @@ function ensureClusterFont() {
   return clusterFont;
 }
 
+function ensureClusterTitleFont() {
+  if (clusterTitleFont) return clusterTitleFont;
+  const family =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--font-mono")
+      .trim() || "monospace";
+  clusterTitleFont = `600 14px ${family}`;
+  return clusterTitleFont;
+}
+
+function updateClusterLabelRects(activeKeys) {
+  if (!clusterCanvasCtx || !clusterAnchors) return;
+  clusterCanvasCtx.font = ensureClusterTitleFont();
+  clusterLabelRects = [...activeKeys].map((archetype) => {
+    const anchor = clusterAnchors[archetype];
+    const label = CLUSTER_ARCHETYPE_LABELS[archetype];
+    const width =
+      clusterCanvasCtx.measureText(label.toUpperCase()).width +
+      CLUSTER_LABEL_PADDING_X * 2;
+    return {
+      archetype,
+      label,
+      x: anchor.x - width / 2,
+      y: anchor.y - CLUSTER_LABEL_HEIGHT / 2,
+      width,
+      height: CLUSTER_LABEL_HEIGHT,
+    };
+  });
+}
+
 // HiDPI setup + anchor recompute — called once on activation and again
 // (debounced) on resize. No existing helper for a live 2D canvas to reuse:
 // the app's one other canvas.getContext("2d") call is an offscreen sprite
@@ -4092,7 +4119,12 @@ function resizeClusterCanvas() {
   if (!clusterCanvasCtx) clusterCanvasCtx = canvas.getContext("2d");
   clusterCanvasCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   clusterAnchors = computeClusterAnchors(displayWidth, displayHeight);
-  positionClusterAnnotations();
+  const activeKeys = isClusterPhaseOneYear(
+    yearsData[currentYearIndex] ?? null,
+  )
+    ? CLUSTER_PHASE_ONE_KEYS
+    : CLUSTER_DEFAULT_PHASE_KEYS;
+  updateClusterLabelRects(activeKeys);
   if (clusterSimulation) {
     // Anchor pixel coords moved — cached force targets (see
     // reinitializeClusterForces) must be rebuilt too, not just the alpha
@@ -4130,6 +4162,50 @@ function clusterAnchorFor(node) {
 let clusterForceX = null;
 let clusterForceY = null;
 let clusterForceCollide = null;
+let clusterLabelAvoidanceForce = null;
+
+function createClusterLabelAvoidanceForce() {
+  let nodes = [];
+  function force(alpha) {
+    nodes.forEach((node) => {
+      if (!node.archetype) return;
+      clusterLabelRects.forEach((rect) => {
+        const gap = node.radius + CLUSTER_LABEL_PARTICLE_GAP;
+        const left = rect.x - gap;
+        const right = rect.x + rect.width + gap;
+        const top = rect.y - gap;
+        const bottom = rect.y + rect.height + gap;
+        if (
+          node.x <= left ||
+          node.x >= right ||
+          node.y <= top ||
+          node.y >= bottom
+        ) {
+          return;
+        }
+        const distances = [
+          { axis: "x", target: left, distance: node.x - left },
+          { axis: "x", target: right, distance: right - node.x },
+          { axis: "y", target: top, distance: node.y - top },
+          { axis: "y", target: bottom, distance: bottom - node.y },
+        ];
+        const nearest = distances.reduce((best, candidate) =>
+          candidate.distance < best.distance ? candidate : best,
+        );
+        const strength = 0.7 + alpha * 0.3;
+        if (nearest.axis === "x") {
+          node.vx += (nearest.target - node.x) * strength;
+        } else {
+          node.vy += (nearest.target - node.y) * strength;
+        }
+      });
+    });
+  }
+  force.initialize = (nextNodes) => {
+    nodes = nextNodes;
+  };
+  return force;
+}
 
 function startClusterSimulation() {
   clusterForceX = forceX((d) => clusterAnchorFor(d).x).strength((d) =>
@@ -4144,10 +4220,12 @@ function startClusterSimulation() {
   clusterForceCollide = forceCollide((d) => d.radius + 2)
     .strength(1)
     .iterations(10);
+  clusterLabelAvoidanceForce = createClusterLabelAvoidanceForce();
   clusterSimulation = forceSimulation(clusterNodes)
     .force("x", clusterForceX)
     .force("y", clusterForceY)
     .force("collide", clusterForceCollide)
+    .force("label-avoidance", clusterLabelAvoidanceForce)
     .alphaTarget(0)
     .on("tick", renderClusterFrame);
 }
@@ -4167,6 +4245,40 @@ function reinitializeClusterForces() {
   clusterForceX?.initialize(clusterNodes);
   clusterForceY?.initialize(clusterNodes);
   clusterForceCollide?.initialize(clusterNodes);
+  clusterLabelAvoidanceForce?.initialize(clusterNodes);
+}
+
+function populationDeclineContext(country, yearIndex, population) {
+  const series = country.populations;
+  if (!series?.length || !Number.isFinite(population)) {
+    return { populationLossFromPeak: null, yearsSincePeak: null };
+  }
+  const endIndex = Math.min(series.length - 1, Math.floor(yearIndex));
+  let peakPopulation = -Infinity;
+  let peakIndex = -1;
+  for (let index = 0; index <= endIndex; index++) {
+    const value = series[index];
+    if (Number.isFinite(value) && value > peakPopulation) {
+      peakPopulation = value;
+      peakIndex = index;
+    }
+  }
+  if (peakIndex === -1 || peakPopulation <= 0) {
+    return { populationLossFromPeak: null, yearsSincePeak: null };
+  }
+  const lowerIndex = Math.floor(yearIndex);
+  const upperIndex = Math.min(yearsData.length - 1, Math.ceil(yearIndex));
+  const fraction = yearIndex - lowerIndex;
+  const currentYear =
+    yearsData[lowerIndex] +
+    (yearsData[upperIndex] - yearsData[lowerIndex]) * fraction;
+  return {
+    populationLossFromPeak: Math.max(
+      0,
+      (peakPopulation - population) / peakPopulation,
+    ),
+    yearsSincePeak: currentYear - yearsData[peakIndex],
+  };
 }
 
 // Mutates the same node objects already inside the running simulation (no
@@ -4208,8 +4320,19 @@ function updateClusterNodesForYear(yearIndex) {
       CLUSTER_AXES.lifeExpectancy,
       yearIndex,
     );
+    const declineContext = populationDeclineContext(
+      node.country,
+      yearIndex,
+      population,
+    );
     node.archetype = refineGrowthArchetype(
-      classifyCountry({ fertility, netMigrationRate, populationGrowth }),
+      classifyCountry({
+        fertility,
+        netMigrationRate,
+        populationGrowth,
+        incomeLabel: node.country._incomeLabel,
+        ...declineContext,
+      }),
       year,
       lifeExpectancy,
     );
@@ -4259,6 +4382,27 @@ function drawClusterNode(ctx, node) {
   ctx.fillText(node.iso2, node.x, node.y);
 }
 
+function drawClusterLabels(ctx) {
+  ctx.save();
+  ctx.font = ensureClusterTitleFont();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 0;
+  // ctx.strokeStyle = resolveCssColor("var(--color-border)");
+  ctx.fillStyle = resolveCssColor("var(--color-text)");
+  clusterLabelRects.forEach((rect) => {
+    // Deliberately no fill: the rectangle is a transparent canvas object,
+    // while the avoidance force keeps particles from compromising contrast.
+    // ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+    ctx.fillText(
+      rect.label.toUpperCase(),
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+    );
+  });
+  ctx.restore();
+}
+
 function renderClusterFrame() {
   const ctx = clusterCanvasCtx;
   if (!ctx || !clusterAnchors) return;
@@ -4272,6 +4416,7 @@ function renderClusterFrame() {
     .filter((node) => node.archetype)
     .sort((a, b) => b.radius - a.radius);
   clusterSortedNodes.forEach((node) => drawClusterNode(ctx, node));
+  drawClusterLabels(ctx);
 }
 
 // Reverse draw order (smallest/topmost first) so a small circle nested
@@ -4321,57 +4466,9 @@ function setupClusterCanvasInteraction() {
   clusterInteractionBound = true;
 }
 
-// Static per-archetype copy for all 5 possible archetypes — doesn't depend
-// on year, built once and left alone, positioned near that archetype's
-// anchor (repositioned on resize — see positionClusterAnnotations). Which
-// of the 5 cards are actually visible for the current year is handled
-// separately by updateClusterAnnotationVisibility, since Growth vs. Golden
-// Boom/Emerging Surge is a per-year toggle, not a one-time layout.
-function buildClusterAnnotations() {
-  if (clusterAnnotationsBuilt) return;
-  elements.clusterAnnotations.replaceChildren(
-    ...Object.keys(CLUSTER_ARCHETYPE_LABELS).map((key) => {
-      const block = document.createElement("div");
-      block.className = "cluster-annotation";
-      block.dataset.archetype = key;
-      const title = document.createElement("div");
-      title.className = "cluster-annotation-title";
-      title.textContent = CLUSTER_ARCHETYPE_LABELS[key];
-      const list = document.createElement("ul");
-      list.className = "cluster-annotation-list";
-      list.append(
-        ...CLUSTER_ARCHETYPE_SUMMARIES[key].map((line) => {
-          const item = document.createElement("li");
-          item.textContent = line;
-          return item;
-        }),
-      );
-      block.append(title, list);
-      return block;
-    }),
-  );
-  clusterAnnotationsBuilt = true;
-}
-
-function positionClusterAnnotations() {
-  if (!clusterAnchors) return;
-  elements.clusterAnnotations
-    .querySelectorAll(".cluster-annotation")
-    .forEach((block) => {
-      const anchor = clusterAnchors[block.dataset.archetype];
-      const offset = CLUSTER_ANNOTATION_OFFSETS[block.dataset.archetype];
-      if (!anchor || !offset) return;
-      block.style.left = `${anchor.x + offset.dx}px`;
-      block.style.top = `${anchor.y + offset.dy}px`;
-    });
-}
-
-// Growth's card only makes sense outside Phase 1, Golden Boom/Emerging
-// Surge only inside it (see refineGrowthArchetype) — toggled instead of
-// rebuilt so a year change never has to touch the annotation DOM structure,
-// only `hidden`. Guarded on the phase actually changing since this runs
-// from updateClusterNodesForYear, which fires every frame during the
-// timeline sweep.
+// Growth's title only makes sense outside Phase 1, Golden Boom/Emerging
+// Surge only inside it. Guarded on the phase actually changing since this
+// runs every frame during the timeline sweep.
 function updateClusterAnnotationVisibility(year) {
   const isPhaseOne = isClusterPhaseOneYear(year);
   if (isPhaseOne === clusterAnnotationPhaseIsOne) return;
@@ -4379,11 +4476,7 @@ function updateClusterAnnotationVisibility(year) {
   const activeKeys = isPhaseOne
     ? CLUSTER_PHASE_ONE_KEYS
     : CLUSTER_DEFAULT_PHASE_KEYS;
-  elements.clusterAnnotations
-    .querySelectorAll(".cluster-annotation")
-    .forEach((block) => {
-      block.hidden = !activeKeys.has(block.dataset.archetype);
-    });
+  updateClusterLabelRects(activeKeys);
 }
 
 let clusterPlaybackFrame = null;
@@ -4436,7 +4529,7 @@ function playClusterTimelineOnce() {
   clusterPlaybackFrame = requestAnimationFrame(frame);
 }
 
-// Full (re)build: domains + annotations + canvas sizing + node DOM-free
+// Full (re)build: domains + canvas sizing + node DOM-free
 // data + simulation. Only needed once per activation (or when demographics
 // data finishes loading late) — subsequent year changes go through the
 // much cheaper updateClusterYear/updateClusterNodesForYear instead.
@@ -4444,10 +4537,7 @@ function renderClusterLayout() {
   if (!clusterActive) return;
   if (!ensureClusterDomains()) {
     // Demographics data hasn't loaded yet — the countryDemographicMetrics
-    // promise handler retries this once it resolves. Annotations are built
-    // below (not here) since building them before resizeClusterCanvas has
-    // ever run would leave them at their unset default position (all
-    // stacked at the top-left) until the retry fixes it.
+    // promise handler retries this once it resolves.
     if (clusterCanvasCtx) {
       clusterCanvasCtx.clearRect(
         0,
@@ -4458,7 +4548,6 @@ function renderClusterLayout() {
     }
     return;
   }
-  buildClusterAnnotations();
   resizeClusterCanvas();
   buildClusterNodes();
   setupClusterCanvasInteraction();

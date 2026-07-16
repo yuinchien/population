@@ -11,30 +11,128 @@ export const MIGRATION_BALANCE_THRESHOLD = 0;
 // netMigrationRate is expressed per 1,000 people while populationGrowth is
 // percent, so divide migration by 10 before comparing their contributions.
 export const MIGRATION_PER_THOUSAND_TO_PERCENT = 10;
+// Small negative rates can read as broadly stable across a long projection
+// horizon. This tolerance keeps gently contracting immigration destinations
+// distinct from sustained decline such as Japan's late-century trajectory.
+export const STABLE_TOTAL_GROWTH_FLOOR = -0.35;
+// Natural change at or below this level is effectively flat enough for
+// immigration to be the meaningful demographic buffer.
+export const NEAR_ZERO_NATURAL_CHANGE = 0.2;
+// Also recognize countries where immigration supplies a material share of
+// positive total growth even while natural increase remains above the
+// near-zero band (notably Australia and Gulf migration hubs).
+export const IMMIGRATION_GROWTH_SHARE_THRESHOLD = 0.2;
+// Avoid treating tiny positive migration values as a demographic buffer.
+// Nigeria is at 0.123 per 1,000 in 2100, while the listed immigration
+// destinations clear this floor in the years where they enter the cluster.
+export const HIGH_NET_MIGRATION_RATE_THRESHOLD = 0.3;
+export const SILVER_DECLINE_FERTILITY_THRESHOLD = 1.7;
+export const HIGH_INCOME_LABEL = "High-income countries";
+export const SIGNIFICANT_PEAK_LOSS_THRESHOLD = 0.1;
+export const LONG_TERM_DECLINE_YEARS = 90;
+
+export function estimatedNaturalIncrease(
+  populationGrowth,
+  netMigrationRate,
+) {
+  if (
+    !Number.isFinite(populationGrowth) ||
+    !Number.isFinite(netMigrationRate)
+  ) {
+    return null;
+  }
+  return (
+    populationGrowth -
+    netMigrationRate / MIGRATION_PER_THOUSAND_TO_PERCENT
+  );
+}
+
+export function immigrationGrowthShare(
+  populationGrowth,
+  netMigrationRate,
+) {
+  if (
+    !Number.isFinite(populationGrowth) ||
+    populationGrowth <= 0 ||
+    !Number.isFinite(netMigrationRate) ||
+    netMigrationRate <= 0
+  ) {
+    return 0;
+  }
+  return (
+    netMigrationRate /
+    MIGRATION_PER_THOUSAND_TO_PERCENT /
+    populationGrowth
+  );
+}
 
 // Which of the three demographic "gravity wells" a country belongs to this
-// year. Actual population decline takes precedence over a slightly positive
-// migration rate: immigration that is not enough to prevent contraction
-// should not make an aging, shrinking country read as Resilient.
+// year. When complete change data exists, classification is driven by what
+// actually changes population size:
+// - immigration materially buffering a near-stable population -> Buffered
+//   Growth
+// - remaining negative total growth -> Silver Decline
+// - remaining positive total growth -> Growth
+// Fertility and migration sign are only a fallback for incomplete rows.
 export function classifyCountry({
   fertility,
   netMigrationRate,
   populationGrowth,
+  incomeLabel,
+  populationLossFromPeak,
+  yearsSincePeak,
 }) {
-  if (fertility == null) return null;
-  if (populationGrowth != null && populationGrowth < 0) {
+  if (
+    Number.isFinite(populationLossFromPeak) &&
+    populationLossFromPeak >= SIGNIFICANT_PEAK_LOSS_THRESHOLD &&
+    Number.isFinite(yearsSincePeak) &&
+    yearsSincePeak >= LONG_TERM_DECLINE_YEARS
+  ) {
     return "silverDecline";
   }
-  if (fertility >= FERTILITY_REPLACEMENT_THRESHOLD) return "growth";
-  if (populationGrowth != null && netMigrationRate != null) {
-    const naturalIncrease =
-      populationGrowth -
-      netMigrationRate / MIGRATION_PER_THOUSAND_TO_PERCENT;
-    return naturalIncrease >= 0 ? "growth" : "resilient";
+  const naturalIncrease = estimatedNaturalIncrease(
+    populationGrowth,
+    netMigrationRate,
+  );
+  if (naturalIncrease != null) {
+    if (populationGrowth < STABLE_TOTAL_GROWTH_FLOOR) {
+      return "silverDecline";
+    }
+    const migrationIsHigh =
+      netMigrationRate >= HIGH_NET_MIGRATION_RATE_THRESHOLD;
+    const migrationShare = immigrationGrowthShare(
+      populationGrowth,
+      netMigrationRate,
+    );
+    const fertilityIsSubReplacement =
+      Number.isFinite(fertility) &&
+      fertility < FERTILITY_REPLACEMENT_THRESHOLD;
+    const migrationIsMaterial =
+      naturalIncrease <= NEAR_ZERO_NATURAL_CHANGE ||
+      migrationShare >= IMMIGRATION_GROWTH_SHARE_THRESHOLD;
+    const profileMatchesBufferedGrowth =
+      fertilityIsSubReplacement ||
+      migrationShare >= IMMIGRATION_GROWTH_SHARE_THRESHOLD;
+    if (
+      incomeLabel === HIGH_INCOME_LABEL &&
+      migrationIsHigh &&
+      migrationIsMaterial &&
+      profileMatchesBufferedGrowth
+    ) {
+      return "bufferedGrowth";
+    }
+    if (populationGrowth < 0) return "silverDecline";
+    return Number.isFinite(fertility) &&
+      fertility >= SILVER_DECLINE_FERTILITY_THRESHOLD
+      ? "growth"
+      : "silverDecline";
   }
-  if (netMigrationRate == null) return null;
-  return netMigrationRate >= MIGRATION_BALANCE_THRESHOLD
-    ? "resilient"
+  if (!Number.isFinite(fertility)) return null;
+  if (fertility >= SILVER_DECLINE_FERTILITY_THRESHOLD) return "growth";
+  if (!Number.isFinite(netMigrationRate)) return null;
+  return incomeLabel === HIGH_INCOME_LABEL &&
+    netMigrationRate >= HIGH_NET_MIGRATION_RATE_THRESHOLD
+    ? "bufferedGrowth"
     : "silverDecline";
 }
 
@@ -49,13 +147,10 @@ export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 
 // Splits the coarse "growth" archetype into two Phase 1 (1950-1980)
 // narratives using life expectancy as the distinguishing axis: "goldenBoom"
-// (post-war affluent nations — the Baby Boom atop already-high life
-// expectancy) vs. "emergingSurge" (the Global South — extreme fertility
-// atop rapidly-falling mortality, still climbing toward that same level).
-// Both require above-replacement fertility (see classifyCountry), so this
-// only ever touches "growth" nodes; every other archetype, any year outside
-// the window, and missing life-expectancy data all pass through unchanged
-// rather than guessing.
+// for longer-lived populations and "emergingSurge" for populations earlier
+// in the mortality transition. This only touches nodes already classified
+// as Growth; every other archetype, year outside the window, and missing
+// life-expectancy value passes through unchanged.
 export function refineGrowthArchetype(archetype, year, lifeExpectancy) {
   if (archetype !== "growth") return archetype;
   if (
@@ -74,7 +169,7 @@ export function refineGrowthArchetype(archetype, year, lifeExpectancy) {
 // t in [0,1] for how far into the (global, percentile-clipped) median-age
 // range a value sits — not a gate, just an intensity used to modulate force
 // strength (see forceStrengthFor).
-export function contractionAgeIntensity(medianAge, domain) {
+export function silverDeclineAgeIntensity(medianAge, domain) {
   if (medianAge == null || !domain || domain.max === domain.min) return 0;
   return Math.min(
     1,
@@ -94,7 +189,7 @@ export function forceStrengthFor(
   { base = 0.05, ageBoost = 0.12 } = {},
 ) {
   if (archetype !== "silverDecline") return base;
-  return base + ageBoost * contractionAgeIntensity(medianAge, domain);
+  return base + ageBoost * silverDeclineAgeIntensity(medianAge, domain);
 }
 
 // Sqrt/area scaling (not linear) — circle *area*, not diameter, is what
