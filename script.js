@@ -3933,7 +3933,7 @@ const CLUSTER_AXES = {
   population: "population",
   lifeExpectancy: "lifeExpectancy",
 };
-const CLUSTER_RADIUS_OPTIONS = { minRadius: 6, maxRadius: 120 };
+const CLUSTER_RADIUS_OPTIONS = { minRadius: 9, maxRadius: 136 };
 const CLUSTER_ARCHETYPE_LABELS = {
   goldenBoom: "Golden Boom",
   emergingSurge: "Emerging Surge",
@@ -3974,10 +3974,10 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
 // band left/right — they're never on screen at the same time as Growth
 // (see refineArchetypeForPhase), so reusing that vertical position is safe.
 const CLUSTER_ANCHOR_RATIOS = {
-  emergingSurge: { x: 0.4, y: 0.4 },
-  goldenBoom: { x: 0.8, y: 0.6 },
+  emergingSurge: { x: 0.35, y: 0.4 },
+  goldenBoom: { x: 0.8, y: 0.65 },
   growth: { x: 0.25, y: 0.38 },
-  bufferedGrowth: { x: 0.45, y: 0.8 },
+  bufferedGrowth: { x: 0.5, y: 0.8 },
   silverDecline: { x: 0.78, y: 0.5 },
 };
 const CLUSTER_LABEL_HEIGHT = 32;
@@ -4374,7 +4374,7 @@ function drawClusterNode(ctx, node) {
   ctx.font = ensureClusterFont();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(node.iso2, node.x, node.y);
+  ctx.fillText(node.iso2, node.x, node.y + 1);
 }
 
 function drawClusterLabels(ctx) {
@@ -4436,7 +4436,9 @@ function setupClusterCanvasInteraction() {
   const canvas = elements.clusterCanvas;
   canvas.addEventListener("pointermove", (event) => {
     const node = clusterNodeAtClientPoint(event.clientX, event.clientY);
+    const hoverChanged = node !== clusterHoveredNode;
     clusterHoveredNode = node;
+    if (hoverChanged) renderClusterFrame();
     canvas.style.cursor = node ? "pointer" : "default";
     if (node) {
       showChartTooltip(
@@ -4449,7 +4451,9 @@ function setupClusterCanvasInteraction() {
     }
   });
   canvas.addEventListener("pointerleave", () => {
+    const hadHoveredNode = clusterHoveredNode !== null;
     clusterHoveredNode = null;
+    if (hadHoveredNode) renderClusterFrame();
     hideChartTooltip();
   });
   canvas.addEventListener("click", (event) => {
