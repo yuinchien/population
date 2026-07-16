@@ -325,6 +325,14 @@ let selectedLegend = null;
 // untouched in the latter case so the back button can restore that exact
 // table (same group, same sort) instead of just closing everything.
 let selectedCountry = null;
+// "chart" | "cluster" | null — which full-screen mode (if any) a country or
+// group detail drill-down stepped aside to open, so closeDetailPanel() can
+// restore it instead of always landing back on whichever of Globe/Map
+// viewMode already is. Set right before that mode gets closed (see
+// openCountryDetail, openChartGroupDetail, and the cluster controller's
+// onCountryClick callback below), and consumed/cleared once
+// closeDetailPanel() fully exits back to the top level.
+let detailEntryMode = null;
 // Cached population-chart layout (max value + coordinate mapper) so the
 // per-year marker/sparkline update is a cheap reposition rather than a full
 // chart rebuild every time the slider moves.
@@ -1139,7 +1147,13 @@ function renderLegend(modeOverride = null) {
       text.textContent = displayGroupLabel(label);
       item.append(swatch, text);
       item.addEventListener("click", () => {
-        if (clusterActive) setClusterActive(false);
+        // Remembered (see detailEntryMode) so closing the detail panel
+        // back out restores Cluster instead of landing on whichever of
+        // Globe/Map is underneath.
+        if (clusterActive) {
+          detailEntryMode = "cluster";
+          setClusterActive(false);
+        }
         selectLegendItem(label, color, mode);
       });
       return item;
@@ -1477,7 +1491,23 @@ function closeDetailPanel() {
   if (currentYearIndex >= 0) {
     updateStatusPanel(yearsData[currentYearIndex], { instant: true });
   }
-  syncUrlFromState();
+  // If this country/group detail was opened from inside Chart or Cluster
+  // (a table row click, or a cluster-particle click), restore that mode
+  // instead of always landing back on whichever of Globe/Map is
+  // underneath — this is the single place both navigation paths (a direct
+  // close, and closeCountryDetail()'s fallback once there's no group table
+  // left to return to) funnel through on their way fully out. Each of the
+  // set*Active(true) calls below does its own syncUrlFromState(), so the
+  // plain call at the end only runs when there's nothing to restore.
+  const restoreMode = detailEntryMode;
+  detailEntryMode = null;
+  if (restoreMode === "chart") {
+    setchartPanelActive(true);
+  } else if (restoreMode === "cluster") {
+    setClusterActive(true);
+  } else {
+    syncUrlFromState();
+  }
 }
 
 // Returns to the group table this country was opened from (if any),
@@ -1681,7 +1711,12 @@ function openCountryDetail(country) {
   // A row click in the chart view's own table drills into the same full
   // country detail panel the group table uses — that panel and the chart
   // overlay are both full-screen, so the chart has to step aside first.
-  if (chartPanelActive) setchartPanelActive(false);
+  // Remembered (see detailEntryMode) so closing back out restores Chart
+  // instead of landing on whichever of Globe/Map is underneath.
+  if (chartPanelActive) {
+    detailEntryMode = "chart";
+    setchartPanelActive(false);
+  }
   tourController.stop();
   selectedCountry = country;
   elements.tooltip.hidden = true;
@@ -2269,12 +2304,14 @@ function groupMetricSeries(members, key) {
 }
 
 // .detail-panel and .chart-view are both full-screen overlays — same
-// reasoning as openCountryDetail() stepping the chart aside first. Also
-// switches colorMode to match so the globe/map's own Region/Income legend
-// (which selectLegendItem() reads via the ambient colorMode, not a
+// reasoning as openCountryDetail() stepping the chart aside first (and
+// same detailEntryMode bookkeeping, so closing back out restores Chart).
+// Also switches colorMode to match so the globe/map's own Region/Income
+// legend (which selectLegendItem() reads via the ambient colorMode, not a
 // parameter) opens the right group instead of misreading this label under
 // whatever mode the globe happened to be left in.
 function openChartGroupDetail(legendMode, label, color) {
+  detailEntryMode = "chart";
   setchartPanelActive(false);
   if (legendMode !== colorMode) setColorMode(legendMode);
   selectLegendItem(label, color);
@@ -3228,6 +3265,10 @@ const clusterController = createClusterController({
   showTooltip: showChartTooltip,
   hideTooltip: hideChartTooltip,
   onCountryClick: (country) => {
+    // Remembered (see detailEntryMode) so closing the detail panel back
+    // out restores Cluster instead of landing on whichever of Globe/Map
+    // is underneath.
+    detailEntryMode = "cluster";
     setClusterActive(false);
     openCountryDetail(country);
   },
