@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/yuinchien/population#readme",
   "dependencies": {
+    "d3-force": "^3.0.0",
     "flag-icons": "^7.5.0",
     "riso-colors": "^1.0.1",
     "three": "^0.185.0"

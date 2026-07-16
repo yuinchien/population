@@ -22,6 +22,14 @@ test("URL state round-trips chart selections", () => {
   );
 });
 
+test("URL state round-trips the cluster view", () => {
+  const query = serializeUrlState({ view: "cluster", year: 2050 });
+  assert.deepEqual(parseUrlState(query, { years: [2050] }), {
+    view: "cluster",
+    year: 2050,
+  });
+});
+
 test("URL parsing rejects unknown years and countries", () => {
   assert.deepEqual(
     parseUrlState("?view=country&country=XXX&year=1900", {

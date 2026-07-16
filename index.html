@@ -95,6 +95,15 @@
             <div id="viewMode" class="button-group" hidden>
                 <button
                     type="button"
+                    data-mode="cluster"
+                    class="mono-uppercase"
+                    aria-label="Cluster"
+                    title="Cluster"
+                >
+                    Cluster
+                </button>
+                <button
+                    type="button"
                     data-mode="plot"
                     class="mono-uppercase"
                     aria-label="Plot"
@@ -166,10 +175,30 @@
             </div>
         </section>
 
+        <section id="clusterView" class="cluster-view glass" hidden>
+            <button
+                id="clusterPlay"
+                class="milestone-nav-btn"
+                type="button"
+                aria-label="Play cluster timeline"
+                title="Play 1950–2100"
+            >
+                <span
+                    id="clusterPlayIcon"
+                    class="material-symbols-outlined"
+                    >play_arrow</span
+                >
+            </button>
+            <div class="cluster-canvas">
+                <canvas id="clusterCanvas"></canvas>
+                <div id="clusterAnnotations" class="cluster-annotations"></div>
+            </div>
+        </section>
+
         <div id="timelineContainer" class="timeline hide-for-chart">
             <button
                 id="milestoneTour"
-                class="milestone-nav-btn hide-for-chart hide-for-plot"
+                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
                 type="button"
                 aria-label="Play milestone tour"
                 title="Play tour"
@@ -197,7 +226,7 @@
             </div>
             <button
                 id="milestonePrev"
-                class="milestone-nav-btn hide-for-chart hide-for-plot"
+                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
                 type="button"
                 aria-label="Previous milestone"
             >
@@ -207,7 +236,7 @@
             </button>
             <button
                 id="milestoneNext"
-                class="milestone-nav-btn hide-for-chart hide-for-plot"
+                class="milestone-nav-btn hide-for-chart hide-for-plot hide-for-cluster"
                 type="button"
                 aria-label="Next milestone"
             >

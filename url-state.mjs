@@ -15,6 +15,8 @@ export function serializeUrlState(state) {
     params.set("group", state.group);
   } else if (state.view === "plot") {
     params.set("view", "plot");
+  } else if (state.view === "cluster") {
+    params.set("view", "cluster");
   }
 
   if (state.year != null) params.set("year", String(state.year));
@@ -53,6 +55,8 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
     }
   } else if (view === "plot") {
     state.view = "plot";
+  } else if (view === "cluster") {
+    state.view = "cluster";
   }
   return state;
 }

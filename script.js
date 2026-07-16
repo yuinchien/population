@@ -53,6 +53,12 @@ import {
   chartYFor,
   computeValueRange,
 } from "./chart-math.mjs";
+import { forceSimulation, forceX, forceY, forceCollide } from "d3-force";
+import {
+  classifyCountry,
+  forceStrengthFor,
+  radiusForPopulation,
+} from "./cluster-model.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -334,6 +340,7 @@ let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let plotActive = false;
+let clusterActive = false;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
@@ -976,6 +983,17 @@ function applyYear(year, { instant = false } = {}) {
     return;
   }
 
+  // Same reasoning again — the 3D scene is hidden behind the cluster
+  // overlay, so skip repositioning it and just reclassify/reposition the
+  // (already-built) particles instead. setClusterActive(false) does the 3D
+  // catch-up when the overlay closes.
+  if (clusterActive) {
+    updateYearLabels(year);
+    updateClusterYear(year);
+    syncUrlFromState();
+    return;
+  }
+
   if (!pointsMesh) return;
   // Skip the pulse on the very first call (initial page load) — there's no
   // prior year for this one to visibly change *from*, so it would just
@@ -1501,6 +1519,8 @@ function urlStateFromApp() {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (plotActive) {
     Object.assign(state, { view: "plot" });
+  } else if (clusterActive) {
+    Object.assign(state, { view: "cluster" });
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
@@ -1541,6 +1561,8 @@ function applyUrlStateFromLocation(search) {
     setchartPanelActive(true);
   } else if (state.view === "plot") {
     setPlotActive(true);
+  } else if (state.view === "cluster") {
+    setClusterActive(true);
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -3887,6 +3909,528 @@ function setPlotActive(active) {
   syncUrlFromState();
 }
 
+// --- Cluster view (physics-based demographic clustering) -----------------
+// Every country is a particle pulled toward one of three named "gravity
+// wells" (growth/resilient/contraction — see cluster-model.mjs) by a
+// d3-force simulation. Unlike Plot's literal 3-axis mapping, a country's
+// position here is emergent: which well it's pulled toward is reclassified
+// fresh every year from its own fertility/migration data, not a direct
+// metric->pixel formula, so the 1950->2100 "phases" (near-universal growth
+// -> the developed/developing split -> the migration-vs-aging divide ->
+// near-universal convergence) fall out of the classifier rather than being
+// hardcoded.
+const CLUSTER_AXES = {
+  fertility: "fertility",
+  migration: "netMigrationRate",
+  age: "medianAge",
+  population: "population",
+};
+const CLUSTER_RADIUS_OPTIONS = { minRadius: 6, maxRadius: 60 };
+const CLUSTER_ARCHETYPE_LABELS = {
+  growth: "Growth",
+  resilient: "Resilient",
+  contraction: "Contraction",
+};
+const CLUSTER_ARCHETYPE_SUMMARIES = {
+  growth: ["Above-replacement fertility", "Young, fast-growing population"],
+  resilient: [
+    "Below-replacement fertility",
+    "Positive net migration",
+    "Sustained population growth",
+  ],
+  contraction: [
+    "Below-replacement fertility",
+    "Little or negative migration",
+    "Aging, shrinking population",
+  ],
+};
+// Growth sits top-center (where almost everyone starts, in 1950); Resilient
+// bottom-left and Contraction bottom-right mirror the left/right split in
+// the reference mockup.
+const CLUSTER_ANCHOR_RATIOS = {
+  growth: { x: 0.5, y: 0.22 },
+  resilient: { x: 0.28, y: 0.75 },
+  contraction: { x: 0.72, y: 0.75 },
+};
+const CLUSTER_ANNOTATION_OFFSETS = {
+  growth: { dx: 0, dy: -70 },
+  resilient: { dx: 0, dy: 60 },
+  contraction: { dx: 0, dy: 60 },
+};
+
+let clusterCanvasCtx = null;
+let clusterSimulation = null;
+let clusterNodes = [];
+let clusterNodesBuilt = false;
+let clusterInteractionBound = false;
+let clusterAnnotationsBuilt = false;
+let clusterAnchors = null; // { growth: {x,y}, resilient: {x,y}, contraction: {x,y} } — fixed pixel coords, recomputed on resize
+let clusterMedianAgeDomain = null; // { min, max } — global, percentile-clipped, computed once
+let clusterPopulationMax = null; // global max population across every country/year
+let clusterHoveredNode = null;
+let clusterSortedNodes = []; // descending-by-radius draw order, reused for hit-testing
+let clusterFont = null;
+
+// Global (not per-year) domains, mirroring computePlotDomains's reasoning —
+// the space itself needs to stay fixed so a year change reads as motion
+// through it, not the wells/scale rescaling under the particles.
+function computeClusterDomains() {
+  const medianAges = [];
+  let maxPopulation = 0;
+  countriesData.forEach((country) => {
+    chartSeriesFor(country, CLUSTER_AXES.age).forEach((value) => {
+      if (Number.isFinite(value)) medianAges.push(value);
+    });
+    chartSeriesFor(country, CLUSTER_AXES.population).forEach((value) => {
+      if (Number.isFinite(value) && value > maxPopulation) maxPopulation = value;
+    });
+  });
+  if (!medianAges.length || maxPopulation <= 0) return null;
+  medianAges.sort((a, b) => a - b);
+  const min = percentile(medianAges, 0.03);
+  const max = percentile(medianAges, 0.97);
+  return {
+    medianAgeDomain:
+      min < max
+        ? { min, max }
+        : { min: medianAges[0], max: medianAges[medianAges.length - 1] },
+    populationMax: maxPopulation,
+  };
+}
+
+function ensureClusterDomains() {
+  if (clusterMedianAgeDomain && clusterPopulationMax) return true;
+  const domains = computeClusterDomains();
+  if (!domains) return false;
+  clusterMedianAgeDomain = domains.medianAgeDomain;
+  clusterPopulationMax = domains.populationMax;
+  return true;
+}
+
+function computeClusterAnchors(width, height) {
+  const anchors = {};
+  for (const [key, ratio] of Object.entries(CLUSTER_ANCHOR_RATIOS)) {
+    anchors[key] = { x: width * ratio.x, y: height * ratio.y };
+  }
+  return anchors;
+}
+
+function ensureClusterFont() {
+  if (clusterFont) return clusterFont;
+  const family =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--font-mono")
+      .trim() || "monospace";
+  clusterFont = `600 11px ${family}`;
+  return clusterFont;
+}
+
+// HiDPI setup + anchor recompute — called once on activation and again
+// (debounced) on resize. No existing helper for a live 2D canvas to reuse:
+// the app's one other canvas.getContext("2d") call is an offscreen sprite
+// for a THREE.CanvasTexture, unrelated.
+function resizeClusterCanvas() {
+  if (!clusterActive) return;
+  const canvas = elements.clusterCanvas;
+  const displayWidth = canvas.clientWidth || window.innerWidth;
+  const displayHeight = canvas.clientHeight || window.innerHeight;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.round(displayWidth * dpr);
+  canvas.height = Math.round(displayHeight * dpr);
+  if (!clusterCanvasCtx) clusterCanvasCtx = canvas.getContext("2d");
+  clusterCanvasCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  clusterAnchors = computeClusterAnchors(displayWidth, displayHeight);
+  positionClusterAnnotations();
+  if (clusterSimulation) {
+    // Anchor pixel coords moved — cached force targets (see
+    // reinitializeClusterForces) must be rebuilt too, not just the alpha
+    // reheated, or nodes keep drifting toward the pre-resize positions.
+    // A full alpha(1) reheat (not a small bump) matters here: a resize can
+    // move anchors by hundreds of pixels (e.g. portrait<->landscape), and
+    // low-strength forces (see forceStrengthFor) need the full decay curve
+    // to actually cover that distance rather than stalling partway.
+    reinitializeClusterForces();
+    clusterSimulation.alpha(1).restart();
+  }
+}
+
+function buildClusterNodes() {
+  if (clusterNodesBuilt) return;
+  clusterNodes = countriesData.map((country) => ({
+    country,
+    iso2: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
+    // Seeded near the Growth anchor (not scattered randomly) so the very
+    // first frame (1950, almost everyone high-fertility) doesn't visibly
+    // snap from a random start.
+    x: clusterAnchors.growth.x + (Math.random() - 0.5) * 40,
+    y: clusterAnchors.growth.y + (Math.random() - 0.5) * 40,
+    radius: 3,
+    archetype: null,
+    medianAge: null,
+  }));
+  clusterNodesBuilt = true;
+}
+
+function clusterAnchorFor(node) {
+  return clusterAnchors[node.archetype] ?? clusterAnchors.growth;
+}
+
+let clusterForceX = null;
+let clusterForceY = null;
+let clusterForceCollide = null;
+
+function startClusterSimulation() {
+  clusterForceX = forceX((d) => clusterAnchorFor(d).x).strength((d) =>
+    forceStrengthFor(d.archetype, d.medianAge, clusterMedianAgeDomain),
+  );
+  clusterForceY = forceY((d) => clusterAnchorFor(d).y).strength((d) =>
+    forceStrengthFor(d.archetype, d.medianAge, clusterMedianAgeDomain),
+  );
+  // 1950 (almost everyone in Growth) crowds ~190 nodes onto one anchor —
+  // full strength + more iterations keeps that year fully separated
+  // instead of settling with visible overlap.
+  clusterForceCollide = forceCollide((d) => d.radius + 2)
+    .strength(1)
+    .iterations(10);
+  clusterSimulation = forceSimulation(clusterNodes)
+    .force("x", clusterForceX)
+    .force("y", clusterForceY)
+    .force("collide", clusterForceCollide)
+    .alphaTarget(0)
+    .on("tick", renderClusterFrame);
+}
+
+// forceX/forceY/forceCollide's accessor functions are only evaluated once,
+// when the force is (re)initialized — d3-force caches the result per node
+// internally (target x/y, strength, and collide radius), it does NOT call
+// the accessor again on every tick. Since a node's target anchor/strength
+// depends on its archetype/medianAge, and its collide radius on its
+// population, all of which change every year, the caches must be rebuilt
+// explicitly whenever those change (here) or whenever clusterAnchors itself
+// changes (see resizeClusterCanvas) — otherwise every node stays pulled
+// toward whatever anchor (and collides at whatever radius) it had the very
+// first time the force was created, which for radius is the placeholder
+// `3` seeded in buildClusterNodes, not its real size.
+function reinitializeClusterForces() {
+  clusterForceX?.initialize(clusterNodes);
+  clusterForceY?.initialize(clusterNodes);
+  clusterForceCollide?.initialize(clusterNodes);
+}
+
+// Mutates the same node objects already inside the running simulation (no
+// .nodes() re-call — that resets velocities). yearIndex may be fractional
+// during the sweep (see playClusterTimelineOnce); valueAtFractionalYear
+// (defined above, for Plot) is fully generic and interpolates between the
+// two nearest years for any (country, key) pair, not just Plot's own axes.
+function updateClusterNodesForYear(yearIndex) {
+  if (yearIndex == null || yearIndex < 0) return;
+  clusterNodes.forEach((node) => {
+    const fertility = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.fertility,
+      yearIndex,
+    );
+    const netMigrationRate = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.migration,
+      yearIndex,
+    );
+    const medianAge = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.age,
+      yearIndex,
+    );
+    const population = valueAtFractionalYear(
+      node.country,
+      CLUSTER_AXES.population,
+      yearIndex,
+    );
+    node.archetype = classifyCountry({ fertility, netMigrationRate });
+    node.medianAge = medianAge;
+    node.radius = radiusForPopulation(
+      population,
+      clusterPopulationMax,
+      CLUSTER_RADIUS_OPTIONS,
+    );
+  });
+  reinitializeClusterForces();
+}
+
+// Discrete year-change path (manual drag, keyboard step, deep-link jump) —
+// reheats once per change and lets the simulation decay naturally between
+// changes. The continuous sweep (playClusterTimelineOnce) manages its own
+// alphaTarget instead, since it needs to stay hot for its whole duration.
+function updateClusterYear(year) {
+  if (!clusterActive || !clusterMedianAgeDomain) return;
+  const yearIndex = yearsData.indexOf(year);
+  if (yearIndex === -1) return;
+  updateClusterNodesForYear(yearIndex);
+  clusterSimulation?.alpha(Math.max(clusterSimulation.alpha(), 0.4)).restart();
+}
+
+function drawClusterNode(ctx, node) {
+  ctx.beginPath();
+  ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+  const fill = `#${colorFor(node.country).getHexString()}`;
+  ctx.fillStyle = fill;
+  ctx.fill();
+  if (node === clusterHoveredNode) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = resolveCssColor("var(--color-text)");
+    ctx.stroke();
+  }
+  // ctx.font/fillStyle can't resolve CSS custom properties the way DOM
+  // style properties can — bake a literal font once (ensureClusterFont)
+  // and resolve foregroundForColor's var(...) reference through
+  // resolveCssColor before using it as a canvas fillStyle.
+  if (node.radius < 9) return; // too small for a legible 2-letter label
+  ctx.fillStyle = resolveCssColor(foregroundForColor(fill));
+  ctx.font = ensureClusterFont();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(node.iso2, node.x, node.y);
+}
+
+function renderClusterFrame() {
+  const ctx = clusterCanvasCtx;
+  if (!ctx || !clusterAnchors) return;
+  const canvas = elements.clusterCanvas;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+  ctx.clearRect(0, 0, width, height);
+  // Largest first (drawn on the bottom), so a small country nested near a
+  // large one stays visible on top of it.
+  clusterSortedNodes = clusterNodes
+    .filter((node) => node.archetype)
+    .sort((a, b) => b.radius - a.radius);
+  clusterSortedNodes.forEach((node) => drawClusterNode(ctx, node));
+}
+
+// Reverse draw order (smallest/topmost first) so a small circle nested
+// inside a larger one wins the hit test. ~200 nodes, a linear scan per
+// pointermove is trivially cheap — no quadtree needed (d3-force's internal
+// one for collision isn't exposed for this).
+function clusterNodeAtClientPoint(clientX, clientY) {
+  const rect = elements.clusterCanvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  for (let i = clusterSortedNodes.length - 1; i >= 0; i--) {
+    const node = clusterSortedNodes[i];
+    const dx = x - node.x;
+    const dy = y - node.y;
+    if (dx * dx + dy * dy <= node.radius * node.radius) return node;
+  }
+  return null;
+}
+
+function setupClusterCanvasInteraction() {
+  if (clusterInteractionBound) return;
+  const canvas = elements.clusterCanvas;
+  canvas.addEventListener("pointermove", (event) => {
+    const node = clusterNodeAtClientPoint(event.clientX, event.clientY);
+    clusterHoveredNode = node;
+    canvas.style.cursor = node ? "pointer" : "default";
+    if (node) {
+      showChartTooltip(
+        event,
+        node.country.name,
+        `#${colorFor(node.country).getHexString()}`,
+      );
+    } else {
+      hideChartTooltip();
+    }
+  });
+  canvas.addEventListener("pointerleave", () => {
+    clusterHoveredNode = null;
+    hideChartTooltip();
+  });
+  canvas.addEventListener("click", (event) => {
+    const node = clusterNodeAtClientPoint(event.clientX, event.clientY);
+    if (!node) return;
+    setClusterActive(false);
+    openCountryDetail(node.country);
+  });
+  clusterInteractionBound = true;
+}
+
+// Static per-archetype copy — doesn't depend on year, built once and left
+// alone, positioned near that archetype's anchor (repositioned on resize —
+// see positionClusterAnnotations).
+function buildClusterAnnotations() {
+  if (clusterAnnotationsBuilt) return;
+  elements.clusterAnnotations.replaceChildren(
+    ...Object.keys(CLUSTER_ARCHETYPE_LABELS).map((key) => {
+      const block = document.createElement("div");
+      block.className = "cluster-annotation";
+      block.dataset.archetype = key;
+      const title = document.createElement("div");
+      title.className = "cluster-annotation-title";
+      title.textContent = CLUSTER_ARCHETYPE_LABELS[key];
+      const list = document.createElement("ul");
+      list.className = "cluster-annotation-list";
+      list.append(
+        ...CLUSTER_ARCHETYPE_SUMMARIES[key].map((line) => {
+          const item = document.createElement("li");
+          item.textContent = line;
+          return item;
+        }),
+      );
+      block.append(title, list);
+      return block;
+    }),
+  );
+  clusterAnnotationsBuilt = true;
+}
+
+function positionClusterAnnotations() {
+  if (!clusterAnchors) return;
+  elements.clusterAnnotations
+    .querySelectorAll(".cluster-annotation")
+    .forEach((block) => {
+      const anchor = clusterAnchors[block.dataset.archetype];
+      const offset = CLUSTER_ANNOTATION_OFFSETS[block.dataset.archetype];
+      if (!anchor || !offset) return;
+      block.style.left = `${anchor.x + offset.dx}px`;
+      block.style.top = `${anchor.y + offset.dy}px`;
+    });
+}
+
+let clusterPlaybackFrame = null;
+// Slightly longer than Plot's 9s sweep — the four narrative "phases" here
+// each need a moment to read before the next one takes over.
+const CLUSTER_PLAYBACK_DURATION_MS = 12000;
+
+function stopClusterPlayback() {
+  if (clusterPlaybackFrame != null) {
+    cancelAnimationFrame(clusterPlaybackFrame);
+    clusterPlaybackFrame = null;
+  }
+  clusterSimulation?.alphaTarget(0);
+  if (elements.clusterPlayIcon) {
+    elements.clusterPlayIcon.textContent = "play_arrow";
+  }
+}
+
+// Sweeps 1950->2100 once, so the "phases" (near-universal Growth -> the
+// developed/developing split -> the migration-vs-aging divide -> near-
+// universal convergence) play out as one continuous story. Unlike the
+// discrete year-change path, alphaTarget stays elevated for the whole
+// sweep (reset at the end) rather than a one-shot reheat per change,
+// since new targets arrive every frame.
+function playClusterTimelineOnce() {
+  stopClusterPlayback();
+  if (!clusterActive || yearsData.length < 2 || !clusterSimulation) return;
+  elements.clusterPlayIcon.textContent = "pause";
+  clusterSimulation.alphaTarget(0.06).restart();
+  const lastYear = yearsData[yearsData.length - 1];
+  const startTime = performance.now();
+
+  function frame(now) {
+    const t = Math.min(1, (now - startTime) / CLUSTER_PLAYBACK_DURATION_MS);
+    const fractionalIndex = t * (yearsData.length - 1);
+    const year = yearsData[Math.round(fractionalIndex)];
+    elements.yearSlider.value = year;
+    updateSliderProgress();
+    updateYearLabels(year);
+    updateClusterNodesForYear(fractionalIndex);
+    if (t < 1) {
+      clusterPlaybackFrame = requestAnimationFrame(frame);
+    } else {
+      clusterPlaybackFrame = null;
+      clusterSimulation.alphaTarget(0);
+      elements.clusterPlayIcon.textContent = "play_arrow";
+      goToYear(lastYear);
+    }
+  }
+  clusterPlaybackFrame = requestAnimationFrame(frame);
+}
+
+// Full (re)build: domains + annotations + canvas sizing + node DOM-free
+// data + simulation. Only needed once per activation (or when demographics
+// data finishes loading late) — subsequent year changes go through the
+// much cheaper updateClusterYear/updateClusterNodesForYear instead.
+function renderClusterLayout() {
+  if (!clusterActive) return;
+  if (!ensureClusterDomains()) {
+    // Demographics data hasn't loaded yet — the countryDemographicMetrics
+    // promise handler retries this once it resolves. Annotations are built
+    // below (not here) since building them before resizeClusterCanvas has
+    // ever run would leave them at their unset default position (all
+    // stacked at the top-left) until the retry fixes it.
+    if (clusterCanvasCtx) {
+      clusterCanvasCtx.clearRect(
+        0,
+        0,
+        elements.clusterCanvas.clientWidth,
+        elements.clusterCanvas.clientHeight,
+      );
+    }
+    return;
+  }
+  buildClusterAnnotations();
+  resizeClusterCanvas();
+  buildClusterNodes();
+  setupClusterCanvasInteraction();
+  if (!clusterSimulation) startClusterSimulation();
+  updateClusterNodesForYear(currentYearIndex);
+  clusterSimulation.alpha(1).restart();
+}
+
+function setClusterActive(active) {
+  if (active === clusterActive) return;
+  clusterActive = active;
+  elements.clusterView.hidden = !active;
+  document.body.classList.toggle("view-cluster", active);
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle(
+      "active",
+      btn.dataset.mode === (active ? "cluster" : viewMode),
+    ),
+  );
+  if (active) {
+    tourController.stop();
+    renderClusterLayout();
+  } else {
+    stopClusterPlayback();
+    // A persistent physics loop (forceSimulation's own internal d3-timer),
+    // not just a requestAnimationFrame id like Plot's sweep — has to be
+    // stopped explicitly or it keeps ticking (and drawing to a hidden
+    // canvas) in the background indefinitely.
+    clusterSimulation?.stop();
+    clusterSimulation = null;
+    clusterForceX = null;
+    clusterForceY = null;
+    if (currentYearIndex >= 0) {
+      // Cluster took applyYear()'s cheap fast path (see there) while open,
+      // leaving the 3D scene stale — catch it up now that it's visible
+      // again.
+      applyYear(yearsData[currentYearIndex], { instant: true });
+    }
+  }
+  syncUrlFromState();
+}
+
+window.__clusterOverlapCheck = () => {
+  let maxOverlap = 0;
+  let overlapCount = 0;
+  for (let i = 0; i < clusterNodes.length; i++) {
+    for (let j = i + 1; j < clusterNodes.length; j++) {
+      const a = clusterNodes[i];
+      const b = clusterNodes[j];
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const minDist = a.radius + b.radius;
+      const overlap = minDist - dist;
+      if (overlap > 0.5) {
+        overlapCount++;
+        if (overlap > maxOverlap) maxOverlap = overlap;
+      }
+    }
+  }
+  return { overlapCount, maxOverlap, nodeCount: clusterNodes.length };
+};
+
 function setChartTableSort(key) {
   const next = nextSortState(chartTableSort, key, chartTableColumns());
   if (!next) return;
@@ -4312,6 +4856,7 @@ async function init() {
         renderChartTable();
       }
       if (plotActive) renderPlotLayout();
+      if (clusterActive) renderClusterLayout();
       if (selectedCountry) {
         renderCountryDetail();
       } else if (selectedLegend) {
@@ -4368,6 +4913,7 @@ async function init() {
       // to move live during the drag itself rather than waiting for
       // "change".
       if (plotActive) updatePlotYear(Number(elements.yearSlider.value));
+      if (clusterActive) updateClusterYear(Number(elements.yearSlider.value));
     });
     elements.yearSlider.addEventListener("change", () => {
       applyYear(Number(elements.yearSlider.value));
@@ -4375,9 +4921,11 @@ async function init() {
     // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps. Same
-    // reasoning applies to the plot region-select playback below.
+    // reasoning applies to the plot region-select playback and cluster
+    // sweep below.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
     elements.yearSlider.addEventListener("pointerdown", stopPlotPlayback);
+    elements.yearSlider.addEventListener("pointerdown", stopClusterPlayback);
     elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
     elements.yearSlider.addEventListener("pointerleave", () => {
       elements.yearHoverValue.hidden = true;
@@ -4396,22 +4944,38 @@ async function init() {
       btn.addEventListener("click", () => {
         if (btn.dataset.mode === "chart") {
           setPlotActive(false);
+          setClusterActive(false);
           setchartPanelActive(true);
           return;
         }
         if (btn.dataset.mode === "plot") {
           setchartPanelActive(false);
+          setClusterActive(false);
           setPlotActive(true);
+          return;
+        }
+        if (btn.dataset.mode === "cluster") {
+          setchartPanelActive(false);
+          setPlotActive(false);
+          setClusterActive(true);
           return;
         }
         setchartPanelActive(false);
         setPlotActive(false);
+        setClusterActive(false);
         setViewMode(btn.dataset.mode);
       });
     });
     elements.chartPanelClose.addEventListener("click", () =>
       setchartPanelActive(false),
     );
+    elements.clusterPlay.addEventListener("click", () => {
+      if (clusterPlaybackFrame != null) {
+        stopClusterPlayback();
+      } else {
+        playClusterTimelineOnce();
+      }
+    });
     elements.chartProjectionScenario.value = chartProjectionScenario;
     updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
@@ -4768,6 +5332,10 @@ window.addEventListener("resize", () => {
   if (plotActive) {
     clearTimeout(countryChartResizeTimer);
     countryChartResizeTimer = setTimeout(renderPlotLayout, 120);
+  }
+  if (clusterActive) {
+    clearTimeout(countryChartResizeTimer);
+    countryChartResizeTimer = setTimeout(resizeClusterCanvas, 120);
   }
 });
 
