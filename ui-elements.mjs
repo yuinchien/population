@@ -62,7 +62,5 @@ export function getAppElements(root = document) {
     plotGroupMode: root.querySelector("#plotGroupMode"),
     clusterView: root.querySelector("#clusterView"),
     clusterCanvas: root.querySelector("#clusterCanvas"),
-    clusterPlay: root.querySelector("#clusterPlay"),
-    clusterPlayIcon: root.querySelector("#clusterPlayIcon"),
   };
 }

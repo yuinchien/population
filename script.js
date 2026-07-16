@@ -3919,7 +3919,7 @@ function setPlotActive(active) {
 // it's pulled toward is reclassified fresh every year from its own
 // fertility/migration/life-expectancy data, not a direct metric->pixel
 // formula, so the 1950->2100 "phases" (Phase 1's Golden Boom/Emerging Surge
-// split -> the Buffered Growth/Silver Decline split -> the
+// split -> the Migrant Buffers/Silver Decline split -> the
 // migration-vs-aging divide -> near-universal convergence) fall out of the
 // classifier rather than being hardcoded. "growth", "goldenBoom", and
 // "emergingSurge" are mutually exclusive across years (see
@@ -3938,7 +3938,7 @@ const CLUSTER_ARCHETYPE_LABELS = {
   goldenBoom: "Golden Boom",
   emergingSurge: "Emerging Surge",
   growth: "Growth",
-  bufferedGrowth: "Buffered Growth",
+  bufferedGrowth: "Migrant Buffers",
   silverDecline: "Silver Decline",
 };
 const CLUSTER_ARCHETYPE_SUMMARIES = {
@@ -3968,7 +3968,7 @@ const CLUSTER_ARCHETYPE_SUMMARIES = {
     "Includes sustained, significant loss from peak",
   ],
 };
-// Growth sits top-center (where almost everyone starts, in 1950); Buffered Growth
+// Growth sits top-center (where almost everyone starts, in 1950); Migrant Buffers
 // bottom-left and Silver Decline bottom-right mirror the left/right split in
 // the reference mockup. Golden Boom/Emerging Surge flank that same top
 // band left/right — they're never on screen at the same time as Growth
@@ -3985,7 +3985,7 @@ const CLUSTER_LABEL_PADDING_X = 14;
 const CLUSTER_LABEL_PARTICLE_GAP = 6;
 // Which annotation cards are relevant for a given year — Growth's card only
 // makes sense outside Phase 1, Golden Boom/Emerging Surge only inside it;
-// Buffered Growth/Silver Decline are always potentially relevant (see
+// Migrant Buffers/Silver Decline are always potentially relevant (see
 // classifyCountry — a country can dip below replacement any year).
 const CLUSTER_PHASE_ONE_KEYS = new Set([
   "goldenBoom",
@@ -4282,10 +4282,9 @@ function populationDeclineContext(country, yearIndex, population) {
 }
 
 // Mutates the same node objects already inside the running simulation (no
-// .nodes() re-call — that resets velocities). yearIndex may be fractional
-// during the sweep (see playClusterTimelineOnce); valueAtFractionalYear
-// (defined above, for Plot) is fully generic and interpolates between the
-// two nearest years for any (country, key) pair, not just Plot's own axes.
+// .nodes() re-call — that resets velocities). valueAtFractionalYear
+// (defined above, for Plot) remains generic enough to interpolate if a
+// fractional index is supplied.
 function updateClusterNodesForYear(yearIndex) {
   if (yearIndex == null || yearIndex < 0) return;
   const year = yearsData[Math.round(yearIndex)] ?? null;
@@ -4347,10 +4346,8 @@ function updateClusterNodesForYear(yearIndex) {
   updateClusterAnnotationVisibility(year);
 }
 
-// Discrete year-change path (manual drag, keyboard step, deep-link jump) —
-// reheats once per change and lets the simulation decay naturally between
-// changes. The continuous sweep (playClusterTimelineOnce) manages its own
-// alphaTarget instead, since it needs to stay hot for its whole duration.
+// Year-change path (manual drag, keyboard step, deep-link jump) — reheats
+// once per change and lets the simulation decay naturally between changes.
 function updateClusterYear(year) {
   if (!clusterActive || !clusterMedianAgeDomain) return;
   const yearIndex = yearsData.indexOf(year);
@@ -4467,8 +4464,8 @@ function setupClusterCanvasInteraction() {
 }
 
 // Growth's title only makes sense outside Phase 1, Golden Boom/Emerging
-// Surge only inside it. Guarded on the phase actually changing since this
-// runs every frame during the timeline sweep.
+// Surge only inside it. Guarded so ordinary year updates do not rebuild the
+// same canvas rectangles unnecessarily.
 function updateClusterAnnotationVisibility(year) {
   const isPhaseOne = isClusterPhaseOneYear(year);
   if (isPhaseOne === clusterAnnotationPhaseIsOne) return;
@@ -4477,56 +4474,6 @@ function updateClusterAnnotationVisibility(year) {
     ? CLUSTER_PHASE_ONE_KEYS
     : CLUSTER_DEFAULT_PHASE_KEYS;
   updateClusterLabelRects(activeKeys);
-}
-
-let clusterPlaybackFrame = null;
-// Slightly longer than Plot's 9s sweep — the four narrative "phases" here
-// each need a moment to read before the next one takes over.
-const CLUSTER_PLAYBACK_DURATION_MS = 12000;
-
-function stopClusterPlayback() {
-  if (clusterPlaybackFrame != null) {
-    cancelAnimationFrame(clusterPlaybackFrame);
-    clusterPlaybackFrame = null;
-  }
-  clusterSimulation?.alphaTarget(0);
-  if (elements.clusterPlayIcon) {
-    elements.clusterPlayIcon.textContent = "play_arrow";
-  }
-}
-
-// Sweeps 1950->2100 once, so the "phases" (near-universal Growth -> the
-// developed/developing split -> the migration-vs-aging divide -> near-
-// universal convergence) play out as one continuous story. Unlike the
-// discrete year-change path, alphaTarget stays elevated for the whole
-// sweep (reset at the end) rather than a one-shot reheat per change,
-// since new targets arrive every frame.
-function playClusterTimelineOnce() {
-  stopClusterPlayback();
-  if (!clusterActive || yearsData.length < 2 || !clusterSimulation) return;
-  elements.clusterPlayIcon.textContent = "pause";
-  clusterSimulation.alphaTarget(0.06).restart();
-  const lastYear = yearsData[yearsData.length - 1];
-  const startTime = performance.now();
-
-  function frame(now) {
-    const t = Math.min(1, (now - startTime) / CLUSTER_PLAYBACK_DURATION_MS);
-    const fractionalIndex = t * (yearsData.length - 1);
-    const year = yearsData[Math.round(fractionalIndex)];
-    elements.yearSlider.value = year;
-    updateSliderProgress();
-    updateYearLabels(year);
-    updateClusterNodesForYear(fractionalIndex);
-    if (t < 1) {
-      clusterPlaybackFrame = requestAnimationFrame(frame);
-    } else {
-      clusterPlaybackFrame = null;
-      clusterSimulation.alphaTarget(0);
-      elements.clusterPlayIcon.textContent = "play_arrow";
-      goToYear(lastYear);
-    }
-  }
-  clusterPlaybackFrame = requestAnimationFrame(frame);
 }
 
 // Full (re)build: domains + canvas sizing + node DOM-free
@@ -4571,7 +4518,6 @@ function setClusterActive(active) {
     tourController.stop();
     renderClusterLayout();
   } else {
-    stopClusterPlayback();
     // A persistent physics loop (forceSimulation's own internal d3-timer),
     // not just a requestAnimationFrame id like Plot's sweep — has to be
     // stopped explicitly or it keeps ticking (and drawing to a hidden
@@ -5080,11 +5026,9 @@ async function init() {
     // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
     // goToYear() itself only dispatches "input"/"change" — using those to
     // cancel would make the tour immediately cancel its own steps. Same
-    // reasoning applies to the plot region-select playback and cluster
-    // sweep below.
+    // reasoning applies to the plot region-select playback below.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
     elements.yearSlider.addEventListener("pointerdown", stopPlotPlayback);
-    elements.yearSlider.addEventListener("pointerdown", stopClusterPlayback);
     elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
     elements.yearSlider.addEventListener("pointerleave", () => {
       elements.yearHoverValue.hidden = true;
@@ -5128,13 +5072,6 @@ async function init() {
     elements.chartPanelClose.addEventListener("click", () =>
       setchartPanelActive(false),
     );
-    elements.clusterPlay.addEventListener("click", () => {
-      if (clusterPlaybackFrame != null) {
-        stopClusterPlayback();
-      } else {
-        playClusterTimelineOnce();
-      }
-    });
     elements.chartProjectionScenario.value = chartProjectionScenario;
     updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
