@@ -3933,7 +3933,7 @@ const CLUSTER_AXES = {
   population: "population",
   lifeExpectancy: "lifeExpectancy",
 };
-const CLUSTER_RADIUS_OPTIONS = { minRadius: 9, maxRadius: 136 };
+const CLUSTER_RADIUS_OPTIONS = { minRadius: 9, maxRadius: 128 };
 const CLUSTER_ARCHETYPE_LABELS = {
   goldenBoom: "Golden Boom",
   emergingSurge: "Emerging Surge",
