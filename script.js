@@ -3219,6 +3219,14 @@ const COSMOS_HEIGHT_SCALE = 1;
 // ticks, not the full METRICS[key].label + value strings used elsewhere.
 const COSMOS_MARGIN = { top: 28, right: 112, bottom: 18, left: 112 };
 const COSMOS_GRID_DIVISIONS = 4;
+// Depth-sort buckets for z-index (see positionCosmosCards) — deliberately
+// coarse. z-index has no interpolation, so every reorder is an instant,
+// visible cut; a fine-grained bucket count reshuffles ~200 overlapping
+// cards on nearly every frame during the region-select timeline sweep
+// (playCosmosTimelineOnce), which reads as flicker. This few buckets is
+// still plenty to keep "further toward the viewer" cards on top — exact
+// ordering within a band doesn't matter for a cluster of flag icons.
+const COSMOS_ZINDEX_BUCKETS = 20;
 // Shorter than METRICS[key].label ("Net migration rate" etc.) — every
 // character here is width the axis's own margin has to reserve, at the
 // direct expense of the plot's scale.
@@ -3439,13 +3447,11 @@ function positionCosmosCards(yearIndex) {
     // Ground-plane depth (nx+nz) sorts cards the way an isometric scene
     // should — one further "toward the viewer" (bigger nx+nz, lower on
     // screen) overlaps one further back, regardless of paint order. Written
-    // only when the rounded bucket actually changes: a year-to-year delta
-    // is usually small enough that most of the ~200 cards land back in the
-    // same integer bucket, and touching z-index forces the browser to
-    // re-evaluate stacking/paint order even when the value is identical —
-    // worth skipping on a property this many elements update every drag
-    // frame.
-    const zIndex = Math.round((nx + nz) * 1000);
+    // only when the (coarse — see COSMOS_ZINDEX_BUCKETS) bucket actually
+    // changes: touching z-index forces the browser to re-evaluate
+    // stacking/paint order even when the value is identical, worth
+    // skipping on a property this many elements update every drag frame.
+    const zIndex = Math.round((nx + nz) * COSMOS_ZINDEX_BUCKETS);
     if (entry.lastZIndex !== zIndex) {
       el.style.zIndex = String(zIndex);
       entry.lastZIndex = zIndex;
@@ -3550,17 +3556,63 @@ function renderCosmosGrid() {
 }
 
 let cosmosSummaryBuilt = false;
+let cosmosPlaybackFrame = null;
+const COSMOS_PLAYBACK_DURATION_MS = 9000;
+
+function stopCosmosPlayback() {
+  if (cosmosPlaybackFrame == null) return;
+  cancelAnimationFrame(cosmosPlaybackFrame);
+  cosmosPlaybackFrame = null;
+}
+
+// Sweeps the year slider from the very first year to the very last, once,
+// so a newly selected region's cluster reads as trending across the whole
+// dataset instead of sitting frozen wherever the slider happened to be.
+// Mirrors the trend chart's own scrubber: cheap live updates (slider
+// value/labels/card positions) every frame, committed through the real
+// applyYear pipeline (goToYear) only once, at the end.
+function playCosmosTimelineOnce() {
+  stopCosmosPlayback();
+  if (!cosmosActive || yearsData.length < 2) return;
+  const lastYear = yearsData[yearsData.length - 1];
+  const startTime = performance.now();
+
+  function frame(now) {
+    const t = Math.min(1, (now - startTime) / COSMOS_PLAYBACK_DURATION_MS);
+    const index = Math.round(t * (yearsData.length - 1));
+    const year = yearsData[index];
+    elements.yearSlider.value = year;
+    updateSliderProgress();
+    updateYearLabels(year);
+    positionCosmosCards(index);
+    if (t < 1) {
+      cosmosPlaybackFrame = requestAnimationFrame(frame);
+    } else {
+      cosmosPlaybackFrame = null;
+      goToYear(lastYear);
+    }
+  }
+  cosmosPlaybackFrame = requestAnimationFrame(frame);
+}
 
 // Toggles the region filter (see cosmosSelectedRegion/positionCosmosCards):
 // clicking the already-selected region clears it, same as the Globe/Map
 // legend's own selectLegendItem toggle. Cheap — only touches existing
-// cards' opacity/transform, never rebuilds the grid or DOM.
+// cards' opacity/transform, never rebuilds the grid or DOM. Selecting a
+// region (not clearing one) also replays the whole timeline once, so its
+// cluster's trend is visible immediately rather than needing a manual drag.
 function setCosmosRegionFilter(region) {
-  cosmosSelectedRegion = cosmosSelectedRegion === region ? null : region;
+  const isDeselecting = cosmosSelectedRegion === region;
+  cosmosSelectedRegion = isDeselecting ? null : region;
   elements.cosmosGroups.querySelectorAll(".cosmos-group-item").forEach((item) => {
     item.classList.toggle("active", item.dataset.region === cosmosSelectedRegion);
   });
   positionCosmosCards(currentYearIndex);
+  if (isDeselecting) {
+    stopCosmosPlayback();
+  } else {
+    playCosmosTimelineOnce();
+  }
 }
 
 // Static explanation of each region (see COSMOS_REGIONS) — doesn't depend
@@ -3583,7 +3635,7 @@ function renderCosmosSummary() {
       label.textContent = displayGroupLabel(region.label);
       header.append(swatch, label);
       const summary = document.createElement("p");
-      summary.className = "cosmos-group-summary";
+      summary.className = "cosmos-group-summary paragraph";
       summary.textContent = region.summary;
       item.append(header, summary);
       item.addEventListener("click", () => setCosmosRegionFilter(region.label));
@@ -3635,6 +3687,7 @@ function setCosmosActive(active) {
     tourController.stop();
     renderCosmosLayout();
   } else {
+    stopCosmosPlayback();
     // Each visit starts unfiltered rather than remembering the last
     // region — the summary panel's DOM is only built once (cosmosSummaryBuilt),
     // so its buttons' .active class needs clearing by hand here too, not
@@ -4140,8 +4193,10 @@ async function init() {
     });
     // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
     // goToYear() itself only dispatches "input"/"change" — using those to
-    // cancel would make the tour immediately cancel its own steps.
+    // cancel would make the tour immediately cancel its own steps. Same
+    // reasoning applies to the cosmos region-select playback below.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
+    elements.yearSlider.addEventListener("pointerdown", stopCosmosPlayback);
     elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
     elements.yearSlider.addEventListener("pointerleave", () => {
       elements.yearHoverValue.hidden = true;
