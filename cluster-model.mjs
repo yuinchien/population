@@ -1,6 +1,13 @@
 // Pure classification/scaling logic for the Cluster view — no DOM, no
 // d3-force import, so this stays trivially unit-testable independent of the
 // physics/rendering wiring in script.js.
+import {
+  CLUSTER_PHASES,
+  clusterPhaseForYear,
+} from "./cluster-config.mjs";
+
+export const PHASE_ONE_START_YEAR = CLUSTER_PHASES.historical.years[0];
+export const PHASE_ONE_END_YEAR = CLUSTER_PHASES.historical.years[1];
 
 // UN-defined global replacement-level fertility rate — matches
 // METRICS.fertility.referenceValue in metrics.mjs.
@@ -136,9 +143,6 @@ export function classifyCountry({
     : "silverDecline";
 }
 
-// Phase 1 ends before 2000; the year 2000 is the first year of Phase 2.
-export const PHASE_ONE_START_YEAR = 1950;
-export const PHASE_ONE_END_YEAR = 1999;
 // Life expectancy dividing line for Phase 1's two "growth" stories. Western
 // Europe/North America were already ~65-72 years across 1950-1980 (the
 // post-war "Golden Age"); most of the Global South was still ~35-55 and
@@ -153,9 +157,7 @@ export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 export function refineArchetypeForPhase(archetype, year, lifeExpectancy) {
   if (archetype == null) return null;
   const isPhaseOne =
-    year != null &&
-    year >= PHASE_ONE_START_YEAR &&
-    year <= PHASE_ONE_END_YEAR;
+    clusterPhaseForYear(year) === CLUSTER_PHASES.historical;
   if (!isPhaseOne) return archetype;
   if (lifeExpectancy == null) return null;
   return lifeExpectancy >= GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD

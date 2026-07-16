@@ -3,11 +3,18 @@ import { convertAlpha3ToAlpha2 } from "./data-loader.mjs";
 import {
   classifyCountry,
   forceStrengthFor,
-  PHASE_ONE_END_YEAR,
-  PHASE_ONE_START_YEAR,
   radiusForPopulation,
   refineArchetypeForPhase,
 } from "./cluster-model.mjs";
+import {
+  CLUSTER_ARCHETYPES,
+  clusterPhaseForYear,
+} from "./cluster-config.mjs";
+import {
+  clusterNodeAtPoint,
+  resolveClusterHover,
+  seededClusterPosition,
+} from "./cluster-layout.mjs";
 import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 
 const AXES = {
@@ -19,35 +26,9 @@ const AXES = {
   lifeExpectancy: "lifeExpectancy",
 };
 const RADIUS_OPTIONS = { minRadius: 9, maxRadius: 128 };
-const ARCHETYPE_LABELS = {
-  goldenBoom: "Golden Boom",
-  emergingSurge: "Emerging Surge",
-  growth: "Growth",
-  bufferedGrowth: "Migrant Buffers",
-  silverDecline: "Silver Decline",
-};
-const ANCHOR_RATIOS = {
-  emergingSurge: { x: 0.35, y: 0.4 },
-  goldenBoom: { x: 0.8, y: 0.65 },
-  growth: { x: 0.25, y: 0.38 },
-  bufferedGrowth: { x: 0.5, y: 0.8 },
-  silverDecline: { x: 0.78, y: 0.5 },
-};
 const LABEL_HEIGHT = 32;
 const LABEL_PADDING_X = 14;
 const LABEL_PARTICLE_GAP = 14;
-const PHASE_ONE_KEYS = new Set(["goldenBoom", "emergingSurge"]);
-const PHASE_TWO_KEYS = new Set([
-  "growth",
-  "bufferedGrowth",
-  "silverDecline",
-]);
-
-function isPhaseOneYear(year) {
-  return (
-    year != null && year >= PHASE_ONE_START_YEAR && year <= PHASE_ONE_END_YEAR
-  );
-}
 
 function percentile(sortedValues, fraction) {
   if (!sortedValues.length) return null;
@@ -86,7 +67,7 @@ export function createClusterController({
   let sortedNodes = [];
   let particleFont = null;
   let titleFont = null;
-  let annotationPhaseIsOne = null;
+  let annotationPhase = null;
   let forceXInstance = null;
   let forceYInstance = null;
   let collideForce = null;
@@ -129,9 +110,12 @@ export function createClusterController({
 
   function computeAnchors(width, height) {
     return Object.fromEntries(
-      Object.entries(ANCHOR_RATIOS).map(([key, ratio]) => [
+      Object.entries(CLUSTER_ARCHETYPES).map(([key, archetype]) => [
         key,
-        { x: width * ratio.x, y: height * ratio.y },
+        {
+          x: width * archetype.anchor.x,
+          y: height * archetype.anchor.y,
+        },
       ]),
     );
   }
@@ -161,7 +145,7 @@ export function createClusterController({
     context.font = ensureTitleFont();
     labelRects = [...activeKeys].map((archetype) => {
       const anchor = anchors[archetype];
-      const label = ARCHETYPE_LABELS[archetype];
+      const label = CLUSTER_ARCHETYPES[archetype].label;
       const width =
         context.measureText(label.toUpperCase()).width + LABEL_PADDING_X * 2;
       return {
@@ -176,10 +160,10 @@ export function createClusterController({
   }
 
   function updateAnnotationVisibility(year) {
-    const phaseIsOne = isPhaseOneYear(year);
-    if (phaseIsOne === annotationPhaseIsOne) return;
-    annotationPhaseIsOne = phaseIsOne;
-    updateLabelRects(phaseIsOne ? PHASE_ONE_KEYS : PHASE_TWO_KEYS);
+    const phase = clusterPhaseForYear(year);
+    if (phase === annotationPhase) return;
+    annotationPhase = phase;
+    updateLabelRects(phase.archetypes);
   }
 
   function clusterAnchorFor(node) {
@@ -254,7 +238,7 @@ export function createClusterController({
     context.setTransform(dpr, 0, 0, dpr, 0, 0);
     anchors = computeAnchors(displayWidth, displayHeight);
     const year = getYears()[currentYearIndex] ?? null;
-    updateLabelRects(isPhaseOneYear(year) ? PHASE_ONE_KEYS : PHASE_TWO_KEYS);
+    updateLabelRects(clusterPhaseForYear(year).archetypes);
     if (simulation) {
       reinitializeForces();
       simulation.alpha(1).restart();
@@ -263,15 +247,20 @@ export function createClusterController({
 
   function buildNodes() {
     if (nodesBuilt) return;
-    nodes = getCountries().map((country) => ({
-      country,
-      iso2: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
-      x: anchors.growth.x + (Math.random() - 0.5) * 40,
-      y: anchors.growth.y + (Math.random() - 0.5) * 40,
-      radius: 3,
-      archetype: null,
-      medianAge: null,
-    }));
+    nodes = getCountries().map((country) => {
+      const position = seededClusterPosition(
+        country.iso3,
+        anchors.growth,
+      );
+      return {
+        country,
+        iso2: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
+        ...position,
+        radius: 3,
+        archetype: null,
+        medianAge: null,
+      };
+    });
     nodesBuilt = true;
   }
 
@@ -408,9 +397,9 @@ export function createClusterController({
     const background = resolveCssColor("var(--color-scrim-strong)");
     const textColor = resolveCssColor("var(--color-text)");
     labelRects.forEach((rect) => {
-      context.fillStyle = background;
-      context.fillRect(rect.x, rect.y, rect.width, rect.height);
-      context.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      // context.fillStyle = background;
+      // context.fillRect(rect.x, rect.y, rect.width, rect.height);
+      // context.strokeRect(rect.x, rect.y, rect.width, rect.height);
       context.fillStyle = textColor;
       context.fillText(
         rect.label.toUpperCase(),
@@ -459,9 +448,9 @@ export function createClusterController({
       }
     });
     canvas.addEventListener("pointerleave", () => {
-      const hadHoveredNode = hoveredNode !== null;
-      hoveredNode = null;
-      if (hadHoveredNode) render();
+      const hover = resolveClusterHover(hoveredNode, null);
+      hoveredNode = hover.node;
+      if (hover.changed) render();
       hideTooltip();
     });
     canvas.addEventListener("click", (event) => {
