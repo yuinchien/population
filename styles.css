@@ -181,6 +181,9 @@ body.view-cluster #overlayMain {
     z-index: var(--z-panel);
     pointer-events: auto;
 }
+body.view-cluster #legend {
+    pointer-events: none;
+}
 
 .footer {
     flex: 1;
