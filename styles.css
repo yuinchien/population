@@ -1021,12 +1021,12 @@ body.country-detail #colorMode {
 }
 
 .country-chart-marker-line {
-    stroke: var(--detail-color);
+    stroke: var(--color-text);
     stroke-width: var(--chart-stroke-width);
 }
 
 .country-chart-marker-dot {
-    fill: var(--detail-color);
+    fill: var(--color-text);
     stroke: var(--color-bg);
     stroke-width: 1;
 }
