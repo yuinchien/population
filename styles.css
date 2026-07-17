@@ -581,14 +581,13 @@ body.country-detail #colorMode {
     align-items: center;
     gap: 8px;
     width: 480px;
+    height: 80px;
 }
 
 #tooltip,
-#chartTooltip {
+#chartTooltip,
+#clusterArchetypeTooltip {
     position: fixed;
-    padding: 2px 6px;
-    border-radius: 12px;
-    white-space: nowrap;
     pointer-events: none;
     /* --z-tooltip — above --z-panel (.detail-panel/#buttonsContainer), both can be
        open while a chart underneath them (sparklines, the trend chart) is
@@ -596,6 +595,13 @@ body.country-detail #colorMode {
        behind. */
     z-index: var(--z-tooltip);
     font-weight: 500;
+}
+
+#tooltip,
+#chartTooltip {
+    padding: 2px 6px;
+    border-radius: 12px;
+    white-space: nowrap;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -609,18 +615,25 @@ body.country-detail #colorMode {
     transform: translate(-50%, -130%);
 }
 
-/* Cluster archetype titles (showClusterArchetypeTooltip) need more than the
-   single-line nowrap pill #chartTooltip is otherwise built for — this
-   modifier relaxes just enough of that to fit a title + a short summary
-   list instead of adding a second tooltip element. */
-#chartTooltip.tooltip-wrap {
+/* Cluster archetype descriptions (showClusterArchetypeTooltip) need more
+   than the single-line nowrap pill #chartTooltip is built for — a separate
+   element instead of a shared one with a toggled modifier class, since
+   #chartTooltip's compact pill styling is used broadly (chart lines,
+   sparklines, cluster particles) and stays that way unconditionally. */
+#clusterArchetypeTooltip {
+    display: flex;
     flex-direction: column;
     align-items: flex-start;
-    white-space: normal;
-    max-width: 340px;
+    width: 340px;
     padding: 10px 12px;
     gap: 4px;
     border-radius: 10px;
+    /* #chartTooltip's own -130% (relative to its own, much smaller height)
+       would push this taller paragraph box far above the cursor instead of
+       a small gap. A fixed offset keeps the gap constant regardless of how
+       long the summary text runs: -100% puts the box's bottom edge level
+       with the cursor, then 10px lifts it just clear of the pointer. */
+    transform: translate(-50%, calc(-100% - 24px));
 }
 
 .tooltip-line {

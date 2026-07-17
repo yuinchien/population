@@ -13,6 +13,7 @@ export function getAppElements(root = document) {
     status: root.querySelector("#status"),
     tooltip: root.querySelector("#tooltip"),
     chartTooltip: root.querySelector("#chartTooltip"),
+    clusterArchetypeTooltip: root.querySelector("#clusterArchetypeTooltip"),
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
     yearHoverValue: root.querySelector("#yearHoverValue"),

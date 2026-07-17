@@ -1709,11 +1709,6 @@ function createTooltipLine(text, color = null) {
 function showChartTooltip(event, text, color = null) {
   if (!text) return;
   elements.chartTooltip.hidden = false;
-  // Defensive: undoes showClusterArchetypeTooltip's wrapping modifier in
-  // case this fires without going through that function's own
-  // mutually-exclusive hide call first (see cluster-controller.mjs's
-  // pointermove handler).
-  elements.chartTooltip.classList.remove("tooltip-wrap");
   elements.chartTooltip.replaceChildren(createTooltipLine(text, color));
   elements.chartTooltip.style.left = `${event.clientX}px`;
   elements.chartTooltip.style.top = `${event.clientY}px`;
@@ -1723,30 +1718,25 @@ function hideChartTooltip() {
   elements.chartTooltip.hidden = true;
 }
 
-// Cluster-only: shows an archetype's full description (title + summary
-// paragraph) on hovering its canvas-drawn title, instead of the single-line
-// country-name pill showChartTooltip renders — reuses the same
-// #chartTooltip element (the two are mutually exclusive, never shown at
-// once) via a wrapping modifier class rather than a second tooltip element.
+// Cluster-only: shows an archetype's full description on hovering its
+// canvas-drawn title — a dedicated element rather than reusing
+// #chartTooltip, since that one's compact single-line pill styling is used
+// broadly elsewhere (chart lines, sparklines, cluster particles) and this
+// needs to wrap a full paragraph instead.
 function showClusterArchetypeTooltip(event, archetype) {
   const definition = CLUSTER_ARCHETYPES[archetype];
   if (!definition) return;
-  elements.chartTooltip.hidden = false;
-  elements.chartTooltip.classList.add("tooltip-wrap");
-  // const title = document.createElement("div");
-  // title.className = "tooltip-line mono-uppercase";
-  // title.textContent = definition.label;
+  elements.clusterArchetypeTooltip.hidden = false;
   const summary = document.createElement("p");
   summary.className = "tooltip-summary";
   summary.textContent = definition.summary;
-  elements.chartTooltip.replaceChildren(summary);
-  elements.chartTooltip.style.left = `${event.clientX}px`;
-  elements.chartTooltip.style.top = `${event.clientY}px`;
+  elements.clusterArchetypeTooltip.replaceChildren(summary);
+  elements.clusterArchetypeTooltip.style.left = `${event.clientX}px`;
+  elements.clusterArchetypeTooltip.style.top = `${event.clientY}px`;
 }
 
 function hideClusterArchetypeTooltip() {
-  elements.chartTooltip.hidden = true;
-  elements.chartTooltip.classList.remove("tooltip-wrap");
+  elements.clusterArchetypeTooltip.hidden = true;
 }
 
 function openCountryDetail(country) {
