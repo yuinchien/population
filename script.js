@@ -35,7 +35,10 @@ import {
 } from "./view-config.mjs";
 import { getAppElements } from "./ui-elements.mjs";
 import { buildCountrySummary } from "./country-summary-model.mjs";
-import { buildCountryDemographicNarrative } from "./country-ageing-narrative.mjs";
+import {
+  buildCountryDemographicNarrative,
+  currentAgeingStage,
+} from "./country-ageing-narrative.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -919,6 +922,7 @@ function showStatus(text, { instant = false } = {}) {
 }
 
 function renderCountrySummary(summary) {
+  elements.detailSummary.hidden = false;
   const caption = document.createElement("div");
   caption.className = "caption mono-uppercase";
   caption.textContent = summary.caption;
@@ -947,6 +951,7 @@ function renderCountrySummary(summary) {
 }
 
 function renderDetailStatus(status) {
+  elements.detailSummary.hidden = false;
   elements.detailFlag.hidden = true;
   elements.detailFlag.style.backgroundImage = "";
   const badge = document.createElement("span");
@@ -1466,12 +1471,11 @@ function renderDetailPanel() {
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
-  // Keep the summary in the panel's second grid row. Country detail uses the
-  // flexible third row; moving the summary inside it would leave row two
-  // empty and allow the min-height:0 chart container to collapse there.
-  elements.detailTable.before(elements.detailSummary);
+  // elements.detailPanel.insertBefore(elements.detailSummary, elements.detailHeader);
+  elements.detailSummary.hidden = false;
   elements.countryDetail.hidden = true;
-  elements.detailTable.hidden = false;
+  elements.detailHeader.hidden = false;
+  elements.detailRows.hidden = false;
   elements.detailPanel.hidden = false;
   updateViewModeAvailability();
   updateStatusPanel(year, { groupCountries: countries });
@@ -1643,11 +1647,12 @@ const COUNTRY_CHART_LABEL_MIN_Y = 12;
 // The pyramid draws in a fixed viewBox coordinate space (the SVG scales
 // responsively via preserveAspectRatio), so unlike the line chart it never
 // has to measure its rendered pixel width.
-const COUNTRY_PYRAMID_VIEW = { width: 360, height: 300 };
-const COUNTRY_PYRAMID_PADDING = { top: 22, right: 8, bottom: 22, left: 8 };
-const COUNTRY_PYRAMID_CENTER_GAP = 38; // gutter for the age labels
+const COUNTRY_PYRAMID_VIEW = { width: 360, height: 240 };
+// Generous left padding reserves an age-axis column down the left edge; the
+// two sides meet at the center with no gutter.
+const COUNTRY_PYRAMID_PADDING = { top: 22, right: 8, bottom: 22, left: 30 };
 // Label the age bands whose starting age is a multiple of this, keeping the
-// center axis readable without a label on all 21 bands.
+// left axis readable without a label on all 21 bands.
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
 const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "fertility",
@@ -1754,6 +1759,13 @@ function hideClusterArchetypeTooltip() {
   elements.clusterArchetypeTooltip.hidden = true;
 }
 
+function divEl(className, text = "") {
+  const el = document.createElement("div");
+  el.className = className;
+  el.textContent = text;
+  return el;
+}
+
 function openCountryDetail(country) {
   if (!country || currentYearIndex < 0) return;
   // A row click in the chart view's own table drills into the same full
@@ -1782,14 +1794,13 @@ function renderCountryDetail() {
     `#${colorFor(country).getHexString()}`,
   );
   elements.detailTitle.textContent = country.name;
+  elements.detailFlag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+  elements.detailFlag.hidden = false;
 
-  elements.detailTable.hidden = true;
+  elements.detailHeader.hidden = true;
+  elements.detailRows.hidden = true;
   elements.countryDetail.hidden = false;
-  // Country detail's hero is a two-column composition: summary on the left,
-  // population chart on the right, followed by full-width sparklines.
-  // Keep the structured summary inside that grid instead of leaving it in
-  // the panel's standalone group-summary row.
-  elements.countryDetail.prepend(elements.detailSummary);
+  // elements.countryDetail.prepend(elements.detailSummary);
   // Laid out (panel visible, chart card sized) before measuring its actual
   // width in buildCountryCharts() — otherwise clientWidth reads 0 while the
   // panel is still display:none, and the chart falls back to a fixed size
@@ -2316,7 +2327,7 @@ function updateCountryDetailForYear(year) {
 // axis rescaling underneath.
 function buildCountryPyramid(country) {
   countryPyramidLayout = null;
-  const svg = elements.countryPyramid;
+  const pyramid = elements.countryPyramid;
   const countryData = countryAgeStructure?.countries?.[country.iso3];
   const gridYears = countryAgeStructure?.years;
   const ageGroups = countryAgeStructure?.ageGroups;
@@ -2325,7 +2336,7 @@ function buildCountryPyramid(country) {
   // handler re-renders the detail once the data lands).
   if (!countryData || !gridYears || !ageGroups) {
     elements.countryPyramidCard.hidden = true;
-    svg.replaceChildren();
+    pyramid.replaceChildren();
     return;
   }
   elements.countryPyramidCard.hidden = false;
@@ -2342,66 +2353,72 @@ function buildCountryPyramid(country) {
     width,
     height,
     padding: pad,
-    centerGap: COUNTRY_PYRAMID_CENTER_GAP,
   });
 
   const children = [];
-  children.push(
-    svgEl("text", {
-      class: "pyramid-sex-label male",
-      x: geo.centerX - COUNTRY_PYRAMID_CENTER_GAP / 2,
-      y: pad.top - 8,
-      "text-anchor": "end",
-    }),
-  );
-  children.push(
-    svgEl("text", {
-      class: "pyramid-sex-label female",
-      x: geo.centerX + COUNTRY_PYRAMID_CENTER_GAP / 2,
-      y: pad.top - 8,
-      "text-anchor": "start",
-    }),
-  );
-  children[0].textContent = "Male";
-  children[1].textContent = "Female";
+  // Headers centered over each half (male fills pad.left→center, female
+  // center→right edge).
+  const maleLabel = divEl("pyramid-sex-label male", "Male");
+  maleLabel.style.left = `${(((pad.left + geo.centerX) / 2) / width) * 100}%`;
+  maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
+  const femaleLabel = divEl("pyramid-sex-label female", "Female");
+  femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
+  femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
+  children.push(maleLabel, femaleLabel);
 
   const bars = geo.bars.map((bar) => {
     const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;
-    const maleRect = svgEl("rect", {
-      class: `${cls} male`,
-      x: bar.male.x,
-      y: bar.y,
-      width: bar.male.width,
-      height: bar.height,
-      rx: 1,
-    });
-    const femaleRect = svgEl("rect", {
-      class: `${cls} female`,
-      x: bar.female.x,
-      y: bar.y,
-      width: bar.female.width,
-      height: bar.height,
-      rx: 1,
-    });
-    children.push(maleRect, femaleRect);
-    // Age label centered in the gutter, on select bands only.
+    const maleBar = divEl(`${cls} male`);
+    const femaleBar = divEl(`${cls} female`);
+    setPyramidBarStyle(maleBar, bar.male.x, bar.y, bar.male.width, bar.height);
+    setPyramidBarStyle(
+      femaleBar,
+      bar.female.x,
+      bar.y,
+      bar.female.width,
+      bar.height,
+    );
+    children.push(maleBar, femaleBar);
+    // Age label down the left axis column, on select bands only.
     if (ageBandStart(bar.label) % COUNTRY_PYRAMID_AGE_LABEL_STEP === 0) {
-      const label = svgEl("text", {
-        class: "pyramid-age-label",
-        x: geo.centerX,
-        y: bar.y + bar.height / 2,
-        "text-anchor": "middle",
-        "dominant-baseline": "central",
-      });
-      label.textContent = ageBandStart(bar.label);
+      const label = divEl("pyramid-age-label", ageBandStart(bar.label));
+      label.style.left = "0";
+      label.style.top = `${((bar.y + bar.height / 2) / height) * 100}%`;
       children.push(label);
     }
-    return { maleRect, femaleRect };
+    return { maleBar, femaleBar };
   });
 
-  svg.replaceChildren(...children);
+  pyramid.replaceChildren(...children);
   countryPyramidLayout = { bars, countryData, gridYears, ageGroups, maxShare };
   updateCountryPyramidForYear(initialYear);
+}
+
+function setPyramidBarStyle(el, x, y, width, height) {
+  el.style.left = `${(x / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
+  el.style.top = `${(y / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
+  el.style.width = `${(width / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
+  el.style.height = `${(height / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
+}
+
+function updateCountryPyramidStage(country, year) {
+  if (!elements.countryPyramidStage || !country) return;
+  const index = yearsData.indexOf(year);
+  const olderShare =
+    index >= 0
+      ? countryDemographicMetrics?.countries?.[country.iso3]
+          ?.olderPopulationShare?.[index]
+      : null;
+  const stage = currentAgeingStage(olderShare);
+  if (!stage) {
+    elements.countryPyramidStage.textContent = "";
+    elements.countryPyramidStage.title = "";
+    return;
+  }
+  const label = stage.label.replace(/^\w/, (char) => char.toUpperCase());
+  const comparator = stage.includesThreshold ? "at least" : "over";
+  elements.countryPyramidStage.textContent = label;
+  elements.countryPyramidStage.title = `${label}: ${comparator} ${stage.thresholdCopy} of the population is aged 65 or older.`;
 }
 
 // Morphs the pyramid to a given year: interpolates the 5-year grid and
@@ -2416,6 +2433,7 @@ function updateCountryPyramidForYear(year) {
     year,
   );
   if (!shares) return;
+  updateCountryPyramidStage(selectedCountry, year);
   const geo = buildPyramidGeometry({
     ...shares,
     ageGroups: layout.ageGroups,
@@ -2423,18 +2441,21 @@ function updateCountryPyramidForYear(year) {
     width: COUNTRY_PYRAMID_VIEW.width,
     height: COUNTRY_PYRAMID_VIEW.height,
     padding: COUNTRY_PYRAMID_PADDING,
-    centerGap: COUNTRY_PYRAMID_CENTER_GAP,
   });
   geo.bars.forEach((bar, i) => {
-    const { maleRect, femaleRect } = layout.bars[i];
-    maleRect.setAttribute("x", bar.male.x);
-    maleRect.setAttribute("width", bar.male.width);
-    femaleRect.setAttribute("x", bar.female.x);
-    femaleRect.setAttribute("width", bar.female.width);
+    const { maleBar, femaleBar } = layout.bars[i];
+    setPyramidBarStyle(maleBar, bar.male.x, bar.y, bar.male.width, bar.height);
+    setPyramidBarStyle(
+      femaleBar,
+      bar.female.x,
+      bar.y,
+      bar.female.width,
+      bar.height,
+    );
   });
-  if (elements.countryPyramidYear) {
-    elements.countryPyramidYear.textContent = year;
-  }
+  // if (elements.countryPyramidYear) {
+  //   elements.countryPyramidYear.textContent = year;
+  // }
 }
 
 // Population comes from the dots dataset (same series peakYear/dots are

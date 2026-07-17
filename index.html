@@ -393,12 +393,15 @@
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <div id="detailSummary" class="detail-summary paragraph"></div>
-            <div id="detailTable" class="detail-table">
-                <div id="detailHeader" class="detail-row header mono-uppercase"></div>
-                <div id="detailRows" class="detail-rows no-scrollbar"></div>
-            </div>
+
+            <div id="detailSummary" class="detail-summary paragraph" hidden></div>
+
+            <div id="detailHeader" class="detail-row header mono-uppercase"></div>
+            <div id="detailRows" class="detail-rows no-scrollbar"></div>
+
+
             <div id="countryDetail" class="country-detail" hidden>
+
                 <div class="country-chart-card">
                     <svg
                         id="countryChart"
@@ -407,24 +410,21 @@
                         preserveAspectRatio="none"
                     ></svg>
                 </div>
-                <div id="countrySparklines" class="country-sparklines"></div>
-                <div id="countryPyramidCard" class="country-pyramid-card" hidden>
-                    <div class="country-pyramid-header">
-                        <span class="country-pyramid-label mono-uppercase"
-                            >Age structure</span
-                        >
-                        <span
-                            id="countryPyramidYear"
-                            class="country-pyramid-year mono-uppercase"
-                        ></span>
+
+                <div id="countryPyramidCard" class="sparkline-card" hidden>
+                    <div class="sparkline-caption">
+                        <div class="sparkline-label mono-uppercase">Age structure</div>
+                        <div id="countryPyramidStage" class="sparkline-value"></div>
                     </div>
-                    <svg
+
+                    <div
                         id="countryPyramid"
                         class="country-pyramid"
-                        viewBox="0 0 360 300"
-                        preserveAspectRatio="xMidYMid meet"
-                    ></svg>
+                    ></div>
                 </div>
+
+                <div id="countrySparklines" class="country-sparklines"></div>
+
                 <div id="countrySimilar" class="country-similar" hidden>
                     <span class="country-similar-label mono-uppercase"
                         >Next to see</span
@@ -432,6 +432,7 @@
                     <div id="countrySimilarList" class="country-similar-list"></div>
                 </div>
             </div>
+
         </section>
         <div id="tooltip" class="glass" hidden></div>
         <div id="chartTooltip" class="glass" hidden></div>

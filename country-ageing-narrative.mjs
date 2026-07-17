@@ -48,7 +48,7 @@ function meetsStage(share, stage) {
     : share > stage.threshold;
 }
 
-function currentAgeingStage(share) {
+export function currentAgeingStage(share) {
   return AGEING_STAGES.find((stage) => meetsStage(share, stage)) ?? null;
 }
 
