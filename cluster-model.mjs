@@ -194,20 +194,12 @@ export function classifyCountry({
 // climbing fast over the same period — this threshold sits between them.
 export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 
-// The historical phase deliberately exposes only two narratives. During the
-// 1990s transition, Migrant Momentum and Silver Decline can surface when the
-// underlying data supports them while growth profiles retain the historical
-// split. From 2000 onward, the coarse classifier's full result passes through.
+// Phase 1 (the postwar boom) deliberately exposes only two narratives, split
+// by life expectancy. Phase 2 (the divergence, 1990 onward) passes the coarse
+// classifier's full three-way result straight through.
 export function refineArchetypeForPhase(archetype, year, lifeExpectancy) {
   if (archetype == null) return null;
-  const phase = clusterPhaseForYear(year);
-  if (phase === CLUSTER_PHASES.projection) return archetype;
-  if (
-    phase === CLUSTER_PHASES.transition &&
-    (archetype === "bufferedGrowth" || archetype === "silverDecline")
-  ) {
-    return archetype;
-  }
+  if (clusterPhaseForYear(year) === CLUSTER_PHASES.divergence) return archetype;
   if (lifeExpectancy == null) return null;
   return lifeExpectancy >= GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD
     ? "goldenBoom"

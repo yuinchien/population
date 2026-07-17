@@ -85,22 +85,16 @@ test("clusterBoundaryCorrection keeps a particle inside its cluster territory", 
   );
 });
 
-test("cluster phases introduce Migrant Momentum during the 1990s transition", () => {
+test("cluster splits into two phases at the 1990 boundary", () => {
   assert.equal(clusterPhaseForYear(1989), CLUSTER_PHASES.historical);
-  assert.equal(clusterPhaseForYear(1990), CLUSTER_PHASES.transition);
-  assert.equal(clusterPhaseForYear(1999), CLUSTER_PHASES.transition);
-  assert.equal(clusterPhaseForYear(2000), CLUSTER_PHASES.projection);
+  assert.equal(clusterPhaseForYear(1990), CLUSTER_PHASES.divergence);
+  assert.equal(clusterPhaseForYear(2000), CLUSTER_PHASES.divergence);
+  assert.equal(clusterPhaseForYear(2100), CLUSTER_PHASES.divergence);
   assert.deepEqual(CLUSTER_PHASES.historical.archetypes, [
     "goldenBoom",
     "emergingSurge",
   ]);
-  assert.deepEqual(CLUSTER_PHASES.transition.archetypes, [
-    "goldenBoom",
-    "emergingSurge",
-    "bufferedGrowth",
-    "silverDecline",
-  ]);
-  assert.deepEqual(CLUSTER_PHASES.projection.archetypes, [
+  assert.deepEqual(CLUSTER_PHASES.divergence.archetypes, [
     "growth",
     "bufferedGrowth",
     "silverDecline",

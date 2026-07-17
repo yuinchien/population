@@ -293,41 +293,38 @@ test("Phase 1 splits countries by life expectancy", () => {
   );
 });
 
-test("the 1990s transition surfaces Migrant Momentum before the full projection phase", () => {
+test("Phase 2 begins at 1990, passing the classifier's result straight through", () => {
   assert.equal(
     refineArchetypeForPhase("growth", PHASE_ONE_START_YEAR, 70),
     "goldenBoom",
-    "window start is inclusive",
+    "Phase 1 window start is inclusive",
   );
   assert.equal(
     refineArchetypeForPhase("growth", PHASE_ONE_END_YEAR, 70),
     "goldenBoom",
-    "window end is inclusive",
+    "Phase 1 window end (1989) is inclusive",
   );
   assert.equal(
     refineArchetypeForPhase("growth", PHASE_ONE_START_YEAR - 1, 70),
     "growth",
-    "before the window, plain growth is unchanged",
+    "before Phase 1, plain growth is unchanged",
+  );
+  assert.equal(
+    refineArchetypeForPhase("growth", 1990, 70),
+    "growth",
+    "1990 is the first Phase 2 year — the classifier's result passes through",
   );
   assert.equal(
     refineArchetypeForPhase("bufferedGrowth", 1990, 70),
     "bufferedGrowth",
-    "1990 is the first year Migrant Momentum can surface",
-  );
-  assert.equal(
-    refineArchetypeForPhase("growth", 1990, 70),
-    "goldenBoom",
-    "other profiles retain the historical narratives through 1999",
   );
   assert.equal(
     refineArchetypeForPhase("silverDecline", 1990, 70),
     "silverDecline",
-    "Silver Decline can surface during the transition for trajectories like Japan",
   );
   assert.equal(
     refineArchetypeForPhase("growth", 2000, 40),
     "growth",
-    "2000 is the first Phase 2 year",
   );
   assert.equal(refineArchetypeForPhase("growth", null, 70), "growth");
 });

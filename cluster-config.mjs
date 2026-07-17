@@ -31,29 +31,28 @@ export const CLUSTER_ARCHETYPES = {
   },
 };
 
+// Two phases with a single hard cut at 1990 — no overlapping transition, so
+// each chapter carries one clear idea. Phase 1 is the postwar boom, when the
+// whole world was growing and the only distinction was development stage
+// (Golden Boom vs Emerging Surge). Phase 2 is the divergence, when the
+// fertility transition fractures the world into three fates (Natural
+// Expansion / Migrant Momentum / Silver Decline). Its window spans 1990–2100,
+// mixing observed and projected years — the split is a narrative pivot, not a
+// data-source boundary.
 export const CLUSTER_PHASES = {
   historical: {
     years: [1950, 1989],
     archetypes: ["goldenBoom", "emergingSurge"],
   },
-  transition: {
-    years: [1990, 1999],
-    archetypes: [
-      "goldenBoom",
-      "emergingSurge",
-      "bufferedGrowth",
-      "silverDecline",
-    ],
-  },
-  projection: {
-    years: [2000, 2100],
+  divergence: {
+    years: [1990, 2100],
     archetypes: ["growth", "bufferedGrowth", "silverDecline"],
   },
 };
 
 export function clusterPhaseForYear(year) {
-  if (!Number.isFinite(year)) return CLUSTER_PHASES.projection;
+  if (!Number.isFinite(year)) return CLUSTER_PHASES.divergence;
   return Object.values(CLUSTER_PHASES).find(
     (phase) => year >= phase.years[0] && year <= phase.years[1],
-  ) ?? CLUSTER_PHASES.projection;
+  ) ?? CLUSTER_PHASES.divergence;
 }
