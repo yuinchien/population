@@ -784,9 +784,8 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const yearLead = leadText
     ? ""
     : `${year}${isProjected ? " projection" : ""}:`;
-  typeStatus(
+  showStatus(
     [yearLead, leadText, globalPopulationStatus].filter(Boolean).join(" "),
-    elements.status,
     { instant },
   );
 }
@@ -894,11 +893,8 @@ const tourController = createTourController({
 // drags. Removing the animation class and forcing a reflow before re-adding
 // it restarts the CSS fade even though the element itself persists across
 // year changes.
-function typeStatus(
-  text,
-  el = elements.status,
-  { instant = false } = {},
-) {
+function showStatus(text, { instant = false } = {}) {
+  const el = elements.status;
   const textNode = document.createElement("div");
   textNode.textContent = text;
   el.replaceChildren(textNode);
