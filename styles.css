@@ -609,11 +609,36 @@ body.country-detail #colorMode {
     transform: translate(-50%, -130%);
 }
 
+/* Cluster archetype titles (showClusterArchetypeTooltip) need more than the
+   single-line nowrap pill #chartTooltip is otherwise built for — this
+   modifier relaxes just enough of that to fit a title + a short summary
+   list instead of adding a second tooltip element. */
+#chartTooltip.tooltip-wrap {
+    flex-direction: column;
+    align-items: flex-start;
+    white-space: normal;
+    max-width: 296px;
+    padding: 10px 12px;
+    gap: 4px;
+    border-radius: 10px;
+}
+
 .tooltip-line {
     display: flex;
     align-items: center;
     gap: 4px;
     font-weight: 500;
+}
+
+.tooltip-summary {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    font-weight: 400;
+    line-height: 1.35;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--color-muted);
 }
 
 .detail-panel {

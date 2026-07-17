@@ -56,6 +56,8 @@ export function createClusterController({
   colorFor,
   showTooltip,
   hideTooltip,
+  showArchetypeTooltip,
+  hideArchetypeTooltip,
   onCountryClick,
 }) {
   let active = false;
@@ -444,6 +446,25 @@ export function createClusterController({
     return null;
   }
 
+  // labelRects are already in the same canvas-relative CSS-pixel space as
+  // nodeAtClientPoint's x/y (see updateLabelRects/computeAnchors — both
+  // derive from canvas.clientWidth/clientHeight, not the dpr-scaled
+  // backing-store size), so no separate coordinate conversion is needed.
+  function labelRectAtClientPoint(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return (
+      labelRects.find(
+        (label) =>
+          x >= label.x &&
+          x <= label.x + label.width &&
+          y >= label.y &&
+          y <= label.y + label.height,
+      ) ?? null
+    );
+  }
+
   function setupInteraction() {
     if (interactionBound) return;
     canvas.addEventListener("pointermove", (event) => {
@@ -451,18 +472,33 @@ export function createClusterController({
       const hoverChanged = node !== hoveredNode;
       hoveredNode = node;
       if (hoverChanged) paintFrame();
-      canvas.style.cursor = node ? "pointer" : "default";
       if (node) {
+        canvas.style.cursor = "pointer";
+        hideArchetypeTooltip();
         showTooltip(event, node.country.name, colorFor(node.country, colorMode));
-      } else {
-        hideTooltip();
+        return;
       }
+      // Titles aren't click targets (see the click handler below, which
+      // only ever looks up nodeAtClientPoint) — just a "help" cursor to
+      // signal there's more context on hover, distinct from particles'
+      // "pointer".
+      const label = labelRectAtClientPoint(event.clientX, event.clientY);
+      if (label) {
+        canvas.style.cursor = "help";
+        hideTooltip();
+        showArchetypeTooltip(event, label.archetype);
+        return;
+      }
+      canvas.style.cursor = "default";
+      hideTooltip();
+      hideArchetypeTooltip();
     });
     canvas.addEventListener("pointerleave", () => {
       const hover = resolveClusterHover(hoveredNode, null);
       hoveredNode = hover.node;
       if (hover.changed) paintFrame();
       hideTooltip();
+      hideArchetypeTooltip();
     });
     canvas.addEventListener("click", (event) => {
       const node = nodeAtClientPoint(event.clientX, event.clientY);
@@ -498,6 +534,7 @@ export function createClusterController({
     active = false;
     hoveredNode = null;
     hideTooltip();
+    hideArchetypeTooltip();
     simulation?.stop();
     simulation = null;
     forceXInstance = null;
