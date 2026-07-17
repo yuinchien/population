@@ -337,24 +337,16 @@ button.milestone-nav-btn {
     text-shadow: var(--text-shadow-legibility);
 }
 
-.status-cursor {
-    display: inline-block;
-    width: min(0.4em, 10px);
-    height: 1em;
-    margin-left: 1px;
-    background: var(--color-text);
-    vertical-align: -0.15em;
-    animation: status-cursor-blink 1s steps(1) infinite;
+.status-fade-in {
+    animation: status-fade-in 0.4s ease-out;
 }
 
-@keyframes status-cursor-blink {
-    0%,
-    50% {
-        opacity: 1;
-    }
-    50.01%,
-    100% {
+@keyframes status-fade-in {
+    from {
         opacity: 0;
+    }
+    to {
+        opacity: 1;
     }
 }
 

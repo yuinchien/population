@@ -354,7 +354,6 @@ let chartCountryPickerExpanded = false;
 // Separate from detailSort (the group table's own sort) so switching one
 // doesn't surprise the other the next time it's opened.
 let chartTableSort = { key: "population", direction: "desc" };
-let statusTypingToken = 0;
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -890,43 +889,24 @@ const tourController = createTourController({
   onProgressStart: animateTourProgress,
 });
 
-// Types the status line out character-by-character with a blinking cursor,
-// so the peak-year callout actually catches the eye instead of silently
-// swapping out as the year slider drags. Each call invalidates any typing
-// still in flight (via the token) so rapid slider drags don't leave stale
-// timers racing to finish an earlier, superseded string. The token is
-// shared across targets rather than per-element: only one of #status /
-// #detailSummary is ever being typed into at a time (they're mutually
-// exclusive with the detail panel's visibility), so a new call anywhere
-// should still invalidate whatever was previously in flight.
+// Swaps the status line's text in with a quick fade, so the peak-year
+// callout catches the eye instead of silently changing as the year slider
+// drags. Removing the animation class and forcing a reflow before re-adding
+// it restarts the CSS fade even though the element itself persists across
+// year changes.
 function typeStatus(
   text,
   el = elements.status,
   { instant = false } = {},
 ) {
-  const token = ++statusTypingToken;
-  if (instant) {
-    const textNode = document.createElement("div");
-    textNode.textContent = text;
-    el.replaceChildren(textNode);
-    return;
-  }
+  const textNode = document.createElement("div");
+  textNode.textContent = text;
+  el.replaceChildren(textNode);
+  if (instant) return;
 
-  const textNode = document.createTextNode("");
-  const cursor = document.createElement("span");
-  cursor.className = "status-cursor";
-  el.replaceChildren(textNode, cursor);
-
-  let i = 0;
-  const step = () => {
-    if (token !== statusTypingToken) return;
-    textNode.textContent = text.slice(0, i);
-    if (i < text.length) {
-      i++;
-      setTimeout(step, 15);
-    }
-  };
-  step();
+  el.classList.remove("status-fade-in");
+  void el.offsetWidth;
+  el.classList.add("status-fade-in");
 }
 
 function renderCountrySummary(summary) {
