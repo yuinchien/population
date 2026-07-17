@@ -18,7 +18,7 @@ test("country summary describes a future selected year and peak", () => {
     historicalCutoffYear: 2023,
     formatPopulation: (value) => `${value}M`,
   });
-  assert.equal(summary.caption, "Projection");
+  assert.equal(summary.caption, 2036);
   assert.equal(summary.flagUrl, "./flags/4x3/in.svg");
   assert.match(summaryText(summary), /India/);
   assert.match(summaryText(summary), /peaks near 1700M/);
@@ -37,7 +37,7 @@ test("country summary uses historical tense for past years", () => {
     historicalCutoffYear: 2023,
     formatPopulation: String,
   });
-  assert.equal(summary.caption, "Historical");
+  assert.equal(summary.caption, 2000);
   assert.match(summaryText(summary), /was home/);
   assert.match(summaryText(summary), /This was its peak/);
 });

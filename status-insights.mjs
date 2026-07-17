@@ -270,7 +270,7 @@ export function buildDetailStatus({
 }) {
   const label = displayGroupLabel(legend.label);
   const projected = isProjected ? "projected " : "";
-  const period = isProjected ? "projection" : "historical";
+  const caption = year;
   const populationEntries = countriesWithNumericValue(
     countries,
     (country) => country.populations[currentYearIndex],
@@ -278,7 +278,7 @@ export function buildDetailStatus({
 
   if (!populationEntries.length) {
     return {
-      period,
+      caption,
       text: `No ${projected}country population data is available for ${label} in ${year}.`,
     };
   }
@@ -349,7 +349,7 @@ export function buildDetailStatus({
       Number.isFinite(medianAge.otherAverage) &&
       medianAge.average - medianAge.otherAverage >= 4
     ) {
-      return { period, text: `${label} has the oldest age profile among income groups in ${year}. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.` };
+      return { caption, text: `${label} has the oldest age profile among income groups in ${year}. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${oldest.country.name} is highest at ${formatYears(oldest.value)}.` };
     }
 
     if (
@@ -357,7 +357,7 @@ export function buildDetailStatus({
       Number.isFinite(medianAge.otherAverage) &&
       medianAge.otherAverage - medianAge.average >= 4
     ) {
-      return { period, text: `${label} has the youngest age profile among income groups in ${year}. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.` };
+      return { caption, text: `${label} has the youngest age profile among income groups in ${year}. Median age averages ${formatAverageYears(medianAge.average)}, versus ${formatAverageYears(medianAge.otherAverage)} outside this group; ${youngest.country.name} is lowest at ${formatYears(youngest.value)}.` };
     }
 
     if (
@@ -368,21 +368,21 @@ export function buildDetailStatus({
       const direction = life.average > life.otherAverage ? "higher" : "lower";
       const edgeCountry =
         life.average > life.otherAverage ? longestLived : shortestLived;
-      return { period, text: `Life expectancy in ${label} is ${direction} in ${year}. The group averages ${formatAverageYears(life.average)}, versus ${formatAverageYears(life.otherAverage)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.` };
+      return { caption, text: `Life expectancy in ${label} is ${direction} in ${year}. The group averages ${formatAverageYears(life.average)}, versus ${formatAverageYears(life.otherAverage)} outside it; ${edgeCountry.country.name} defines the edge at ${formatYears(edgeCountry.value)}.` };
     }
   }
 
   if (fertility.entries.length && belowReplacementShare >= 0.6) {
-    return { period, text: `Low fertility is the standout pattern in ${label} in ${year};${fertilityContext}${fertilityComparison}` };
+    return { caption, text: `Low fertility is the standout pattern in ${label} in ${year};${fertilityContext}${fertilityComparison}` };
   }
 
   if (growth.entries.length && decliningCount > growingCount) {
-    return { period, text: `Population decline is the stronger signal in ${label} in ${year}; ${decliningCount} of ${growth.entries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}` };
+    return { caption, text: `Population decline is the stronger signal in ${label} in ${year}; ${decliningCount} of ${growth.entries.length} countries show negative growth, led by ${steepestDecline.country.name} at ${formatPercent(steepestDecline.value)}.${growthComparison}${fertilityContext}` };
   }
 
   if (growth.entries.length && growingCount > decliningCount) {
-    return { period, text: `${label} still leans toward growth in ${year}, with ${growingCount} of ${growth.entries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}` };
+    return { caption, text: `${label} still leans toward growth in ${year}, with ${growingCount} of ${growth.entries.length} countries increasing. ${fastestGrowth.country.name} has the fastest rate at ${formatPercent(fastestGrowth.value)}.${growthComparison}${fertilityContext}` };
   }
 
-  return { period, text: `${label} is balanced between growth and decline in ${year}.${growthComparison}${fertilityContext}` };
+  return { caption, text: `${label} is balanced between growth and decline in ${year}.${growthComparison}${fertilityContext}` };
 }

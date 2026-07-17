@@ -938,7 +938,7 @@ function renderDetailStatus(status) {
   elements.detailFlag.style.backgroundImage = "";
   const badge = document.createElement("span");
   badge.className = "caption mono-uppercase";
-  badge.textContent = status.period;
+  badge.textContent = status.caption;
   elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
 }
 

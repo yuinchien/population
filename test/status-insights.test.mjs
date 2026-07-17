@@ -156,7 +156,7 @@ test("buildDetailStatus highlights older income-group age profiles", () => {
     metricFor,
   });
 
-  assert.equal(status.period, "projection");
+  assert.equal(status.caption, 2050);
   assert.match(status.text, /^High-income has the oldest age profile/);
   assert.match(status.text, /Borduria is highest at 49\.0 yrs/);
 });
@@ -195,7 +195,7 @@ test("buildDetailStatus highlights regional growth when growth dominates", () =>
     metricFor,
   });
 
-  assert.equal(status.period, "historical");
+  assert.equal(status.caption, 2026);
   assert.match(status.text, /^South Asia still leans toward growth/);
   assert.match(status.text, /Deltora has the fastest rate at 1\.20%/);
 });
