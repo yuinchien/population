@@ -25,17 +25,17 @@ const AXES = {
   population: "population",
   lifeExpectancy: "lifeExpectancy",
 };
-const RADIUS_OPTIONS = { minRadius: 9, maxRadius: 108 };
-const LABEL_HEIGHT = 32;
-const LABEL_PADDING_X = 14;
-const LABEL_PARTICLE_GAP = 14;
+const RADIUS_OPTIONS = { minRadius: 9, maxRadius: 116 };
+const LABEL_HEIGHT = 30;
+const LABEL_PADDING_X = 8;
+const LABEL_PARTICLE_GAP = 12;
 // Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
 // DECLINE, ...) with the letters butted right up against each other —
 // noticeably tighter than the same font/weight would ever read as body
 // text, since there's no CSS letter-spacing equivalent by default. Applied
 // wherever this text is measured (updateLabelRects) or drawn (drawLabels)
 // so the two stay in sync.
-const TITLE_LETTER_SPACING = "1.5px";
+const TITLE_LETTER_SPACING = "1.1px";
 
 function percentile(sortedValues, fraction) {
   if (!sortedValues.length) return null;

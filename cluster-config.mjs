@@ -19,7 +19,7 @@ export const CLUSTER_ARCHETYPES = {
   },
   growth: {
     label: "Natural Expansion",
-    anchor: { x: 0.25, y: 0.38 },
+    anchor: { x: 0.21, y: 0.38 },
     summary: [
       "Positive natural increase",
       "Population grows without migration support",
@@ -37,7 +37,7 @@ export const CLUSTER_ARCHETYPES = {
   },
   silverDecline: {
     label: "Silver Decline",
-    anchor: { x: 0.78, y: 0.5 },
+    anchor: { x: 0.79, y: 0.5 },
     summary: [
       "Net population decline",
       "Migration is insufficient to prevent contraction",
