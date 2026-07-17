@@ -42,6 +42,12 @@ import {
   createTourController,
 } from "./tour-controller.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
+import {
+  interpolateAgeStructure,
+  maxBandShare,
+  buildPyramidGeometry,
+  ageBandStart,
+} from "./country-pyramid.mjs";
 import { createSparklineGeometry } from "./sparkline-chart.mjs";
 import {
   cancelChartAnimations,
@@ -309,6 +315,10 @@ let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
+// Age-structure shares for the country-detail population pyramid, lazily
+// loaded (see country-pyramid.mjs). null until it resolves; a country opened
+// before then just renders without its pyramid until the data lands.
+let countryAgeStructure = null;
 // Simplified country outline rings ({ [iso3]: [[lon,lat], ...][] }), lazily
 // loaded — see showHoverCountryFill(). null until it resolves; hovering
 // before then just doesn't draw a fill for that hover, same tradeoff as the
@@ -337,6 +347,9 @@ let detailEntryMode = null;
 // per-year marker/sparkline update is a cheap reposition rather than a full
 // chart rebuild every time the slider moves.
 let countryChartLayout = null;
+// Cached pyramid layout (persistent bar rects + per-country scale) so a year
+// scrub only rewrites each bar's x/width rather than rebuilding the SVG.
+let countryPyramidLayout = null;
 let countrySparklineInstances = [];
 const countryChartAnimationHandles = [];
 let detailSort = { key: "population", direction: "desc" };
@@ -1627,6 +1640,15 @@ const COUNTRY_CHART_HEIGHT = 220;
 // there needs to be real room for the label above y=0.
 const COUNTRY_CHART_PADDING = { top: 24, right: 12, bottom: 24, left: 12 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
+// The pyramid draws in a fixed viewBox coordinate space (the SVG scales
+// responsively via preserveAspectRatio), so unlike the line chart it never
+// has to measure its rendered pixel width.
+const COUNTRY_PYRAMID_VIEW = { width: 360, height: 300 };
+const COUNTRY_PYRAMID_PADDING = { top: 22, right: 8, bottom: 22, left: 8 };
+const COUNTRY_PYRAMID_CENTER_GAP = 38; // gutter for the age labels
+// Label the age bands whose starting age is a multiple of this, keeping the
+// center axis readable without a label on all 21 bands.
+const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
 const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "fertility",
   "lifeExpectancy",
@@ -1781,6 +1803,7 @@ function renderCountryDetail() {
   // narrower than their final size.
   updateStatusPanel(year);
   buildCountryCharts(country, { animate: true });
+  buildCountryPyramid(country);
   updateCountryDetailForYear(year);
   renderSimilarCountries(country);
   updateViewModeAvailability();
@@ -2257,6 +2280,8 @@ function updateCountryDetailForYear(year) {
     markerDragHit?.setAttribute("x", x - 9);
   }
 
+  updateCountryPyramidForYear(year);
+
   countrySparklineInstances.forEach(
     ({ key, series, dotLine, dot, valueEl, toXY, baselineY }) => {
       const value = series[index];
@@ -2279,6 +2304,137 @@ function updateCountryDetailForYear(year) {
       }
     },
   );
+}
+
+// Builds the population pyramid's fixed scaffolding once per country open:
+// the center axis, the age labels, the male/female headers, and one rect per
+// band per sex. Bar y/height are fixed (a band never moves vertically); only
+// x/width change as the year scrubs, so those rects are cached on
+// countryPyramidLayout for updateCountryPyramidForYear() to rewrite cheaply.
+// The x-axis scale is fixed to the country's own largest-ever band share, so
+// scrubbing reads as bands genuinely swelling and thinning rather than the
+// axis rescaling underneath.
+function buildCountryPyramid(country) {
+  countryPyramidLayout = null;
+  const svg = elements.countryPyramid;
+  const countryData = countryAgeStructure?.countries?.[country.iso3];
+  const gridYears = countryAgeStructure?.years;
+  const ageGroups = countryAgeStructure?.ageGroups;
+  // Data not loaded yet, or this country isn't in the age-structure set —
+  // hide the card rather than showing an empty frame (the deferred-load
+  // handler re-renders the detail once the data lands).
+  if (!countryData || !gridYears || !ageGroups) {
+    elements.countryPyramidCard.hidden = true;
+    svg.replaceChildren();
+    return;
+  }
+  elements.countryPyramidCard.hidden = false;
+
+  const { width, height } = COUNTRY_PYRAMID_VIEW;
+  const pad = COUNTRY_PYRAMID_PADDING;
+  const maxShare = maxBandShare(countryData);
+  const initialYear = yearsData[currentYearIndex] ?? gridYears[0];
+  const shares = interpolateAgeStructure(countryData, gridYears, initialYear);
+  const geo = buildPyramidGeometry({
+    ...shares,
+    ageGroups,
+    maxShare,
+    width,
+    height,
+    padding: pad,
+    centerGap: COUNTRY_PYRAMID_CENTER_GAP,
+  });
+
+  const children = [];
+  children.push(
+    svgEl("text", {
+      class: "pyramid-sex-label male",
+      x: geo.centerX - COUNTRY_PYRAMID_CENTER_GAP / 2,
+      y: pad.top - 8,
+      "text-anchor": "end",
+    }),
+  );
+  children.push(
+    svgEl("text", {
+      class: "pyramid-sex-label female",
+      x: geo.centerX + COUNTRY_PYRAMID_CENTER_GAP / 2,
+      y: pad.top - 8,
+      "text-anchor": "start",
+    }),
+  );
+  children[0].textContent = "Male";
+  children[1].textContent = "Female";
+
+  const bars = geo.bars.map((bar) => {
+    const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;
+    const maleRect = svgEl("rect", {
+      class: `${cls} male`,
+      x: bar.male.x,
+      y: bar.y,
+      width: bar.male.width,
+      height: bar.height,
+      rx: 1,
+    });
+    const femaleRect = svgEl("rect", {
+      class: `${cls} female`,
+      x: bar.female.x,
+      y: bar.y,
+      width: bar.female.width,
+      height: bar.height,
+      rx: 1,
+    });
+    children.push(maleRect, femaleRect);
+    // Age label centered in the gutter, on select bands only.
+    if (ageBandStart(bar.label) % COUNTRY_PYRAMID_AGE_LABEL_STEP === 0) {
+      const label = svgEl("text", {
+        class: "pyramid-age-label",
+        x: geo.centerX,
+        y: bar.y + bar.height / 2,
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+      });
+      label.textContent = ageBandStart(bar.label);
+      children.push(label);
+    }
+    return { maleRect, femaleRect };
+  });
+
+  svg.replaceChildren(...children);
+  countryPyramidLayout = { bars, countryData, gridYears, ageGroups, maxShare };
+  updateCountryPyramidForYear(initialYear);
+}
+
+// Morphs the pyramid to a given year: interpolates the 5-year grid and
+// rewrites each cached bar's x/width (CSS transitions the change). Cheap
+// enough to run on every slider tick.
+function updateCountryPyramidForYear(year) {
+  const layout = countryPyramidLayout;
+  if (!layout) return;
+  const shares = interpolateAgeStructure(
+    layout.countryData,
+    layout.gridYears,
+    year,
+  );
+  if (!shares) return;
+  const geo = buildPyramidGeometry({
+    ...shares,
+    ageGroups: layout.ageGroups,
+    maxShare: layout.maxShare,
+    width: COUNTRY_PYRAMID_VIEW.width,
+    height: COUNTRY_PYRAMID_VIEW.height,
+    padding: COUNTRY_PYRAMID_PADDING,
+    centerGap: COUNTRY_PYRAMID_CENTER_GAP,
+  });
+  geo.bars.forEach((bar, i) => {
+    const { maleRect, femaleRect } = layout.bars[i];
+    maleRect.setAttribute("x", bar.male.x);
+    maleRect.setAttribute("width", bar.male.width);
+    femaleRect.setAttribute("x", bar.female.x);
+    femaleRect.setAttribute("width", bar.female.width);
+  });
+  if (elements.countryPyramidYear) {
+    elements.countryPyramidYear.textContent = year;
+  }
 }
 
 // Population comes from the dots dataset (same series peakYear/dots are
@@ -3453,6 +3609,13 @@ async function init() {
       } else if (selectedLegend) {
         renderDetailPanel();
       }
+    });
+    // Same deferred treatment — only the country detail panel's population
+    // pyramid reads it, so it lands in the background and refreshes an
+    // already-open country once it arrives.
+    appData.countryAgeStructurePromise.then((data) => {
+      countryAgeStructure = data;
+      if (selectedCountry) renderCountryDetail();
     });
     // Same deferred treatment — only used to draw a border under the
     // pointer on hover, never needed before then.

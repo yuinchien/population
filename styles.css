@@ -1071,6 +1071,67 @@ body.country-detail #colorMode {
     grid-column: 1 / -1;
 }
 
+.country-pyramid-card {
+    grid-column: 1 / -1;
+    flex: none;
+}
+
+.country-pyramid-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.country-pyramid-label,
+.country-pyramid-year {
+    color: var(--color-muted);
+    font-weight: 500;
+}
+
+.country-pyramid {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    aspect-ratio: 360 / 300;
+    overflow: visible;
+}
+
+.pyramid-bar {
+    fill: var(--detail-color);
+    /* x/width animate as the year scrubs; the band's y never moves. */
+    transition: x 0.25s ease, width 0.25s ease;
+}
+
+.pyramid-bar.male {
+    opacity: 0.45;
+}
+
+.pyramid-bar.female {
+    opacity: 0.82;
+}
+
+/* 65+ bands get a fixed warm accent (same across every country) so the
+   "silver" top of the pyramid is comparable at a glance and ties into the
+   Silver Decline story. */
+.pyramid-bar.is-old {
+    fill: var(--color-orange);
+}
+
+.pyramid-sex-label {
+    fill: var(--color-muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+}
+
+.pyramid-age-label {
+    fill: var(--color-subtle);
+    font-family: var(--font-mono);
+    font-size: 10px;
+}
+
 .sparkline-card {
     /* Grid items default to min-width: auto, which lets a card's own
        content (e.g. "Fertility rate" label) push its 1fr column wider than

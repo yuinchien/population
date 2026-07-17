@@ -5,6 +5,7 @@ export const DATA_URLS = {
   globalMetrics: "./data/population-global.json",
   incomeGroups: "./data/country-income-groups.json",
   countryDemographics: "./data/country-demographic-metrics.json",
+  countryAgeStructure: "./data/country-age-structure.json",
   countryBorders: "./data/country-borders.json",
 };
 
@@ -345,6 +346,13 @@ export async function loadPopulationData({
     urls.countryDemographics,
     fetchImpl,
   );
+  // Same deferred treatment — the population pyramid only reads it once a
+  // country detail panel is open, so it's fired off but kept out of the
+  // first-paint Promise.all.
+  const countryAgeStructurePromise = fetchJson(
+    urls.countryAgeStructure,
+    fetchImpl,
+  );
   // Same deferred treatment — only needed once something's actually
   // hovered, never for first paint.
   const countryBordersPromise = fetchJson(urls.countryBorders, fetchImpl);
@@ -380,6 +388,7 @@ export async function loadPopulationData({
     years,
     incomeGroups,
     countryDemographicMetricsPromise,
+    countryAgeStructurePromise,
     countryBordersPromise,
     historicalCutoffYear,
     globalMetricsByYear,
