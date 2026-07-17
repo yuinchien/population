@@ -42,18 +42,16 @@ import {
 } from "./tour-controller.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import { createSparklineGeometry } from "./sparkline-chart.mjs";
-import { TREND_CHART_PADDING } from "./trend-chart.mjs";
 import {
   cancelChartAnimations,
   runChartAnimation,
 } from "./chart-animation.mjs";
 import {
-  buildLinePath,
   chartXFor,
-  chartYFor,
   computeValueRange,
 } from "./chart-math.mjs";
 import { createClusterController } from "./cluster-controller.mjs";
+import { createTrendChartController } from "./trend-chart-controller.mjs";
 import { CLUSTER_ARCHETYPES } from "./cluster-config.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
@@ -340,7 +338,6 @@ let detailEntryMode = null;
 let countryChartLayout = null;
 let countrySparklineInstances = [];
 const countryChartAnimationHandles = [];
-let trendChartAnimationHandle = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let clusterActive = false;
@@ -2668,358 +2665,6 @@ function renderChartMetricTabs() {
 // incrementally updated — infrequent enough (explicit tab/flag clicks) that
 // a full rebuild is simpler and cheap at this scale (a handful of countries
 // × 151 years).
-function renderTrendChart({ animate = false } = {}) {
-  // The radar tab swaps in a completely different chart type (a single-year
-  // snapshot plotted on five metrics at once, not a time series) rather
-  // than being a variant of the line chart below — renderRadarChart owns
-  // its own SVG so the two don't have to share layout logic that doesn't
-  // apply to both.
-  const isRadar = chartMetricKey === CHART_RADAR_KEY;
-  // Plain .hidden assignment doesn't reliably reflect to the `hidden`
-  // content attribute on SVG elements in every engine — setAttribute/
-  // removeAttribute always does, so the [hidden] CSS rule actually applies.
-  elements.trendChart.toggleAttribute("hidden", isRadar);
-  elements.radarChart.toggleAttribute("hidden", !isRadar);
-  trendChartAnimationHandle?.cancel();
-  trendChartAnimationHandle = null;
-  if (isRadar) {
-    renderRadarChart();
-    return;
-  }
-
-  const svg = elements.trendChart;
-  const width = svg.clientWidth || 900;
-  const height = svg.clientHeight || 360;
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-
-  const items = chartItems();
-  const key = chartMetricKey;
-  const definition = METRICS[key];
-  const n = yearsData.length;
-  const cutoffIndex = Math.max(0, yearsData.indexOf(historicalCutoffYear));
-  // Left padding fits the Y axis's value labels (e.g. "10.29B", "80.0
-  // yrs"). The right edge stays compact now that the chart does not render
-  // endpoint labels.
-  const pad = TREND_CHART_PADDING;
-  const chartTop = 4;
-  const innerW = width - pad.left - pad.right;
-  const innerH = height - pad.top - pad.bottom;
-
-  const allValues = [];
-  items.forEach((item) => {
-    item.series(key).forEach((value) => {
-      if (Number.isFinite(value)) allValues.push(value);
-    });
-  });
-  const referenceValue = definition?.referenceValue;
-  const { min, max, range } = computeValueRange(allValues, referenceValue);
-
-  function yFor(value) {
-    return chartYFor(value, min, range, innerH, pad.top);
-  }
-  function xFor(index) {
-    return chartXFor(index, n, innerW, pad.left);
-  }
-  function pathFor(series, from, to) {
-    return buildLinePath(series, from, to, xFor, yFor);
-  }
-
-  const elementsToAppend = [];
-  // Population's own .format spells out the full number ("701,283,707"),
-  // right for a single-value table cell but too wide and precise for an
-  // axis with several ticks stacked close together — millions keeps every
-  // tick on this metric in one consistent, compact unit.
-  const tickFormat =
-    key === "population"
-      ? (value) => `${Math.round(value / 1_000_000).toLocaleString()}M`
-      : (definition?.format ?? ((value) => `${value}`));
-
-  // Y axis: a spine at the left edge plus a handful of evenly-spaced value
-  // ticks (gridline + short tick mark + label), so the plotted lines read
-  // against an actual scale instead of just relative shape.
-  const Y_TICK_COUNT = 2;
-  elementsToAppend.push(
-    svgEl("line", {
-      class: "trend-chart-axis",
-      x1: pad.left,
-      x2: pad.left,
-      y1: chartTop,
-      y2: height - pad.bottom,
-    }),
-  );
-
-  // elementsToAppend.push(
-  //   svgEl("line", {
-  //     class: "trend-chart-axis",
-  //     x1: width - pad.right,
-  //     x2: width - pad.right,
-  //     y1: pad.top,
-  //     y2: height - pad.bottom,
-  //   }),
-  // );
-
-  elementsToAppend.push(
-    svgEl("line", {
-      class: "trend-chart-axis",
-      x1: pad.left,
-      x2: width - pad.right,
-      y1: height - pad.bottom,
-      y2: height - pad.bottom,
-    }),
-  );
-
-  for (let i = 0; i < Y_TICK_COUNT; i++) {
-    const tickValue = min + (range / (Y_TICK_COUNT - 1)) * i;
-    const y = yFor(tickValue).toFixed(1);
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "trend-chart-tick-line",
-        x1: pad.left,
-        x2: width - pad.right,
-        y1: y,
-        y2: y,
-      }),
-      svgEl("line", {
-        class: "trend-chart-tick",
-        x1: pad.left - 4,
-        x2: pad.left,
-        y1: y,
-        y2: y,
-      }),
-    );
-    const tickLabel = svgEl("text", {
-      class: "trend-chart-axis-label",
-      x: pad.left - 8,
-      y: (Number(y) + 3).toFixed(1),
-      "text-anchor": "end",
-    });
-    tickLabel.textContent = tickValue === 0 ? "0" : tickFormat(tickValue);
-    elementsToAppend.push(tickLabel);
-  }
-
-  for (const benchmark of CHART_BENCHMARK_LINES[key] ?? []) {
-    const benchmarkY = yFor(benchmark.value).toFixed(1);
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "trend-chart-baseline",
-        x1: pad.left,
-        x2: width - pad.right,
-        y1: benchmarkY,
-        y2: benchmarkY,
-      }),
-    );
-    const benchmarkLabel = svgEl("text", {
-      class: "trend-chart-baseline-label",
-      x: pad.left - 8,
-      y: Math.max(yFor(benchmark.value) +3, 12).toFixed(1),
-      "text-anchor": "end",
-    });
-    benchmarkLabel.textContent = benchmark.label;
-    elementsToAppend.push(benchmarkLabel);
-  }
-
-  const axisY = height - 6;
-  const labelFirst = svgEl("text", {
-    class: "trend-chart-axis-label",
-    x: pad.left,
-    y: axisY,
-    "text-anchor": "start",
-  });
-  labelFirst.textContent = yearsData[0];
-  const labelLast = svgEl("text", {
-    class: "trend-chart-axis-label",
-    x: width - pad.right,
-    y: axisY,
-    "text-anchor": "end",
-  });
-  labelLast.textContent = yearsData[n - 1];
-  elementsToAppend.push(labelFirst, labelLast);
-
-  // Bottom of the plot area — every line starts flattened here and grows
-  // up into its real shape below, when animate is on.
-  const baselineY = pad.top + innerH;
-  const growingLines = [];
-  items.forEach((item) => {
-    const color = item.color;
-    const series = item.series(key);
-    const historicalPath = svgEl("path", {
-      class: "trend-line historical",
-      d: animate
-        ? buildLinePath(series, 0, cutoffIndex, xFor, () => baselineY)
-        : pathFor(series, 0, cutoffIndex),
-      stroke: color,
-    });
-    const projectedPath = svgEl("path", {
-      class: "trend-line projected",
-      d: animate
-        ? buildLinePath(series, cutoffIndex, n - 1, xFor, () => baselineY)
-        : pathFor(series, cutoffIndex, n - 1),
-      stroke: color,
-    });
-    // A transparent, wider copy of each path makes thin curves easy to hit
-    // without changing their appearance. Its tooltip uses item.name rather
-    // than the old abbreviated endpoint labels, so Country, Region, and
-    // Income group modes all expose a readable legend on demand.
-    const historicalHitPath = svgEl("path", {
-      class: "trend-line-hit",
-      d: pathFor(series, 0, cutoffIndex),
-    });
-    const projectedHitPath = svgEl("path", {
-      class: "trend-line-hit",
-      d: pathFor(series, cutoffIndex, n - 1),
-    });
-    [historicalHitPath, projectedHitPath].forEach((hitPath) => {
-      hitPath.addEventListener("pointerenter", (event) =>
-        showChartTooltip(event, item.name, color),
-      );
-      hitPath.addEventListener("pointermove", (event) =>
-        showChartTooltip(event, item.name, color),
-      );
-      hitPath.addEventListener("pointerleave", hideChartTooltip);
-    });
-    elementsToAppend.push(
-      historicalPath,
-      projectedPath,
-      historicalHitPath,
-      projectedHitPath,
-    );
-    if (animate) {
-      growingLines.push(
-        { el: historicalPath, series, from: 0, to: cutoffIndex },
-        { el: projectedPath, series, from: cutoffIndex, to: n - 1 },
-      );
-    }
-  });
-
-  // Marks the year the rest of the app (table below) is currently showing,
-  // so the chart reads as "here's where that number comes from" instead of
-  // a plot floating free of the year — and doubles as this view's only way
-  // to scrub years, now that #timelineContainer stays hidden here.
-  if (currentYearIndex >= 0 && currentYearIndex < n) {
-    const markerX = xFor(currentYearIndex).toFixed(1);
-    const markerPillWidth = 32;
-    const markerPillHeight = 18;
-    const markerPillY = chartTop;
-    const markerLine = svgEl("line", {
-      class: "trend-chart-year-marker",
-      x1: markerX,
-      x2: markerX,
-      y1: markerPillY + markerPillHeight,
-      y2: height - pad.bottom,
-    });
-    const markerPill = svgEl("rect", {
-      class: "trend-chart-year-pill",
-      x: (Number(markerX) - markerPillWidth / 2).toFixed(1),
-      y: markerPillY,
-      width: markerPillWidth,
-      height: markerPillHeight,
-      rx: 4,
-    });
-    const markerLabel = svgEl("text", {
-      class: "trend-chart-year-label",
-      x: markerX,
-      y: markerPillY + 13,
-      "text-anchor": "middle",
-    });
-    markerLabel.textContent = yearsData[currentYearIndex];
-    const DRAG_HIT_HALF_WIDTH = 10;
-    const dragHit = svgEl("rect", {
-      class: "trend-chart-year-drag",
-      x: (Number(markerX) - DRAG_HIT_HALF_WIDTH).toFixed(1),
-      y: markerPillY + markerPillHeight,
-      width: DRAG_HIT_HALF_WIDTH * 2,
-      height: height - pad.bottom - markerPillY - markerPillHeight,
-    });
-
-    function yearForClientX(clientX) {
-      const rect = svg.getBoundingClientRect();
-      const localX = ((clientX - rect.left) / rect.width) * width;
-      const ratio = (localX - pad.left) / innerW;
-      const index = Math.round(ratio * (n - 1));
-      return yearsData[Math.min(n - 1, Math.max(0, index))];
-    }
-
-    // Cheap live preview while dragging: moves the marker and updates the
-    // table directly (both untouched by the SVG's own re-renders) without
-    // going through applyYear()'s full year-change pipeline — that only
-    // runs once, at drag end, via goToYear() below. Re-rendering this SVG
-    // mid-drag would also drop the pointer capture, since setPointerCapture
-    // is tied to the specific DOM node it was called on.
-    let chartTableRenderScheduled = false;
-    function previewYear(year) {
-      const index = yearsData.indexOf(year);
-      if (index === -1 || index === currentYearIndex) return;
-      const x = xFor(index).toFixed(1);
-      markerLine.setAttribute("x1", x);
-      markerLine.setAttribute("x2", x);
-      markerPill.setAttribute(
-        "x",
-        (Number(x) - markerPillWidth / 2).toFixed(1),
-      );
-      markerLabel.setAttribute("x", x);
-      markerLabel.textContent = year;
-      dragHit.setAttribute("x", (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1));
-      currentYearIndex = index;
-      // pointermove can fire far more often than every animation frame, but
-      // renderChartTable() tears down and rebuilds every cell (and re-attaches
-      // every click listener) from scratch — coalescing to one rebuild per
-      // frame keeps a fast drag smooth instead of visibly stuttering.
-      if (!chartTableRenderScheduled) {
-        chartTableRenderScheduled = true;
-        requestAnimationFrame(() => {
-          chartTableRenderScheduled = false;
-          renderChartTable();
-        });
-      }
-    }
-
-    let dragging = false;
-    dragHit.addEventListener("pointerdown", (event) => {
-      dragging = true;
-      tourController.stop();
-      dragHit.setPointerCapture(event.pointerId);
-      previewYear(yearForClientX(event.clientX));
-    });
-    dragHit.addEventListener("pointermove", (event) => {
-      if (dragging) previewYear(yearForClientX(event.clientX));
-    });
-    const endDrag = () => {
-      if (!dragging) return;
-      dragging = false;
-      // Commits the previewed year through the normal pipeline — syncs the
-      // (hidden) slider, the URL, and the 3D scene's own year once chart
-      // view closes.
-      goToYear(yearsData[currentYearIndex]);
-    };
-    dragHit.addEventListener("pointerup", endDrag);
-    dragHit.addEventListener("pointercancel", endDrag);
-
-    elementsToAppend.push(markerLine, markerPill, markerLabel, dragHit);
-  }
-
-  svg.replaceChildren(...elementsToAppend);
-
-  if (growingLines.length) {
-    trendChartAnimationHandle = runChartAnimation({
-      duration: CHART_LINE_GROW_MS,
-      easing: easeOutCubic,
-      onFrame: (eased) => {
-      growingLines.forEach(({ el, series, from, to }) => {
-        el.setAttribute(
-          "d",
-          buildLinePath(series, from, to, xFor, (value) =>
-            baselineY + (yFor(value) - baselineY) * eased,
-          ),
-        );
-      });
-      },
-      onFinish: () => {
-        trendChartAnimationHandle = null;
-      },
-    });
-  }
-}
-
 // A radar/spider chart plotting five metrics as spokes around a wheel for
 // every selected item at the currently selected year — a snapshot, not a
 // time series, so unlike renderTrendChart this rebuilds completely on every
@@ -3266,6 +2911,33 @@ function renderRadarChart() {
   svg.replaceChildren(...elementsToAppend);
 }
 
+const trendChartController = createTrendChartController({
+  svg: elements.trendChart,
+  radarSvg: elements.radarChart,
+  radarKey: CHART_RADAR_KEY,
+  metrics: METRICS,
+  benchmarkLines: CHART_BENCHMARK_LINES,
+  svgEl,
+  getMetricKey: () => chartMetricKey,
+  getItems: chartItems,
+  getYears: () => yearsData,
+  getCurrentYearIndex: () => currentYearIndex,
+  setCurrentYearIndex: (index) => {
+    currentYearIndex = index;
+  },
+  getHistoricalCutoffYear: () => historicalCutoffYear,
+  renderRadar: renderRadarChart,
+  renderTable: renderChartTable,
+  showTooltip: showChartTooltip,
+  hideTooltip: hideChartTooltip,
+  stopTour: tourController.stop,
+  commitYear: goToYear,
+});
+
+function renderTrendChart(options) {
+  trendChartController.render(options);
+}
+
 // Generic linear-interpolation helper: yearIndex may be fractional (e.g.
 // mid-sweep during an animated timeline), and years data only has one
 // value per whole year, so a fractional index interpolates between the
@@ -3430,8 +3102,7 @@ function setchartPanelActive(active) {
     setChartCountryPickerExpanded(false);
   }
   if (!active && currentYearIndex >= 0) {
-    trendChartAnimationHandle?.cancel();
-    trendChartAnimationHandle = null;
+    trendChartController.cancelAnimation();
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had
     // before) — catch it up now that it's visible again. instant: true
