@@ -9,7 +9,7 @@ export function buildCountrySummary({
   years,
   historicalCutoffYear,
   formatPopulation,
-  forceNarrative = "",
+  demographicNarrative = "",
 }) {
   const isProjected = year > historicalCutoffYear;
   const index = years.indexOf(year);
@@ -32,14 +32,14 @@ export function buildCountrySummary({
   if (peakYear == null) {
     trend = [
       text(
-        `Its population is projected to keep growing through ${years.at(-1)}, with no peak yet in sight.`,
+        `Its population should keep growing through ${years.at(-1)}, with no peak yet in sight.`,
       ),
     ];
   } else if (peakYear === year) {
     trend = [
       text(
         isProjected
-          ? "This is projected to be its peak — the highest its population will reach."
+          ? "This marks its expected peak — the highest its population will reach."
           : "This was its peak — the highest its population reached.",
       ),
     ];
@@ -50,7 +50,7 @@ export function buildCountrySummary({
     );
     if (year < peakYear && peakIsProjected) {
       trend = [
-        text(`That number is projected to keep climbing until it peaks near ${peakPopulation} in `),
+        text(`That number should keep climbing until it peaks near ${peakPopulation} in `),
         styled(String(peakYear), "underlined"),
         text("."),
       ];
@@ -60,15 +60,15 @@ export function buildCountrySummary({
       ];
     } else {
       trend = [
-        text(`That's down from ${peakIsProjected ? "a projected peak" : "a peak"} of ${peakPopulation} in `),
+        text(`That's down from its peak of ${peakPopulation} in `),
         styled(String(peakYear), "underlined"),
         text("."),
       ];
     }
   }
 
-  if (forceNarrative) {
-    trend.push(text(` ${forceNarrative}`));
+  if (demographicNarrative) {
+    trend.push(text(` ${demographicNarrative}`));
   }
 
   return {

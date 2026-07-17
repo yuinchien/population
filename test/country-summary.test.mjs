@@ -42,15 +42,36 @@ test("country summary uses historical tense for past years", () => {
   assert.match(summaryText(summary), /This was its peak/);
 });
 
-test("country summary appends the demographic-force narrative", () => {
+test("country summary appends the demographic narrative", () => {
   const summary = buildCountrySummary({
     country: { name: "Japan", peakYear: 2000, populations: [10, 9] },
     year: 2001,
     years: [2000, 2001],
     historicalCutoffYear: 2023,
     formatPopulation: String,
-    forceNarrative:
-      "Japan entered Silver Decline around 2001 as natural decrease accelerated.",
+    demographicNarrative:
+      "Japan became a super-aged society in 2001, when people aged 65 and older reached more than 20% of its population.",
   });
-  assert.match(summaryText(summary), /entered Silver Decline/);
+  assert.match(summaryText(summary), /became a super-aged society/);
+});
+
+test("projected country summary avoids repeating projected", () => {
+  const summary = buildCountrySummary({
+    country: {
+      iso3: "BGD",
+      name: "Bangladesh",
+      peakYear: 2071,
+      populations: [226.1, 226],
+    },
+    year: 2073,
+    years: [2071, 2073],
+    historicalCutoffYear: 2023,
+    formatPopulation: (value) => `${value}M`,
+    demographicNarrative:
+      "Bangladesh is expected to become an aged society in 2071.",
+  });
+  const copy = summaryText(summary);
+  assert.equal(copy.match(/projected/g)?.length, 1);
+  assert.match(copy, /down from its peak/);
+  assert.match(copy, /is expected to become an aged society/);
 });
