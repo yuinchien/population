@@ -115,6 +115,18 @@ test("Migrant Momentum recognizes immigration-buffered country profiles", () => 
   });
 });
 
+test("modest migration does not turn Japan's 1990 trajectory into Migrant Momentum", () => {
+  assert.equal(
+    classifyCountry({
+      fertility: 1.509,
+      netMigrationRate: 1.01,
+      populationGrowth: 0.381,
+      incomeLabel: "High-income countries",
+    }),
+    "silverDecline",
+  );
+});
+
 test("calibrated profiles place Russia, Malaysia, and Libya as intended", () => {
   assert.equal(
     classifyCountry({
@@ -281,7 +293,7 @@ test("Phase 1 splits countries by life expectancy", () => {
   );
 });
 
-test("the year 2000 switches from Phase 1 to Phase 2", () => {
+test("the 1990s transition surfaces Migrant Momentum before the full projection phase", () => {
   assert.equal(
     refineArchetypeForPhase("growth", PHASE_ONE_START_YEAR, 70),
     "goldenBoom",
@@ -296,6 +308,21 @@ test("the year 2000 switches from Phase 1 to Phase 2", () => {
     refineArchetypeForPhase("growth", PHASE_ONE_START_YEAR - 1, 70),
     "growth",
     "before the window, plain growth is unchanged",
+  );
+  assert.equal(
+    refineArchetypeForPhase("bufferedGrowth", 1990, 70),
+    "bufferedGrowth",
+    "1990 is the first year Migrant Momentum can surface",
+  );
+  assert.equal(
+    refineArchetypeForPhase("growth", 1990, 70),
+    "goldenBoom",
+    "other profiles retain the historical narratives through 1999",
+  );
+  assert.equal(
+    refineArchetypeForPhase("silverDecline", 1990, 70),
+    "silverDecline",
+    "Silver Decline can surface during the transition for trajectories like Japan",
   );
   assert.equal(
     refineArchetypeForPhase("growth", 2000, 40),

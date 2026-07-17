@@ -1,4 +1,5 @@
 import { forceCollide, forceSimulation, forceX, forceY } from "d3-force";
+import { runChartAnimation } from "./chart-animation.mjs";
 import { convertAlpha3ToAlpha2 } from "./data-loader.mjs";
 import {
   classifyCountry,
@@ -13,6 +14,8 @@ import {
 } from "./cluster-config.mjs";
 import {
   clusterBoundaryCorrection,
+  clusterEntranceOrder,
+  clusterEntranceScale,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -36,7 +39,8 @@ const CLUSTER_BOUNDARY_GAP = 16;
 // Manual D3 ticks do not dispatch the tick listener, so this removes the
 // initial burst of particles crossing title blocks without flashing the
 // intermediate positions to the user.
-const INITIAL_SETTLE_TICKS = 10;
+const INITIAL_SETTLE_TICKS = 20;
+const ENTRANCE_DURATION_MS = 900;
 // Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
 // DECLINE, ...) with the letters butted right up against each other —
 // noticeably tighter than the same font/weight would ever read as body
@@ -90,6 +94,9 @@ export function createClusterController({
   let collideForce = null;
   let labelAvoidanceForce = null;
   let territoryForce = null;
+  let entranceAnimation = null;
+  let entranceProgress = 1;
+  let entrancePending = false;
 
   function computeDomains() {
     const medianAges = [];
@@ -314,7 +321,38 @@ export function createClusterController({
         medianAge: null,
       };
     });
+    const entranceOrder = clusterEntranceOrder(
+      nodes.map((node) => node.country.iso3),
+    );
+    entranceOrder.forEach((sourceIndex, orderIndex) => {
+      nodes[sourceIndex].entranceOrder = orderIndex;
+    });
     nodesBuilt = true;
+  }
+
+  function entranceScaleFor(node) {
+    return clusterEntranceScale(
+      entranceProgress,
+      node.entranceOrder ?? 0,
+      nodes.length,
+    );
+  }
+
+  function startEntranceAnimation() {
+    entranceAnimation?.cancel();
+    entrancePending = false;
+    entranceAnimation = runChartAnimation({
+      duration: ENTRANCE_DURATION_MS,
+      onFrame: (_eased, progress) => {
+        entranceProgress = progress;
+        paintFrame();
+      },
+      onFinish: () => {
+        entranceProgress = 1;
+        entranceAnimation = null;
+        paintFrame();
+      },
+    });
   }
 
   function startSimulation() {
@@ -397,8 +435,11 @@ export function createClusterController({
   }
 
   function drawNode(node) {
+    const scale = entranceScaleFor(node);
+    if (scale <= 0) return;
+    const visibleRadius = node.radius * scale;
     context.beginPath();
-    context.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+    context.arc(node.x, node.y, visibleRadius, 0, Math.PI * 2);
     const fill = colorFor(node.country, colorMode);
     context.fillStyle = fill;
     context.fill();
@@ -407,13 +448,17 @@ export function createClusterController({
       context.strokeStyle = resolveCssColor("var(--color-text)");
       context.stroke();
     }
-    if (node.radius < 9) return;
+    if (visibleRadius < 9) return;
     context.fillStyle = resolveCssColor(foregroundForColor(fill));
     context.font = ensureParticleFont();
     context.letterSpacing = TITLE_LETTER_SPACING;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillText(node.iso2, node.x, node.y + 1);
+    context.save();
+    context.translate(node.x, node.y);
+    context.scale(scale, scale);
+    context.fillText(node.iso2, 0, 1);
+    context.restore();
   }
 
   function drawLabels() {
@@ -456,9 +501,10 @@ export function createClusterController({
     const y = clientY - rect.top;
     for (let index = sortedNodes.length - 1; index >= 0; index--) {
       const node = sortedNodes[index];
+      const visibleRadius = node.radius * entranceScaleFor(node);
       const dx = x - node.x;
       const dy = y - node.y;
-      if (dx * dx + dy * dy <= node.radius * node.radius) return node;
+      if (dx * dx + dy * dy <= visibleRadius * visibleRadius) return node;
     }
     return null;
   }
@@ -548,10 +594,14 @@ export function createClusterController({
     } else {
       simulation.alpha(1).restart();
     }
+    if (entrancePending) startEntranceAnimation();
     return true;
   }
 
   function activate(yearIndex) {
+    entranceAnimation?.cancel();
+    entranceProgress = 0;
+    entrancePending = true;
     active = true;
     renderLayout(yearIndex);
   }
@@ -561,6 +611,10 @@ export function createClusterController({
     hoveredNode = null;
     hideTooltip();
     hideArchetypeTooltip();
+    entranceAnimation?.cancel();
+    entranceAnimation = null;
+    entranceProgress = 1;
+    entrancePending = false;
     simulation?.stop();
     simulation = null;
     forceXInstance = null;

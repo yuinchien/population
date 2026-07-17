@@ -11,6 +11,32 @@ function unitFromHash(value) {
   return hashString(value) / 0xffffffff;
 }
 
+export function clusterEntranceOrder(countryCodes) {
+  return [...countryCodes]
+    .map((code, sourceIndex) => ({
+      sourceIndex,
+      seed: hashString(`${code}:entrance`),
+    }))
+    .sort((a, b) => a.seed - b.seed || a.sourceIndex - b.sourceIndex)
+    .map(({ sourceIndex }) => sourceIndex);
+}
+
+export function clusterEntranceScale(progress, orderIndex, count) {
+  if (progress >= 1 || count <= 1) return 1;
+  if (progress <= 0) return 0;
+  const cascade = 0.58;
+  const delay = (orderIndex / (count - 1)) * cascade;
+  const localProgress = Math.min(
+    1,
+    Math.max(0, (progress - delay) / (1 - cascade)),
+  );
+  if (localProgress <= 0) return 0;
+  if (localProgress >= 1) return 1;
+  const overshoot = 1.70158;
+  const shifted = localProgress - 1;
+  return 1 + (overshoot + 1) * shifted ** 3 + overshoot * shifted ** 2;
+}
+
 export function seededClusterPosition(countryCode, anchor, spread = 40) {
   const code = String(countryCode ?? "");
   return {

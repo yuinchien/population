@@ -10,7 +10,7 @@ function valueAt(seriesFor, key, index) {
   return seriesFor(key)?.[index] ?? null;
 }
 
-// The raw classification, with no Phase 1 (pre-2000) override — see
+// The raw classification, with no historical/transition display override — see
 // archetypeAt below for why the narrative walks this back instead of the
 // phase-refined version.
 function rawArchetypeAt({ country, years, index, seriesFor }) {
@@ -83,13 +83,12 @@ export function buildCountryForceNarrative({
 
   // Growth/Migrant Momentum/Silver Decline come straight out of
   // classifyCountry() with no phase override, so they're meaningful for
-  // any year, not just 2000+ (refineArchetypeForPhase only ever *adds* the
-  // Golden Boom/Emerging Surge split on top of them for years before
-  // 2000 — it never changes what these three mean). Walking back with the
-  // phase-refined archetypeAt would hit that Phase 1/Phase 2 split — a
+  // any year, not just 2000+ (refineArchetypeForPhase only changes which
+  // narratives are surfaced in historical/transition years). Walking back
+  // with the phase-refined archetypeAt would hit a display phase boundary — a
   // Cluster-view visual choice (see CLUSTER_PHASES), not a real
   // demographic change — and report every long-running growth-family
-  // country as having "entered" its archetype in 2000, regardless of how
+  // country as having "entered" its archetype at a phase boundary, regardless of how
   // much earlier its own data actually got there. Walking back on the raw
   // classification instead finds the country's real entry year; Golden
   // Boom/Emerging Surge entries (which only exist within Phase 1) still

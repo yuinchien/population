@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   clusterBoundaryCorrection,
+  clusterEntranceOrder,
+  clusterEntranceScale,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -55,6 +57,21 @@ test("seededClusterPosition is reproducible and bounded", () => {
   assert.ok(first.y >= 280 && first.y <= 320);
 });
 
+test("cluster entrance order is deterministic and includes every particle", () => {
+  const codes = ["USA", "CHN", "IND", "NGA"];
+  const first = clusterEntranceOrder(codes);
+  assert.deepEqual(first, clusterEntranceOrder(codes));
+  assert.deepEqual([...first].sort((a, b) => a - b), [0, 1, 2, 3]);
+});
+
+test("cluster entrance scale cascades and settles after an overshoot", () => {
+  assert.equal(clusterEntranceScale(0, 0, 4), 0);
+  assert.ok(clusterEntranceScale(0.2, 0, 4) > 0);
+  assert.equal(clusterEntranceScale(0.2, 3, 4), 0);
+  assert.ok(clusterEntranceScale(0.3, 0, 4) > 1);
+  assert.equal(clusterEntranceScale(1, 3, 4), 1);
+});
+
 test("clusterBoundaryCorrection keeps a particle inside its cluster territory", () => {
   const own = { x: 0, y: 0 };
   const competitor = { x: 100, y: 0 };
@@ -68,12 +85,20 @@ test("clusterBoundaryCorrection keeps a particle inside its cluster territory", 
   );
 });
 
-test("cluster phases own the expected archetypes at the 2000 boundary", () => {
-  assert.equal(clusterPhaseForYear(1999), CLUSTER_PHASES.historical);
+test("cluster phases introduce Migrant Momentum during the 1990s transition", () => {
+  assert.equal(clusterPhaseForYear(1989), CLUSTER_PHASES.historical);
+  assert.equal(clusterPhaseForYear(1990), CLUSTER_PHASES.transition);
+  assert.equal(clusterPhaseForYear(1999), CLUSTER_PHASES.transition);
   assert.equal(clusterPhaseForYear(2000), CLUSTER_PHASES.projection);
   assert.deepEqual(CLUSTER_PHASES.historical.archetypes, [
     "goldenBoom",
     "emergingSurge",
+  ]);
+  assert.deepEqual(CLUSTER_PHASES.transition.archetypes, [
+    "goldenBoom",
+    "emergingSurge",
+    "bufferedGrowth",
+    "silverDecline",
   ]);
   assert.deepEqual(CLUSTER_PHASES.projection.archetypes, [
     "growth",

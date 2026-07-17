@@ -33,6 +33,11 @@ export const IMMIGRATION_GROWTH_SHARE_THRESHOLD = 0.2;
 // Nigeria is at 0.123 per 1,000 in 2100, while the listed immigration
 // destinations clear this floor in the years where they enter the cluster.
 export const HIGH_NET_MIGRATION_RATE_THRESHOLD = 0.3;
+// When natural increase is still clearly positive, immigration must clear a
+// higher bar before it can be called the engine of growth. This keeps modest
+// inflows such as Japan's 1990 rate out of Migrant Momentum while preserving
+// true near-zero-natural-change buffers at the lower floor above.
+export const MATERIAL_NET_MIGRATION_RATE_THRESHOLD = 1.1;
 export const SILVER_DECLINE_FERTILITY_THRESHOLD = 1.7;
 export const HIGH_INCOME_LABEL = "High-income countries";
 export const SIGNIFICANT_PEAK_LOSS_THRESHOLD = 0.1;
@@ -154,8 +159,9 @@ export function classifyCountry({
       Number.isFinite(fertility) &&
       fertility < FERTILITY_REPLACEMENT_THRESHOLD;
     const migrationIsMaterial =
-      naturalIncrease <= NEAR_ZERO_NATURAL_CHANGE ||
-      migrationShare >= IMMIGRATION_GROWTH_SHARE_THRESHOLD;
+      (naturalIncrease <= NEAR_ZERO_NATURAL_CHANGE && migrationIsHigh) ||
+      (migrationShare >= IMMIGRATION_GROWTH_SHARE_THRESHOLD &&
+        netMigrationRate >= MATERIAL_NET_MIGRATION_RATE_THRESHOLD);
     const profileMatchesBufferedGrowth =
       fertilityIsSubReplacement ||
       migrationShare >= IMMIGRATION_GROWTH_SHARE_THRESHOLD;
@@ -188,16 +194,20 @@ export function classifyCountry({
 // climbing fast over the same period — this threshold sits between them.
 export const GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD = 65;
 
-// Phase 1 deliberately exposes only two narratives. Every country that can
-// be classified is routed into Golden Boom or Emerging Surge by life
-// expectancy, regardless of which Phase 2 archetype its fertility/growth
-// profile would otherwise imply. From 2000 onward, the coarse classifier's
-// Natural Expansion/Migrant Momentum/Silver Decline result passes through unchanged.
+// The historical phase deliberately exposes only two narratives. During the
+// 1990s transition, Migrant Momentum and Silver Decline can surface when the
+// underlying data supports them while growth profiles retain the historical
+// split. From 2000 onward, the coarse classifier's full result passes through.
 export function refineArchetypeForPhase(archetype, year, lifeExpectancy) {
   if (archetype == null) return null;
-  const isPhaseOne =
-    clusterPhaseForYear(year) === CLUSTER_PHASES.historical;
-  if (!isPhaseOne) return archetype;
+  const phase = clusterPhaseForYear(year);
+  if (phase === CLUSTER_PHASES.projection) return archetype;
+  if (
+    phase === CLUSTER_PHASES.transition &&
+    (archetype === "bufferedGrowth" || archetype === "silverDecline")
+  ) {
+    return archetype;
+  }
   if (lifeExpectancy == null) return null;
   return lifeExpectancy >= GOLDEN_BOOM_LIFE_EXPECTANCY_THRESHOLD
     ? "goldenBoom"

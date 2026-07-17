@@ -33,8 +33,17 @@ export const CLUSTER_ARCHETYPES = {
 
 export const CLUSTER_PHASES = {
   historical: {
-    years: [1950, 1999],
+    years: [1950, 1989],
     archetypes: ["goldenBoom", "emergingSurge"],
+  },
+  transition: {
+    years: [1990, 1999],
+    archetypes: [
+      "goldenBoom",
+      "emergingSurge",
+      "bufferedGrowth",
+      "silverDecline",
+    ],
   },
   projection: {
     years: [2000, 2100],
