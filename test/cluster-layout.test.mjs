@@ -79,3 +79,11 @@ test("every configured phase archetype has display metadata", () => {
     });
   });
 });
+
+test("Silver Decline summary names its defining demographic forces", () => {
+  assert.match(
+    CLUSTER_ARCHETYPES.silverDecline.summary,
+    /high old age dependency/i,
+  );
+  assert.match(CLUSTER_ARCHETYPES.silverDecline.summary, /low migration/i);
+});
