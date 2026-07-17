@@ -1733,13 +1733,13 @@ function showClusterArchetypeTooltip(event, archetype) {
   if (!definition) return;
   elements.chartTooltip.hidden = false;
   elements.chartTooltip.classList.add("tooltip-wrap");
-  const title = document.createElement("div");
-  title.className = "tooltip-line mono-uppercase";
-  title.textContent = definition.label;
+  // const title = document.createElement("div");
+  // title.className = "tooltip-line mono-uppercase";
+  // title.textContent = definition.label;
   const summary = document.createElement("p");
   summary.className = "tooltip-summary";
-  summary.textContent = `${definition.summary.join(". ")}.`;
-  elements.chartTooltip.replaceChildren(title, summary);
+  summary.textContent = definition.summary;
+  elements.chartTooltip.replaceChildren(summary);
   elements.chartTooltip.style.left = `${event.clientX}px`;
   elements.chartTooltip.style.top = `${event.clientY}px`;
 }

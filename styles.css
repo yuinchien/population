@@ -617,7 +617,7 @@ body.country-detail #colorMode {
     flex-direction: column;
     align-items: flex-start;
     white-space: normal;
-    max-width: 296px;
+    max-width: 340px;
     padding: 10px 12px;
     gap: 4px;
     border-radius: 10px;
@@ -635,7 +635,8 @@ body.country-detail #colorMode {
     padding: 0;
     font-family: var(--font-sans);
     font-weight: 400;
-    line-height: 1.35;
+    line-height: 1.4;
+    font-size: 1.2rem;
     letter-spacing: normal;
     text-transform: none;
     color: var(--color-muted);

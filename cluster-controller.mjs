@@ -26,9 +26,9 @@ const AXES = {
   population: "population",
   lifeExpectancy: "lifeExpectancy",
 };
-const RADIUS_OPTIONS = { minRadius: 9, maxRadius: 116 };
-const LABEL_HEIGHT = 30;
-const LABEL_PADDING_X = 8;
+const RADIUS_OPTIONS = { minRadius: 3, maxRadius: 144 };
+const LABEL_HEIGHT = 24;
+const LABEL_PADDING_X = 4;
 const LABEL_PARTICLE_GAP = 12;
 // Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
 // DECLINE, ...) with the letters butted right up against each other —
@@ -36,7 +36,7 @@ const LABEL_PARTICLE_GAP = 12;
 // text, since there's no CSS letter-spacing equivalent by default. Applied
 // wherever this text is measured (updateLabelRects) or drawn (drawLabels)
 // so the two stay in sync.
-const TITLE_LETTER_SPACING = "1.1px";
+const TITLE_LETTER_SPACING = ".8px";
 
 function percentile(sortedValues, fraction) {
   if (!sortedValues.length) return null;
@@ -367,6 +367,7 @@ export function createClusterController({
     if (node.radius < 9) return;
     context.fillStyle = resolveCssColor(foregroundForColor(fill));
     context.font = ensureParticleFont();
+    context.letterSpacing = TITLE_LETTER_SPACING;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(node.iso2, node.x, node.y + 1);
