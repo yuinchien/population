@@ -12,6 +12,7 @@ import {
   clusterPhaseForYear,
 } from "./cluster-config.mjs";
 import {
+  clusterBoundaryCorrection,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -30,6 +31,12 @@ const RADIUS_OPTIONS = { minRadius: 3, maxRadius: 144 };
 const LABEL_HEIGHT = 24;
 const LABEL_PADDING_X = 4;
 const LABEL_PARTICLE_GAP = 12;
+const CLUSTER_BOUNDARY_GAP = 16;
+// Resolve the dense, anchor-centered seed layout before exposing the canvas.
+// Manual D3 ticks do not dispatch the tick listener, so this removes the
+// initial burst of particles crossing title blocks without flashing the
+// intermediate positions to the user.
+const INITIAL_SETTLE_TICKS = 10;
 // Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
 // DECLINE, ...) with the letters butted right up against each other —
 // noticeably tighter than the same font/weight would ever read as body
@@ -82,6 +89,7 @@ export function createClusterController({
   let forceYInstance = null;
   let collideForce = null;
   let labelAvoidanceForce = null;
+  let territoryForce = null;
 
   function computeDomains() {
     const medianAges = [];
@@ -233,11 +241,43 @@ export function createClusterController({
     return force;
   }
 
+  function createTerritoryForce() {
+    let forceNodes = [];
+    function force(alpha) {
+      forceNodes.forEach((node) => {
+        if (!node.archetype) return;
+        const ownAnchor = clusterAnchorFor(node);
+        let correctionX = 0;
+        let correctionY = 0;
+        labelRects.forEach(({ archetype }) => {
+          if (archetype === node.archetype) return;
+          const correction = clusterBoundaryCorrection(
+            node,
+            ownAnchor,
+            anchors[archetype],
+            CLUSTER_BOUNDARY_GAP,
+          );
+          correctionX += correction.x;
+          correctionY += correction.y;
+        });
+        if (!correctionX && !correctionY) return;
+        const strength = 0.2 + alpha * 0.25;
+        node.vx = node.vx * 0.72 + correctionX * strength;
+        node.vy = node.vy * 0.72 + correctionY * strength;
+      });
+    }
+    force.initialize = (nextNodes) => {
+      forceNodes = nextNodes;
+    };
+    return force;
+  }
+
   function reinitializeForces() {
     forceXInstance?.initialize(nodes);
     forceYInstance?.initialize(nodes);
     collideForce?.initialize(nodes);
     labelAvoidanceForce?.initialize(nodes);
+    territoryForce?.initialize(nodes);
   }
 
   function resize() {
@@ -290,13 +330,16 @@ export function createClusterController({
       .strength(1)
       .iterations(10);
     labelAvoidanceForce = createLabelAvoidanceForce();
+    territoryForce = createTerritoryForce();
     simulation = forceSimulation(nodes)
       .force("x", forceXInstance)
       .force("y", forceYInstance)
       .force("collide", collideForce)
       .force("label-avoidance", labelAvoidanceForce)
+      .force("territory", territoryForce)
       .alphaTarget(0)
-      .on("tick", paintFrame);
+      .on("tick", paintFrame)
+      .stop();
   }
 
   function updateNodesForYear(yearIndex) {
@@ -349,8 +392,8 @@ export function createClusterController({
         RADIUS_OPTIONS,
       );
     });
-    reinitializeForces();
     updateAnnotationVisibility(year);
+    reinitializeForces();
   }
 
   function drawNode(node) {
@@ -493,9 +536,18 @@ export function createClusterController({
     resize();
     buildNodes();
     setupInteraction();
-    if (!simulation) startSimulation();
+    const isInitialLayout = !simulation;
+    if (isInitialLayout) startSimulation();
     updateNodesForYear(currentYearIndex);
-    simulation.alpha(1).restart();
+    if (isInitialLayout) {
+      simulation.alpha(1).tick(INITIAL_SETTLE_TICKS);
+      paintFrame();
+      // Leave only a little energy for a restrained final settle. Year
+      // changes still use the normal animated transition in setYear().
+      simulation.alpha(0.12).restart();
+    } else {
+      simulation.alpha(1).restart();
+    }
     return true;
   }
 
@@ -515,6 +567,7 @@ export function createClusterController({
     forceYInstance = null;
     collideForce = null;
     labelAvoidanceForce = null;
+    territoryForce = null;
   }
 
   function setYear(year) {

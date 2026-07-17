@@ -624,10 +624,9 @@ body.country-detail #colorMode {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    width: 340px;
+    width: 360px;
     padding: 10px 12px;
-    gap: 4px;
-    border-radius: 10px;
+    border-radius: 12px;
     /* #chartTooltip's own -130% (relative to its own, much smaller height)
        would push this taller paragraph box far above the cursor instead of
        a small gap. A fixed offset keeps the gap constant regardless of how

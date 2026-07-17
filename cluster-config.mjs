@@ -3,31 +3,31 @@ export const CLUSTER_ARCHETYPES = {
     label: "Golden Boom",
     anchor: { x: 0.8, y: 0.65 },
     summary:
-      "In the post-war developed world, fertility stayed high as medicine and prosperity pushed life expectancy past 65. This data captures the iconic Baby Boom—a generation living longer than any before."
+      "During the post-war boom, developed nations saw sustained high fertility and, thanks to medicine and prosperity, life expectancy climb past 65. "
   },
   emergingSurge: {
     label: "Emerging Surge",
     anchor: { x: 0.35, y: 0.4 },
     summary:
-      "In the post-war decades, the developing world entered a volatile demographic transition. Vaccines slashed death rates, but high fertility and rising child survival triggered an unprecedented population boom."
+      "In the post-war decades, modecine like vaccines slashed death rates across the developing world, but persistent high fertility and rising child survival triggered an unprecedented population boom."
   },
   growth: {
     label: "Natural Expansion",
     anchor: { x: 0.21, y: 0.38 },
     summary:
-      "In the 21st century, high-fertility nations grow entirely from within. Whether driven by high birth rates or generational momentum, births naturally outpace deaths without requiring migration.",
+      "High-fertility nations grow entirely from within. Whether driven by high birth rates or generational momentum, births naturally outpace deaths without requiring migration.",
   },
   bufferedGrowth: {
     label: "Migrant Momentum",
     anchor: { x: 0.5, y: 0.8 },
     summary:
-      "In the 21st century, wealthy nations with below-replacement fertility lean on immigration to keep growing. Births alone would barely hold the population steady—newcomers have become the real engine of growth.",
+      "Wealthy nations with below-replacement fertility lean on immigration to keep growing. Births alone would barely hold the population steady—newcomers have become the real engine of growth.",
   },
   silverDecline: {
     label: "Silver Decline",
     anchor: { x: 0.79, y: 0.5 },
     summary:
-      "In the 21st century, aging societies face high old age dependency and sustained population loss. Deaths outnumber births, while low migration leaves too little inflow to offset natural decline.",
+      "Aging societies face high old age dependency and sustained population loss. Deaths outnumber births, while low migration leaves too little inflow to offset natural decline.",
   },
 };
 

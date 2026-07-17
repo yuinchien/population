@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clusterBoundaryCorrection,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -52,6 +53,19 @@ test("seededClusterPosition is reproducible and bounded", () => {
   assert.notDeepEqual(first, other);
   assert.ok(first.x >= 480 && first.x <= 520);
   assert.ok(first.y >= 280 && first.y <= 320);
+});
+
+test("clusterBoundaryCorrection keeps a particle inside its cluster territory", () => {
+  const own = { x: 0, y: 0 };
+  const competitor = { x: 100, y: 0 };
+  assert.deepEqual(
+    clusterBoundaryCorrection({ x: 30, y: 20, radius: 10 }, own, competitor),
+    { x: 0, y: 0 },
+  );
+  assert.deepEqual(
+    clusterBoundaryCorrection({ x: 48, y: 20, radius: 10 }, own, competitor),
+    { x: -14, y: 0 },
+  );
 });
 
 test("cluster phases own the expected archetypes at the 2000 boundary", () => {
