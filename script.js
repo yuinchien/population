@@ -35,6 +35,7 @@ import {
 } from "./view-config.mjs";
 import { getAppElements } from "./ui-elements.mjs";
 import { buildCountrySummary } from "./country-summary-model.mjs";
+import { buildCountryForceNarrative } from "./country-force-narrative.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -723,6 +724,18 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
+    const forceNarrative = buildCountryForceNarrative({
+      country: selectedCountry,
+      years: yearsData,
+      currentYearIndex,
+      historicalCutoffYear,
+      seriesFor: (key) =>
+        key === "population"
+          ? selectedCountry.populations
+          : countryDemographicMetrics?.countries?.[selectedCountry.iso3]?.[
+              key
+            ] ?? [],
+    });
     renderCountrySummary(
       buildCountrySummary({
         country: selectedCountry,
@@ -730,6 +743,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
         years: yearsData,
         historicalCutoffYear,
         formatPopulation: formatPeakPopulation,
+        forceNarrative,
       }),
     );
     return;

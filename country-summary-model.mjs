@@ -9,6 +9,7 @@ export function buildCountrySummary({
   years,
   historicalCutoffYear,
   formatPopulation,
+  forceNarrative = "",
 }) {
   const isProjected = year > historicalCutoffYear;
   const index = years.indexOf(year);
@@ -64,6 +65,10 @@ export function buildCountrySummary({
         text("."),
       ];
     }
+  }
+
+  if (forceNarrative) {
+    trend.push(text(` ${forceNarrative}`));
   }
 
   return {

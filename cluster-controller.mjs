@@ -3,6 +3,7 @@ import { convertAlpha3ToAlpha2 } from "./data-loader.mjs";
 import {
   classifyCountry,
   forceStrengthFor,
+  populationDeclineContext,
   radiusForPopulation,
   refineArchetypeForPhase,
 } from "./cluster-model.mjs";
@@ -298,39 +299,6 @@ export function createClusterController({
       .on("tick", paintFrame);
   }
 
-  function declineContext(country, yearIndex, population) {
-    const years = getYears();
-    const series = country.populations;
-    if (!series?.length || !Number.isFinite(population)) {
-      return { populationLossFromPeak: null, yearsSincePeak: null };
-    }
-    const endIndex = Math.min(series.length - 1, Math.floor(yearIndex));
-    let peakPopulation = -Infinity;
-    let peakIndex = -1;
-    for (let index = 0; index <= endIndex; index++) {
-      const value = series[index];
-      if (Number.isFinite(value) && value > peakPopulation) {
-        peakPopulation = value;
-        peakIndex = index;
-      }
-    }
-    if (peakIndex === -1 || peakPopulation <= 0) {
-      return { populationLossFromPeak: null, yearsSincePeak: null };
-    }
-    const lowerIndex = Math.floor(yearIndex);
-    const upperIndex = Math.min(years.length - 1, Math.ceil(yearIndex));
-    const fraction = yearIndex - lowerIndex;
-    const currentYear =
-      years[lowerIndex] + (years[upperIndex] - years[lowerIndex]) * fraction;
-    return {
-      populationLossFromPeak: Math.max(
-        0,
-        (peakPopulation - population) / peakPopulation,
-      ),
-      yearsSincePeak: currentYear - years[peakIndex],
-    };
-  }
-
   function updateNodesForYear(yearIndex) {
     if (yearIndex == null || yearIndex < 0) return;
     currentYearIndex = yearIndex;
@@ -364,7 +332,12 @@ export function createClusterController({
           netMigrationRate,
           populationGrowth,
           incomeLabel: node.country._incomeLabel,
-          ...declineContext(node.country, yearIndex, population),
+          ...populationDeclineContext(
+            node.country.populations,
+            getYears(),
+            yearIndex,
+            population,
+          ),
         }),
         year,
         lifeExpectancy,

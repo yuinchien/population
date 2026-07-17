@@ -73,6 +73,45 @@ export function immigrationGrowthShare(
   );
 }
 
+export function populationDeclineContext(
+  populationSeries,
+  years,
+  yearIndex,
+  population,
+) {
+  if (!populationSeries?.length || !Number.isFinite(population)) {
+    return { populationLossFromPeak: null, yearsSincePeak: null };
+  }
+  const endIndex = Math.min(
+    populationSeries.length - 1,
+    Math.floor(yearIndex),
+  );
+  let peakPopulation = -Infinity;
+  let peakIndex = -1;
+  for (let index = 0; index <= endIndex; index++) {
+    const value = populationSeries[index];
+    if (Number.isFinite(value) && value > peakPopulation) {
+      peakPopulation = value;
+      peakIndex = index;
+    }
+  }
+  if (peakIndex === -1 || peakPopulation <= 0) {
+    return { populationLossFromPeak: null, yearsSincePeak: null };
+  }
+  const lowerIndex = Math.floor(yearIndex);
+  const upperIndex = Math.min(years.length - 1, Math.ceil(yearIndex));
+  const fraction = yearIndex - lowerIndex;
+  const currentYear =
+    years[lowerIndex] + (years[upperIndex] - years[lowerIndex]) * fraction;
+  return {
+    populationLossFromPeak: Math.max(
+      0,
+      (peakPopulation - population) / peakPopulation,
+    ),
+    yearsSincePeak: currentYear - years[peakIndex],
+  };
+}
+
 // Which of the three demographic "gravity wells" a country belongs to this
 // year. When complete change data exists, classification is driven by what
 // actually changes population size:

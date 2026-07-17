@@ -41,3 +41,16 @@ test("country summary uses historical tense for past years", () => {
   assert.match(summaryText(summary), /was home/);
   assert.match(summaryText(summary), /This was its peak/);
 });
+
+test("country summary appends the demographic-force narrative", () => {
+  const summary = buildCountrySummary({
+    country: { name: "Japan", peakYear: 2000, populations: [10, 9] },
+    year: 2001,
+    years: [2000, 2001],
+    historicalCutoffYear: 2023,
+    formatPopulation: String,
+    forceNarrative:
+      "Japan entered Silver Decline around 2001 as natural decrease accelerated.",
+  });
+  assert.match(summaryText(summary), /entered Silver Decline/);
+});
