@@ -1522,6 +1522,23 @@ function closeDetailPanel() {
   }
 }
 
+function openInfoPanel() {
+  elements.infoPanel.hidden = false;
+  elements.infoButton.setAttribute("aria-expanded", "true");
+  document.body.classList.add("detail", "info-open");
+  document.body.classList.remove("menu-open");
+  elements.menuToggle.setAttribute("aria-expanded", "false");
+}
+
+function closeInfoPanel() {
+  elements.infoPanel.hidden = true;
+  elements.infoButton.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("info-open");
+  if (elements.detailPanel.hidden) {
+    document.body.classList.remove("detail");
+  }
+}
+
 // Returns to the group table this country was opened from (if any),
 // otherwise closes the whole panel — mirrors closeDetailPanel()'s job but
 // one level up the navigation stack.
@@ -3639,6 +3656,8 @@ async function init() {
       }
     });
     elements.detailClose.addEventListener("click", closeDetailPanel);
+    elements.infoButton.addEventListener("click", openInfoPanel);
+    elements.infoClose.addEventListener("click", closeInfoPanel);
     // elements.detailBack.addEventListener("click", () => {
     //   if (selectedCountry) {
     //     closeCountryDetail();

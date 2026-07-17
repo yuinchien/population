@@ -2,6 +2,9 @@ export function getAppElements(root = document) {
   return {
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
+    infoButton: root.querySelector("#infoButton"),
+    infoPanel: root.querySelector("#infoPanel"),
+    infoClose: root.querySelector("#infoClose"),
     themeToggle: root.querySelector("#themeToggle"),
     milestoneTour: root.querySelector("#milestoneTour"),
     milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
