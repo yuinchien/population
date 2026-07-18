@@ -6,6 +6,7 @@ export function getAppElements(root = document) {
     infoPanel: root.querySelector("#infoPanel"),
     infoClose: root.querySelector("#infoClose"),
     themeToggle: root.querySelector("#themeToggle"),
+    themeToggleLight: root.querySelector("#themeToggleLight"),
     milestoneTour: root.querySelector("#milestoneTour"),
     milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
     milestonePrev: root.querySelector("#milestonePrev"),

@@ -2797,16 +2797,16 @@ function setChartMetric(key) {
   elements.chartMetricTabs.querySelectorAll("button").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.key === key);
   });
-  updateProjectionScenarioVisibility();
+  // updateProjectionScenarioVisibility();
   renderTrendChart();
   renderChartTable();
   syncUrlFromState();
 }
 
-function updateProjectionScenarioVisibility() {
-  elements.chartProjectionScenario.hidden =
-    chartMetricKey !== "population";
-}
+// function updateProjectionScenarioVisibility() {
+//   elements.chartProjectionScenario.hidden =
+//     chartMetricKey !== "population";
+// }
 
 function renderChartMetricTabs() {
   elements.chartMetricTabs.replaceChildren(
@@ -3285,12 +3285,24 @@ const THEME_STORAGE_KEY = "theme"; // must match the inline <head> script in ind
 
 function updateThemeToggleUI() {
   const isLight = currentTheme === "light";
-  elements.themeToggle.setAttribute(
-    "aria-label",
-    isLight ? "Switch to dark theme" : "Switch to light theme",
+  elements.themeToggle?.setAttribute(
+    "aria-pressed",
+    String(!isLight),
   );
-  elements.themeToggle.querySelector(".material-symbols-outlined").textContent =
-    isLight ? "dark_mode" : "light_mode";
+  elements.themeToggleLight?.setAttribute("aria-pressed", String(isLight));
+  elements.themeToggle?.classList.toggle("active", !isLight);
+  elements.themeToggleLight?.classList.toggle("active", isLight);
+
+  const legacyIcon = elements.themeToggle?.querySelector(
+    ".material-symbols-outlined",
+  );
+  if (legacyIcon) {
+    elements.themeToggle.setAttribute(
+      "aria-label",
+      isLight ? "Switch to dark theme" : "Switch to light theme",
+    );
+    legacyIcon.textContent = isLight ? "dark_mode" : "light_mode";
+  }
 }
 
 // Most of the app's colors are plain CSS var() references (region/income
@@ -3729,7 +3741,7 @@ async function init() {
       });
     });
     elements.chartProjectionScenario.value = chartProjectionScenario;
-    updateProjectionScenarioVisibility();
+    // updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
       const scenario = elements.chartProjectionScenario.value;
       if (!["medium", "high", "low"].includes(scenario)) return;
@@ -3834,8 +3846,11 @@ async function init() {
       elements.menuToggle.setAttribute("aria-expanded", "false");
     });
     updateThemeToggleUI();
-    elements.themeToggle.addEventListener("click", () => {
-      applyTheme(currentTheme === "light" ? "dark" : "light");
+    elements.themeToggle?.addEventListener("click", () => {
+      applyTheme("dark");
+    });
+    elements.themeToggleLight?.addEventListener("click", () => {
+      applyTheme("light");
     });
     updateSliderProgress();
     applyYear(defaultYear);

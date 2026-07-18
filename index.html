@@ -278,19 +278,7 @@
                         hidden
                     ></div>
                 </div>
-                <select id="chartProjectionScenario" class="custom-select mono-uppercase">
-                    <button>
-                        <div>
-                            <selectedcontent> </selectedcontent>
-                            <svg width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="m7 10l5 5l5-5z"/>
-                            </svg>
-                        </div>
-                    </button>
-                    <option value="high">High projection</option>
-                    <option value="medium" selected>Medium projection</option>
-                    <option value="low">Low projection</option>
-                </select>
+
             </div>
 
             <div class="chart-card">
@@ -344,17 +332,45 @@
                 </button>
             </div>
 
-            <button
-                id="themeToggle"
-                class="icon-button"
-                type="button"
-                aria-label="Switch to light theme"
-                title="Switch theme"
-            >
-                <span class="material-symbols-outlined" aria-hidden="true"
-                    >light_mode</span
-                >
-            </button>
+            <div class="settings-item">
+                <div class="title">Color Theme</div>
+                <div class="button-group button-group-theme">
+                    <button
+                        id="themeToggle"
+                        type="button"
+                        aria-label="Switch to dark theme"
+                        title="Switch theme"
+                        class="active"
+                    >
+                        Dark
+                    </button>
+                    <button
+                        id="themeToggleLight"
+                        type="button"
+                        aria-label="Switch to light theme"
+                        title="Switch theme"
+                    >
+                        Light
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-item">
+                <div class="title">UN Projection</div>
+                <select id="chartProjectionScenario" class="custom-select mono-uppercase">
+                    <button>
+                        <div>
+                            <selectedcontent> </selectedcontent>
+                            <svg width="24" height="24" viewBox="0 0 24 24">
+                            <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+                            </svg>
+                        </div>
+                    </button>
+                    <option value="high">High Variant</option>
+                    <option value="medium" selected>Medium Variant</option>
+                    <option value="low">Low Variant</option>
+                </select>
+            </div>
 
             <div class="info-content">
                 <p class="info-copy paragraph">
