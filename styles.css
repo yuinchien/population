@@ -960,11 +960,6 @@ body.country-detail #colorMode {
     }
 }
 
-#chartMetricTabs {
-    /*padding: 0 var(--margin);*/
-}
-
-
 .country-detail {
     min-height: 0;
     overflow: auto;
@@ -988,7 +983,7 @@ body.country-detail #colorMode {
 .country-chart {
     display: block;
     width: 100%;
-    aspect-ratio: 3 / 1;
+    aspect-ratio: 4.5 / 1;
     overflow: visible;
 }
 

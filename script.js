@@ -1657,7 +1657,7 @@ const COUNTRY_CHART_HEIGHT = 220;
 // Top padding is deliberately generous because the current-year marker
 // label floats above its dot, and when that dot sits near the series max
 // there needs to be real room for the label above y=0.
-const COUNTRY_CHART_PADDING = { top: 24, right: 12, bottom: 24, left: 12 };
+const COUNTRY_CHART_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
 // The pyramid draws in a fixed viewBox coordinate space (the SVG scales
 // responsively via preserveAspectRatio), so unlike the line chart it never
