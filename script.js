@@ -2290,6 +2290,10 @@ function updateCountryDetailForYear(year) {
   } =
     countryChartLayout;
   const population = populations[index];
+  if (elements.countryChartValue) {
+    elements.countryChartValue.textContent =
+      population != null ? formatPeakPopulation(population) : "";
+  }
   const [x, y] = xyFor(index, population ?? 0);
   if (markerLine && markerDot && markerLabel) {
     markerLine.setAttribute("x1", x);
@@ -2362,21 +2366,6 @@ function buildCountryPyramid(country) {
   const geo = pyramidGeometryFor(shares, ageGroups, maxShare);
 
   const children = [];
-  // Headers centered over each half (male fills pad.left→center, female
-  // center→right edge).
-
-  const sexLabels = divEl("pyramid-sex-labels", "");
-  const maleLabel = divEl("pyramid-sex-label male", "");
-  // maleLabel.style.left = `${(((geo.centerX - pad.right) / 2) / width) * 100}%`;
-  // maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
-  const femaleLabel = divEl("pyramid-sex-label female", "");
-  sexLabels.appendChild(femaleLabel);
-  sexLabels.appendChild(maleLabel);
-  // femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
-  // femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
-
-  children.push(sexLabels);
-
   const bars = geo.bars.map((bar) => {
     const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;
     const maleBar = divEl(`${cls} male`);

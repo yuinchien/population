@@ -397,11 +397,15 @@
             <div id="detailHeader" class="detail-row header mono-uppercase"></div>
             <div id="detailRows" class="detail-rows no-scrollbar"></div>
 
-            <div id="countryDetail" class="country-detail" hidden>
+            <div id="countryDetail" class="country-detail no-scrollbar" hidden>
 
                 <div id="detailSummary" class="detail-summary paragraph" hidden></div>
 
-                <div class="country-chart-card">
+                <div class="sparkline-card country-chart-card">
+                    <div class="sparkline-caption">
+                        <div class="sparkline-label mono-uppercase">Population</div>
+                        <div id="countryChartValue" class="sparkline-value"></div>
+                    </div>
                     <svg
                         id="countryChart"
                         class="country-chart"
@@ -414,6 +418,45 @@
                     <div class="sparkline-caption">
                         <div class="sparkline-label mono-uppercase">Age structure</div>
                         <div id="countryPyramidStage" class="sparkline-value"></div>
+                        <div class="pyramid-info">
+                            <span
+                                class="material-symbols-outlined pyramid-info-icon"
+                                tabindex="0"
+                                role="button"
+                                aria-label="About age-structure terms"
+                                >info</span
+                            >
+                            <div class="pyramid-info-tooltip glass" role="tooltip">
+                                <div class="pyramid-sex-legend">
+                                    <span class="pyramid-legend-item"
+                                        ><span
+                                            class="pyramid-sex-label female"
+                                        ></span
+                                        >Female</span
+                                    >
+                                    <span class="pyramid-legend-item"
+                                        ><span
+                                            class="pyramid-sex-label male"
+                                        ></span
+                                        >Male</span
+                                    >
+                                </div>
+                                <dl class="pyramid-aging-defs">
+                                    <div>
+                                        <dt>Aging society</dt>
+                                        <dd>65+ exceeds 7% of population</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Aged society</dt>
+                                        <dd>65+ exceeds 14% of population</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Super-aged society</dt>
+                                        <dd>65+ exceed 20% of population</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
                     </div>
 
                     <div

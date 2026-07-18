@@ -967,7 +967,6 @@ body.country-detail #colorMode {
     min-height: 0;
     overflow: auto;
     display: grid;
-    /*grid-row: 2 / -1;*/
     grid-template-columns: 1fr 1fr 1fr;
     align-content: start;
     gap: var(--margin);
@@ -1137,17 +1136,55 @@ body.country-detail #colorMode {
     border: 1px solid var(--color-text);
 }
 
-.pyramid-sex-labels {
-    position: absolute;
-    right: 0;
-    top: 0;
-    display: flex;
-    gap: 0;
+/* Info icon in the card header; hovering/focusing it reveals a tooltip with
+   the male/female legend and the aging-society thresholds. */
+.pyramid-info {
+    position: relative;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
 }
-/*.pyramid-sex-label {
+.pyramid-info-icon {
+    font-size: 18px;
+    color: var(--color-subtle);
+    cursor: help;
+}
+.pyramid-info:hover .pyramid-info-icon,
+.pyramid-info:focus-within .pyramid-info-icon {
+    color: var(--color-text);
+}
+.pyramid-info-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: var(--z-tooltip);
+    width: 240px;
+    padding: 12px;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.12s ease;
+    pointer-events: none;
+}
+.pyramid-info:hover .pyramid-info-tooltip,
+.pyramid-info:focus-within .pyramid-info-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.pyramid-sex-legend {
+    display: flex;
+    gap: 16px;
+}
+.pyramid-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--color-muted);
-    padding: 0;
-}*/
+}
 
 .pyramid-age-label {
     position: absolute;
@@ -1163,37 +1200,37 @@ body.country-detail #colorMode {
 .country-pyramid--stacked .pyramid-age-label {
     transform: translate(-50%, 2px);
 }
-.country-pyramid--stacked .pyramid-sex-label {
-    top: 0;
-    width: auto;
-    display: flex;
-    align-items: center;
-    padding: 2px;
+/* Legend swatches: the same styling as the pyramid bars — female filled,
+   male outlined — shown as small squares beside the labels in the tooltip. */
+.pyramid-sex-label {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex: none;
 }
-.country-pyramid--stacked .pyramid-sex-label::before {
-    content: "";
-    width: 24px;
-    height: 24px;
-    font-size: 24px;
-    font-family: "Material Symbols Outlined";
-    line-height: 1;
-    color: var(--detail-color);
+.pyramid-sex-label.male {
+    border: 1px solid var(--detail-color);
 }
-.country-pyramid--stacked .pyramid-sex-label.male {
-    outline: 1px solid var(--color-text);
-    outline-offset: -1px;
-    &::before {
-        color: var(--color-detail);
-        content: "\e4eb";
-    }
+.pyramid-sex-label.female {
+    background: var(--detail-color);
 }
 
-.country-pyramid--stacked .pyramid-sex-label.female {
-    background: var(--color-text);
-    &::before {
-        color: var(--color-bg);
-        content: "\e13e";
-    }
+.pyramid-aging-defs {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.pyramid-aging-defs dt {
+    color: var(--color-text);
+    font-weight: 500;
+}
+.pyramid-aging-defs dd {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.92em;
+    line-height: 1.35;
 }
 
 .sparkline-card {

@@ -35,6 +35,7 @@ export function getAppElements(root = document) {
     // detailBack: root.querySelector("#detailBack"),
     countryDetail: root.querySelector("#countryDetail"),
     countryChart: root.querySelector("#countryChart"),
+    countryChartValue: root.querySelector("#countryChartValue"),
     countrySparklines: root.querySelector("#countrySparklines"),
     countryPyramidCard: root.querySelector("#countryPyramidCard"),
     countryPyramidStage: root.querySelector("#countryPyramidStage"),
