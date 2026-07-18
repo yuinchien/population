@@ -3409,13 +3409,24 @@ function animate(timestamp) {
   renderer.render(scene, camera);
 }
 
-// The country charts' viewBox is measured from the panel's actual pixel
-// size at build time rather than tracking it
-// continuously, so a resize while one is open leaves that viewBox stale —
-// stretching every path/dot until the chart is rebuilt against the new
-// size. Debounced so a drag-resize doesn't rebuild on every intermediate
-// frame, only once the size settles.
-let countryChartResizeTimer = null;
+function createDebouncedResizeHandler(callback, delay = 120) {
+  let timerId = null;
+  return () => {
+    clearTimeout(timerId);
+    timerId = setTimeout(callback, delay);
+  };
+}
+
+// Panel/canvas subviews each own their own debounce. Sharing one timer meant
+// whichever branch ran last during resize could cancel the others.
+const resizeCountryDetail = createDebouncedResizeHandler(() => {
+  // Re-checked rather than trusting the `selectedCountry` value at resize
+  // event time: the panel can close during the debounce window.
+  if (!selectedCountry) return;
+  countryDetailController.resize(selectedCountry);
+});
+const resizeTrendChart = createDebouncedResizeHandler(renderTrendChart);
+const resizeCluster = createDebouncedResizeHandler(clusterController.resize);
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -3429,22 +3440,13 @@ window.addEventListener("resize", () => {
       renderer.domElement.height * 0.5;
   }
   if (selectedCountry) {
-    clearTimeout(countryChartResizeTimer);
-    countryChartResizeTimer = setTimeout(() => {
-      // Re-checked rather than trusting the outer `if` above: the panel
-      // can close during this 120ms debounce, and selectedCountry (read
-      // live, not captured) would be null by the time this fires.
-      if (!selectedCountry) return;
-      countryDetailController.resize(selectedCountry);
-    }, 120);
+    resizeCountryDetail();
   }
   if (chartPanelActive) {
-    clearTimeout(countryChartResizeTimer);
-    countryChartResizeTimer = setTimeout(renderTrendChart, 120);
+    resizeTrendChart();
   }
   if (clusterActive) {
-    clearTimeout(countryChartResizeTimer);
-    countryChartResizeTimer = setTimeout(clusterController.resize, 120);
+    resizeCluster();
   }
 });
 
