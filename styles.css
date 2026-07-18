@@ -1665,6 +1665,168 @@ select::picker(select) {
     overflow: hidden;
 }
 
+/* Lifetime view: a full-screen overlay like Cluster (keeps the timeline
+   slider on top of it), but a text-forward personal story instead of a
+   canvas. */
+.lifetime-view {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-dock);
+    background: var(--color-scrim-strong);
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+}
+
+.lifetime-content {
+    width: 100%;
+    max-width: 680px;
+    padding: clamp(80px, 16vh, 180px) var(--margin) 120px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--margin);
+}
+
+.lifetime-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--font-sans);
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 500;
+}
+
+.lifetime-form-lead {
+    color: var(--color-muted);
+}
+
+.lifetime-input {
+    font: inherit;
+    color: var(--color-text);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--color-border);
+    padding: 2px 4px;
+    text-align: center;
+}
+.lifetime-input:focus {
+    outline: none;
+    border-bottom-color: var(--color-text);
+}
+#lifetimeBirthYear {
+    width: 4.5em;
+}
+
+/* Single-country type-ahead: the input keeps the form's underline look, and
+   the suggestion list reuses the chart view's .chip-suggestions, normalized
+   back to a readable size from the large form font. */
+.lifetime-country-picker {
+    position: relative;
+    display: inline-block;
+}
+#lifetimeCountry {
+    min-width: 7em;
+    color: var(--color-text);
+}
+.lifetime-country-picker .chip-suggestions {
+    right: auto;
+    min-width: 280px;
+    max-height: 320px;
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    font-weight: 400;
+    text-align: left;
+}
+.lifetime-country-picker .chip-suggestion {
+    padding: 10px 12px;
+}
+
+.lifetime-prompt {
+    color: var(--color-muted);
+    max-width: 34ch;
+}
+
+.lifetime-story {
+    display: flex;
+    flex-direction: column;
+    gap: var(--margin);
+}
+
+.lifetime-headline {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1.6rem;
+    font-weight: 500;
+}
+
+.lifetime-about,
+.lifetime-journey {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: var(--border);
+}
+
+.lifetime-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--margin);
+}
+
+.lifetime-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.lifetime-stat-value {
+    font-size: 1.8rem;
+    font-weight: 500;
+    color: var(--color-text);
+    line-height: 1.1;
+}
+.lifetime-stat-label {
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.lifetime-section-label {
+    font-size: 12px;
+    color: var(--color-subtle);
+}
+
+.lifetime-milestones {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.lifetime-milestones li {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+}
+.lifetime-milestone-year {
+    font-family: var(--font-mono);
+    color: var(--color-text);
+    min-width: 3.5em;
+}
+.lifetime-milestone-text {
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+}
+
+.lifetime-journey-heading {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 1.45rem;
+    font-weight: 500;
+}
+
 .cluster-canvas {
     position: absolute;
     inset: 0;

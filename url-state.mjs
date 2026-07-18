@@ -15,6 +15,10 @@ export function serializeUrlState(state) {
     params.set("group", state.group);
   } else if (state.view === "cluster") {
     params.set("view", "cluster");
+  } else if (state.view === "lifetime") {
+    params.set("view", "lifetime");
+    if (state.birthYear != null) params.set("birth", String(state.birthYear));
+    if (state.country) params.set("country", state.country);
   }
 
   if (state.year != null) params.set("year", String(state.year));
@@ -53,6 +57,12 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
     }
   } else if (view === "cluster") {
     state.view = "cluster";
+  } else if (view === "lifetime") {
+    state.view = "lifetime";
+    const birthYear = Number(params.get("birth"));
+    if (years.includes(birthYear)) state.birthYear = birthYear;
+    const country = params.get("country")?.toUpperCase();
+    if (countryCodes.includes(country)) state.country = country;
   }
   return state;
 }

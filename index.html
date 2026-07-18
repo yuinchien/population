@@ -143,6 +143,51 @@
             </div>
         </section>
 
+        <section id="lifetimeView" class="lifetime-view glass" hidden>
+            <div class="lifetime-content">
+                <form id="lifetimeForm" class="lifetime-form" autocomplete="off">
+                    <span class="lifetime-form-lead">Born in</span>
+                    <input
+                        id="lifetimeBirthYear"
+                        class="lifetime-input"
+                        type="number"
+                        min="1950"
+                        max="2100"
+                        step="1"
+                        inputmode="numeric"
+                        placeholder="year"
+                        aria-label="Birth year"
+                    />
+                    <span class="lifetime-form-lead">in</span>
+                    <span class="lifetime-country-picker">
+                        <input
+                            id="lifetimeCountry"
+                            class="lifetime-input"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="your country"
+                            aria-label="Country of birth"
+                        />
+                        <div
+                            id="lifetimeCountrySuggestions"
+                            class="chip-suggestions no-scrollbar"
+                            hidden
+                        ></div>
+                    </span>
+                </form>
+
+                <p id="lifetimePrompt" class="lifetime-prompt paragraph">
+                    Enter your birth year and country to see the world through
+                    your lifetime.
+                </p>
+
+                <div id="lifetimeStory" class="lifetime-story" hidden>
+                    <div id="lifetimeAbout" class="lifetime-about"></div>
+                    <div id="lifetimeJourney" class="lifetime-journey"></div>
+                </div>
+            </div>
+        </section>
+
         <div id="timelineContainer" class="timeline hide-for-chart">
             <button
                 id="milestoneTour"
@@ -388,6 +433,7 @@
             </div>
 
             <div class="info-content">
+                <h2>About</h2>
                 <p>
                     World Population is an interactive data visualization tracing global population dynamics from 1950 to 2100. Featuring a fluid, particle-based design, the application seamlessly transitions across a 3D globe, geographic maps, cluster views, and comparative charts to reveal the core forces shaping human history: growth, migration, aging, and decline. A unified timeline anchors the experience, allowing users to drill down into country, regional, and income-group metrics to surface critical milestones and long-term demographic transitions.
                 </p>

@@ -42,7 +42,14 @@ import { buildCountrySummary } from "./country-summary-model.mjs";
 import {
   buildAgingMilestoneInsight,
   buildCountryDemographicNarrative,
+  currentAgingStage,
 } from "./country-aging-narrative.mjs";
+import {
+  ageAt,
+  projectedLifespanEnd,
+  populationMilestones,
+  milestonesInLifespan,
+} from "./lifetime-model.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -410,6 +417,11 @@ let detailEntryMode = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let clusterActive = false;
+// Lifetime view: the personal inputs (birth year + country ISO3) that frame
+// the story, and whether the overlay is open.
+let lifetimeActive = false;
+let lifetimeBirthYear = null;
+let lifetimeCountryIso = null;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
@@ -1059,6 +1071,16 @@ function applyYear(year, { instant = false } = {}) {
     return;
   }
 
+  // The lifetime overlay covers the 3D scene too; the slider just re-frames
+  // the personal story for the selected year (setLifetimeActive(false) catches
+  // the 3D scene up on close).
+  if (lifetimeActive) {
+    updateYearLabels(year);
+    updateLifetimeForYear(year);
+    syncUrlFromState();
+    return;
+  }
+
   if (!pointsMesh) return;
   // Skip the pulse on the very first call (initial page load) — there's no
   // prior year for this one to visibly change *from*, so it would just
@@ -1535,6 +1557,10 @@ function urlStateFromApp() {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (clusterActive) {
     Object.assign(state, { view: "cluster" });
+  } else if (lifetimeActive) {
+    Object.assign(state, { view: "lifetime" });
+    if (lifetimeBirthYear != null) state.birthYear = lifetimeBirthYear;
+    if (lifetimeCountryIso) state.country = lifetimeCountryIso;
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
@@ -1575,6 +1601,10 @@ function applyUrlStateFromLocation(search) {
     setchartPanelActive(true);
   } else if (state.view === "cluster") {
     setClusterActive(true);
+  } else if (state.view === "lifetime") {
+    if (state.birthYear != null) lifetimeBirthYear = state.birthYear;
+    if (state.country) lifetimeCountryIso = state.country;
+    setLifetimeActive(true);
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -2449,6 +2479,265 @@ function setClusterActive(active) {
   syncUrlFromState();
 }
 
+// The Lifetime overlay mirrors Cluster's activation pattern (full-screen
+// overlay, keeps the timeline slider), but frames a personal story from a
+// birth year + country instead of drawing the 3D scene.
+function setLifetimeActive(active) {
+  if (active === lifetimeActive) return;
+  if (active) {
+    assertElements(elements, ["lifetimeView", "lifetimeForm"], "lifetime view");
+  }
+  lifetimeActive = active;
+  elements.lifetimeView.hidden = !active;
+  document.body.classList.toggle("view-lifetime", active);
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle(
+      "active",
+      btn.dataset.mode === (active ? "lifetime" : viewMode),
+    ),
+  );
+  if (active) {
+    tourController.stop();
+    renderLifetimeView();
+  } else if (currentYearIndex >= 0) {
+    // Catch the hidden 3D scene up to the current year now it's visible again.
+    applyYear(yearsData[currentYearIndex], { instant: true });
+  }
+  syncUrlFromState();
+}
+
+// Single-country type-ahead, mirroring the chart view's chip suggestions: the
+// input shows the chosen country's name, typing filters, and picking one
+// replaces the (single) selection.
+let lifetimeSuggestionActiveIndex = -1;
+
+function lifetimeCountryMatches(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return countriesData
+    .filter((country) => {
+      const iso2 = convertAlpha3ToAlpha2(country.iso3);
+      return (
+        country.name.toLowerCase().includes(q) ||
+        (iso2 && iso2.toLowerCase().includes(q))
+      );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 40);
+}
+
+function hideLifetimeCountrySuggestions() {
+  elements.lifetimeCountrySuggestions.hidden = true;
+  elements.lifetimeCountrySuggestions.replaceChildren();
+  lifetimeSuggestionActiveIndex = -1;
+}
+
+function renderLifetimeCountrySuggestions() {
+  const query = elements.lifetimeCountry.value.trim();
+  if (!query) {
+    hideLifetimeCountrySuggestions();
+    return;
+  }
+  const matches = lifetimeCountryMatches(query);
+  lifetimeSuggestionActiveIndex = -1;
+  elements.lifetimeCountrySuggestions.hidden = false;
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "chip-suggestions-empty";
+    empty.textContent = "No matching countries";
+    elements.lifetimeCountrySuggestions.replaceChildren(empty);
+    return;
+  }
+  elements.lifetimeCountrySuggestions.replaceChildren(
+    ...matches.map((country) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "chip-suggestion";
+      item.dataset.iso3 = country.iso3;
+      const flag = document.createElement("span");
+      flag.className = "chip-suggestion-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+      const label = document.createElement("span");
+      label.textContent = country.name;
+      item.append(flag, label);
+      return item;
+    }),
+  );
+}
+
+function moveLifetimeSuggestionActive(delta) {
+  const items = elements.lifetimeCountrySuggestions.querySelectorAll(
+    ".chip-suggestion",
+  );
+  if (!items.length) return;
+  lifetimeSuggestionActiveIndex = Math.min(
+    items.length - 1,
+    Math.max(0, lifetimeSuggestionActiveIndex + delta),
+  );
+  items.forEach((item, i) =>
+    item.classList.toggle("highlighted", i === lifetimeSuggestionActiveIndex),
+  );
+  items[lifetimeSuggestionActiveIndex].scrollIntoView({ block: "nearest" });
+}
+
+function selectLifetimeCountry(iso3) {
+  const country = countriesData.find((c) => c.iso3 === iso3);
+  if (!country) return;
+  lifetimeCountryIso = iso3;
+  elements.lifetimeCountry.value = country.name;
+  hideLifetimeCountrySuggestions();
+  renderLifetimeView();
+  syncUrlFromState();
+}
+
+function lifetimeCountrySeries(iso3, key) {
+  return countryDemographicMetrics?.countries?.[iso3]?.[key] ?? [];
+}
+
+// One "big value + small label" block, matching the sparkline-card caption look.
+function lifetimeStat(value, label) {
+  const stat = document.createElement("div");
+  stat.className = "lifetime-stat";
+  const valueEl = document.createElement("div");
+  valueEl.className = "lifetime-stat-value";
+  valueEl.textContent = value;
+  const labelEl = document.createElement("div");
+  labelEl.className = "lifetime-stat-label mono-uppercase";
+  labelEl.textContent = label;
+  stat.append(valueEl, labelEl);
+  return stat;
+}
+
+// Renders the whole Lifetime story (or the input prompt if either input is
+// still missing). Reflects state back into the form controls so a deep link
+// pre-fills them.
+function renderLifetimeView() {
+  if (!elements.lifetimeView || elements.lifetimeView.hidden) return;
+  if (lifetimeBirthYear != null) {
+    elements.lifetimeBirthYear.value = String(lifetimeBirthYear);
+  }
+
+  const country = lifetimeCountryIso
+    ? countriesData.find((c) => c.iso3 === lifetimeCountryIso)
+    : null;
+  // Reflect the chosen country's name into the type-ahead input (e.g. from a
+  // deep link), but don't clobber whatever the user is mid-typing.
+  if (country && document.activeElement !== elements.lifetimeCountry) {
+    elements.lifetimeCountry.value = country.name;
+  }
+  const ready = Number.isFinite(lifetimeBirthYear) && !!country;
+  elements.lifetimePrompt.hidden = ready;
+  elements.lifetimeStory.hidden = !ready;
+  if (!ready) return;
+
+  renderLifetimeAbout(country);
+  if (currentYearIndex >= 0) updateLifetimeForYear(yearsData[currentYearIndex]);
+}
+
+// The fixed "about you" panel: life expectancy at birth and the world
+// milestones that fall within your projected lifespan.
+function renderLifetimeAbout(country) {
+  const birthIndex = yearsData.indexOf(lifetimeBirthYear);
+  const lifeExpectancy =
+    lifetimeCountrySeries(country.iso3, "lifeExpectancy")[birthIndex] ?? null;
+  const finalYear = projectedLifespanEnd(lifetimeBirthYear, lifeExpectancy);
+
+  const headline = document.createElement("p");
+  headline.className = "lifetime-headline";
+  headline.textContent = `Born in ${lifetimeBirthYear}, ${country.name}.`;
+
+  const statRow = document.createElement("div");
+  statRow.className = "lifetime-stat-row";
+  statRow.append(
+    lifetimeStat(
+      lifeExpectancy != null ? `${Math.round(lifeExpectancy)} yrs` : "—",
+      "Life expectancy at birth",
+    ),
+    lifetimeStat(
+      finalYear != null ? String(finalYear) : "—",
+      "Projected to live until",
+    ),
+  );
+
+  const children = [headline, statRow];
+
+  const globalRows = yearsData
+    .map((year) => ({ year, value: globalMetricsByYear.get(year)?.population }))
+    .filter((row) => Number.isFinite(row.value));
+  const milestones = milestonesInLifespan(
+    populationMilestones(globalRows),
+    lifetimeBirthYear,
+    finalYear,
+  );
+  if (milestones.length) {
+    const label = document.createElement("div");
+    label.className = "lifetime-section-label mono-uppercase";
+    label.textContent = "World milestones in your lifetime";
+    const list = document.createElement("ul");
+    list.className = "lifetime-milestones";
+    milestones.forEach((milestone) => {
+      const age = ageAt(lifetimeBirthYear, milestone.year);
+      const item = document.createElement("li");
+      const yearEl = document.createElement("span");
+      yearEl.className = "lifetime-milestone-year";
+      yearEl.textContent = milestone.year;
+      const textEl = document.createElement("span");
+      textEl.className = "lifetime-milestone-text";
+      textEl.textContent =
+        age != null ? `${milestone.label} — you'd be ${age}` : milestone.label;
+      item.append(yearEl, textEl);
+      list.append(item);
+    });
+    children.push(label, list);
+  }
+
+  elements.lifetimeAbout.replaceChildren(...children);
+}
+
+// The slider-driven "journey" panel: your age, world/country population and
+// your society's aging stage for the selected year.
+function updateLifetimeForYear(year) {
+  if (!lifetimeActive || elements.lifetimeStory.hidden) return;
+  const country = lifetimeCountryIso
+    ? countriesData.find((c) => c.iso3 === lifetimeCountryIso)
+    : null;
+  if (!Number.isFinite(lifetimeBirthYear) || !country) return;
+  const yearIndex = yearsData.indexOf(year);
+  if (yearIndex < 0) return;
+
+  const age = ageAt(lifetimeBirthYear, year);
+  const worldPop = globalMetricsByYear.get(year)?.population;
+  const countryPop = country.populations[yearIndex];
+  const olderShare = lifetimeCountrySeries(
+    country.iso3,
+    "olderPopulationShare",
+  )[yearIndex];
+  const stage = currentAgingStage(olderShare);
+
+  const heading = document.createElement("p");
+  heading.className = "lifetime-journey-heading";
+  heading.textContent =
+    age == null
+      ? `In ${year}, you aren't born yet.`
+      : `In ${year}, you are ${age}.`;
+
+  const statRow = document.createElement("div");
+  statRow.className = "lifetime-stat-row";
+  statRow.append(
+    lifetimeStat(formatPeakPopulation(worldPop), "World population"),
+    lifetimeStat(
+      formatPeakPopulation(countryPop),
+      `${country.name} population`,
+    ),
+    lifetimeStat(
+      stage ? capitalizeFirstLetter(stage.label) : "Not yet aging",
+      `${country.name} is`,
+    ),
+  );
+
+  elements.lifetimeJourney.replaceChildren(heading, statRow);
+}
+
 function setChartTableSort(key) {
   const next = nextSortState(chartTableSort, key, chartTableColumns());
   if (!next) return;
@@ -2916,6 +3205,7 @@ async function init() {
         renderChartTable();
       }
       if (clusterActive) clusterController.render(currentYearIndex);
+      if (lifetimeActive) renderLifetimeView();
       if (selectedCountry) {
         renderCountryDetail();
       } else if (selectedLegend) {
@@ -3027,21 +3317,90 @@ async function init() {
     );
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (btn.dataset.mode === "chart") {
+        const mode = btn.dataset.mode;
+        if (mode === "chart") {
           setClusterActive(false);
+          setLifetimeActive(false);
           setchartPanelActive(true);
           return;
         }
-        if (btn.dataset.mode === "cluster") {
+        if (mode === "cluster") {
           setchartPanelActive(false);
+          setLifetimeActive(false);
           setClusterActive(true);
+          return;
+        }
+        if (mode === "lifetime") {
+          setchartPanelActive(false);
+          setClusterActive(false);
+          setLifetimeActive(true);
           return;
         }
         setchartPanelActive(false);
         setClusterActive(false);
-        setViewMode(btn.dataset.mode);
+        setLifetimeActive(false);
+        setViewMode(mode);
       });
     });
+
+    elements.lifetimeBirthYear?.addEventListener("input", () => {
+      const value = Number(elements.lifetimeBirthYear.value);
+      lifetimeBirthYear = yearsData.includes(value) ? value : null;
+      renderLifetimeView();
+      syncUrlFromState();
+    });
+    elements.lifetimeCountry?.addEventListener("input", () => {
+      // Emptying the field clears the selection (back to the prompt).
+      if (!elements.lifetimeCountry.value.trim() && lifetimeCountryIso) {
+        lifetimeCountryIso = null;
+        renderLifetimeView();
+        syncUrlFromState();
+      }
+      renderLifetimeCountrySuggestions();
+    });
+    elements.lifetimeCountry?.addEventListener("focus", () => {
+      elements.lifetimeCountry.select();
+      renderLifetimeCountrySuggestions();
+    });
+    elements.lifetimeCountry?.addEventListener("blur", () => {
+      // Delay so a suggestion click lands before the list is torn down.
+      setTimeout(() => {
+        hideLifetimeCountrySuggestions();
+        // Revert un-committed typing back to the selected country's name.
+        const country = lifetimeCountryIso
+          ? countriesData.find((c) => c.iso3 === lifetimeCountryIso)
+          : null;
+        elements.lifetimeCountry.value = country ? country.name : "";
+      }, 150);
+    });
+    elements.lifetimeCountry?.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        moveLifetimeSuggestionActive(1);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        moveLifetimeSuggestionActive(-1);
+      } else if (event.key === "Enter") {
+        const items = elements.lifetimeCountrySuggestions.querySelectorAll(
+          ".chip-suggestion",
+        );
+        if (!items.length) return;
+        event.preventDefault();
+        const index =
+          lifetimeSuggestionActiveIndex >= 0 ? lifetimeSuggestionActiveIndex : 0;
+        selectLifetimeCountry(items[index].dataset.iso3);
+      } else if (event.key === "Escape") {
+        hideLifetimeCountrySuggestions();
+      }
+    });
+    elements.lifetimeCountrySuggestions?.addEventListener("click", (event) => {
+      const button = event.target.closest(".chip-suggestion[data-iso3]");
+      if (!button || !elements.lifetimeCountrySuggestions.contains(button)) {
+        return;
+      }
+      selectLifetimeCountry(button.dataset.iso3);
+    });
+
     assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
     elements.chartProjectionScenario.value = chartProjectionScenario;
     // updateProjectionScenarioVisibility();

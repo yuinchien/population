@@ -64,6 +64,15 @@ export function getAppElements(root = document) {
     chartTableRows: root.querySelector("#chartTableRows"),
     clusterView: root.querySelector("#clusterView"),
     clusterCanvas: root.querySelector("#clusterCanvas"),
+    lifetimeView: root.querySelector("#lifetimeView"),
+    lifetimeForm: root.querySelector("#lifetimeForm"),
+    lifetimeBirthYear: root.querySelector("#lifetimeBirthYear"),
+    lifetimeCountry: root.querySelector("#lifetimeCountry"),
+    lifetimeCountrySuggestions: root.querySelector("#lifetimeCountrySuggestions"),
+    lifetimePrompt: root.querySelector("#lifetimePrompt"),
+    lifetimeStory: root.querySelector("#lifetimeStory"),
+    lifetimeAbout: root.querySelector("#lifetimeAbout"),
+    lifetimeJourney: root.querySelector("#lifetimeJourney"),
   };
 }
 
