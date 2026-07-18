@@ -18,6 +18,7 @@ import {
   selectDetailCountries,
   sortDetailCountries,
 } from "./detail-table.mjs";
+import { createCountryDetailController } from "./country-detail-controller.mjs";
 import {
   convertAlpha3ToAlpha2,
   loadPopulationData,
@@ -38,28 +39,14 @@ import { buildCountrySummary } from "./country-summary-model.mjs";
 import {
   buildAgingMilestoneInsight,
   buildCountryDemographicNarrative,
-  currentAgingStage,
 } from "./country-aging-narrative.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
   createTourController,
 } from "./tour-controller.mjs";
-import { createCountryChartGeometry } from "./country-chart.mjs";
-import {
-  interpolateAgeStructure,
-  maxBandTotal,
-  buildPyramidGeometry,
-  ageBandStart,
-} from "./country-pyramid.mjs";
-import { createSparklineGeometry } from "./sparkline-chart.mjs";
-import {
-  cancelChartAnimations,
-  runChartAnimation,
-} from "./chart-animation.mjs";
 import {
   chartXFor,
-  computeValueRange,
 } from "./chart-math.mjs";
 import { createClusterController } from "./cluster-controller.mjs";
 import { createTrendChartController } from "./trend-chart-controller.mjs";
@@ -347,15 +334,6 @@ let selectedCountry = null;
 // onCountryClick callback below), and consumed/cleared once
 // closeDetailPanel() fully exits back to the top level.
 let detailEntryMode = null;
-// Cached population-chart layout (max value + coordinate mapper) so the
-// per-year marker/sparkline update is a cheap reposition rather than a full
-// chart rebuild every time the slider moves.
-let countryChartLayout = null;
-// Cached pyramid layout (persistent bar rects + per-country scale) so a year
-// scrub only rewrites each bar's x/width rather than rebuilding the SVG.
-let countryPyramidLayout = null;
-let countrySparklineInstances = [];
-const countryChartAnimationHandles = [];
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let clusterActive = false;
@@ -1064,7 +1042,7 @@ function applyYear(year, { instant = false } = {}) {
   updateYearLabels(year);
   renderDetailPanel();
   if (selectedCountry) {
-    updateCountryDetailForYear(year);
+    countryDetailController.updateYear(year);
     updateStatusPanel(year, { instant });
   } else if (!selectedLegend) {
     updateStatusPanel(year, { instant });
@@ -1497,11 +1475,9 @@ function renderDetailPanel() {
 }
 
 function closeDetailPanel() {
-  cancelChartAnimations(countryChartAnimationHandles);
+  countryDetailController.reset();
   selectedLegend = null;
   selectedCountry = null;
-  countryChartLayout = null;
-  countrySparklineInstances = [];
   elements.detailPanel.hidden = true;
   updateViewModeAvailability();
   renderLegend();
@@ -1551,10 +1527,8 @@ function closeInfoPanel() {
 // otherwise closes the whole panel — mirrors closeDetailPanel()'s job but
 // one level up the navigation stack.
 function closeCountryDetail() {
-  cancelChartAnimations(countryChartAnimationHandles);
+  countryDetailController.reset();
   selectedCountry = null;
-  countryChartLayout = null;
-  countrySparklineInstances = [];
   if (selectedLegend) {
     renderDetailPanel();
   } else {
@@ -1772,12 +1746,31 @@ function hideClusterArchetypeTooltip() {
   elements.clusterArchetypeTooltip.hidden = true;
 }
 
-function divEl(className, text = "") {
-  const el = document.createElement("div");
-  el.className = className;
-  el.textContent = text;
-  return el;
-}
+const countryDetailController = createCountryDetailController({
+  elements,
+  getYears: () => yearsData,
+  getCurrentYearIndex: () => currentYearIndex,
+  setCurrentYearIndex: (index) => {
+    currentYearIndex = index;
+  },
+  getHistoricalCutoffYear: () => historicalCutoffYear,
+  getCountries: () => countriesData,
+  getColorMode: () => colorMode,
+  getDemographicMetrics: () => countryDemographicMetrics,
+  getAgeStructure: () => countryAgeStructure,
+  colorFor,
+  formatPopulation: formatPeakPopulation,
+  easeOut: easeOutCubic,
+  chartLineGrowMs: CHART_LINE_GROW_MS,
+  chartMarkerFadeInMs: CHART_MARKER_FADE_IN_MS,
+  updateStatusPanel,
+  updateViewModeAvailability,
+  stopTour: () => tourController.stop(),
+  goToYear,
+  showTooltip: showChartTooltip,
+  hideTooltip: hideChartTooltip,
+  onOpenCountry: openCountryDetail,
+});
 
 function openCountryDetail(country) {
   if (!country || currentYearIndex < 0) return;
@@ -1800,655 +1793,7 @@ function openCountryDetail(country) {
 function renderCountryDetail() {
   const country = selectedCountry;
   if (!country || currentYearIndex < 0) return;
-  const year = yearsData[currentYearIndex];
-
-  elements.detailPanel.style.setProperty(
-    "--detail-color",
-    `#${colorFor(country).getHexString()}`,
-  );
-  elements.detailTitle.textContent = country.name;
-  elements.detailFlag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-  elements.detailFlag.hidden = false;
-
-  elements.detailHeader.hidden = true;
-  elements.detailRows.hidden = true;
-  elements.countryDetail.hidden = false;
-  // elements.countryDetail.prepend(elements.detailSummary);
-  // Laid out (panel visible, chart card sized) before measuring its actual
-  // width in buildCountryCharts() — otherwise clientWidth reads 0 while the
-  // panel is still display:none, and the chart falls back to a fixed size
-  // that doesn't match the container it's stretched into.
-  elements.detailPanel.hidden = false;
-  // Summary text is set before the charts are measured, not after: it can
-  // wrap to a different number of lines than whatever was showing before,
-  // which changes the panel's content height and can toggle its scrollbar
-  // on/off — and that changes the chart's available width. Measuring before
-  // this settles is exactly what left the chart/sparklines a few pixels
-  // narrower than their final size.
-  updateStatusPanel(year);
-  buildCountryCharts(country, { animate: true });
-  buildCountryPyramid(country);
-  updateCountryDetailForYear(year);
-  renderSimilarCountries(country);
-  updateViewModeAvailability();
-}
-
-// Builds the population chart (band + historical/projected lines + peak
-// marker) once per country open — none of that depends on the currently
-// selected year, only on the country's own time series. The coordinate
-// mapper is cached on countryChartLayout so updateCountryDetailForYear()
-// can cheaply reposition the marker on every slider tick instead of
-// rebuilding the whole chart.
-function buildCountryCharts(country, { animate = false } = {}) {
-  cancelChartAnimations(countryChartAnimationHandles);
-  // Sized to the chart's actual rendered box (panel is already visible by
-  // this point) rather than fixed constants — the SVG uses
-  // preserveAspectRatio="none" to fill that box exactly, so a mismatched
-  // viewBox (width now, height since .country-chart switched to
-  // aspect-ratio: 4/1 instead of a fixed height) is what stretches it.
-  const chartWidth = elements.countryChart.clientWidth || COUNTRY_CHART_WIDTH;
-  const chartHeight =
-    elements.countryChart.clientHeight || COUNTRY_CHART_HEIGHT;
-  const svg = elements.countryChart;
-  svg.setAttribute("viewBox", `0 0 ${chartWidth} ${chartHeight}`);
-  const pad = COUNTRY_CHART_PADDING;
-  const {
-    count: n,
-    cutoffIndex,
-    baselineY,
-    xyFor,
-  } = createCountryChartGeometry({
-    country,
-    years: yearsData,
-    historicalCutoffYear,
-    width: chartWidth,
-    height: chartHeight,
-    padding: pad,
-  });
-
-  svg.replaceChildren();
-  const growingBars = [];
-  const revealElements = [];
-
-  if (cutoffIndex < n - 1) {
-    let top = "";
-    for (let i = cutoffIndex; i < n; i++) {
-      const [x, y] = xyFor(i, country.populationsHigh[i]);
-      top += `${top ? " L " : "M "}${x.toFixed(2)} ${y.toFixed(2)}`;
-    }
-    let bottom = "";
-    for (let i = n - 1; i >= cutoffIndex; i--) {
-      const [x, y] = xyFor(i, country.populationsLow[i]);
-      bottom += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
-    }
-    const band = svgEl("path", {
-      class: "country-chart-band",
-      d: `${top}${bottom} Z`,
-    });
-    if (animate) band.style.opacity = "0";
-    revealElements.push(band);
-    svg.append(band);
-  }
-
-  // One vertical stroke per year (from the baseline up to that year's
-  // value) rather than a connected curve — historical years solid,
-  // projected years dashed, matching the sparklines' bar-code treatment.
-  const bars = document.createDocumentFragment();
-  for (let i = 0; i < n; i++) {
-    const value = country.populations[i];
-    if (value == null) continue;
-    const [x, y] = xyFor(i, value);
-    const isProjected = i >= cutoffIndex;
-    const bar = svgEl("line", {
-      class: `country-chart-bar${isProjected ? " projected" : ""}`,
-      x1: x.toFixed(2),
-      x2: x.toFixed(2),
-      y1: baselineY,
-      y2: animate ? baselineY : y.toFixed(2),
-    });
-    if (animate) growingBars.push({ bar, targetY: y });
-    bars.append(bar);
-  }
-  svg.append(bars);
-
-  const axisY = chartHeight - 6;
-  const peakIndex = yearsData.indexOf(country.peakYear);
-  const peakDotSize = 8.2;
-  if (peakIndex !== -1) {
-    const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
-    const peakLine = svgEl("line", {
-        class: "country-chart-peak-line",
-        x1: px,
-        x2: px,
-        y1: baselineY,
-        y2: py.toFixed(2),
-      });
-    const peakDot = svgEl("rect", {
-        class: "country-chart-peak-dot",
-        x: (px - peakDotSize/2).toFixed(2),
-        y: (py - peakDotSize/2).toFixed(2),
-        width: peakDotSize,
-        height: peakDotSize,
-      });
-    if (animate) {
-      peakLine.style.opacity = "0";
-      peakDot.style.opacity = "0";
-    }
-    revealElements.push(peakLine, peakDot);
-    svg.append(peakLine, peakDot);
-    const peakTextAnchor =
-      peakIndex > n * 0.85 ? "end" : peakIndex < n * 0.15 ? "start" : "middle";
-    const peakLabel = svgEl("text", {
-      class: "country-chart-peak-label",
-      x: px,
-      y: axisY-2,
-      "text-anchor": peakTextAnchor,
-    });
-    peakLabel.textContent = `PEAK`;
-    if (animate) peakLabel.style.opacity = "0";
-    revealElements.push(peakLabel);
-    svg.append(peakLabel);
-  }
-
-  const [x0] = xyFor(0, 0);
-  const [x1] = xyFor(n - 1, 0);
-  const labelFirst = svgEl("text", {
-    class: "country-chart-axis-label",
-    x: x0,
-    y: axisY-2,
-    "text-anchor": "start",
-  });
-  labelFirst.textContent = yearsData[0];
-  const labelLast = svgEl("text", {
-    class: "country-chart-axis-label",
-    x: x1,
-    y: axisY-2,
-    "text-anchor": "end",
-  });
-  labelLast.textContent = yearsData[n - 1];
-  if (animate) {
-    labelFirst.style.opacity = "0";
-    labelLast.style.opacity = "0";
-  }
-  revealElements.push(labelFirst, labelLast);
-  svg.append(labelFirst, labelLast);
-
-  const markerDot = svgEl("circle", {
-    id: "countryChartMarkerDot",
-    class: "country-chart-marker-dot",
-    r: 4.5,
-  });
-  const markerLabel = svgEl("text", {
-    id: "countryChartMarkerLabel",
-    class: "country-chart-marker-label",
-  });
-
-  const markerLine = svgEl("line", {
-    id: "countryChartMarkerLine",
-    class: "country-chart-marker-line",
-    y2: baselineY,
-  });
-  const markerDragHit = svgEl("rect", {
-    class: "country-chart-year-drag",
-    y: pad.top,
-    width: 18,
-    height: Math.max(0, baselineY - pad.top),
-  });
-  if (animate) {
-    markerLine.style.opacity = "0";
-    markerDot.style.opacity = "0";
-    markerLabel.style.opacity = "0";
-  }
-  revealElements.push(markerLine, markerDot, markerLabel);
-  svg.append(markerLine, markerDot, markerLabel, markerDragHit);
-
-  countryChartLayout = {
-    populations: country.populations,
-    xyFor,
-    markerLine,
-    markerDot,
-    markerLabel,
-    markerDragHit,
-  };
-
-  function yearForClientX(clientX) {
-    const rect = svg.getBoundingClientRect();
-    const localX = ((clientX - rect.left) / rect.width) * chartWidth;
-    const [firstX] = xyFor(0, 0);
-    const [lastX] = xyFor(n - 1, 0);
-    const ratio = (localX - firstX) / (lastX - firstX);
-    const index = Math.round(ratio * (n - 1));
-    return yearsData[Math.min(n - 1, Math.max(0, index))];
-  }
-
-  function previewCountryYear(clientX) {
-    const year = yearForClientX(clientX);
-    const index = yearsData.indexOf(year);
-    if (index === -1 || index === currentYearIndex) return;
-    currentYearIndex = index;
-    updateCountryDetailForYear(year);
-  }
-
-  let draggingYearMarker = false;
-  markerDragHit.addEventListener("pointerdown", (event) => {
-    draggingYearMarker = true;
-    tourController.stop();
-    markerDragHit.setPointerCapture(event.pointerId);
-    previewCountryYear(event.clientX);
-  });
-  markerDragHit.addEventListener("pointermove", (event) => {
-    if (draggingYearMarker) previewCountryYear(event.clientX);
-  });
-  const endYearMarkerDrag = () => {
-    if (!draggingYearMarker) return;
-    draggingYearMarker = false;
-    goToYear(yearsData[currentYearIndex]);
-  };
-  markerDragHit.addEventListener("pointerup", endYearMarkerDrag);
-  markerDragHit.addEventListener("pointercancel", endYearMarkerDrag);
-
-  if (animate && growingBars.length) {
-    const totalDuration = CHART_LINE_GROW_MS + CHART_MARKER_FADE_IN_MS;
-    countryChartAnimationHandles.push(runChartAnimation({
-      duration: totalDuration,
-      onFrame: (_eased, progress) => {
-        const elapsed = progress * totalDuration;
-        const growT = easeOutCubic(
-          Math.min(1, elapsed / CHART_LINE_GROW_MS),
-        );
-        growingBars.forEach(({ bar, targetY }) => {
-          bar.setAttribute(
-            "y2",
-            baselineY + (targetY - baselineY) * growT,
-          );
-        });
-
-        const fadeT = Math.min(
-          1,
-          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / CHART_MARKER_FADE_IN_MS),
-        );
-        revealElements.forEach((element) => {
-          element.style.opacity = String(fadeT);
-        });
-      },
-    }));
-  }
-
-  elements.countrySparklines.replaceChildren();
-  countrySparklineInstances = COUNTRY_SPARKLINE_METRIC_KEYS.map((key) => {
-    const series =
-      countryDemographicMetrics?.countries?.[country.iso3]?.[key] ?? [];
-    // Card (and its still-empty svg) is appended before measuring so
-    // clientWidth reflects its real grid-column size — same fix as the main
-    // chart above, needed because the sparkline is just as vulnerable to
-    // preserveAspectRatio="none" stretching from a mismatched viewBox.
-    const instance = buildCountrySparklineCard(key);
-    elements.countrySparklines.append(instance.card);
-    populateCountrySparkline(instance, series, cutoffIndex, key, { animate });
-    return { key, series, ...instance };
-  });
-}
-
-function buildCountrySparklineCard(key) {
-  const definition = METRICS[key];
-  const svg = svgEl("svg", {
-    class: "sparkline-svg",
-    preserveAspectRatio: "none",
-  });
-  const dotLine = svgEl("line", { class: "sparkline-dot-line" });
-  const dot = svgEl("circle", { class: "sparkline-dot", r: 4 });
-
-  const titleCaption = document.createElement("div");
-  titleCaption.className = "sparkline-caption";
-
-  const card = document.createElement("div");
-  card.className = "sparkline-card";
-  const label = document.createElement("div");
-  label.className = "sparkline-label mono-uppercase";
-  label.textContent = definition.label;
-  const value = document.createElement("div");
-  value.className = "sparkline-value";
-  // value always holds the current year's already-formatted reading (e.g.
-  // "1.9 births/woman"), so the tooltip just echoes it back rather than
-  // reformatting the number a second time.
-  dot.addEventListener("pointerenter", (event) =>
-    showChartTooltip(event, value.textContent),
-  );
-  dot.addEventListener("pointermove", (event) =>
-    showChartTooltip(event, value.textContent),
-  );
-  dot.addEventListener("pointerleave", hideChartTooltip);
-  titleCaption.append(label, value);
-  card.append(titleCaption, svg);
-
-  return { card, svg, dotLine, dot, valueEl: value };
-}
-
-// Each year is its own vertical stroke from the baseline up to that year's
-// value (a "bar code" sparkline) rather than a connected curve — historical
-// years solid, projected years dashed, mirroring the main chart's
-// historical/projected line treatment. Metrics with a defined
-// referenceValue (currently just fertility, at the UN's 2.1
-// replacement-level threshold) bar from that line instead of the bottom
-// edge, so bars visibly flip below it once a country drops under
-// replacement rather than just shrinking toward a floor.
-function populateCountrySparkline(
-  instance,
-  series,
-  cutoffIndex,
-  key,
-  { animate = false } = {},
-) {
-  const { svg, dotLine, dot } = instance;
-  const width = svg.clientWidth || 160;
-  const height = svg.clientHeight || 40;
-  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-
-  // Metrics without a meaningful universal threshold (life expectancy,
-  // median age — unlike fertility's 2.1 replacement line or growth's 0%)
-  // fall back to the series' own minimum, so every sparkline still draws a
-  // baseline for visual consistency even though it has nothing to flip
-  // below.
-  const configuredReferenceValue = METRICS[key]?.referenceValue;
-  const { min } = computeValueRange(series, configuredReferenceValue);
-  const referenceValue = configuredReferenceValue ?? min;
-  const n = series.length;
-  const { baselineY, toXY, yFor, pathFor, areaFor } =
-    createSparklineGeometry({
-      series,
-      cutoffIndex,
-      width,
-      height,
-      referenceValue: configuredReferenceValue,
-    });
-
-  const elementsToAppend = [];
-  const initialYFor = animate ? () => baselineY : yFor;
-  const historicalArea = svgEl("path", {
-    class: "sparkline-area historical",
-    d: areaFor(0, cutoffIndex, initialYFor),
-  });
-  const projectedArea = svgEl("path", {
-    class: "sparkline-area projected",
-    d: areaFor(cutoffIndex, n - 1, initialYFor),
-  });
-  // Filled area between the curve and the baseline, drawn first so the
-  // baseline/curve/dot render on top of it.
-  elementsToAppend.push(
-    historicalArea,
-    projectedArea,
-  );
-  if (referenceValue != null) {
-    elementsToAppend.push(
-      svgEl("line", {
-        class: "sparkline-baseline",
-        x1: 0,
-        x2: width,
-        y1: baselineY.toFixed(1),
-        y2: baselineY.toFixed(1),
-      }),
-    );
-    const format = METRICS[key]?.format ?? ((value) => `${value}`);
-    const baselineLabel = svgEl("text", {
-      class: "sparkline-baseline-label",
-      x: 0,
-      // Clamped so a reference value sitting near the very top of the
-      // scale (label would float above it) doesn't get clipped by the
-      // SVG's own edge.
-      y: Math.max(baselineY - 4, 8).toFixed(1),
-      "text-anchor": "start",
-    });
-    // A bare "0" reads as the natural zero line; the formatted version
-    // ("0.0 yrs", "0.00%") adds precision and units that don't mean
-    // anything at exactly zero.
-    baselineLabel.textContent =
-      referenceValue === 0 ? "0" : format(referenceValue);
-    elementsToAppend.push(baselineLabel);
-  }
-  const historicalPath = svgEl("path", {
-    class: "sparkline-path historical",
-    d: pathFor(0, cutoffIndex, initialYFor),
-  });
-  const projectedPath = svgEl("path", {
-    class: "sparkline-path projected",
-    d: pathFor(cutoffIndex, n - 1, initialYFor),
-  });
-  elementsToAppend.push(historicalPath, projectedPath);
-  // The dot/connector line mark this metric's exact value for the
-  // currently selected year — showing them at full opacity while the
-  // curve underneath is still growing up from the baseline would leave
-  // them floating over a shape that hasn't caught up to their position
-  // yet, so they fade in only once the curve finishes (same two-phase
-  // timeline as the main chart's own marker, just without the bar grow).
-  if (animate) {
-    dot.style.opacity = "0";
-    dotLine.style.opacity = "0";
-  }
-  svg.append(...elementsToAppend, dotLine, dot);
-
-  if (animate) {
-    const totalDuration = CHART_LINE_GROW_MS + CHART_MARKER_FADE_IN_MS;
-    countryChartAnimationHandles.push(runChartAnimation({
-      duration: totalDuration,
-      onFrame: (_eased, progress) => {
-        const elapsed = progress * totalDuration;
-        const growT = easeOutCubic(Math.min(1, elapsed / CHART_LINE_GROW_MS));
-        const animatedYFor = (value) =>
-          baselineY + (yFor(value) - baselineY) * growT;
-        historicalPath.setAttribute(
-          "d",
-          pathFor(0, cutoffIndex, animatedYFor),
-        );
-        projectedPath.setAttribute(
-          "d",
-          pathFor(cutoffIndex, n - 1, animatedYFor),
-        );
-        historicalArea.setAttribute(
-          "d",
-          areaFor(0, cutoffIndex, animatedYFor),
-        );
-        projectedArea.setAttribute(
-          "d",
-          areaFor(cutoffIndex, n - 1, animatedYFor),
-        );
-
-        const fadeT = Math.min(
-          1,
-          Math.max(0, (elapsed - CHART_LINE_GROW_MS) / CHART_MARKER_FADE_IN_MS),
-        );
-        dot.style.opacity = String(fadeT);
-        dotLine.style.opacity = String(fadeT);
-      },
-    }));
-  }
-
-  instance.toXY = toXY;
-  instance.baselineY = baselineY;
-}
-
-// Cheap per-year update shared by the main chart's marker and the four
-// metric sparklines — called on every slider tick while a country is open,
-// as opposed to buildCountryCharts() which only runs once per country open.
-function updateCountryDetailForYear(year) {
-  if (!countryChartLayout || !selectedCountry) return;
-  const index = yearsData.indexOf(year);
-  if (index === -1) return;
-
-  const groupLabel =
-    colorMode === "income"
-      ? selectedCountry._incomeLabel
-      : displayGroupLabel(selectedCountry.region);
-  elements.detailSubtitle.textContent = `${groupLabel} · ${year}`;
-
-  const {
-    populations,
-    xyFor,
-    markerLine,
-    markerDot,
-    markerLabel,
-    markerDragHit,
-  } =
-    countryChartLayout;
-  const population = populations[index];
-  if (elements.countryChartValue) {
-    elements.countryChartValue.textContent =
-      population != null ? formatPeakPopulation(population) : "";
-  }
-  const [x, y] = xyFor(index, population ?? 0);
-  if (markerLine && markerDot && markerLabel) {
-    markerLine.setAttribute("x1", x);
-    markerLine.setAttribute("x2", x);
-    markerLine.setAttribute("y1", y);
-    markerDot.setAttribute("cx", x);
-    markerDot.setAttribute("cy", y);
-    markerLabel.setAttribute("x", x);
-    markerLabel.setAttribute("y", Math.max(y - 14, COUNTRY_CHART_LABEL_MIN_Y));
-    markerLabel.textContent =
-      population != null ? formatPeakPopulation(population) : "";
-    markerDragHit?.setAttribute("x", x - 9);
-  }
-
-  updateCountryPyramidForYear(year);
-
-  countrySparklineInstances.forEach(
-    ({ key, series, dotLine, dot, valueEl, toXY, baselineY }) => {
-      const value = series[index];
-      const definition = METRICS[key];
-      const format = definition.formatPanel ?? definition.format;
-      valueEl.textContent = format(value);
-      if (value != null) {
-        const [dx, dy] = toXY(index, value);
-        dotLine.setAttribute("x1", dx);
-        dotLine.setAttribute("x2", dx);
-        dotLine.setAttribute("y1", dy);
-        dotLine.setAttribute("y2", baselineY);
-        dot.setAttribute("cx", dx);
-        dot.setAttribute("cy", dy);
-        dotLine.style.display = "";
-        dot.style.display = "";
-      } else {
-        dotLine.style.display = "none";
-        dot.style.display = "none";
-      }
-    },
-  );
-}
-
-// Builds the population pyramid's fixed scaffolding once per country open:
-// the center axis, the age labels, the male/female headers, and one rect per
-// band per sex. Bar y/height are fixed (a band never moves vertically); only
-// x/width change as the year scrubs, so those rects are cached on
-// countryPyramidLayout for updateCountryPyramidForYear() to rewrite cheaply.
-// The x-axis scale is fixed to the country's own largest-ever band share, so
-// scrubbing reads as bands genuinely swelling and thinning rather than the
-// axis rescaling underneath.
-function buildCountryPyramid(country) {
-  countryPyramidLayout = null;
-  const pyramid = elements.countryPyramid;
-  const countryData = countryAgeStructure?.countries?.[country.iso3];
-  const gridYears = countryAgeStructure?.years;
-  const ageGroups = countryAgeStructure?.ageGroups;
-  // Data not loaded yet, or this country isn't in the age-structure set —
-  // hide the card rather than showing an empty frame (the deferred-load
-  // handler re-renders the detail once the data lands).
-  if (!countryData || !gridYears || !ageGroups) {
-    elements.countryPyramidCard.hidden = true;
-    pyramid.replaceChildren();
-    return;
-  }
-  elements.countryPyramidCard.hidden = false;
-
-  // Columns scale to the largest band total (male+female) so the tallest just
-  // fills the height and the axis stays stable as the year scrubs.
-  const maxShare = maxBandTotal(countryData);
-  const initialYear = yearsData[currentYearIndex] ?? gridYears[0];
-  const shares = interpolateAgeStructure(countryData, gridYears, initialYear);
-  const geo = pyramidGeometryFor(shares, ageGroups, maxShare);
-
-  const children = [];
-  const bars = geo.bars.map((bar) => {
-    const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;
-    const maleBar = divEl(`${cls} male`);
-    const femaleBar = divEl(`${cls} female`);
-    setPyramidBarStyle(maleBar, bar.male);
-    setPyramidBarStyle(femaleBar, bar.female);
-    children.push(maleBar, femaleBar);
-    // Age label along the bottom axis (the geometry supplies the anchor).
-    if (ageBandStart(bar.label) % COUNTRY_PYRAMID_AGE_LABEL_STEP === 0) {
-      const label = divEl("pyramid-age-label", ageBandStart(bar.label));
-      label.style.left = `${(bar.ageLabel.x / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
-      label.style.top = `${(bar.ageLabel.y / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
-      children.push(label);
-    }
-    return { maleBar, femaleBar };
-  });
-
-  pyramid.replaceChildren(...children);
-  countryPyramidLayout = { bars, countryData, gridYears, ageGroups, maxShare };
-  updateCountryPyramidForYear(initialYear);
-}
-
-// Geometry in the shared view coordinate box.
-function pyramidGeometryFor(shares, ageGroups, maxShare) {
-  return buildPyramidGeometry({
-    ...shares,
-    ageGroups,
-    maxShare,
-    width: COUNTRY_PYRAMID_VIEW.width,
-    height: COUNTRY_PYRAMID_VIEW.height,
-    padding: COUNTRY_PYRAMID_PADDING,
-  });
-}
-
-function setPyramidBarStyle(el, rect) {
-  el.style.left = `${(rect.x / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
-  el.style.top = `${(rect.y / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
-  el.style.width = `${(rect.width / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
-  el.style.height = `${(rect.height / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
-}
-
-function updateCountryPyramidStage(country, year) {
-  if (!elements.countryPyramidStage || !country) return;
-  const index = yearsData.indexOf(year);
-  const olderShare =
-    index >= 0
-      ? countryDemographicMetrics?.countries?.[country.iso3]
-          ?.olderPopulationShare?.[index]
-      : null;
-  const stage = currentAgingStage(olderShare);
-  if (!stage) {
-    elements.countryPyramidStage.textContent = "";
-    elements.countryPyramidStage.title = "";
-    return;
-  }
-  const label = stage.label.replace(/^\w/, (char) => char.toUpperCase());
-  const comparator = stage.includesThreshold ? "at least" : "over";
-  elements.countryPyramidStage.textContent = label;
-  elements.countryPyramidStage.title = `${label}: ${comparator} ${stage.thresholdCopy} of the population is aged 65 or older.`;
-}
-
-// Morphs the pyramid to a given year: interpolates the 5-year grid and
-// rewrites each cached bar's x/width (CSS transitions the change). Cheap
-// enough to run on every slider tick.
-function updateCountryPyramidForYear(year) {
-  const layout = countryPyramidLayout;
-  if (!layout) return;
-  const shares = interpolateAgeStructure(
-    layout.countryData,
-    layout.gridYears,
-    year,
-  );
-  if (!shares) return;
-  updateCountryPyramidStage(selectedCountry, year);
-  const geo = pyramidGeometryFor(shares, layout.ageGroups, layout.maxShare);
-  geo.bars.forEach((bar, i) => {
-    const { maleBar, femaleBar } = layout.bars[i];
-    setPyramidBarStyle(maleBar, bar.male);
-    setPyramidBarStyle(femaleBar, bar.female);
-  });
-  // if (elements.countryPyramidYear) {
-  //   elements.countryPyramidYear.textContent = year;
-  // }
+  countryDetailController.render(country, { animate: true });
 }
 
 // Population comes from the dots dataset (same series peakYear/dots are
@@ -4065,7 +3410,7 @@ function animate(timestamp) {
 }
 
 // The country charts' viewBox is measured from the panel's actual pixel
-// size at build time (see buildCountryCharts) rather than tracking it
+// size at build time rather than tracking it
 // continuously, so a resize while one is open leaves that viewBox stale —
 // stretching every path/dot until the chart is rebuilt against the new
 // size. Debounced so a drag-resize doesn't rebuild on every intermediate
@@ -4090,8 +3435,7 @@ window.addEventListener("resize", () => {
       // can close during this 120ms debounce, and selectedCountry (read
       // live, not captured) would be null by the time this fires.
       if (!selectedCountry) return;
-      buildCountryCharts(selectedCountry);
-      updateCountryDetailForYear(yearsData[currentYearIndex]);
+      countryDetailController.resize(selectedCountry);
     }, 120);
   }
   if (chartPanelActive) {

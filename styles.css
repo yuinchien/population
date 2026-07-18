@@ -704,11 +704,20 @@ body.country-detail #colorMode {
     text-underline-offset: 0.14em;
 }
 
+.settings-item-list {
+    margin-bottom: var(--margin);
+}
 .settings-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--margin);
+    margin-bottom: calc(var(--margin) / 2);
+}
+
+.footnote {
+    font-family: var(--font-sans);
+    letter-spacing: 0;
+    color: var(--color-muted);
 }
 
 .detail-panel-header {
@@ -872,6 +881,8 @@ body.country-detail #colorMode {
     white-space: nowrap;
 }
 
+
+
 .detail-summary {
     color: var(--color-text);
     max-width: 920px;
@@ -925,6 +936,10 @@ body.country-detail #colorMode {
         height: 3px;
         background-color: var(--detail-color);
     }
+}
+
+#chartInsightCaption {
+    display: table;
 }
 
 .detail-panel .country-summary-flag {

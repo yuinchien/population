@@ -332,44 +332,48 @@
                 </button>
             </div>
 
-            <div class="settings-item">
-                <div class="title">Color Theme</div>
-                <div class="button-group button-group-theme">
-                    <button
-                        id="themeToggle"
-                        type="button"
-                        aria-label="Switch to dark theme"
-                        title="Switch theme"
-                        class="active"
-                    >
-                        Dark
-                    </button>
-                    <button
-                        id="themeToggleLight"
-                        type="button"
-                        aria-label="Switch to light theme"
-                        title="Switch theme"
-                    >
-                        Light
-                    </button>
+            <div class="settings-item-list">
+                <div class="settings-item">
+                    <div class="title">Color Theme</div>
+                    <div class="button-group button-group-theme">
+                        <button
+                            id="themeToggle"
+                            type="button"
+                            aria-label="Switch to dark theme"
+                            title="Switch theme"
+                            class="active"
+                        >
+                            Dark
+                        </button>
+                        <button
+                            id="themeToggleLight"
+                            type="button"
+                            aria-label="Switch to light theme"
+                            title="Switch theme"
+                        >
+                            Light
+                        </button>
+                    </div>
                 </div>
-            </div>
 
-            <div class="settings-item">
-                <div class="title">UN Projection</div>
-                <select id="chartProjectionScenario" class="custom-select mono-uppercase">
-                    <button>
-                        <div>
-                            <selectedcontent> </selectedcontent>
-                            <svg width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="m7 10l5 5l5-5z"/>
-                            </svg>
-                        </div>
-                    </button>
-                    <option value="high">High Variant</option>
-                    <option value="medium" selected>Medium Variant</option>
-                    <option value="low">Low Variant</option>
-                </select>
+                <div class="settings-item">
+                    <div class="title">UN Projection*</div>
+                    <select id="chartProjectionScenario" class="custom-select mono-uppercase">
+                        <button>
+                            <div>
+                                <selectedcontent> </selectedcontent>
+                                <svg width="24" height="24" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+                                </svg>
+                            </div>
+                        </button>
+                        <option value="high">High Variant</option>
+                        <option value="medium" selected>Medium Variant</option>
+                        <option value="low">Low Variant</option>
+                    </select>
+                </div>
+
+                <div class="footnote">* Data sourced from the UN World Population Prospects 2024, highlighting high, medium, and low variants based on shifting global fertility rates</div>
             </div>
 
             <div class="info-content">
