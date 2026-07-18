@@ -1110,8 +1110,8 @@ body.country-detail #colorMode {
     position: absolute;
 
     border-radius: 1px;
-    /* Whichever edges move as the year scrubs animate — the default silhouette
-       changes left/width, the stacked columns change top/height. */
+    /* Columns change top/height as the year scrubs; the transition animates
+       that morph. */
     transition: left 0.25s ease, top 0.25s ease, width 0.25s ease,
         height 0.25s ease;
 }
@@ -1158,29 +1158,8 @@ body.country-detail #colorMode {
     transform: translateY(-50%);
 }
 
-/* Small icon toggle in the card header that swaps between the two-sided
-   silhouette and the stacked-columns variant. */
-.pyramid-variant-toggle {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--color-subtle);
-    cursor: pointer;
-    display: none;
-}
-.pyramid-variant-toggle:hover {
-    color: var(--color-text);
-}
-.pyramid-variant-toggle .material-symbols-outlined {
-    font-size: 18px;
-}
-
-/* Stacked variant: age bands run left→right along the bottom, so the age
-   ticks center under each column and the sex labels move to a top legend. */
+/* Age bands run left→right along the bottom, so the age ticks center under
+   each column and the sex labels sit in a top legend. */
 .country-pyramid--stacked .pyramid-age-label {
     transform: translate(-50%, 2px);
 }

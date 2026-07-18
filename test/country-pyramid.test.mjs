@@ -3,7 +3,6 @@ import test from "node:test";
 import {
   ageBandStart,
   interpolateAgeStructure,
-  maxBandShare,
   maxBandTotal,
   buildPyramidGeometry,
   OLD_AGE_THRESHOLD,
@@ -61,49 +60,7 @@ test("interpolateAgeStructure returns null on unresolvable input", () => {
   );
 });
 
-test("maxBandShare is the largest single value across either sex and all years", () => {
-  assert.equal(maxBandShare(COUNTRY), 200);
-  assert.equal(maxBandShare(null), 0);
-});
-
-test("buildPyramidGeometry mirrors male left / female right about the center", () => {
-  const geo = buildPyramidGeometry({
-    male: [100, 0, 0],
-    female: [50, 0, 0],
-    ageGroups: AGE_GROUPS,
-    maxShare: 100,
-    width: 200,
-    height: 300,
-    padding: { top: 0, right: 0, bottom: 0, left: 0 },
-  });
-  assert.equal(geo.centerX, 100);
-  const youngest = geo.bars[0];
-  // maxShare 100 over halfWidth 100 => scale 1px per unit
-  assert.equal(youngest.male.width, 100);
-  assert.equal(youngest.male.x, 0); // centerX - width
-  assert.equal(youngest.female.width, 50);
-  assert.equal(youngest.female.x, 100); // starts at centerX
-});
-
-test("buildPyramidGeometry stacks the oldest band on top and flags 65+", () => {
-  const geo = buildPyramidGeometry({
-    male: [1, 1, 1],
-    female: [1, 1, 1],
-    ageGroups: AGE_GROUPS, // 0-4, 60-64, 65-69
-    maxShare: 1,
-    width: 200,
-    height: 300,
-    padding: { top: 0, right: 0, bottom: 0, left: 0 },
-  });
-  const youngest = geo.bars[0]; // "0-4"
-  const oldest = geo.bars[2]; // "65-69"
-  assert.ok(oldest.male.y < youngest.male.y, "oldest band sits above youngest");
-  assert.equal(oldest.isOld, true);
-  assert.equal(youngest.isOld, false);
-  assert.equal(geo.bars[1].isOld, false); // 60-64 is below the 65 threshold
-});
-
-test("stacked variant lays age bands left→right and stacks male under female", () => {
+test("buildPyramidGeometry lays age bands left→right and stacks male under female", () => {
   const geo = buildPyramidGeometry({
     male: [30, 0, 0],
     female: [10, 0, 0],
@@ -113,9 +70,7 @@ test("stacked variant lays age bands left→right and stacks male under female",
     height: 100,
     padding: { top: 0, right: 0, bottom: 0, left: 0 },
     bandGap: 0,
-    variant: "stacked",
   });
-  assert.equal(geo.variant, "stacked");
   const youngest = geo.bars[0];
   const oldest = geo.bars[2];
   // bandWidth 100, youngest column at x 0, oldest at x 200 (left→right)
@@ -132,42 +87,40 @@ test("stacked variant lays age bands left→right and stacks male under female",
   assert.equal(youngest.ageLabel.y, 100);
 });
 
+test("buildPyramidGeometry flags the 65+ bands", () => {
+  const geo = buildPyramidGeometry({
+    male: [1, 1, 1],
+    female: [1, 1, 1],
+    ageGroups: AGE_GROUPS, // 0-4, 60-64, 65-69
+    maxShare: 2,
+    width: 300,
+    height: 100,
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  });
+  assert.equal(geo.bars[0].isOld, false); // 0-4
+  assert.equal(geo.bars[1].isOld, false); // 60-64 is below the 65 threshold
+  assert.equal(geo.bars[2].isOld, true); // 65-69
+});
+
 test("maxBandTotal is the largest male+female band sum across all years", () => {
   // 0-4:200+180=380, 60-64:100+110=210, 65-69:50+70=120, then 2000 values
   assert.equal(maxBandTotal(COUNTRY), 380);
   assert.equal(maxBandTotal(null), 0);
 });
 
-test("buildPyramidGeometry yields zero-width bars when the scale is empty", () => {
+test("buildPyramidGeometry yields zero-height bars when the scale is empty", () => {
   const geo = buildPyramidGeometry({
     male: [10, 20, 30],
     female: [10, 20, 30],
     ageGroups: AGE_GROUPS,
     maxShare: 0,
-    width: 200,
-    height: 300,
+    width: 300,
+    height: 100,
     padding: { top: 0, right: 0, bottom: 0, left: 0 },
   });
-  assert.ok(geo.bars.every((b) => b.male.width === 0 && b.female.width === 0));
-});
-
-test("buildPyramidGeometry reserves a center gutter for age labels", () => {
-  const geo = buildPyramidGeometry({
-    male: [100, 0, 0],
-    female: [100, 0, 0],
-    ageGroups: AGE_GROUPS,
-    maxShare: 100,
-    width: 220,
-    height: 300,
-    padding: { top: 0, right: 0, bottom: 0, left: 0 },
-    centerGap: 20,
-  });
-  const youngest = geo.bars[0];
-  // innerWidth 220, centerGap 20 => halfWidth 100, scale 1
-  assert.equal(youngest.male.width, 100);
-  assert.equal(youngest.male.x, 0); // centerX(110) - gap/2(10) - width(100)
-  assert.equal(youngest.female.x, 120); // centerX(110) + gap/2(10)
-  assert.equal(youngest.female.width, 100);
+  assert.ok(
+    geo.bars.every((b) => b.male.height === 0 && b.female.height === 0),
+  );
 });
 
 test("OLD_AGE_THRESHOLD marks the retirement-age boundary", () => {

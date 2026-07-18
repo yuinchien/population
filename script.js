@@ -48,7 +48,6 @@ import {
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import {
   interpolateAgeStructure,
-  maxBandShare,
   maxBandTotal,
   buildPyramidGeometry,
   ageBandStart,
@@ -355,9 +354,6 @@ let countryChartLayout = null;
 // Cached pyramid layout (persistent bar rects + per-country scale) so a year
 // scrub only rewrites each bar's x/width rather than rebuilding the SVG.
 let countryPyramidLayout = null;
-// Which pyramid layout the age-structure card draws: "default" (two-sided
-// silhouette) or "stacked" (age bands left→right, male+female stacked upward).
-let pyramidVariant = "stacked";
 let countrySparklineInstances = [];
 const countryChartAnimationHandles = [];
 let detailSort = { key: "population", direction: "desc" };
@@ -1667,14 +1663,9 @@ const COUNTRY_CHART_LABEL_MIN_Y = 12;
 // responsively via preserveAspectRatio), so unlike the line chart it never
 // has to measure its rendered pixel width.
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
-// Generous left padding reserves an age-axis column down the left edge; the
-// two sides meet at the center with no gutter.
-const COUNTRY_PYRAMID_PADDING = { top: 12, right: 0, bottom: 44, left: 0 };
-// The stacked variant needs side room so the 0/100 edge labels aren't clipped,
-// a top strip for the sex legend, and a bottom strip for the age axis.
-const COUNTRY_PYRAMID_STACKED_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
+const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 // Label the age bands whose starting age is a multiple of this, keeping the
-// left axis readable without a label on all 21 bands.
+// bottom axis readable without a label on all 21 bands.
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
 const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "fertility",
@@ -2362,18 +2353,10 @@ function buildCountryPyramid(country) {
     return;
   }
   elements.countryPyramidCard.hidden = false;
-  pyramid.classList.toggle(
-    "country-pyramid--stacked",
-    pyramidVariant === "stacked",
-  );
 
-  // The two variants read population share differently: the stacked columns
-  // scale to the largest band total (male+female), the two-sided silhouette to
-  // the largest single-sex band.
-  const maxShare =
-    pyramidVariant === "stacked"
-      ? maxBandTotal(countryData)
-      : maxBandShare(countryData);
+  // Columns scale to the largest band total (male+female) so the tallest just
+  // fills the height and the axis stays stable as the year scrubs.
+  const maxShare = maxBandTotal(countryData);
   const initialYear = yearsData[currentYearIndex] ?? gridYears[0];
   const shares = interpolateAgeStructure(countryData, gridYears, initialYear);
   const geo = pyramidGeometryFor(shares, ageGroups, maxShare);
@@ -2401,8 +2384,7 @@ function buildCountryPyramid(country) {
     setPyramidBarStyle(maleBar, bar.male);
     setPyramidBarStyle(femaleBar, bar.female);
     children.push(maleBar, femaleBar);
-    // Age label — left axis for the default silhouette, along the bottom for
-    // the stacked variant (the geometry supplies the right anchor per variant).
+    // Age label along the bottom axis (the geometry supplies the anchor).
     if (ageBandStart(bar.label) % COUNTRY_PYRAMID_AGE_LABEL_STEP === 0) {
       const label = divEl("pyramid-age-label", ageBandStart(bar.label));
       label.style.left = `${(bar.ageLabel.x / COUNTRY_PYRAMID_VIEW.width) * 100}%`;
@@ -2417,22 +2399,7 @@ function buildCountryPyramid(country) {
   updateCountryPyramidForYear(initialYear);
 }
 
-// Flips the age-structure card between the two-sided silhouette and the
-// stacked-columns variant, then rebuilds the pyramid for the open country.
-function togglePyramidVariant() {
-  pyramidVariant = pyramidVariant === "stacked" ? "default" : "stacked";
-  const icon = elements.pyramidVariantToggle?.querySelector(
-    ".material-symbols-outlined",
-  );
-  // The icon affords the variant you'd switch *to*.
-  if (icon) {
-    icon.textContent =
-      pyramidVariant === "stacked" ? "align_justify_space_around" : "bar_chart";
-  }
-  if (selectedCountry) buildCountryPyramid(selectedCountry);
-}
-
-// Geometry for whichever variant is active, in the shared view coordinate box.
+// Geometry in the shared view coordinate box.
 function pyramidGeometryFor(shares, ageGroups, maxShare) {
   return buildPyramidGeometry({
     ...shares,
@@ -2440,11 +2407,7 @@ function pyramidGeometryFor(shares, ageGroups, maxShare) {
     maxShare,
     width: COUNTRY_PYRAMID_VIEW.width,
     height: COUNTRY_PYRAMID_VIEW.height,
-    padding:
-      pyramidVariant === "stacked"
-        ? COUNTRY_PYRAMID_STACKED_PADDING
-        : COUNTRY_PYRAMID_PADDING,
-    variant: pyramidVariant,
+    padding: COUNTRY_PYRAMID_PADDING,
   });
 }
 
@@ -3857,10 +3820,6 @@ async function init() {
       }
     });
     elements.detailClose.addEventListener("click", closeDetailPanel);
-    elements.pyramidVariantToggle?.addEventListener(
-      "click",
-      togglePyramidVariant,
-    );
     elements.infoButton.addEventListener("click", openInfoPanel);
     elements.infoClose.addEventListener("click", closeInfoPanel);
     // elements.detailBack.addEventListener("click", () => {
