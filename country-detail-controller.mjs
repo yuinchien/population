@@ -1,5 +1,8 @@
 import { displayGroupLabel } from "./status-insights.mjs";
-import { METRICS, formatCount } from "./metrics.mjs";
+import {
+  COUNTRY_SPARKLINE_METRIC_KEYS,
+  METRICS,
+} from "./metrics.mjs";
 import { flagIconUrl } from "./data-loader.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import {
@@ -25,14 +28,6 @@ const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
-const COUNTRY_SPARKLINE_METRIC_KEYS = [
-  "fertility",
-  "lifeExpectancy",
-  "medianAge",
-  "populationGrowth",
-  "ageDependencyRatio",
-  "netMigrationRate",
-];
 const SIMILAR_COUNTRY_METRIC_KEYS = [
   "fertility",
   "medianAge",
@@ -110,6 +105,15 @@ export function createCountryDetailController({
     ];
   }
 
+  elements.countrySimilarList?.addEventListener("click", (event) => {
+    const item = event.target.closest(".country-similar-item[data-iso3]");
+    if (!item || !elements.countrySimilarList.contains(item)) return;
+    const match = getCountries().find(
+      (country) => country.iso3 === item.dataset.iso3,
+    );
+    if (match) onOpenCountry(match);
+  });
+
   function computeSimilarCountries(country) {
     const countries = getCountries();
     if (!getDemographicMetrics()) return [];
@@ -153,6 +157,7 @@ export function createCountryDetailController({
         const item = document.createElement("button");
         item.type = "button";
         item.className = "country-similar-item";
+        item.dataset.iso3 = match.iso3;
         const flag = document.createElement("span");
         flag.className = "country-similar-flag";
         flag.style.backgroundImage = `url(${flagIconUrl(match.iso3)})`;
@@ -163,7 +168,6 @@ export function createCountryDetailController({
         name.textContent = match.name;
         text.append(name);
         item.append(flag, text);
-        item.addEventListener("click", () => onOpenCountry(match));
         return item;
       }),
     );

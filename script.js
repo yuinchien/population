@@ -9,7 +9,10 @@ import {
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
 import {
+  CHART_METRIC_KEYS,
+  CHART_RADAR_KEY,
   METRICS,
+  RADAR_CHART_METRICS,
   formatCount,
 } from "./metrics.mjs";
 import {
@@ -984,11 +987,13 @@ function showStatus(text, { instant = false } = {}) {
   el.classList.add("status-fade-in");
 }
 
+
+
 function renderCountrySummary(summary) {
   elements.detailSummary.hidden = false;
-  const caption = document.createElement("div");
-  caption.className = "caption mono-uppercase";
-  caption.textContent = summary.caption;
+  const badge = document.createElement("div");
+  badge.className = "badge";
+  badge.textContent = badgeLabel();
 
   if (summary.flagUrl) {
     elements.detailFlag.style.backgroundImage = `url(${summary.flagUrl})`;
@@ -1010,7 +1015,7 @@ function renderCountrySummary(summary) {
     span.textContent = segment.text;
     copy.append(span);
   });
-  elements.detailSummary.replaceChildren(caption, copy);
+  elements.detailSummary.replaceChildren(badge, copy);
 }
 
 function renderDetailStatus(status) {
@@ -1018,8 +1023,8 @@ function renderDetailStatus(status) {
   elements.detailFlag.hidden = true;
   elements.detailFlag.style.backgroundImage = "";
   const badge = document.createElement("span");
-  badge.className = "caption mono-uppercase";
-  badge.textContent = status.caption;
+  badge.className = "badge";
+  badge.textContent = badgeLabel();
   elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
 }
 
@@ -1205,6 +1210,8 @@ function renderLegend(modeOverride = null) {
       item.type = "button";
       item.className = "legend-item";
       item.dataset.label = label;
+      item.dataset.color = color;
+      item.dataset.mode = mode;
       item.classList.toggle(
         "active",
         selectedLegend?.mode === mode && selectedLegend?.label === label,
@@ -1215,16 +1222,6 @@ function renderLegend(modeOverride = null) {
       const text = document.createElement("span");
       text.textContent = displayGroupLabel(label);
       item.append(swatch, text);
-      item.addEventListener("click", () => {
-        // Remembered (see detailEntryMode) so closing the detail panel
-        // back out restores Cluster instead of landing on whichever of
-        // Globe/Map is underneath.
-        if (clusterActive) {
-          detailEntryMode = "cluster";
-          setClusterActive(false);
-        }
-        selectLegendItem(label, color, mode);
-      });
       return item;
     }),
   );
@@ -1234,98 +1231,6 @@ function metricFor(country, key) {
   return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
     currentYearIndex
   ];
-}
-
-// Demographic shape, not raw scale — deliberately excludes population size
-// itself, which would just cluster large countries together regardless of
-// how their populations are actually trending.
-const SIMILAR_COUNTRY_METRIC_KEYS = [
-  "fertility",
-  "medianAge",
-  "lifeExpectancy",
-  "populationGrowth",
-  "ageDependencyRatio",
-];
-const SIMILAR_COUNTRY_METRIC_LABELS = {
-  fertility: "fertility",
-  medianAge: "median age",
-  lifeExpectancy: "life expectancy",
-  populationGrowth: "population growth",
-  ageDependencyRatio: "age dependency ratio",
-};
-const SIMILAR_COUNTRY_LIMIT = 4;
-
-// Nearest neighbors by current-year demographic profile — each metric
-// normalized by its spread across all countries this year (min-max, not
-// z-score: simple and enough here) so life expectancy's ~40-90yr range
-// doesn't dominate population growth's sub-1% range just by having bigger
-// raw numbers. Read once when a country opens (via currentYearIndex at that
-// moment) rather than kept live on every slider tick — a "next to see" list
-// that keeps reshuffling under someone scrubbing the year would read as
-// noise, not a suggestion.
-function computeSimilarCountries(country) {
-  if (!countryDemographicMetrics) return [];
-  const target = SIMILAR_COUNTRY_METRIC_KEYS.map((key) => metricFor(country, key));
-  if (target.some((value) => value == null)) return [];
-
-  const ranges = SIMILAR_COUNTRY_METRIC_KEYS.map((key) => {
-    const values = countriesData
-      .map((candidate) => metricFor(candidate, key))
-      .filter((value) => value != null);
-    return Math.max(...values) - Math.min(...values) || 1;
-  });
-
-  return countriesData
-    .filter((candidate) => candidate.iso3 !== country.iso3)
-    .map((candidate) => {
-      const values = SIMILAR_COUNTRY_METRIC_KEYS.map((key) =>
-        metricFor(candidate, key),
-      );
-      if (values.some((value) => value == null)) return null;
-      let distanceSquared = 0;
-      let closestKey = null;
-      let closestDiff = Infinity;
-      values.forEach((value, i) => {
-        const diff = Math.abs(value - target[i]) / ranges[i];
-        distanceSquared += diff * diff;
-        if (diff < closestDiff) {
-          closestDiff = diff;
-          closestKey = SIMILAR_COUNTRY_METRIC_KEYS[i];
-        }
-      });
-      return { country: candidate, distance: Math.sqrt(distanceSquared), closestKey };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, SIMILAR_COUNTRY_LIMIT);
-}
-
-function renderSimilarCountries(country) {
-  const matches = computeSimilarCountries(country);
-  elements.countrySimilar.hidden = matches.length === 0;
-  if (!matches.length) return;
-  elements.countrySimilarList.replaceChildren(
-    ...matches.map(({ country: match, closestKey }) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "country-similar-item";
-      const flag = document.createElement("span");
-      flag.className = "country-similar-flag";
-      flag.style.backgroundImage = `url(${flagIconUrl(match.iso3)})`;
-      const text = document.createElement("span");
-      text.className = "country-similar-text";
-      const name = document.createElement("span");
-      name.className = "country-similar-name";
-      name.textContent = match.name;
-      // const reason = document.createElement("span");
-      // reason.className = "country-similar-reason";
-      // reason.textContent = `Similar ${SIMILAR_COUNTRY_METRIC_LABELS[closestKey]}`;
-      text.append(name);
-      item.append(flag, text);
-      item.addEventListener("click", () => openCountryDetail(match));
-      return item;
-    }),
-  );
 }
 
 function selectedCountries() {
@@ -1438,14 +1343,20 @@ function renderSortableTable({
         `${column.className} sortable`,
       );
       cell.classList.toggle("active", sort.key === column.key);
-      cell.addEventListener("click", () => onSort(column.key));
+      cell.dataset.sortKey = column.key;
       return cell;
     }),
   );
+  headerEl.onclick = (event) => {
+    const cell = event.target.closest("[data-sort-key]");
+    if (!cell || !headerEl.contains(cell)) return;
+    onSort(cell.dataset.sortKey);
+  };
 
   const sorted = sortDetailCountries(countries, columns, sort);
-  const rows = buildDetailRows(sorted, columns).map((detailRow) => {
+  const rows = buildDetailRows(sorted, columns).map((detailRow, index) => {
     const row = document.createElement("div");
+    row.dataset.rowIndex = String(index);
     row.style.setProperty("--ratio", detailRow.ratio);
     row.className = "detail-row";
     if (gridTemplateColumns) {
@@ -1458,9 +1369,14 @@ function renderSortableTable({
     row.append(
       ...detailRow.cells.map((cell) => createDetailCell(cell.text, cell.className)),
     );
-    row.addEventListener("click", () => onRowClick(detailRow.country));
     return row;
   });
+  rowsEl.onclick = (event) => {
+    const row = event.target.closest("[data-row-index]");
+    if (!row || !rowsEl.contains(row)) return;
+    const detailRow = sorted[Number(row.dataset.rowIndex)];
+    if (detailRow) onRowClick(detailRow);
+  };
   rowsEl.replaceChildren(...rows);
 }
 
@@ -1696,55 +1612,15 @@ function svgEl(tag, attrs = {}) {
   return el;
 }
 
-const COUNTRY_CHART_WIDTH = 760;
-const COUNTRY_CHART_HEIGHT = 220;
-// Top padding is deliberately generous because the current-year marker
-// label floats above its dot, and when that dot sits near the series max
-// there needs to be real room for the label above y=0.
-const COUNTRY_CHART_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
-const COUNTRY_CHART_LABEL_MIN_Y = 12;
-// The pyramid draws in a fixed viewBox coordinate space (the SVG scales
-// responsively via preserveAspectRatio), so unlike the line chart it never
-// has to measure its rendered pixel width.
-const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
-const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
-// Label the age bands whose starting age is a multiple of this, keeping the
-// bottom axis readable without a label on all 21 bands.
-const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
-const COUNTRY_SPARKLINE_METRIC_KEYS = [
-  "fertility",
-  "lifeExpectancy",
-  "medianAge",
-  "populationGrowth",
-  "ageDependencyRatio",
-  "netMigrationRate",
-];
-
 // --- Chart view (Globe/Map's third mode) ---------------------------------
 // A full-width multi-country trend chart, independent of the 3D dot scene
 // and the single-year snapshot the rest of the app is built around.
-const CHART_METRIC_KEYS = [
-  "population",
-  "populationGrowth",
-  "netMigrationRate",
-  "fertility",
-  "lifeExpectancy",
-  "ageDependencyRatio",
-];
 // A radar/spider snapshot tab, alongside the time-series metric tabs above
 // — not a real entry in METRICS since it plots five metrics against each
 // other at once rather than being one itself. Kept as its own sentinel key
 // so chartMetricKey, the tab list, and the table columns can each
 // special-case it in one place.
-const CHART_RADAR_KEY = "radar";
 // Clockwise from the top spoke — see renderRadarChart's angleFor.
-const RADAR_CHART_METRICS = [
-  "populationGrowth",
-  "fertility",
-  "netMigrationRate",
-  "lifeExpectancy",
-  "ageDependencyRatio",
-];
 // Generous left/right padding: axis labels like "Age dependency ratio" run
 // off the side spokes horizontally rather than wrapping.
 const RADAR_CHART_PADDING = { top: 56, right: 132, bottom: 48, left: 132 };
@@ -2034,14 +1910,12 @@ function renderChartCountryChips() {
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "chip-remove";
+      remove.dataset.iso3 = country.iso3;
       remove.setAttribute("aria-label", `Remove ${country.name}`);
       const icon = document.createElement("span");
       icon.className = "material-symbols-outlined";
       icon.textContent = "close";
       remove.append(icon);
-      remove.addEventListener("click", () =>
-        removeChartCountry(country.iso3),
-      );
 
       chip.append(flag, label, remove);
       return chip;
@@ -2162,6 +2036,7 @@ function renderChartCountrySuggestions() {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "chip-suggestion";
+      item.dataset.iso3 = country.iso3;
 
       const flag = document.createElement("span");
       flag.className = "chip-suggestion-flag";
@@ -2171,9 +2046,6 @@ function renderChartCountrySuggestions() {
       label.textContent = country.name;
 
       item.append(flag, label);
-      item.addEventListener("click", () =>
-        selectChartCountrySuggestion(country.iso3),
-      );
       return item;
     }),
   );
@@ -2212,7 +2084,6 @@ function renderChartMetricTabs() {
       btn.textContent =
         key === CHART_RADAR_KEY ? "Radar chart" : METRICS[key].label;
       btn.classList.toggle("active", key === chartMetricKey);
-      btn.addEventListener("click", () => setChartMetric(key));
       return btn;
     }),
   );
@@ -2234,6 +2105,19 @@ function renderRadarChart() {
   const width = svg.clientWidth || 900;
   const height = svg.clientHeight || 360;
   svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.onpointermove = (event) => {
+    const polygon = event.target.closest?.(".radar-polygon[data-tooltip]");
+    if (!polygon || !svg.contains(polygon)) {
+      hideChartTooltip();
+      return;
+    }
+    showChartTooltip(
+      event,
+      polygon.dataset.tooltip,
+      polygon.dataset.tooltipColor,
+    );
+  };
+  svg.onpointerleave = hideChartTooltip;
 
   const items = chartItems();
   const n = yearsData.length;
@@ -2346,13 +2230,8 @@ function renderRadarChart() {
         fill: item.color,
         stroke: item.color,
       });
-      polygon.addEventListener("pointerenter", (event) =>
-        showChartTooltip(event, item.name, item.color),
-      );
-      polygon.addEventListener("pointermove", (event) =>
-        showChartTooltip(event, item.name, item.color),
-      );
-      polygon.addEventListener("pointerleave", hideChartTooltip);
+      polygon.dataset.tooltip = item.name;
+      polygon.dataset.tooltipColor = item.color;
       elementsToAppend.push(polygon);
       vertices.forEach((p) => {
         elementsToAppend.push(
@@ -2593,8 +2472,19 @@ const CHART_METRIC_INSIGHTS = {
   radar: "This radar chart plots five metrics as spokes around a wheel — population growth, fertility, migration, life expectancy, and dependency ratio — so each country or region's overall demographic shape can be compared at a glance.",
 };
 
+function capitalizeFirstLetter(str) {
+  if (!str) return ""; // Handle empty strings safely
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function badgeLabel() {
+  return yearsData[currentYearIndex] < historicalCutoffYear
+    ? `Historical`
+    : `${capitalizeFirstLetter(chartProjectionScenario)} Projection`;
+}
+
 function renderChartInsight() {
-  elements.chartInsightCaption.textContent = yearsData[currentYearIndex];
+  elements.chartInsightCaption.textContent = badgeLabel();
   elements.chartInsightText.textContent =
     CHART_METRIC_INSIGHTS[chartMetricKey] ?? "";
 }
@@ -3114,6 +3004,22 @@ async function init() {
         }
       });
     });
+    elements.legend.addEventListener("click", (event) => {
+      const item = event.target.closest(".legend-item[data-label]");
+      if (!item || !elements.legend.contains(item)) return;
+      // Remembered (see detailEntryMode) so closing the detail panel
+      // back out restores Cluster instead of landing on whichever of
+      // Globe/Map is underneath.
+      if (clusterActive) {
+        detailEntryMode = "cluster";
+        setClusterActive(false);
+      }
+      selectLegendItem(
+        item.dataset.label,
+        item.dataset.color,
+        item.dataset.mode,
+      );
+    });
 
     elements.viewMode.hidden = false;
     elements.viewMode.querySelectorAll("button").forEach((btn) =>
@@ -3149,6 +3055,23 @@ async function init() {
     renderChartMetricTabs();
     renderChartCountryChips();
     updateChartContentMode();
+    elements.chartMetricTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-key]");
+      if (!button || !elements.chartMetricTabs.contains(button)) return;
+      setChartMetric(button.dataset.key);
+    });
+    elements.chartCountryChips.addEventListener("click", (event) => {
+      const button = event.target.closest(".chip-remove[data-iso3]");
+      if (!button || !elements.chartCountryChips.contains(button)) return;
+      removeChartCountry(button.dataset.iso3);
+    });
+    elements.chartCountrySuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest(".chip-suggestion[data-iso3]");
+      if (!button || !elements.chartCountrySuggestions.contains(button)) {
+        return;
+      }
+      selectChartCountrySuggestion(button.dataset.iso3);
+    });
     elements.selectChartContent.addEventListener(
       "change",
       updateChartContentMode,

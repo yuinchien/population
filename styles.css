@@ -898,7 +898,7 @@ body.country-detail #colorMode {
     letter-spacing: 0em;
     margin: -8px 0 var(--margin) 0;
 
-    .caption {
+    .badge {
         display: table;
         font-family: var(--font-mono);
         font-size: 1rem;
@@ -909,8 +909,6 @@ body.country-detail #colorMode {
         padding: 6px 8px 5px 8px;
         line-height: 1;
         margin-bottom: 12px;
-        /* [TODO] remove caption from country detail view */
-        display: none;
     }
     .country-summary-meta {
         display: flex;

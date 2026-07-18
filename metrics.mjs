@@ -137,3 +137,31 @@ export const DETAIL_METRIC_KEYS = [
   "ageDependencyRatio",
   "netMigrationRate",
 ];
+
+export const COUNTRY_SPARKLINE_METRIC_KEYS = [
+  "fertility",
+  "lifeExpectancy",
+  "medianAge",
+  "populationGrowth",
+  "ageDependencyRatio",
+  "netMigrationRate",
+];
+
+export const CHART_METRIC_KEYS = [
+  "population",
+  "populationGrowth",
+  "netMigrationRate",
+  "fertility",
+  "lifeExpectancy",
+  "ageDependencyRatio",
+];
+
+export const CHART_RADAR_KEY = "radar";
+
+export const RADAR_CHART_METRICS = [
+  "populationGrowth",
+  "fertility",
+  "netMigrationRate",
+  "lifeExpectancy",
+  "ageDependencyRatio",
+];

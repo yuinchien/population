@@ -72,7 +72,6 @@ export function buildCountrySummary({
   }
 
   return {
-    caption: year,
     flagUrl: iso2 ? `./flags/4x3/${iso2}.svg` : null,
     segments: [...lead, ...trend],
   };
