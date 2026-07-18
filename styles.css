@@ -692,17 +692,18 @@ body.country-detail #colorMode {
     padding-top: var(--margin);
     gap: var(--margin);
     border-top: var(--border);
+    margin-top: var(--margin);
 }
 
-.info-panel .info-copy {
-    max-width: 960px;
-    color: var(--color-text);
-}
-
-.info-panel .info-copy a {
-    color: var(--color-yellow);
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.14em;
+.info-panel p {
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    a {
+        color: var(--color-yellow);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.14em;
+    }
 }
 
 .settings-item-list {
@@ -713,12 +714,6 @@ body.country-detail #colorMode {
     align-items: center;
     justify-content: space-between;
     margin-bottom: calc(var(--margin) / 2);
-}
-
-.footnote {
-    font-family: var(--font-sans);
-    letter-spacing: 0;
-    color: var(--color-muted);
 }
 
 .detail-panel-header {
