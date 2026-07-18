@@ -1072,6 +1072,7 @@ body.country-detail #colorMode {
     display: grid;
     grid-column: span 1;
     grid-template-rows: auto 1fr;
+    min-height: 220px;
 }
 
 .country-pyramid-card {
@@ -1096,7 +1097,7 @@ body.country-detail #colorMode {
     position: relative;
     width: 100%;
     margin: 0 auto;
-    overflow: hidden;
+    /*overflow: hidden;*/
 }
 
 #detailSummary {
@@ -1107,26 +1108,35 @@ body.country-detail #colorMode {
 
 .pyramid-bar {
     position: absolute;
-    background: var(--detail-color);
+
     border-radius: 1px;
-    /* left/width animate as the year scrubs; the band's top never moves. */
-    transition: left 0.25s ease, width 0.25s ease;
+    /* Whichever edges move as the year scrubs animate — the default silhouette
+       changes left/width, the stacked columns change top/height. */
+    transition: left 0.25s ease, top 0.25s ease, width 0.25s ease,
+        height 0.25s ease;
 }
 
 .pyramid-bar.male {
-    opacity: 0.7;
+    /*opacity: 0.7;*/
+    border: 1px solid var(--detail-color);
 }
 
 .pyramid-bar.female {
-    opacity: .9;
+    background: var(--detail-color);
+    /*opacity: .9;*/
+    /*border-radius: 20px;*/
 }
 
 /* 65+ bands get a fixed warm accent (same across every country) so the
    "silver" top of the pyramid is comparable at a glance and ties into the
    Silver Decline story. */
-.pyramid-bar.is-old {
+.pyramid-bar.is-old.female {
     background: var(--color-text);
 }
+.pyramid-bar.is-old.male {
+    border: 1px solid var(--color-text);
+}
+
 
 .pyramid-sex-icon {
     position: absolute;
@@ -1138,8 +1148,7 @@ body.country-detail #colorMode {
     color: var(--color-muted);
     width: calc(50% - 2px);
     padding: 2px 0;
-    bottom: 0;
-    border-radius: 0px;
+
     text-align: center;
     text-transform: uppercase;
     /*background: color-mix(in srgb, var(--detail-color) 40%, black);*/
@@ -1161,6 +1170,62 @@ body.country-detail #colorMode {
     line-height: 1;
     transform: translateY(-50%);
 }
+
+/* Small icon toggle in the card header that swaps between the two-sided
+   silhouette and the stacked-columns variant. */
+.pyramid-variant-toggle {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--color-subtle);
+    cursor: pointer;
+    display: none;
+}
+.pyramid-variant-toggle:hover {
+    color: var(--color-text);
+}
+.pyramid-variant-toggle .material-symbols-outlined {
+    font-size: 18px;
+}
+
+/* Stacked variant: age bands run left→right along the bottom, so the age
+   ticks center under each column and the sex labels move to a top legend. */
+.country-pyramid--stacked .pyramid-age-label {
+    transform: translate(-50%, 2px);
+}
+.country-pyramid--stacked .pyramid-sex-label {
+    top: 0;
+    width: auto;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+}
+.country-pyramid--stacked .pyramid-sex-label::before {
+    content: "";
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+
+}
+.country-pyramid--stacked .pyramid-sex-label.male {
+    left: 84px;
+}
+.country-pyramid--stacked .pyramid-sex-label.male::before {
+     border: 1px solid var(--detail-color);
+}
+.country-pyramid--stacked .pyramid-sex-label.female {
+    left: 0;
+}
+.country-pyramid--stacked .pyramid-sex-label.female::before {
+    background: var(--detail-color);
+}
+
 
 .sparkline-card {
     /* Grid items default to min-width: auto, which lets a card's own

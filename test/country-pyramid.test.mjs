@@ -4,6 +4,7 @@ import {
   ageBandStart,
   interpolateAgeStructure,
   maxBandShare,
+  maxBandTotal,
   buildPyramidGeometry,
   OLD_AGE_THRESHOLD,
 } from "../country-pyramid.mjs";
@@ -96,10 +97,45 @@ test("buildPyramidGeometry stacks the oldest band on top and flags 65+", () => {
   });
   const youngest = geo.bars[0]; // "0-4"
   const oldest = geo.bars[2]; // "65-69"
-  assert.ok(oldest.y < youngest.y, "oldest band sits above youngest");
+  assert.ok(oldest.male.y < youngest.male.y, "oldest band sits above youngest");
   assert.equal(oldest.isOld, true);
   assert.equal(youngest.isOld, false);
   assert.equal(geo.bars[1].isOld, false); // 60-64 is below the 65 threshold
+});
+
+test("stacked variant lays age bands left→right and stacks male under female", () => {
+  const geo = buildPyramidGeometry({
+    male: [30, 0, 0],
+    female: [10, 0, 0],
+    ageGroups: AGE_GROUPS, // 0-4, 60-64, 65-69
+    maxShare: 40, // largest band total (30+10)
+    width: 300,
+    height: 100,
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    bandGap: 0,
+    variant: "stacked",
+  });
+  assert.equal(geo.variant, "stacked");
+  const youngest = geo.bars[0];
+  const oldest = geo.bars[2];
+  // bandWidth 100, youngest column at x 0, oldest at x 200 (left→right)
+  assert.equal(youngest.male.x, 0);
+  assert.equal(oldest.male.x, 200);
+  // scale = height/maxShare = 100/40 = 2.5; male 30 -> 75 tall on the baseline
+  assert.equal(youngest.male.height, 75);
+  assert.equal(youngest.male.y, 25); // baseline(100) - 75
+  // female stacks above male: 10 -> 25 tall, sitting on top
+  assert.equal(youngest.female.height, 25);
+  assert.equal(youngest.female.y, 0); // baseline - male(75) - female(25)
+  // age label anchored at the column center along the baseline
+  assert.equal(youngest.ageLabel.x, 50);
+  assert.equal(youngest.ageLabel.y, 100);
+});
+
+test("maxBandTotal is the largest male+female band sum across all years", () => {
+  // 0-4:200+180=380, 60-64:100+110=210, 65-69:50+70=120, then 2000 values
+  assert.equal(maxBandTotal(COUNTRY), 380);
+  assert.equal(maxBandTotal(null), 0);
 });
 
 test("buildPyramidGeometry yields zero-width bars when the scale is empty", () => {
