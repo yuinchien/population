@@ -681,6 +681,7 @@ body.country-detail #colorMode {
     right: 0;
     left: auto;
     grid-template-rows: auto;
+    z-index: var(--z-panel-over-menu);
 }
 
 .info-content {
@@ -2087,6 +2088,11 @@ body.menu-open .menu-toggle-icon::after {
     background: rgba(0, 0, 0, 0.3);
     opacity: 0;
     transition: opacity 0.2s ease;
+}
+
+body.info-open .menu-shim {
+    opacity: 1;
+    display: block;
 }
 
 @media (max-width: 1080px) {

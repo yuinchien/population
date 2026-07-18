@@ -66,3 +66,15 @@ export function getAppElements(root = document) {
     clusterCanvas: root.querySelector("#clusterCanvas"),
   };
 }
+
+export function missingElements(elements, keys) {
+  return keys.filter((key) => !elements[key]);
+}
+
+export function assertElements(elements, keys, label = "app") {
+  const missing = missingElements(elements, keys);
+  if (!missing.length) return;
+  throw new Error(
+    `Missing required ${label} element${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`,
+  );
+}

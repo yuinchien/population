@@ -34,7 +34,7 @@ import {
   UNCLASSIFIED_INCOME,
   VIEW_CONFIG,
 } from "./view-config.mjs";
-import { getAppElements } from "./ui-elements.mjs";
+import { assertElements, getAppElements } from "./ui-elements.mjs";
 import { buildCountrySummary } from "./country-summary-model.mjs";
 import {
   buildAgingMilestoneInsight,
@@ -51,6 +51,12 @@ import {
 import { createClusterController } from "./cluster-controller.mjs";
 import { createTrendChartController } from "./trend-chart-controller.mjs";
 import { CLUSTER_ARCHETYPES } from "./cluster-config.mjs";
+import {
+  createTooltipLine,
+  hideTooltip as hideTooltipElement,
+  showTooltipContent,
+  showTooltipLine,
+} from "./tooltip-controller.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -81,6 +87,70 @@ const CHART_MARKER_FADE_IN_MS = 320;
 const CALLOUT_LEFT_CLEARANCE = 260;
 
 const elements = getAppElements();
+assertElements(
+  elements,
+  [
+    "menuToggle",
+    "menuShim",
+    "infoButton",
+    "infoPanel",
+    "infoClose",
+    "status",
+    "tooltip",
+    "chartTooltip",
+    "clusterArchetypeTooltip",
+    "yearSlider",
+    "yearValue",
+    "yearHoverValue",
+    "colorMode",
+    "legend",
+    "viewMode",
+    "calloutLayer",
+    "detailPanel",
+    "detailFlag",
+    "detailTitle",
+    "detailSubtitle",
+    "detailSummary",
+    "detailHeader",
+    "detailRows",
+    "detailClose",
+    "countryDetail",
+    "chartPanel",
+    "clusterView",
+    "clusterCanvas",
+  ],
+  "app shell",
+);
+
+const COUNTRY_DETAIL_ELEMENT_KEYS = [
+  "countryChart",
+  "countryChartValue",
+  "countrySparklines",
+  "countryPyramidCard",
+  "countryPyramidStage",
+  "countryPyramid",
+  "countrySimilar",
+  "countrySimilarList",
+];
+
+const CHART_VIEW_ELEMENT_KEYS = [
+  "chartMetricTabs",
+  "trendChart",
+  "radarChart",
+  "chartInsightCaption",
+  "chartInsightText",
+  "selectChartContent",
+  "chartCountryPicker",
+  "chartCountryPickerSummary",
+  "chartCountryPickerSummaryFlags",
+  "chartCountryPickerCancel",
+  "chartProjectionScenario",
+  "chartCountryChips",
+  "chartCountrySearch",
+  "chartCountrySuggestions",
+  "chartTableHeader",
+  "chartTableRows",
+];
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
@@ -1694,35 +1764,12 @@ const CHART_LINE_COLORS = [
   "#E9A0E2",
 ];
 
-// A dedicated tooltip (separate from #tooltip, which the 3D canvas's own
-// hover system clears on a 100ms timer even while this panel is open) for
-// hovering a trend line, the main chart's marker dot, or a sparkline's
-// current-value dot.
-function createTooltipLine(text, color = null) {
-  const line = document.createElement("div");
-  line.className = "tooltip-line mono-uppercase";
-  if (color) {
-    const swatch = document.createElement("span");
-    swatch.className = "legend-swatch";
-    swatch.style.setProperty("--color-legend", color);
-    line.append(swatch);
-  }
-  const label = document.createElement("span");
-  label.textContent = text;
-  line.append(label);
-  return line;
-}
-
 function showChartTooltip(event, text, color = null) {
-  if (!text) return;
-  elements.chartTooltip.hidden = false;
-  elements.chartTooltip.replaceChildren(createTooltipLine(text, color));
-  elements.chartTooltip.style.left = `${event.clientX}px`;
-  elements.chartTooltip.style.top = `${event.clientY}px`;
+  showTooltipLine(elements.chartTooltip, event, text, color);
 }
 
 function hideChartTooltip() {
-  elements.chartTooltip.hidden = true;
+  hideTooltipElement(elements.chartTooltip);
 }
 
 // Cluster-only: shows an archetype's full description on hovering its
@@ -1733,17 +1780,14 @@ function hideChartTooltip() {
 function showClusterArchetypeTooltip(event, archetype) {
   const definition = CLUSTER_ARCHETYPES[archetype];
   if (!definition) return;
-  elements.clusterArchetypeTooltip.hidden = false;
   const summary = document.createElement("p");
   summary.className = "tooltip-summary";
   summary.textContent = definition.summary;
-  elements.clusterArchetypeTooltip.replaceChildren(summary);
-  elements.clusterArchetypeTooltip.style.left = `${event.clientX}px`;
-  elements.clusterArchetypeTooltip.style.top = `${event.clientY}px`;
+  showTooltipContent(elements.clusterArchetypeTooltip, event, summary);
 }
 
 function hideClusterArchetypeTooltip() {
-  elements.clusterArchetypeTooltip.hidden = true;
+  hideTooltipElement(elements.clusterArchetypeTooltip);
 }
 
 const countryDetailController = createCountryDetailController({
@@ -1793,6 +1837,7 @@ function openCountryDetail(country) {
 function renderCountryDetail() {
   const country = selectedCountry;
   if (!country || currentYearIndex < 0) return;
+  assertElements(elements, COUNTRY_DETAIL_ELEMENT_KEYS, "country detail");
   countryDetailController.render(country, { animate: true });
 }
 
@@ -2494,6 +2539,9 @@ const clusterController = createClusterController({
 
 function setClusterActive(active) {
   if (active === clusterActive) return;
+  if (active) {
+    assertElements(elements, ["clusterView", "clusterCanvas"], "cluster view");
+  }
   clusterActive = active;
   elements.clusterView.hidden = !active;
   document.body.classList.toggle("view-cluster", active);
@@ -2589,6 +2637,9 @@ function renderChartTable() {
 // (and still marked active) once the overlay closes.
 function setchartPanelActive(active) {
   if (active === chartPanelActive) return;
+  if (active) {
+    assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart view");
+  }
   chartPanelActive = active;
   elements.chartPanel.hidden = !active;
   document.body.classList.toggle("view-chart", active);
@@ -3085,6 +3136,7 @@ async function init() {
         setViewMode(btn.dataset.mode);
       });
     });
+    assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
     elements.chartProjectionScenario.value = chartProjectionScenario;
     // updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
