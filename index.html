@@ -74,20 +74,10 @@
                 title="Info"
             >
                 <span class="material-symbols-outlined" aria-hidden="true"
-                    >info_i</span
+                    >tune</span
                 >
             </button>
-            <button
-                id="themeToggle"
-                class="icon-button"
-                type="button"
-                aria-label="Switch to light theme"
-                title="Switch theme"
-            >
-                <span class="material-symbols-outlined" aria-hidden="true"
-                    >light_mode</span
-                >
-            </button>
+
             <div id="viewMode" class="button-group" hidden>
                 <button
                     type="button"
@@ -96,7 +86,9 @@
                     title="Chart"
                     class="mono-uppercase"
                 >
-                    Chart
+                    <span class="material-symbols-outlined">
+                    show_chart
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -105,7 +97,9 @@
                     aria-label="Cluster"
                     title="Cluster"
                 >
-                    Cluster
+                    <span class="material-symbols-outlined">
+                    bubble_chart
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -114,7 +108,9 @@
                     aria-label="Globe view"
                     title="Globe"
                 >
-                    Globe
+                    <span class="material-symbols-outlined">
+                    globe
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -123,7 +119,9 @@
                     title="Map"
                     class="mono-uppercase"
                 >
-                    Map
+                    <span class="material-symbols-outlined">
+                        map
+                    </span>
                 </button>
             </div>
         </div>
@@ -185,24 +183,12 @@
             </button>
         </div>
 
-        <h1 class="hide-for-detail">
+        <h1>
             World Population
         </h1>
-        <div class="status-wrapper hide-for-detail hide-for-chart">
+        <div class="status-wrapper ">
             <p id="status" class="paragraph">Loading population data…</p>
         </div>
-
-        <!--<div class="topbar">
-            <button
-                id="detailBack"
-                class="detail-back"
-                type="button"
-                aria-label="Close detail panel"
-                title="Back"
-            >
-                <span class="material-symbols-outlined">arrow_back</span>
-            </button>
-        </div>-->
 
         <div id="overlayMain" class="overlay">
             <div class="legend-wrapper">
@@ -345,7 +331,7 @@
         <section id="infoPanel" class="detail-panel info-panel glass" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">
-                    <h2>About World Population</h2>
+                    <h2>Settings</h2>
                 </div>
                 <button
                     id="infoClose"
@@ -357,6 +343,19 @@
                     <span class="material-symbols-outlined">close</span>
                 </button>
             </div>
+
+            <button
+                id="themeToggle"
+                class="icon-button"
+                type="button"
+                aria-label="Switch to light theme"
+                title="Switch theme"
+            >
+                <span class="material-symbols-outlined" aria-hidden="true"
+                    >light_mode</span
+                >
+            </button>
+
             <div class="info-content">
                 <p class="info-copy paragraph">
                     An interactive data visualization tracing global population dynamics from 1950 to 2100. Featuring a fluid, particle-based design, the application seamlessly transitions across a 3D globe, geographic maps, cluster views, and comparative charts to reveal the core forces shaping human history: growth, migration, aging, and decline. A unified timeline anchors the experience, allowing users to drill down into country, regional, and income-group metrics to surface critical milestones and long-term demographic transitions.
@@ -367,11 +366,11 @@
                     and the
                     <a href="https://data.worldbank.org/" target="_blank" rel="noopener noreferrer">World Bank</a> data.
                     This is a super fun collaboration with coding agents—Claude
-                    and ChatGPT. <a href="https://yuinchien.com/p/population" target="_blank">Learn more about the project</a>.
+                    and ChatGPT. <a href="https://yuinchien.com/p/population" target="_blank">Learn more</a>.
                 </p>
             </div>
         </section>
-        <section id="detailPanel" class="detail-panel" hidden>
+        <section id="detailPanel" class="detail-panel glass" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">
                     <span
