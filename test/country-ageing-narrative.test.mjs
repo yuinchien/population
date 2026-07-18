@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildCountryDemographicNarrative } from "../country-ageing-narrative.mjs";
+import {
+  buildAgingMilestoneInsight,
+  buildCountryDemographicNarrative,
+} from "../country-aging-narrative.mjs";
 
 function seriesFor(values) {
   return (key) => values[key] ?? [];
@@ -18,7 +21,9 @@ function silverDeclineSeries(overrides = {}) {
   });
 }
 
-test("reports the highest ageing stage reached by a Silver Decline country", () => {
+test("does not add an aging-stage sentence, even for a Silver Decline country", () => {
+  // The aging narrative moved to buildAgingMilestoneInsight; this function is
+  // now migration-only, so a Silver Decline country gets no sentence here.
   const narrative = buildCountryDemographicNarrative({
     country: { name: "Japan", populations: [100, 99, 98, 97] },
     years: [2005, 2006, 2007, 2008],
@@ -26,27 +31,10 @@ test("reports the highest ageing stage reached by a Silver Decline country", () 
     historicalCutoffYear: 2023,
     seriesFor: silverDeclineSeries(),
   });
-  assert.equal(
-    narrative,
-    "Japan became a super-aged society in 2008, when people aged 65 and older exceeded 20% of its population.",
-  );
+  assert.equal(narrative, "");
 });
 
-test("uses projected language for a future threshold crossing", () => {
-  const narrative = buildCountryDemographicNarrative({
-    country: { name: "Example", populations: [100, 99, 98, 97] },
-    years: [2022, 2023, 2024, 2025],
-    currentYearIndex: 3,
-    historicalCutoffYear: 2023,
-    seriesFor: silverDeclineSeries({
-      olderPopulationShare: [6.9, 7, 13, 14],
-    }),
-  });
-  assert.match(narrative, /transition to an aged society is expected in 2025/);
-  assert.match(narrative, /are expected to reach 14%/);
-});
-
-test("does not add an ageing-stage sentence outside Silver Decline", () => {
+test("does not add an aging-stage sentence outside Silver Decline", () => {
   const narrative = buildCountryDemographicNarrative({
     country: { name: "Example", populations: [100, 101] },
     years: [2024, 2025],
@@ -88,7 +76,7 @@ test("surfaces selected-year migration for Migrant Momentum from 1990", () => {
   );
 });
 
-test("uses projected migration copy for Migrant Momentum", () => {
+test("uses forecast migration copy for Migrant Momentum", () => {
   const narrative = buildCountryDemographicNarrative({
     country: {
       name: "United States",
@@ -108,7 +96,7 @@ test("uses projected migration copy for Migrant Momentum", () => {
   });
   assert.equal(
     narrative,
-    "Net migration is projected at 3.4 per 1,000 people in 2060, helping sustain its Migrant Momentum trajectory.",
+    "Net migration is forecast at 3.4 per 1,000 people in 2060, helping sustain its Migrant Momentum trajectory.",
   );
 });
 
@@ -131,4 +119,29 @@ test("does not surface Migrant Momentum migration before 1990", () => {
     }),
   });
   assert.equal(narrative, "");
+});
+
+test("aging milestone reports the selected-year UN aging stage", () => {
+  const insight = buildAgingMilestoneInsight({
+    country: { name: "Nicaragua" },
+    years: [2068, 2076],
+    currentYearIndex: 1,
+    historicalCutoffYear: 2023,
+    olderPopulationShare: [14, 16.2],
+  });
+  assert.equal(insight.value, "16.2% 65+");
+  assert.match(insight.text, /expected to become an aged society in 2068/);
+  assert.match(insight.text, /By 2076/);
+});
+
+test("aging milestone handles countries below the aging threshold", () => {
+  const insight = buildAgingMilestoneInsight({
+    country: { name: "Example" },
+    years: [2020, 2030, 2040],
+    currentYearIndex: 0,
+    historicalCutoffYear: 2023,
+    olderPopulationShare: [5, 6, 6.5],
+  });
+  assert.equal(insight.value, "5.0% 65+");
+  assert.match(insight.text, /remains below the aging-society threshold/);
 });

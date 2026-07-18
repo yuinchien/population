@@ -36,9 +36,10 @@ import {
 import { getAppElements } from "./ui-elements.mjs";
 import { buildCountrySummary } from "./country-summary-model.mjs";
 import {
+  buildAgingMilestoneInsight,
   buildCountryDemographicNarrative,
-  currentAgeingStage,
-} from "./country-ageing-narrative.mjs";
+  currentAgingStage,
+} from "./country-aging-narrative.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -739,7 +740,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > historicalCutoffYear;
   if (selectedCountry && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
-    const demographicNarrative = buildCountryDemographicNarrative({
+    const migrationNarrative = buildCountryDemographicNarrative({
       country: selectedCountry,
       years: yearsData,
       currentYearIndex,
@@ -751,6 +752,20 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
               key
             ] ?? [],
     });
+    // The aging milestone (formerly its own card) now closes the summary; the
+    // migration sentence, when present, precedes it.
+    const agingInsight = buildAgingMilestoneInsight({
+      country: selectedCountry,
+      years: yearsData,
+      currentYearIndex,
+      historicalCutoffYear,
+      olderPopulationShare:
+        countryDemographicMetrics?.countries?.[selectedCountry.iso3]
+          ?.olderPopulationShare,
+    });
+    const demographicNarrative = [migrationNarrative, agingInsight?.text]
+      .filter(Boolean)
+      .join(" ");
     renderCountrySummary(
       buildCountrySummary({
         country: selectedCountry,
@@ -1647,10 +1662,10 @@ const COUNTRY_CHART_LABEL_MIN_Y = 12;
 // The pyramid draws in a fixed viewBox coordinate space (the SVG scales
 // responsively via preserveAspectRatio), so unlike the line chart it never
 // has to measure its rendered pixel width.
-const COUNTRY_PYRAMID_VIEW = { width: 360, height: 240 };
+const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 // Generous left padding reserves an age-axis column down the left edge; the
 // two sides meet at the center with no gutter.
-const COUNTRY_PYRAMID_PADDING = { top: 22, right: 8, bottom: 22, left: 30 };
+const COUNTRY_PYRAMID_PADDING = { top: 40, right: 8, bottom: 40, left: 30 };
 // Label the age bands whose starting age is a multiple of this, keeping the
 // left axis readable without a label on all 21 bands.
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
@@ -2358,9 +2373,20 @@ function buildCountryPyramid(country) {
   const children = [];
   // Headers centered over each half (male fills pad.left→center, female
   // center→right edge).
+  // const maleIcon = divEl("pyramid-sex-icon male", "Male");
+  // maleIcon.style.left = `15%`;
+  // maleIcon.style.bottom = `0%`;
+  // maleIcon.innerHTML = `<span class="material-symbols-outlined">man</span>`;
+
+  // const femaleIcon = divEl("pyramid-sex-icon female", "Female");
+  // femaleIcon.style.right = `15%`;
+  // femaleIcon.style.bottom = `0%`;
+  // femaleIcon.innerHTML = `<span class="material-symbols-outlined">woman</span>`;
+
   const maleLabel = divEl("pyramid-sex-label male", "Male");
-  maleLabel.style.left = `${(((pad.left + geo.centerX) / 2) / width) * 100}%`;
+  maleLabel.style.left = `${(((geo.centerX - pad.right) / 2) / width) * 100}%`;
   maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
+
   const femaleLabel = divEl("pyramid-sex-label female", "Female");
   femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
   femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
@@ -2409,7 +2435,7 @@ function updateCountryPyramidStage(country, year) {
       ? countryDemographicMetrics?.countries?.[country.iso3]
           ?.olderPopulationShare?.[index]
       : null;
-  const stage = currentAgeingStage(olderShare);
+  const stage = currentAgingStage(olderShare);
   if (!stage) {
     elements.countryPyramidStage.textContent = "";
     elements.countryPyramidStage.title = "";

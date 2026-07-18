@@ -39,7 +39,6 @@ export function getAppElements(root = document) {
     countryPyramidCard: root.querySelector("#countryPyramidCard"),
     countryPyramidStage: root.querySelector("#countryPyramidStage"),
     countryPyramid: root.querySelector("#countryPyramid"),
-    // countryPyramidYear: root.querySelector("#countryPyramidYear"),
     countrySimilar: root.querySelector("#countrySimilar"),
     countrySimilarList: root.querySelector("#countrySimilarList"),
     chartPanel: root.querySelector("#chartPanel"),

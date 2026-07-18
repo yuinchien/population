@@ -7,7 +7,7 @@
 // and draws a two-sided pyramid.
 
 export const SHARE_SCALE = 10000; // shares stored as parts per myriad
-export const OLD_AGE_THRESHOLD = 65; // bands starting here get the ageing accent
+export const OLD_AGE_THRESHOLD = 65; // bands starting here get the aging accent
 
 // Start age of a 5-year band label ("0-4" -> 0, "65-69" -> 65, "100+" -> 100).
 export function ageBandStart(label) {

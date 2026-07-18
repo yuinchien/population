@@ -966,7 +966,7 @@ body.country-detail #colorMode {
     min-height: 0;
     overflow: auto;
     display: grid;
-    grid-row: 2 / -1;
+    /*grid-row: 2 / -1;*/
     grid-template-columns: 1fr 1fr 1fr;
     align-content: start;
     gap: var(--margin);
@@ -981,7 +981,6 @@ body.country-detail #colorMode {
 .country-chart-card {
     flex: none;
     grid-column: span 2;
-    /*grid-column: 1 / -1;*/
 }
 
 .country-chart {
@@ -1068,8 +1067,13 @@ body.country-detail #colorMode {
     grid-column: 1 / -1;
 }
 
+#countryPyramidCard {
+    display: grid;
+    grid-column: span 1;
+    grid-template-rows: auto 1fr;
+}
+
 .country-pyramid-card {
-    /*grid-column: 1 / -1;*/
     flex: none;
 }
 
@@ -1090,16 +1094,15 @@ body.country-detail #colorMode {
     display: block;
     position: relative;
     width: 100%;
-    height: 100%;
-    /*max-width: 400px;*/
     margin: 0 auto;
-    /*aspect-ratio: 360 / 240;*/
     overflow: hidden;
 }
 
 #detailSummary {
-    display: none;
+    grid-column: 1 / -1;
 }
+
+
 
 .pyramid-bar {
     position: absolute;
@@ -1124,15 +1127,15 @@ body.country-detail #colorMode {
     background: var(--color-text);
 }
 
+.pyramid-sex-icon {
+    position: absolute;
+    color: var(--color-muted);
+    transform: translate(50%, 0%);
+}
 .pyramid-sex-label {
     position: absolute;
     color: var(--color-muted);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    line-height: 1;
-    transform: translate(-50%, -50%);
-    white-space: nowrap;
+    transform: translate(50%, 0%);
 }
 
 .pyramid-age-label {
