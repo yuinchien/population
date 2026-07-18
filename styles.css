@@ -871,7 +871,7 @@ body.country-detail #colorMode {
     min-width: 0;
     font-family: var(--font-sans);
     letter-spacing: 0em;
-    margin: 24px 0 12px 0;
+    margin: -8px 0 var(--margin) 0;
 
     .caption {
         display: table;
@@ -884,6 +884,8 @@ body.country-detail #colorMode {
         padding: 6px 8px 5px 8px;
         line-height: 1;
         margin-bottom: 12px;
+        /* [TODO] remove caption from country detail view */
+        display: none;
     }
     .country-summary-meta {
         display: flex;
