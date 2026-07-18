@@ -1665,7 +1665,7 @@ const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 // Generous left padding reserves an age-axis column down the left edge; the
 // two sides meet at the center with no gutter.
-const COUNTRY_PYRAMID_PADDING = { top: 40, right: 8, bottom: 40, left: 30 };
+const COUNTRY_PYRAMID_PADDING = { top: 12, right: 0, bottom: 44, left: 0 };
 // Label the age bands whose starting age is a multiple of this, keeping the
 // left axis readable without a label on all 21 bands.
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
@@ -2384,12 +2384,12 @@ function buildCountryPyramid(country) {
   // femaleIcon.innerHTML = `<span class="material-symbols-outlined">woman</span>`;
 
   const maleLabel = divEl("pyramid-sex-label male", "Male");
-  maleLabel.style.left = `${(((geo.centerX - pad.right) / 2) / width) * 100}%`;
-  maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
+  // maleLabel.style.left = `${(((geo.centerX - pad.right) / 2) / width) * 100}%`;
+  // maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
 
   const femaleLabel = divEl("pyramid-sex-label female", "Female");
-  femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
-  femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
+  // femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
+  // femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
   children.push(maleLabel, femaleLabel);
 
   const bars = geo.bars.map((bar) => {

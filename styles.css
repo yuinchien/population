@@ -647,8 +647,9 @@ body.country-detail #colorMode {
 }
 
 .detail-panel {
-    --color-lighten: color-mix(in srgb, var(--detail-color) 8%, transparent);
+    --color-lighten: color-mix(in srgb, var(--detail-color) 0%, transparent);
     position: fixed;
+    background: var(--color-bg);
     top: 0;
     right: 0;
     bottom: 0;
@@ -1135,7 +1136,21 @@ body.country-detail #colorMode {
 .pyramid-sex-label {
     position: absolute;
     color: var(--color-muted);
-    transform: translate(50%, 0%);
+    width: calc(50% - 2px);
+    padding: 2px 0;
+    bottom: 0;
+    border-radius: 0px;
+    text-align: center;
+    text-transform: uppercase;
+    /*background: color-mix(in srgb, var(--detail-color) 40%, black);*/
+
+    &.female {
+        left: calc(50% + 1px);
+    }
+    &.male {
+        left: 1px;
+        /*text-align: right;*/
+    }
 }
 
 .pyramid-age-label {
@@ -1153,8 +1168,10 @@ body.country-detail #colorMode {
        the others — overriding it back to 0 is what makes the 4 columns
        actually equal instead of just nominally equal per the template. */
     min-width: 0;
-    border-radius: 8px;
-    padding: 12px;
+    /*border-radius: 8px;*/
+    border-top: var(--border);
+    padding: 12px 0;
+    /*padding: 12px;*/
     background: var(--color-lighten);
 }
 
