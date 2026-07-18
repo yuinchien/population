@@ -1672,7 +1672,7 @@ const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 const COUNTRY_PYRAMID_PADDING = { top: 12, right: 0, bottom: 44, left: 0 };
 // The stacked variant needs side room so the 0/100 edge labels aren't clipped,
 // a top strip for the sex legend, and a bottom strip for the age axis.
-const COUNTRY_PYRAMID_STACKED_PADDING = { top: 22, right: 12, bottom: 26, left: 12 };
+const COUNTRY_PYRAMID_STACKED_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 // Label the age bands whose starting age is a multiple of this, keeping the
 // left axis readable without a label on all 21 bands.
 const COUNTRY_PYRAMID_AGE_LABEL_STEP = 20;
@@ -2381,24 +2381,18 @@ function buildCountryPyramid(country) {
   const children = [];
   // Headers centered over each half (male fills pad.left→center, female
   // center→right edge).
-  // const maleIcon = divEl("pyramid-sex-icon male", "Male");
-  // maleIcon.style.left = `15%`;
-  // maleIcon.style.bottom = `0%`;
-  // maleIcon.innerHTML = `<span class="material-symbols-outlined">man</span>`;
 
-  // const femaleIcon = divEl("pyramid-sex-icon female", "Female");
-  // femaleIcon.style.right = `15%`;
-  // femaleIcon.style.bottom = `0%`;
-  // femaleIcon.innerHTML = `<span class="material-symbols-outlined">woman</span>`;
-
-  const maleLabel = divEl("pyramid-sex-label male", "Male");
+  const sexLabels = divEl("pyramid-sex-labels", "");
+  const maleLabel = divEl("pyramid-sex-label male", "");
   // maleLabel.style.left = `${(((geo.centerX - pad.right) / 2) / width) * 100}%`;
   // maleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
-
-  const femaleLabel = divEl("pyramid-sex-label female", "Female");
+  const femaleLabel = divEl("pyramid-sex-label female", "");
+  sexLabels.appendChild(femaleLabel);
+  sexLabels.appendChild(maleLabel);
   // femaleLabel.style.left = `${(((geo.centerX + width - pad.right) / 2) / width) * 100}%`;
   // femaleLabel.style.top = `${((pad.top - 18) / height) * 100}%`;
-  children.push(maleLabel, femaleLabel);
+
+  children.push(sexLabels);
 
   const bars = geo.bars.map((bar) => {
     const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;

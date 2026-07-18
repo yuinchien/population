@@ -1137,30 +1137,17 @@ body.country-detail #colorMode {
     border: 1px solid var(--color-text);
 }
 
-
-.pyramid-sex-icon {
+.pyramid-sex-labels {
     position: absolute;
-    color: var(--color-muted);
-    transform: translate(50%, 0%);
+    right: 0;
+    top: 0;
+    display: flex;
+    gap: 0;
 }
-.pyramid-sex-label {
-    position: absolute;
+/*.pyramid-sex-label {
     color: var(--color-muted);
-    width: calc(50% - 2px);
-    padding: 2px 0;
-
-    text-align: center;
-    text-transform: uppercase;
-    /*background: color-mix(in srgb, var(--detail-color) 40%, black);*/
-
-    &.female {
-        left: calc(50% + 1px);
-    }
-    &.male {
-        left: 1px;
-        /*text-align: right;*/
-    }
-}
+    padding: 0;
+}*/
 
 .pyramid-age-label {
     position: absolute;
@@ -1200,32 +1187,35 @@ body.country-detail #colorMode {
 .country-pyramid--stacked .pyramid-sex-label {
     top: 0;
     width: auto;
-    padding: 0;
     display: flex;
     align-items: center;
-    gap: 8px;
-    text-align: left;
+    padding: 2px;
 }
 .country-pyramid--stacked .pyramid-sex-label::before {
     content: "";
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-
+    width: 24px;
+    height: 24px;
+    font-size: 24px;
+    font-family: "Material Symbols Outlined";
+    line-height: 1;
+    color: var(--detail-color);
 }
 .country-pyramid--stacked .pyramid-sex-label.male {
-    left: 84px;
-}
-.country-pyramid--stacked .pyramid-sex-label.male::before {
-     border: 1px solid var(--detail-color);
-}
-.country-pyramid--stacked .pyramid-sex-label.female {
-    left: 0;
-}
-.country-pyramid--stacked .pyramid-sex-label.female::before {
-    background: var(--detail-color);
+    outline: 1px solid var(--color-text);
+    outline-offset: -1px;
+    &::before {
+        color: var(--color-detail);
+        content: "\e4eb";
+    }
 }
 
+.country-pyramid--stacked .pyramid-sex-label.female {
+    background: var(--color-text);
+    &::before {
+        color: var(--color-bg);
+        content: "\e13e";
+    }
+}
 
 .sparkline-card {
     /* Grid items default to min-width: auto, which lets a card's own
