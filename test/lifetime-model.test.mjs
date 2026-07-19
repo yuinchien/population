@@ -4,12 +4,55 @@ import {
   ageAt,
   buildLifetimeStoryAct,
   lifetimeAgeStructureShareYoungerThan,
+  lifetimeLifeExpectancyComparison,
   lifetimePresentYear,
   lifetimeSuperAgedCount,
   projectedLifespanEnd,
   populationMilestones,
   milestonesInLifespan,
 } from "../lifetime-model.mjs";
+
+test("lifetimeLifeExpectancyComparison pins the highlighted country above region means", () => {
+  const countries = [
+    { iso3: "TWN", name: "Taiwan", region: "East Asia & Pacific" },
+    { iso3: "JPN", name: "Japan", region: "East Asia & Pacific" },
+    { iso3: "DEU", name: "Germany", region: "Europe & Central Asia" },
+  ];
+  const demographicMetrics = {
+    countries: {
+      TWN: { lifeExpectancy: [73.3] },
+      JPN: { lifeExpectancy: [76.9] },
+      DEU: { lifeExpectancy: [74.1] },
+    },
+  };
+  const rows = lifetimeLifeExpectancyComparison({
+    country: countries[0],
+    countries,
+    demographicMetrics,
+    yearIndex: 0,
+  });
+  // Country pinned first and highlighted.
+  assert.deepEqual(rows[0], { label: "Taiwan", value: 73.3, highlight: true });
+  // Regions follow, alphabetical by display label, unweighted country means.
+  assert.deepEqual(
+    rows.slice(1).map((r) => r.label),
+    ["East Asia & Pacific", "Europe & Central Asia"],
+  );
+  assert.equal(rows[1].value, (73.3 + 76.9) / 2); // East Asia mean incl. Taiwan
+  assert.equal(rows[1].highlight, false);
+});
+
+test("lifetimeLifeExpectancyComparison returns empty when the year is out of range", () => {
+  assert.deepEqual(
+    lifetimeLifeExpectancyComparison({
+      country: { iso3: "TWN", name: "Taiwan", region: "East Asia & Pacific" },
+      countries: [],
+      demographicMetrics: { countries: {} },
+      yearIndex: -1,
+    }),
+    [],
+  );
+});
 
 test("ageAt returns your age, or null before you're born", () => {
   assert.equal(ageAt(1990, 2024), 34);
@@ -186,8 +229,9 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
     formatLifeExpectancy: (value) => `${value} yrs`,
   });
 
-  assert.equal(act.year, 2037);
+  assert.equal(act.year, 2070);
+  assert.match(act.text, /In 2070, you will be 80 years old/);
   assert.match(act.text, /By the time you turn 47/);
   assert.match(act.text, /world population passes 9b/);
-  assert.deepEqual(act.stats[0], { value: "47", label: "Your age then" });
+  assert.deepEqual(act.stats[0], { value: "80", label: "Your age then" });
 });

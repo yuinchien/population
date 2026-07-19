@@ -63,7 +63,7 @@
             <span class="menu-toggle-icon"></span>
         </button>
         <div id="menuShim" class="menu-shim"></div>
-        <div id="buttonsContainer" class="hide-for-detail ">
+        <div id="buttonsContainer" class="hide-for-detail">
             <button
                 id="infoButton"
                 class="icon-button"
@@ -79,7 +79,6 @@
 
             <div id="viewMode" class="button-group" hidden>
                 <button
-                    hidden
                     type="button"
                     data-mode="lifetime"
                     aria-label="Lifetime view"
@@ -140,13 +139,20 @@
         </section>
 
         <section id="lifetimeView" class="lifetime-view glass" hidden>
+            <button
+                id="lifetimeClose"
+                class="detail-close"
+                type="button"
+                aria-label="Close lifetime view"
+            >
+                <span class="material-symbols-outlined">close</span>
+            </button>
             <div class="lifetime-content">
                 <h1 class="lifetime-form-lead">
                     See the world through your lifespan
                 </h1>
                 <p>The world’s population has shifted dramatically since 1950, and it will change even faster by 2100. Enter your birth year and country to trace your personal timeline against the rise, peak, and future of humanity.</p>
                 <form id="lifetimeForm" class="lifetime-form" autocomplete="off">
-                    I was born in
                     <input
                         id="lifetimeBirthYear"
                         class="lifetime-input"
@@ -155,17 +161,16 @@
                         max="2100"
                         step="1"
                         inputmode="numeric"
-                        placeholder="birth year"
+                        placeholder="Birth Year"
                         aria-label="Birth year"
                     />
-                    <span class="lifetime-form-lead">in</span>
                     <span class="lifetime-country-picker">
                         <input
                             id="lifetimeCountry"
                             class="lifetime-input"
                             type="text"
                             autocomplete="off"
-                            placeholder="country"
+                            placeholder="Country"
                             aria-label="Country of birth"
                         />
                         <div
@@ -174,13 +179,10 @@
                             hidden
                         ></div>
                     </span>
-                    <!--<span class="lifetime-form-lead">.</span>-->
+                    <button id="lifetimeButtonBegin" class="lifetime-button-begin lg">
+                        <span class="material-symbols-outlined">arrow_forward</span>
+                    </button>
                 </form>
-
-                <button id="lifetimeButtonBegin" class="lifetime-button-begin lg">
-                    Begin
-                </button>
-
 
                 <div id="lifetimeStory" class="lifetime-story" hidden>
                     <div id="lifetimeAbout" class="lifetime-about"></div>
@@ -190,7 +192,7 @@
             </div>
         </section>
 
-        <div id="timelineContainer" class="timeline hide-for-chart">
+        <div id="timelineContainer" class="timeline hide-for-chart hide-for-lifetime">
             <button
                 id="milestoneTour"
                 class="milestone-nav-btn hide-for-chart hide-for-cluster"
@@ -241,7 +243,7 @@
             </button>
         </div>
 
-        <div class="header-title">
+        <div class="header-title" id="headerTitle">
             World Population.
         </div>
         <div class="status-wrapper ">

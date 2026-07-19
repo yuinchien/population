@@ -12,6 +12,7 @@ import {
   lifespanProjectionSentence,
   superAgedSocietiesSentence,
 } from "./narrative-copy.mjs";
+import { displayGroupLabel } from "./status-insights.mjs";
 
 // Pure helpers for the Lifetime view — no DOM, no data fetching — so the
 // personal-framing math stays unit-testable independent of the render wiring.
@@ -272,6 +273,49 @@ export function lifetimeStoryContext({
   };
 }
 
+// Life-expectancy-at-birth for the person's country plus each world region
+// (unweighted country mean, matching the app's group aggregation) at a given
+// year index. The country is flagged for highlight and pinned first; regions
+// follow alphabetically by display label. Values are raw numbers — the caller
+// formats them.
+export function lifetimeLifeExpectancyComparison({
+  country,
+  countries,
+  demographicMetrics,
+  yearIndex: index,
+}) {
+  if (!country || index == null || index < 0) return [];
+  const lifeExpectancyAt = (iso3) =>
+    demographicMetrics?.countries?.[iso3]?.lifeExpectancy?.[index];
+
+  const totals = new Map(); // raw region name -> { sum, count }
+  for (const item of countries ?? []) {
+    const region = item.region?.trim();
+    const value = lifeExpectancyAt(item.iso3);
+    if (!region || !Number.isFinite(value)) continue;
+    const entry = totals.get(region) ?? { sum: 0, count: 0 };
+    entry.sum += value;
+    entry.count += 1;
+    totals.set(region, entry);
+  }
+
+  const regions = [...totals.entries()]
+    .map(([region, { sum, count }]) => ({
+      label: displayGroupLabel(region),
+      value: sum / count,
+      highlight: false,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
+  const countryValue = lifeExpectancyAt(country.iso3);
+  const rows = [];
+  if (Number.isFinite(countryValue)) {
+    rows.push({ label: country.name, value: countryValue, highlight: true });
+  }
+  rows.push(...regions);
+  return rows;
+}
+
 export function buildLifetimeStoryAct({
   country,
   actIndex,
@@ -354,10 +398,18 @@ export function buildLifetimeStoryAct({
     growthCount,
   });
 
+  const lifeComparison = lifetimeLifeExpectancyComparison({
+    country,
+    countries,
+    demographicMetrics,
+    yearIndex: context.birthIndex,
+  });
+
   const acts = [
     {
       year: birthYear,
       text: `When you arrived in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, life was moving at a different pace: average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}. Since that first breath, your life has been riding the wave of the fastest demographic expansion in human history.`,
+      comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
         {
@@ -381,21 +433,15 @@ export function buildLifetimeStoryAct({
       ],
     },
     {
-      year: context.horizonYear,
-      text: `${lifespanCopy}, giving you a front-row seat to the future.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${horizonAgingCopy} A planet shaped by its own success at keeping people alive longer than ever before.`,
+      year: context.finalYear,
+      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${horizonAgingCopy}${finalClusterCopy} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
       stats: [
-        { value: String(horizonAge ?? "—"), label: "Your age then" },
+        { value: String(finalAge ?? "—"), label: "Your age then" },
+        { value: formatPopulation(finalPop), label: "World population" },
         {
           value: agedCount != null ? String(agedCount) : "—",
           label: "Super-aged societies",
         },
-      ],
-    },
-    {
-      year: context.finalYear,
-      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${finalClusterCopy} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
-      stats: [
-        { value: formatPopulation(finalPop), label: "World population" },
         {
           value:
             silverDeclineCount != null ? String(silverDeclineCount) : "—",

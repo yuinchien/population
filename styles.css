@@ -198,6 +198,7 @@ body.view-cluster #overlayMain {
     transition: all 0.15s;
 }
 
+body.view-lifetime .hide-for-lifetime,
 body.view-cluster .hide-for-cluster,
 body.detail .hide-for-detail {
     opacity: 0;
@@ -1669,27 +1670,37 @@ select::picker(select) {
     overflow: hidden;
 }
 
-/* Lifetime view: a full-screen overlay like Cluster (keeps the timeline
-   slider on top of it), but a text-forward personal story instead of a
-   canvas. */
+/* Lifetime view: full-screen personal story. The first state is a compact
+   input prompt; after Begin, the overlay becomes a scroll-snap journey. */
 .lifetime-view {
     position: fixed;
     inset: 0;
     z-index: var(--z-dock);
-    /*background: var(--color-scrim-strong);*/
-    overflow: auto;
+    background: var(--color-scrim-strong);
+    overflow: hidden;
     display: flex;
     justify-content: center;
+}
+
+.lifetime-view > .detail-close {
+    position: fixed;
+    top: var(--margin);
+    right: var(--margin);
+    z-index: calc(var(--z-dock) + 2);
+    font-size: 2.4rem;
 }
 
 .lifetime-content {
     width: 100%;
     max-width: 960px;
-    padding: 180px var(--margin) 80px;
+    min-height: 100vh;
+    /*padding: 180px var(--margin) 80px;*/
     display: flex;
     flex-direction: column;
-    gap: calc(var(--margin) / 2);
+    justify-content: center;
+    gap: 20px;
     letter-spacing: 0;
+    padding-bottom: 40px;
 
     h1 {
         font-family: var(--font-serif);
@@ -1707,38 +1718,51 @@ select::picker(select) {
     }
 }
 
+.lifetime-view.is-started {
+    justify-content: stretch;
+}
+
+.lifetime-view.is-started .lifetime-content {
+    max-width: none;
+    padding: 0;
+}
+
+.lifetime-view.is-started .lifetime-form-lead,
+.lifetime-view.is-started .lifetime-content > p,
+.lifetime-view.is-started .lifetime-form,
+.lifetime-view.is-started .lifetime-button-begin {
+    display: none;
+}
 
 input[type=number]::-webkit-inner-spin-button {
   -webkit-appearance: none;
 }
 
 button.lg .material-symbols-outlined {
-    font-size: 28px;
+    font-size: 32px;
     line-height: 1;
 }
 
 .lifetime-button-begin {
-    height: var(--button-size);
-    background: var(--color-blue);
+    background: var(--color-text);
     border: none;
     border-radius: 30px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-    font-family: var(--font-sans);
-    width: fit-content;
-    padding: 0 40px;
-    margin-top: 8px;
-    /*width: 48px;*/
-    /*height: 48px;*/
+    padding: 8px;
+    display: flex;
+    cursor: pointer;
+    color: var(--color-bg);
+}
+
+.lifetime-button-begin:disabled {
+    opacity: 0.4;
+    cursor: default;
 }
 
 .lifetime-form {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
-    gap: 8px;
+    align-items: center;
+    gap: var(--margin);
     font-family: var(--font-sans);
     font-size: 1.8rem;
 }
@@ -1784,106 +1808,193 @@ button.lg .material-symbols-outlined {
     padding: 10px 12px;
 }
 
-.lifetime-prompt {
-    color: var(--color-muted);
-    max-width: 34ch;
+.lifetime-story {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
 }
 
-.lifetime-story {
+.lifetime-about {
+    height: 100vh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scroll-snap-stop: always;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+}
+
+.lifetime-story-section {
+    min-height: 100vh;
+    padding: 18vh max(9vw, var(--margin));
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--margin);
+    align-items: center;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+}
+
+.lifetime-story-section .lifetime-section-label,
+.lifetime-story-section .lifetime-act-copy {
+    grid-column: 2;
+}
+
+.lifetime-story-section .lifetime-stat-row,
+.lifetime-story-section .lifetime-le-comparison {
+    /*grid-column: 1;*/
+    /*grid-row: 1 / span 2;*/
+    /*align-self: center;*/
+}
+
+/* The Arrival act's life-expectancy comparison: one pill per row, width scaled
+   to the value (but never narrower than its label), the person's country
+   pinned on top and highlighted. */
+.lifetime-le-comparison {
     display: flex;
     flex-direction: column;
-    gap: var(--margin);
-}
-
-.lifetime-headline {
-    margin: 0;
+    gap: 4px;
     font-family: var(--font-sans);
-    font-size: 1.6rem;
     font-weight: 500;
 }
 
-.lifetime-about,
-.lifetime-journey {
+.lifetime-le-row {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding-top: 16px;
-    border-top: var(--border);
+    align-items: center;
+    gap: 8px;
+}
+
+.lifetime-le-bar {
+    flex: none;
+    min-width: max-content;
+    max-width: 100%;
+    background: color-mix(in srgb, var(--color-text) 40%, transparent);
+    color: var(--color-bg);
+    border-radius: 999px;
+    padding: 4px 12px;
+    white-space: nowrap;
+    transition: width 0.4s ease;
+}
+
+.lifetime-le-row.is-highlight .lifetime-le-bar {
+    background: var(--color-yellow);
+}
+
+.lifetime-le-value {
+    flex: none;
+    color: var(--color-muted);
+    white-space: nowrap;
+}
+
+.lifetime-le-row.is-highlight .lifetime-le-value {
+    color: var(--color-yellow);
 }
 
 .lifetime-stat-row {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--margin);
+    flex-direction: column;
+    gap: 8px;
 }
 
 .lifetime-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(160px, 1fr) auto;
+    align-items: center;
+    gap: 16px;
+    color: var(--color-background);
+    background: var(--color-muted);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-family: var(--font-sans);
 }
+
+.lifetime-stat:first-child {
+    background: var(--color-yellow);
+}
+
 .lifetime-stat-value {
-    font-size: 1.8rem;
+    grid-column: 2;
+    font-size: 1.3rem;
     font-weight: 500;
-    color: var(--color-text);
+    color: inherit;
     line-height: 1.1;
+    white-space: nowrap;
 }
+
 .lifetime-stat-label {
-    font-size: 12px;
-    color: var(--color-muted);
+    grid-column: 1;
+    grid-row: 1;
+    font-size: 1.1rem;
+    color: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .lifetime-section-label {
-    font-size: 12px;
-    color: var(--color-subtle);
+    justify-self: center;
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    color: var(--color-text);
+    margin-bottom: 16px;
 }
 
 .lifetime-act-copy {
-    /*max-width: 48ch;
+    /*max-width: 20ch;*/
+    justify-self: center;
+    text-align: center;
     color: var(--color-text) !important;
-    font-size: clamp(1.5rem, 3vw, 2.6rem) !important;
-    line-height: 1.12 !important;*/
+    /*font-family: var(--font-serif) !important;*/
+    /*font-size: clamp(2rem, 3.3vw, 3.4rem) !important;*/
+    /*line-height: 1.12 !important;*/
 }
 
-.lifetime-progress {
-    width: fit-content;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: var(--border);
-    border-radius: 999px;
-    padding: 5px 10px;
-    font-size: 12px;
-}
-
-.lifetime-milestones {
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.lifetime-journey {
+    position: fixed;
+    z-index: calc(var(--z-dock) + 1);
+    right: var(--margin);
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-}
-.lifetime-milestones li {
-    display: flex;
     gap: 10px;
-    align-items: baseline;
-}
-.lifetime-milestone-year {
-    font-family: var(--font-mono);
-    color: var(--color-text);
-    min-width: 3.5em;
-}
-.lifetime-milestone-text {
-    color: var(--color-muted);
-    font-family: var(--font-sans);
 }
 
-.lifetime-journey-heading {
-    margin: 0;
-    font-family: var(--font-sans);
-    font-size: 1.45rem;
-    font-weight: 500;
+.lifetime-progress-dot {
+    width: 10px;
+    height: 10px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--color-muted);
+    opacity: 0.75;
+    cursor: pointer;
+}
+
+.lifetime-progress-dot.active {
+    background: var(--color-text);
+    opacity: 1;
+}
+
+body.view-lifetime-started #viewMode {
+    display: none;
+}
+
+@media (max-width: 800px) {
+    .lifetime-story-section {
+        grid-template-columns: 1fr;
+        padding: 16vh var(--margin);
+    }
+
+    .lifetime-story-section .lifetime-section-label,
+    .lifetime-story-section .lifetime-act-copy,
+    .lifetime-story-section .lifetime-stat-row {
+        grid-column: 1;
+        grid-row: auto;
+    }
+
+    .lifetime-act-copy {
+        max-width: 24ch;
+    }
 }
 
 .cluster-canvas {

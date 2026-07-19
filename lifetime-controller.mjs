@@ -8,6 +8,10 @@ import {
 } from "./lifetime-model.mjs";
 import { METRICS } from "./metrics.mjs";
 
+const LIFETIME_SECTION_COUNT = 3;
+const LIFETIME_SCROLL_LOCK_MS = 900;
+const LIFETIME_WHEEL_IDLE_MS = 240;
+
 function createLifetimeStat(value, label) {
   const stat = document.createElement("div");
   stat.className = "lifetime-stat";
@@ -23,10 +27,9 @@ function createLifetimeStat(value, label) {
 
 function actLabel(index) {
   return [
-    "Act I · The Arrival",
-    "Act II · The Present Intersect",
-    "Act III · The Milestone Horizon",
-    "Act IV · The Legacy",
+    "The Arrival",
+    "Present",
+    "Future",
   ][index] ?? "Lifetime";
 }
 
@@ -49,6 +52,11 @@ export function createLifetimeController({
   let countryIso = null;
   let actIndex = -1;
   let suggestionActiveIndex = -1;
+  let titleBeforeLifetime = "";
+  let viewModeHiddenBeforeStory = false;
+  let scrollFrame = null;
+  let scrollLockedUntil = 0;
+  let lastWheelAt = 0;
 
   const countries = () => getCountries() ?? [];
   const years = () => getYears() ?? [];
@@ -79,6 +87,10 @@ export function createLifetimeController({
       formatPopulation,
       formatLifeExpectancy: METRICS.lifeExpectancy.format,
     });
+  }
+
+  function started() {
+    return actIndex >= 0;
   }
 
   function countryMatches(query) {
@@ -160,20 +172,80 @@ export function createLifetimeController({
     syncUrl();
   }
 
-  function renderAct(country) {
-    if (!active || elements.lifetimeStory.hidden) return;
-    const act = buildAct(country, actIndex);
+  function setActiveSection(index) {
+    const clamped = Math.min(
+      LIFETIME_SECTION_COUNT - 1,
+      Math.max(0, index),
+    );
+    actIndex = clamped;
+    elements.lifetimeJourney
+      ?.querySelectorAll(".lifetime-progress-dot")
+      .forEach((dot, i) => {
+        dot.classList.toggle("active", i === clamped);
+        dot.setAttribute("aria-current", i === clamped ? "step" : "false");
+      });
+  }
+
+  function createLifeExpectancyComparison(rows) {
+    const chart = document.createElement("div");
+    chart.className = "lifetime-le-comparison";
+    const values = rows.map((row) => row.value);
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const range = max - min || 1;
+    const format = METRICS.lifeExpectancy.format;
+    rows.forEach((row) => {
+      const item = document.createElement("div");
+      item.className = `lifetime-le-row${row.highlight ? " is-highlight" : ""}`;
+      const bar = document.createElement("div");
+      bar.className = "lifetime-le-bar";
+      // Zoomed proportional width so close life-expectancy values still read as
+      // different; a floor keeps the shortest bar visible, the ceiling leaves
+      // room for the value label, and CSS min-width keeps long labels legible
+      // inside their pill.
+      bar.style.width = `${(0.2 + 0.6 * ((row.value - min) / range)) * 100}%`;
+      const name = document.createElement("span");
+      name.className = "lifetime-le-name";
+      name.textContent = row.label;
+      bar.append(name);
+      const value = document.createElement("span");
+      value.className = "lifetime-le-value";
+      value.textContent = format(row.value);
+      item.append(bar, value);
+      chart.append(item);
+    });
+    return chart;
+  }
+
+  function createStorySection(country, index) {
+    const act = buildAct(country, index);
+    const section = document.createElement("section");
+    section.className = "lifetime-story-section";
+    section.dataset.index = String(index);
+    section.tabIndex = -1;
+
     const label = document.createElement("div");
     label.className = "lifetime-section-label";
-    label.textContent = actLabel(actIndex);
+    label.textContent = actLabel(index);
 
     const copy = document.createElement("p");
     copy.className = "lifetime-act-copy";
     copy.textContent = act.text;
 
-    const progress = document.createElement("div");
-    progress.className = "lifetime-progress";
-    progress.textContent = `${actIndex + 1} / 4 · ${act.year}`;
+    const group = document.createElement("div");
+    group.className = "lifetime-section-text";
+    group.append(label, copy);
+
+    // The Arrival act compares your country's life expectancy at birth against
+    // every world region for that year — a two-column split (chart | copy)
+    // rather than the stacked stat row the other acts use.
+    if (act.comparison?.length) {
+      section.classList.add("has-comparison");
+      // Comparison chart fills the left grid column; label + copy stay in the
+      // right column via the existing .lifetime-story-section rules.
+      section.append(createLifeExpectancyComparison(act.comparison), group);
+      return section;
+    }
 
     const statRow = document.createElement("div");
     statRow.className = "lifetime-stat-row";
@@ -181,12 +253,89 @@ export function createLifetimeController({
       ...act.stats.map((stat) => createLifetimeStat(stat.value, stat.label)),
     );
 
-    elements.lifetimeAbout.replaceChildren(label, copy, progress);
-    elements.lifetimeJourney.replaceChildren(statRow);
+    section.append(label, copy, statRow);
+    return section;
+  }
+
+  function renderProgressDots() {
+    elements.lifetimeJourney.replaceChildren(
+      ...Array.from({ length: LIFETIME_SECTION_COUNT }, (_, index) => {
+        const dot = document.createElement("button");
+        dot.type = "button";
+        dot.className = "lifetime-progress-dot";
+        dot.setAttribute("aria-label", `Go to ${actLabel(index)}`);
+        dot.dataset.index = String(index);
+        return dot;
+      }),
+    );
+    setActiveSection(actIndex);
+  }
+
+  function scrollToSection(index, behavior = "smooth") {
+    const section = elements.lifetimeAbout?.querySelector(
+      `.lifetime-story-section[data-index="${index}"]`,
+    );
+    if (!section) return;
+    section.scrollIntoView({
+      behavior: behavior === "instant" ? "auto" : behavior,
+      block: "start",
+    });
+    setActiveSection(index);
+  }
+
+  function sectionFromScrollPosition() {
+    const viewportTop = elements.lifetimeAbout.getBoundingClientRect().top;
+    const sections = [
+      ...elements.lifetimeAbout.querySelectorAll(".lifetime-story-section"),
+    ];
+    if (!sections.length) return null;
+    const nearest = sections.reduce(
+      (best, section) => {
+        const distance = Math.abs(
+          section.getBoundingClientRect().top - viewportTop,
+        );
+        return distance < best.distance ? { section, distance } : best;
+      },
+      { section: sections[0], distance: Infinity },
+    ).section;
+    return Number(nearest.dataset.index);
+  }
+
+  function snapToAdjacentSection(direction, now = performance.now()) {
+    if (!started() || !Number.isFinite(direction) || direction === 0) return;
+    if (now < scrollLockedUntil) return;
+    const currentIndex = sectionFromScrollPosition() ?? actIndex;
+    const nextIndex = Math.min(
+      LIFETIME_SECTION_COUNT - 1,
+      Math.max(0, currentIndex + Math.sign(direction)),
+    );
+    if (nextIndex === currentIndex) return;
+    scrollLockedUntil = now + LIFETIME_SCROLL_LOCK_MS;
+    scrollToSection(nextIndex);
+  }
+
+  function renderStory(country) {
+    if (!active || !started()) return;
+    const sections = Array.from({ length: LIFETIME_SECTION_COUNT }, (_, index) =>
+      createStorySection(country, index),
+    );
+    elements.lifetimeAbout.replaceChildren(...sections);
+    renderProgressDots();
+    requestAnimationFrame(() => scrollToSection(actIndex, "instant"));
   }
 
   function render() {
     if (!elements.lifetimeView || elements.lifetimeView.hidden) return;
+    elements.lifetimeView.classList.toggle("is-started", started());
+    document.body.classList.toggle("view-lifetime-started", started());
+    if (elements.headerTitle) {
+      elements.headerTitle.textContent = started()
+        ? "Your Lifespan."
+        : "World Population.";
+    }
+    if (elements.viewMode) {
+      elements.viewMode.hidden = started() || viewModeHiddenBeforeStory;
+    }
     if (birthYear != null) {
       elements.lifetimeBirthYear.value = String(birthYear);
     }
@@ -196,14 +345,16 @@ export function createLifetimeController({
     }
     const ready =
       Number.isFinite(birthYear) && birthYear <= presentYear() && !!country;
-    elements.lifetimeButtonBegin.textContent =
-      actIndex < 0 ? "Begin" : actIndex >= 3 ? "Restart" : "Next";
-    elements.lifetimeStory.hidden = !ready || actIndex < 0;
+    // elements.lifetimeButtonBegin.textContent = "Begin";
+    elements.lifetimeButtonBegin.disabled = !ready;
+    elements.lifetimeForm.hidden = started();
+    elements.lifetimeButtonBegin.hidden = started();
+    elements.lifetimeStory.hidden = !ready || !started();
     if (!ready) return;
-    if (actIndex >= 0) renderAct(country);
+    renderStory(country);
   }
 
-  function advance() {
+  function begin() {
     const value = Number(elements.lifetimeBirthYear.value);
     birthYear = years().includes(value) && value <= presentYear() ? value : null;
     const country = selectedCountry();
@@ -214,8 +365,8 @@ export function createLifetimeController({
       return;
     }
 
-    actIndex = actIndex < 0 || actIndex >= 3 ? 0 : actIndex + 1;
-    const targetYear = buildAct(country, actIndex).year;
+    actIndex = 0;
+    const targetYear = buildAct(country, 0).year;
     if (years().includes(targetYear)) {
       goToYear(targetYear);
     } else {
@@ -225,7 +376,65 @@ export function createLifetimeController({
   }
 
   function bindEvents() {
-    elements.lifetimeButtonBegin?.addEventListener("click", advance);
+    elements.lifetimeButtonBegin?.addEventListener("click", begin);
+    elements.lifetimeForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      begin();
+    });
+    elements.lifetimeClose?.addEventListener("click", () => setActive(false));
+    elements.lifetimeAbout?.addEventListener(
+      "wheel",
+      (event) => {
+        if (!started() || Math.abs(event.deltaY) < 4) return;
+        event.preventDefault();
+        const now = performance.now();
+        const isSameWheelGesture = now - lastWheelAt < LIFETIME_WHEEL_IDLE_MS;
+        lastWheelAt = now;
+        if (now < scrollLockedUntil || isSameWheelGesture) {
+          scrollLockedUntil = Math.max(
+            scrollLockedUntil,
+            now + LIFETIME_WHEEL_IDLE_MS,
+          );
+          return;
+        }
+        snapToAdjacentSection(event.deltaY, now);
+      },
+      { passive: false },
+    );
+    elements.lifetimeAbout?.addEventListener("keydown", (event) => {
+      if (!started()) return;
+      if (["ArrowDown", "PageDown", " "].includes(event.key)) {
+        event.preventDefault();
+        snapToAdjacentSection(1);
+      } else if (["ArrowUp", "PageUp"].includes(event.key)) {
+        event.preventDefault();
+        snapToAdjacentSection(-1);
+      }
+    });
+    elements.lifetimeAbout?.addEventListener("scroll", () => {
+      if (!started() || scrollFrame != null) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = null;
+        const sectionIndex = sectionFromScrollPosition();
+        if (sectionIndex != null) setActiveSection(sectionIndex);
+      });
+    });
+    elements.lifetimeJourney?.addEventListener("click", (event) => {
+      const dot = event.target.closest(".lifetime-progress-dot[data-index]");
+      if (!dot || !elements.lifetimeJourney.contains(dot)) return;
+      scrollToSection(Number(dot.dataset.index));
+    });
+    elements.lifetimeBirthYear?.addEventListener("input", () => {
+      const value = Number(elements.lifetimeBirthYear.value);
+      // Only a real, past (<= present) data year counts; anything else leaves
+      // birthYear null so the Begin button stays disabled.
+      birthYear =
+        years().includes(value) && value <= presentYear() ? value : null;
+      // Editing an input backs out of a running story.
+      if (started()) actIndex = -1;
+      render();
+      syncUrl();
+    });
     elements.lifetimeCountry?.addEventListener("input", () => {
       if (!elements.lifetimeCountry.value.trim() && countryIso) {
         countryIso = null;
@@ -279,6 +488,10 @@ export function createLifetimeController({
     active = nextActive;
     elements.lifetimeView.hidden = !nextActive;
     document.body.classList.toggle("view-lifetime", nextActive);
+    document.body.classList.toggle(
+      "view-lifetime-started",
+      nextActive && started(),
+    );
     elements.viewMode.querySelectorAll("button").forEach((btn) =>
       btn.classList.toggle(
         "active",
@@ -286,9 +499,28 @@ export function createLifetimeController({
       ),
     );
     if (nextActive) {
+      titleBeforeLifetime = elements.headerTitle?.textContent ?? "";
+      viewModeHiddenBeforeStory = elements.viewMode.hidden;
       stopTour();
       render();
     } else {
+      if (scrollFrame != null) {
+        cancelAnimationFrame(scrollFrame);
+        scrollFrame = null;
+      }
+      actIndex = -1;
+      scrollLockedUntil = 0;
+      lastWheelAt = 0;
+      elements.lifetimeView.classList.remove("is-started");
+      document.body.classList.remove("view-lifetime-started");
+      elements.lifetimeForm.hidden = false;
+      elements.lifetimeButtonBegin.hidden = false;
+      elements.lifetimeStory.hidden = true;
+      if (elements.headerTitle) {
+        elements.headerTitle.textContent =
+          titleBeforeLifetime || "World Population.";
+      }
+      elements.viewMode.hidden = viewModeHiddenBeforeStory;
       catchUpScene();
     }
     syncUrl();
