@@ -204,7 +204,7 @@ export function createCountryDetailController({
     const card = document.createElement("div");
     card.className = "sparkline-card";
     const label = document.createElement("div");
-    label.className = "sparkline-label mono-uppercase";
+    label.className = "sparkline-label";
     label.textContent = definition.label;
     const value = document.createElement("div");
     value.className = "sparkline-value";
