@@ -1705,6 +1705,18 @@ select::picker(select) {
     }
 }
 
+.lifetime-button-begin {
+    height: var(--button-size);
+    background: var(--color-blue);
+    border: none;
+    border-radius: 20px;
+    padding: 0 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    margin-top: 4px;
+}
+
 .lifetime-form {
     display: flex;
     flex-wrap: wrap;
@@ -1808,6 +1820,23 @@ select::picker(select) {
 .lifetime-section-label {
     font-size: 12px;
     color: var(--color-subtle);
+}
+
+.lifetime-act-copy {
+    max-width: 48ch;
+    color: var(--color-text) !important;
+    font-size: clamp(1.5rem, 3vw, 2.6rem) !important;
+    line-height: 1.12 !important;
+}
+
+.lifetime-progress {
+    width: fit-content;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: var(--border);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
 }
 
 .lifetime-milestones {

@@ -69,10 +69,10 @@ export function getAppElements(root = document) {
     lifetimeBirthYear: root.querySelector("#lifetimeBirthYear"),
     lifetimeCountry: root.querySelector("#lifetimeCountry"),
     lifetimeCountrySuggestions: root.querySelector("#lifetimeCountrySuggestions"),
-    lifetimePrompt: root.querySelector("#lifetimePrompt"),
     lifetimeStory: root.querySelector("#lifetimeStory"),
     lifetimeAbout: root.querySelector("#lifetimeAbout"),
     lifetimeJourney: root.querySelector("#lifetimeJourney"),
+    lifetimeButtonBegin: root.querySelector("#lifetimeButtonBegin"),
   };
 }
 
