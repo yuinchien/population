@@ -1744,7 +1744,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-button-begin {
-    background: var(--color-text);
+    background: var(--color-yellow);
     border: none;
     border-radius: 30px;
     padding: 8px;

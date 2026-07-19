@@ -324,6 +324,20 @@ export function createLifetimeController({
     requestAnimationFrame(() => scrollToSection(actIndex, "instant"));
   }
 
+  function resetStory() {
+    if (scrollFrame != null) {
+      cancelAnimationFrame(scrollFrame);
+      scrollFrame = null;
+    }
+    actIndex = -1;
+    scrollLockedUntil = 0;
+    lastWheelAt = 0;
+    elements.lifetimeAbout?.replaceChildren();
+    elements.lifetimeJourney?.replaceChildren();
+    render();
+    syncUrl();
+  }
+
   function render() {
     if (!elements.lifetimeView || elements.lifetimeView.hidden) return;
     elements.lifetimeView.classList.toggle("is-started", started());
@@ -333,8 +347,8 @@ export function createLifetimeController({
         ? "Your Lifespan."
         : "World Population.";
     }
-    if (elements.viewMode) {
-      elements.viewMode.hidden = started() || viewModeHiddenBeforeStory;
+    if (elements.buttonsContainer) {
+      elements.buttonsContainer.hidden = started() || viewModeHiddenBeforeStory;
     }
     if (birthYear != null) {
       elements.lifetimeBirthYear.value = String(birthYear);
@@ -345,7 +359,6 @@ export function createLifetimeController({
     }
     const ready =
       Number.isFinite(birthYear) && birthYear <= presentYear() && !!country;
-    // elements.lifetimeButtonBegin.textContent = "Begin";
     elements.lifetimeButtonBegin.disabled = !ready;
     elements.lifetimeForm.hidden = started();
     elements.lifetimeButtonBegin.hidden = started();
@@ -381,7 +394,13 @@ export function createLifetimeController({
       event.preventDefault();
       begin();
     });
-    elements.lifetimeClose?.addEventListener("click", () => setActive(false));
+    elements.lifetimeClose?.addEventListener("click", () => {
+      if (started()) {
+        resetStory();
+        return;
+      }
+      setActive(false);
+    });
     elements.lifetimeAbout?.addEventListener(
       "wheel",
       (event) => {
@@ -500,17 +519,11 @@ export function createLifetimeController({
     );
     if (nextActive) {
       titleBeforeLifetime = elements.headerTitle?.textContent ?? "";
-      viewModeHiddenBeforeStory = elements.viewMode.hidden;
+      viewModeHiddenBeforeStory = elements.buttonsContainer.hidden;
       stopTour();
       render();
     } else {
-      if (scrollFrame != null) {
-        cancelAnimationFrame(scrollFrame);
-        scrollFrame = null;
-      }
-      actIndex = -1;
-      scrollLockedUntil = 0;
-      lastWheelAt = 0;
+      resetStory();
       elements.lifetimeView.classList.remove("is-started");
       document.body.classList.remove("view-lifetime-started");
       elements.lifetimeForm.hidden = false;
@@ -520,7 +533,7 @@ export function createLifetimeController({
         elements.headerTitle.textContent =
           titleBeforeLifetime || "World Population.";
       }
-      elements.viewMode.hidden = viewModeHiddenBeforeStory;
+      elements.buttonsContainer.hidden = viewModeHiddenBeforeStory;
       catchUpScene();
     }
     syncUrl();
