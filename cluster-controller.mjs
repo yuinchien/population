@@ -159,8 +159,8 @@ export function createClusterController({
     if (titleFont) return titleFont;
     const family =
       getComputedStyle(document.documentElement)
-        .getPropertyValue("--font-mono")
-        .trim() || "monospace";
+        .getPropertyValue("--font-sans")
+        .trim() || "sans-serif";
     titleFont = `600 14px ${family}`;
     return titleFont;
   }
@@ -477,7 +477,7 @@ export function createClusterController({
       // context.strokeRect(rect.x, rect.y, rect.width, rect.height);
       context.fillStyle = textColor;
       context.fillText(
-        rect.label.toUpperCase(),
+        rect.label,
         rect.x + rect.width / 2,
         rect.y + rect.height / 2,
       );

@@ -2,6 +2,7 @@ import {
   convertAlpha3ToAlpha2,
   flagIconUrl,
 } from "./data-loader.mjs";
+import { trackEvent } from "./analytics.mjs";
 import {
   buildLifetimeStoryAct,
   lifetimePresentYear,
@@ -577,6 +578,12 @@ function createGlobalLifeExpectancyChart(change) {
 
     actIndex = 0;
     const targetYear = buildAct(country, 0).year;
+    trackEvent("lifetime_begin", {
+      birthYear,
+      country: country.iso3,
+      countryName: country.name,
+      storyYear: targetYear,
+    });
     if (years().includes(targetYear)) {
       goToYear(targetYear);
     } else {
