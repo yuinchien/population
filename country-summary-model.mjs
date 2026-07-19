@@ -1,7 +1,9 @@
 import { convertAlpha3ToAlpha2 } from "./data-loader.mjs";
-
-const text = (value) => ({ text: value });
-const styled = (value, className) => ({ text: value, className });
+import {
+  countryPopulationLeadSegments,
+  countryPopulationTrendSegments,
+  textSegment,
+} from "./narrative-copy.mjs";
 
 export function buildCountrySummary({
   country,
@@ -16,59 +18,29 @@ export function buildCountrySummary({
   const population = formatPopulation(country.populations[index]);
   const peakYear = country.peakYear;
   const iso2 = convertAlpha3ToAlpha2(country.iso3)?.toLowerCase();
-  const lead = [styled(country.name, "country-capsule")];
+  const lead = countryPopulationLeadSegments({
+    countryName: country.name,
+    population,
+    year,
+    isProjected,
+  });
 
-  if (isProjected) {
-    lead.push(text(" is projected to be home to "));
-  } else {
-    lead.push(text(" was home to "));
-  }
-  lead.push(
-    styled(population, "underlined"),
-    text(` people in ${year}. `),
-  );
-
-  let trend;
-  if (peakYear == null) {
-    trend = [
-      text(
-        `Its population should keep growing through ${years.at(-1)}, with no peak yet in sight.`,
-      ),
-    ];
-  } else if (peakYear === year) {
-    trend = [
-      text(
-        isProjected
-          ? "This marks its expected peak — the highest its population will reach."
-          : "This was its peak — the highest its population reached.",
-      ),
-    ];
-  } else {
-    const peakIsProjected = peakYear > historicalCutoffYear;
-    const peakPopulation = formatPopulation(
-      country.populations[years.indexOf(peakYear)],
-    );
-    if (year < peakYear && peakIsProjected) {
-      trend = [
-        text(`That number should keep climbing until it peaks near ${peakPopulation} in `),
-        styled(String(peakYear), "underlined"),
-        text("."),
-      ];
-    } else if (year < peakYear) {
-      trend = [
-        text(`That number kept climbing until it peaked at ${peakPopulation} in ${peakYear}.`),
-      ];
-    } else {
-      trend = [
-        text(`That's down from its peak of ${peakPopulation} in `),
-        styled(String(peakYear), "underlined"),
-        text("."),
-      ];
-    }
-  }
+  const peakPopulation =
+    peakYear == null
+      ? null
+      : formatPopulation(country.populations[years.indexOf(peakYear)]);
+  const peakIsProjected = peakYear != null && peakYear > historicalCutoffYear;
+  const trend = countryPopulationTrendSegments({
+    year,
+    finalYear: years.at(-1),
+    peakYear,
+    peakPopulation,
+    isProjected,
+    peakIsProjected,
+  });
 
   if (demographicNarrative) {
-    trend.push(text(` ${demographicNarrative}`));
+    trend.push(textSegment(` ${demographicNarrative}`));
   }
 
   return {

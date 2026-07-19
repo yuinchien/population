@@ -4,6 +4,11 @@ import {
   refineArchetypeForPhase,
 } from "./cluster-model.mjs";
 import { formatMigrationRate } from "./metrics.mjs";
+import {
+  agingMilestoneSentence,
+  belowAgingThresholdSentence,
+  migrationMomentumSentence,
+} from "./narrative-copy.mjs";
 
 export const MIGRANT_MOMENTUM_START_YEAR = 1990;
 
@@ -91,13 +96,17 @@ export function buildAgingMilestoneInsight({
     );
     const entryYear = years[entryIndex] ?? year;
     const article = agingStageArticle(stage);
-    const timingCopy =
-      entryYear > historicalCutoffYear ? "is expected to become" : "became";
-    const selectedYearCopy =
-      year > historicalCutoffYear ? "will reach" : "had reached";
     return {
       value: `${shareCopy} 65+`,
-      text: `${country.name} ${timingCopy} ${article} ${stage.label} in ${entryYear}. By ${year}, the 65+ share ${selectedYearCopy} ${shareCopy} of its population.`,
+      text: agingMilestoneSentence({
+        countryName: country.name,
+        stage,
+        article,
+        entryYear,
+        year,
+        shareCopy,
+        historicalCutoffYear,
+      }),
     };
   }
 
@@ -109,17 +118,27 @@ export function buildAgingMilestoneInsight({
 
   if (nextIndex >= 0) {
     const nextYear = years[nextIndex];
-    const transitionCopy =
-      nextYear > historicalCutoffYear ? "will reach" : "reached";
     return {
       value: `${shareCopy} 65+`,
-      text: `${country.name} remains below the aging-society threshold in ${year}. It ${transitionCopy} 7% of its population aged 65 and older in ${nextYear}.`,
+      text: belowAgingThresholdSentence({
+        countryName: country.name,
+        year,
+        shareCopy,
+        nextYear,
+        historicalCutoffYear,
+      }),
     };
   }
 
   return {
     value: `${shareCopy} 65+`,
-    text: `${country.name} remains below the aging-society threshold in ${year}, with people aged 65 and older making up ${shareCopy} of its population.`,
+    text: belowAgingThresholdSentence({
+      countryName: country.name,
+      year,
+      shareCopy,
+      nextYear: null,
+      historicalCutoffYear,
+    }),
   };
 }
 
@@ -168,11 +187,11 @@ export function buildCountryDemographicNarrative({
     );
     if (!Number.isFinite(migrationRate)) return "";
     const formattedRate = formatMigrationRate(migrationRate);
-    const rateCopy =
-      year > historicalCutoffYear
-        ? `Net migration is forecast at ${formattedRate} per 1,000 people in ${year}`
-        : `Net migration was ${formattedRate} per 1,000 people in ${year}`;
-    return `${rateCopy}, helping sustain its Migrant Momentum trajectory.`;
+    return migrationMomentumSentence({
+      year,
+      historicalCutoffYear,
+      formattedRate,
+    });
   }
 
   // Aging narrative now lives entirely in buildAgingMilestoneInsight (surfaced

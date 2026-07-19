@@ -7,6 +7,11 @@ import {
   ageBandStart,
   interpolateAgeStructure,
 } from "./country-pyramid.mjs";
+import {
+  legacyClusterSentence,
+  lifespanProjectionSentence,
+  superAgedSocietiesSentence,
+} from "./narrative-copy.mjs";
 
 // Pure helpers for the Lifetime view — no DOM, no data fetching — so the
 // personal-framing math stays unit-testable independent of the render wiring.
@@ -329,15 +334,25 @@ export function buildLifetimeStoryAct({
     yearIndex: context.finalIndex,
     demographicMetrics,
   });
-  const lifespanCopy =
-    context.lifespanEnd != null && context.lifespanEnd < context.presentYear
-      ? `You have already lived beyond your birth-year life expectancy of ${context.lifespanEnd}; from here, the projection window stretches toward ${context.finalYear}`
-      : `Based on UN projections, your life expectancy stretches toward ${context.lifespanEnd ?? context.finalYear}`;
+  const lifespanCopy = lifespanProjectionSentence({
+    lifespanEnd: context.lifespanEnd,
+    presentYear: context.presentYear,
+    finalYear: context.finalYear,
+  });
   const recentMilestone = latestPopulationMilestoneBetween(
     context.populationRows,
     birthYear,
     context.presentYear,
   );
+  const horizonAgingCopy = superAgedSocietiesSentence({
+    countryName: country.name,
+    selectedCountryIsSuperAged: selectedSuperAged,
+    count: agedCount,
+  });
+  const finalClusterCopy = legacyClusterSentence({
+    silverDeclineCount,
+    growthCount,
+  });
 
   const acts = [
     {
@@ -367,7 +382,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.horizonYear,
-      text: `${lifespanCopy}, giving you a front-row seat to the future.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${selectedSuperAged && agedCount != null ? `${country.name}, along with ${Math.max(0, agedCount - 1)} other countries, would have become super-aged societies.` : agedCount != null ? `${agedCount} countries would have become super-aged societies.` : "Many countries will be adjusting to older age structures."} A planet shaped by its own success at keeping people alive longer than ever before.`,
+      text: `${lifespanCopy}, giving you a front-row seat to the future.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${horizonAgingCopy} A planet shaped by its own success at keeping people alive longer than ever before.`,
       stats: [
         { value: String(horizonAge ?? "—"), label: "Your age then" },
         {
@@ -378,7 +393,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.finalYear,
-      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${silverDeclineCount != null && growthCount != null ? ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies, while ${growthCount} others will still be in Natural Expansion.` : ""} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
+      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${finalClusterCopy} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
       stats: [
         { value: formatPopulation(finalPop), label: "World population" },
         {
