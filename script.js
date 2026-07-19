@@ -2118,7 +2118,6 @@ function renderChartMetricTabs() {
     ...CHART_METRIC_KEYS.map((key) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "mono-uppercase";
       btn.dataset.key = key;
       btn.textContent =
         key === CHART_RADAR_KEY ? "Radar chart" : METRICS[key].label;
@@ -2851,7 +2850,7 @@ function lifetimeStat(value, label) {
   valueEl.className = "lifetime-stat-value";
   valueEl.textContent = value;
   const labelEl = document.createElement("div");
-  labelEl.className = "lifetime-stat-label mono-uppercase";
+  labelEl.className = "lifetime-stat-label";
   labelEl.textContent = label;
   stat.append(valueEl, labelEl);
   return stat;
@@ -2894,7 +2893,7 @@ function renderLifetimeAct(country) {
   if (!lifetimeActive || elements.lifetimeStory.hidden) return;
   const act = lifetimeBuildAct(country, lifetimeActIndex);
   const label = document.createElement("div");
-  label.className = "lifetime-section-label mono-uppercase";
+  label.className = "lifetime-section-label";
   label.textContent = lifetimeActLabel(lifetimeActIndex);
 
   const copy = document.createElement("p");
@@ -2902,7 +2901,7 @@ function renderLifetimeAct(country) {
   copy.textContent = act.text;
 
   const progress = document.createElement("div");
-  progress.className = "lifetime-progress mono-uppercase";
+  progress.className = "lifetime-progress";
   progress.textContent = `${lifetimeActIndex + 1} / 4 · ${act.year}`;
 
   const statRow = document.createElement("div");

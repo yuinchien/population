@@ -40,12 +40,11 @@
         <meta name="author" content="Yuin Chien" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>World Population</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
-            rel="stylesheet"
-        />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=DM+Serif+Display:ital@0;1&family=Young+Serif&display=swap" rel="stylesheet">
+
         <link
             href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
             rel="stylesheet"
@@ -84,7 +83,6 @@
                     data-mode="lifetime"
                     aria-label="Lifetime view"
                     title="Lifetime"
-                    class="mono-uppercase"
                 >
                     <span class="material-symbols-outlined">
                         accessibility_new
@@ -95,7 +93,6 @@
                     data-mode="chart"
                     aria-label="Chart view"
                     title="Chart"
-                    class="mono-uppercase"
                 >
                     <span class="material-symbols-outlined">
                     show_chart
@@ -104,7 +101,6 @@
                 <button
                     type="button"
                     data-mode="cluster"
-                    class="mono-uppercase"
                     aria-label="Cluster"
                     title="Cluster"
                 >
@@ -115,7 +111,7 @@
                 <button
                     type="button"
                     data-mode="globe"
-                    class="active mono-uppercase"
+                    class="active"
                     aria-label="Globe view"
                     title="Globe"
                 >
@@ -128,7 +124,6 @@
                     data-mode="map"
                     aria-label="Map view"
                     title="Map"
-                    class="mono-uppercase"
                 >
                     <span class="material-symbols-outlined">
                         map
@@ -145,9 +140,9 @@
 
         <section id="lifetimeView" class="lifetime-view glass" hidden>
             <div class="lifetime-content">
-                <h2 class="lifetime-form-lead">
+                <h1 class="lifetime-form-lead">
                     See the world through your lifespan
-                </h2>
+                </h1>
                 <p>The world’s population has shifted dramatically since 1950, and it will change even faster by 2100. Enter your birth year and country to trace your personal timeline against the rise, peak, and future of humanity.</p>
                 <form id="lifetimeForm" class="lifetime-form" autocomplete="off">
                     I was born in
@@ -242,9 +237,9 @@
             </button>
         </div>
 
-        <h1>
-            World Population
-        </h1>
+        <div class="header-title">
+            World Population.
+        </div>
         <div class="status-wrapper ">
             <p id="status" class="paragraph">Loading population data…</p>
         </div>
@@ -255,7 +250,7 @@
                     <button
                         type="button"
                         data-mode="region"
-                        class="active mono-uppercase"
+                        class="active"
                         aria-label="region"
                         title="Region"
                     >
@@ -264,7 +259,6 @@
                     <button
                         type="button"
                         data-mode="income"
-                        class="mono-uppercase"
                         aria-label="Income group"
                         title="Income group"
                     >
@@ -284,7 +278,7 @@
 
         <section id="chartPanel" class="chart-view glass" hidden>
             <div class="topbar">
-                <select id="selectChartContent" class="custom-select mono-uppercase">
+                <select id="selectChartContent" class="custom-select">
                     <button>
                         <div>
                             <selectedcontent> </selectedcontent>
@@ -367,7 +361,7 @@
                     </div>
                     <div
                         id="chartTableHeader"
-                        class="detail-row header mono-uppercase"
+                        class="detail-row header"
                     ></div>
                     <div id="chartTableRows" class="detail-rows no-scrollbar"></div>
                 </div>
@@ -417,7 +411,7 @@
 
                 <div class="settings-item">
                     <div class="title">UN Projection</div>
-                    <select id="chartProjectionScenario" class="custom-select mono-uppercase">
+                    <select id="chartProjectionScenario" class="custom-select">
                         <button>
                             <div>
                                 <selectedcontent> </selectedcontent>
@@ -475,7 +469,7 @@
 
             <div id="detailSummary" class="detail-summary paragraph" hidden></div>
 
-            <div id="detailHeader" class="detail-row header mono-uppercase"></div>
+            <div id="detailHeader" class="detail-row header"></div>
             <div id="detailRows" class="detail-rows no-scrollbar"></div>
 
             <div id="countryDetail" class="country-detail no-scrollbar" hidden>
@@ -547,7 +541,7 @@
                 <div id="countrySparklines" class="country-sparklines"></div>
 
                 <div id="countrySimilar" class="country-similar" hidden>
-                    <span class="country-similar-label mono-uppercase"
+                    <span class="country-similar-label"
                         >Next to see</span
                     >
                     <div id="countrySimilarList" class="country-similar-list"></div>

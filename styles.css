@@ -27,6 +27,7 @@
     --border: 1px solid var(--color-border);
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
+    --font-serif: "Young Serif", serif;
     --letterspacing-uppercase: 0.01em;
     --overlay-width: 288px;
 
@@ -92,10 +93,10 @@ body {
     margin: 0;
     overflow: hidden;
     color: var(--color-text);
-    font-family: var(--font-mono);
-    font-size: 14px;
-    line-height: 18px;
-    letter-spacing: -0.02em;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 22px;
+    /*letter-spacing: -0.01em;*/
     background: var(--color-bg);
 }
 
@@ -144,7 +145,6 @@ canvas.hovering-dot {
 }
 
 .mono-uppercase {
-    font-family: var(--font-mono);
     text-transform: uppercase;
     letter-spacing: var(--letterspacing-uppercase);
     font-weight: 500;
@@ -159,7 +159,7 @@ canvas.hovering-dot {
 
 .paragraph {
     font-family: var(--font-sans);
-    font-size: 1.45rem;
+    font-size: 1.25rem;
     line-height: 1.4;
 }
 
@@ -223,18 +223,18 @@ body.detail .detail-back {
     display: flex;
 }
 
-h1 {
+.header-title {
     position: fixed;
     z-index: var(--z-title);
     left: 0;
     top: 0;
     margin: var(--margin);
-    font-family: var(--font-sans);
-    font-size: 2rem;
+    font-family: var(--font-serif);
+    font-size: 1.6rem;
     line-height: var(--button-size);
     height: var(--button-size);
     font-weight: 400;
-    text-decoration: underline;
+    /*text-decoration: underline;*/
 }
 
 
@@ -248,7 +248,7 @@ h1 {
 .status-wrapper {
     position: fixed;
     left: var(--margin);
-    top: calc(var(--margin) + var(--button-size));
+    top: calc(var(--margin) + var(--button-size) - 8px);
     z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -475,6 +475,9 @@ button.milestone-nav-btn {
 
 button {
     flex-shrink: 0;
+    /*font-size: 1.1rem;*/
+    /*font-family: var(--font-sans);*/
+    font-weight: 600;
 }
 
 .button-group button {
@@ -524,7 +527,6 @@ body.country-detail #colorMode {
 #legend {
     display: flex;
     flex-direction: column;
-    gap: 4px;
     margin-top: 12px;
 }
 .legend-item {
@@ -540,7 +542,7 @@ body.country-detail #colorMode {
     font: inherit;
     text-align: left;
     cursor: pointer;
-    padding: 2px 0;
+    padding: 4px 0;
 }
 
 .legend-item:hover,
@@ -897,7 +899,7 @@ body.country-detail #colorMode {
 
     .badge {
         display: table;
-        font-family: var(--font-mono);
+        /*font-family: var(--font-sans);*/
         font-size: 1rem;
         font-weight: 700;
         background: var(--detail-color);
@@ -953,7 +955,7 @@ body.country-detail #colorMode {
     button {
         cursor: pointer;
         position: relative;
-        font-family: var(--font-mono);
+        /*font-family: var(--font-mono);*/
         font-weight: 500;
         font-size: 1rem;
         border: none;
@@ -1043,7 +1045,7 @@ body.country-detail #colorMode {
     font-size: 10px;
     font-weight: 500;
     fill: var(--color-muted);
-    font-family: var(--font-mono);
+    /*font-family: var(--font-mono);*/
 }
 .country-chart-peak-label {
     background: var(--detail-color);
@@ -1210,7 +1212,7 @@ body.country-detail #colorMode {
 .pyramid-age-label {
     position: absolute;
     color: var(--color-subtle);
-    font-family: var(--font-mono);
+    /*font-family: var(--font-mono);*/
     font-size: 10px;
     line-height: 1;
     transform: translateY(-50%);
@@ -1310,7 +1312,7 @@ body.country-detail #colorMode {
 
 .sparkline-baseline-label {
     font-size: 10px;
-    font-family: var(--font-mono);
+    /*font-family: var(--font-mono);*/
     fill: var(--color-muted);
 }
 
@@ -1674,7 +1676,7 @@ select::picker(select) {
     position: fixed;
     inset: 0;
     z-index: var(--z-dock);
-    background: var(--color-scrim-strong);
+    /*background: var(--color-scrim-strong);*/
     overflow: auto;
     display: flex;
     justify-content: center;
@@ -1683,15 +1685,15 @@ select::picker(select) {
 .lifetime-content {
     width: 100%;
     max-width: 960px;
-    padding: 100px var(--margin) 80px;
+    padding: 180px var(--margin) 80px;
     display: flex;
     flex-direction: column;
     gap: calc(var(--margin) / 2);
     letter-spacing: 0;
 
-    h2 {
-        font-family: var(--font-sans);
-        font-size: 3rem;
+    h1 {
+        font-family: var(--font-serif);
+        font-size: 2.6rem;
         line-height: 1;
         font-weight: 400;
         margin: 0;
@@ -1713,7 +1715,7 @@ select::picker(select) {
     padding: 0 24px;
     font-size: 1rem;
     font-weight: 500;
-    font-family: var(--font-mono);
+    /*font-family: var(--font-mono);*/
     margin-top: 4px;
 }
 
@@ -2309,7 +2311,7 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1;
         --margin: 12px;
     }
-    h1 {
+    .header-title {
         display: none;
     }
     .paragraph {

@@ -1,6 +1,6 @@
 export function createTooltipLine(text, color = null) {
   const line = document.createElement("div");
-  line.className = "tooltip-line mono-uppercase";
+  line.className = "tooltip-line";
   if (color) {
     const swatch = document.createElement("span");
     swatch.className = "legend-swatch";
