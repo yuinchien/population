@@ -1768,17 +1768,17 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-input {
-    font: inherit;
-    color: var(--color-text);
+    font: var(--font-sans);
+    color: var(--color-yellow);
     background: transparent;
     border: none;
-    border-bottom: 2px solid var(--color-border);
+    border-bottom: 2px solid color-mix(in srgb, var(--color-yellow) 30%, transparent);
     padding: 2px 4px;
     text-align: center;
 }
 .lifetime-input:focus {
     outline: none;
-    border-bottom-color: var(--color-text);
+    border-bottom-color: var(--color-yellow);
 }
 #lifetimeBirthYear {
     width: 280px;
@@ -1793,7 +1793,7 @@ button.lg .material-symbols-outlined {
 }
 #lifetimeCountry {
     min-width: 200px;
-    color: var(--color-text);
+    /*color: var(--color-text);*/
 }
 .lifetime-country-picker .chip-suggestions {
     right: auto;
