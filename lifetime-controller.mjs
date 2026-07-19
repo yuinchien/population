@@ -382,7 +382,7 @@ function createGlobalLifeExpectancyChart(change) {
     svg.append(guide, dot, value);
   });
 
-  const axisYears = [...new Set([minYear, change.birthYear, change.finalYear, maxYear])]
+  const axisYears = [...new Set([change.birthYear, change.finalYear])]
     .filter(Number.isFinite)
     .sort((a, b) => a - b);
   axisYears.forEach((year) => {
