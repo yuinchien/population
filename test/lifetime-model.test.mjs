@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   ageAt,
+  buildLifetimeStoryAct,
+  lifetimeAgeStructureShareYoungerThan,
+  lifetimePresentYear,
+  lifetimeSuperAgedCount,
   projectedLifespanEnd,
   populationMilestones,
   milestonesInLifespan,
@@ -82,4 +86,108 @@ test("milestonesInLifespan with no end year includes everything from birth on", 
     { year: 2084, label: "peak" },
   ];
   assert.deepEqual(milestonesInLifespan(milestones, 2000, null), milestones);
+});
+
+test("lifetimePresentYear clamps today's calendar year to available data", () => {
+  assert.equal(
+    lifetimePresentYear([1950, 1951, 1952], new Date(1940, 0, 1)),
+    1950,
+  );
+  assert.equal(
+    lifetimePresentYear([1950, 1951, 1952], new Date(1951, 0, 1)),
+    1951,
+  );
+  assert.equal(
+    lifetimePresentYear([1950, 1951, 1952], new Date(2100, 0, 1)),
+    1952,
+  );
+  assert.equal(
+    lifetimePresentYear([1990, 2026, 2037], new Date(2025, 0, 1)),
+    2026,
+  );
+});
+
+test("lifetimeAgeStructureShareYoungerThan estimates partial age bands", () => {
+  const share = lifetimeAgeStructureShareYoungerThan({
+    country: { iso3: "TST" },
+    year: 2000,
+    age: 7,
+    countryAgeStructure: {
+      years: [2000],
+      ageGroups: ["0-4", "5-9", "10-14"],
+      countries: {
+        TST: {
+          // Band totals: 4000, 4000, 2000. Age 7 includes all 0-4 and 2/5
+          // of 5-9 -> 4000 + 1600 = 56%.
+          male: [2000, 2000, 1000],
+          female: [2000, 2000, 1000],
+        },
+      },
+    },
+  });
+  assert.equal(Math.round(share), 56);
+});
+
+test("lifetimeSuperAgedCount counts countries above the 20% 65+ threshold", () => {
+  assert.equal(
+    lifetimeSuperAgedCount({
+      countries: [{ iso3: "AAA" }, { iso3: "BBB" }, { iso3: "CCC" }],
+      yearIndex: 1,
+      demographicMetrics: {
+        countries: {
+          AAA: { olderPopulationShare: [10, 20.1] },
+          BBB: { olderPopulationShare: [10, 20] },
+          CCC: { olderPopulationShare: [10, 30] },
+        },
+      },
+    }),
+    2,
+  );
+});
+
+test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
+  const years = [1990, 2026, 2037, 2084];
+  const countries = [
+    {
+      iso3: "AAA",
+      name: "Testland",
+      _incomeLabel: "High-income countries",
+      populations: [10, 12, 13, 14],
+    },
+  ];
+  const globalMetricsByYear = new Map([
+    [1990, { population: 5e9 }],
+    [2026, { population: 8.2e9 }],
+    [2037, { population: 9e9 }],
+    [2084, { population: 10e9 }],
+  ]);
+  const demographicMetrics = {
+    countries: {
+      AAA: {
+        lifeExpectancy: [80, 82, 84, 86],
+        fertility: [2.1, 1.8, 1.7, 1.6],
+        netMigrationRate: [0, 2, 2, 2],
+        populationGrowth: [1, 0.2, 0.1, 0],
+        olderPopulationShare: [10, 18, 21, 30],
+      },
+    },
+  };
+  const act = buildLifetimeStoryAct({
+    country: countries[0],
+    actIndex: 2,
+    birthYear: 1990,
+    years,
+    countries,
+    globalMetricsByYear,
+    demographicMetrics,
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${value / 1e9}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+
+  assert.equal(act.year, 2037);
+  assert.match(act.text, /By the time you turn 47/);
+  assert.match(act.text, /world population passes 9b/);
+  assert.deepEqual(act.stats[0], { value: "47", label: "Your age then" });
 });

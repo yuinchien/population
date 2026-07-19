@@ -1700,23 +1700,38 @@ select::picker(select) {
     }
     p {
         font-family: var(--font-sans);
-        font-size: 1.2rem;
-        line-height: 1.4;
+        font-size: 1.6rem;
+        line-height: 1.25;
         margin: 0;
         color: var(--color-muted);
     }
+}
+
+
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+}
+
+button.lg .material-symbols-outlined {
+    font-size: 28px;
+    line-height: 1;
 }
 
 .lifetime-button-begin {
     height: var(--button-size);
     background: var(--color-blue);
     border: none;
-    border-radius: 20px;
-    padding: 0 24px;
-    font-size: 1rem;
-    font-weight: 500;
-    /*font-family: var(--font-mono);*/
-    margin-top: 4px;
+    border-radius: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-family: var(--font-sans);
+    width: fit-content;
+    padding: 0 40px;
+    margin-top: 8px;
+    /*width: 48px;*/
+    /*height: 48px;*/
 }
 
 .lifetime-form {
@@ -1825,10 +1840,10 @@ select::picker(select) {
 }
 
 .lifetime-act-copy {
-    max-width: 48ch;
+    /*max-width: 48ch;
     color: var(--color-text) !important;
     font-size: clamp(1.5rem, 3vw, 2.6rem) !important;
-    line-height: 1.12 !important;
+    line-height: 1.12 !important;*/
 }
 
 .lifetime-progress {

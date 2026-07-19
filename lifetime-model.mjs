@@ -1,3 +1,13 @@
+import {
+  classifyCountry,
+  populationDeclineContext,
+  refineArchetypeForPhase,
+} from "./cluster-model.mjs";
+import {
+  ageBandStart,
+  interpolateAgeStructure,
+} from "./country-pyramid.mjs";
+
 // Pure helpers for the Lifetime view — no DOM, no data fetching — so the
 // personal-framing math stays unit-testable independent of the render wiring.
 
@@ -60,4 +70,329 @@ export function milestonesInLifespan(milestones, birthYear, endYear) {
         (endYear == null || milestone.year <= endYear),
     )
     .sort((a, b) => a.year - b.year);
+}
+
+export function lifetimePresentYear(years, date = new Date()) {
+  if (!Array.isArray(years) || years.length === 0) return null;
+  const calendarYear = date.getFullYear();
+  let nearestYear = years[0];
+  let nearestDistance = Math.abs(calendarYear - nearestYear);
+  years.forEach((year) => {
+    const distance = Math.abs(calendarYear - year);
+    if (
+      distance < nearestDistance ||
+      (distance === nearestDistance && year < nearestYear)
+    ) {
+      nearestYear = year;
+      nearestDistance = distance;
+    }
+  });
+  return nearestYear;
+}
+
+function yearIndex(years, year) {
+  return years.indexOf(year);
+}
+
+function countrySeries(country, demographicMetrics, key) {
+  return key === "population"
+    ? country?.populations ?? []
+    : demographicMetrics?.countries?.[country?.iso3]?.[key] ?? [];
+}
+
+function countryValue(country, demographicMetrics, key, index) {
+  if (!country || index < 0) return null;
+  return countrySeries(country, demographicMetrics, key)[index] ?? null;
+}
+
+function globalPopulationRows(years, globalMetricsByYear) {
+  return years
+    .map((year) => ({ year, value: globalMetricsByYear?.get(year)?.population }))
+    .filter((row) => Number.isFinite(row.value));
+}
+
+export function lifetimeAgeStructureShareYoungerThan({
+  country,
+  countryAgeStructure,
+  year,
+  age,
+}) {
+  if (!Number.isFinite(age) || age <= 0 || !countryAgeStructure) return null;
+  const countryData = countryAgeStructure.countries?.[country.iso3];
+  const shares = interpolateAgeStructure(
+    countryData,
+    countryAgeStructure.years,
+    year,
+  );
+  if (!shares) return null;
+  const ageGroups = countryAgeStructure.ageGroups ?? [];
+  let younger = 0;
+  let total = 0;
+  ageGroups.forEach((label, index) => {
+    const start = ageBandStart(label);
+    if (!Number.isFinite(start)) return;
+    const nextStart = ageBandStart(ageGroups[index + 1]);
+    const end = Number.isFinite(nextStart) ? nextStart : start + 5;
+    const bandShare = (shares.male[index] ?? 0) + (shares.female[index] ?? 0);
+    total += bandShare;
+    const portion = Math.min(1, Math.max(0, (age - start) / (end - start)));
+    younger += bandShare * portion;
+  });
+  return total > 0 ? (younger / total) * 100 : null;
+}
+
+export function lifetimeCountryArchetype({
+  country,
+  years,
+  yearIndex,
+  demographicMetrics,
+}) {
+  if (!country || yearIndex < 0) return null;
+  const seriesFor = (key) => countrySeries(country, demographicMetrics, key);
+  const population = seriesFor("population")[yearIndex] ?? null;
+  const rawArchetype = classifyCountry({
+    fertility: seriesFor("fertility")[yearIndex],
+    netMigrationRate: seriesFor("netMigrationRate")[yearIndex],
+    populationGrowth: seriesFor("populationGrowth")[yearIndex],
+    incomeLabel: country._incomeLabel,
+    ...populationDeclineContext(
+      seriesFor("population"),
+      years,
+      yearIndex,
+      population,
+    ),
+  });
+  return refineArchetypeForPhase(
+    rawArchetype,
+    years[yearIndex],
+    seriesFor("lifeExpectancy")[yearIndex],
+  );
+}
+
+export function lifetimeClusterCount({
+  archetype,
+  countries,
+  years,
+  yearIndex,
+  demographicMetrics,
+}) {
+  if (!demographicMetrics || yearIndex < 0) return null;
+  return countries.reduce((count, country) => {
+    return (
+      count +
+      (lifetimeCountryArchetype({
+        country,
+        years,
+        yearIndex,
+        demographicMetrics,
+      }) === archetype)
+    );
+  }, 0);
+}
+
+export function lifetimeSuperAgedCount({
+  countries,
+  yearIndex,
+  demographicMetrics,
+}) {
+  if (!demographicMetrics || yearIndex < 0) return null;
+  return countries.reduce((count, country) => {
+    const share =
+      demographicMetrics.countries?.[country.iso3]?.olderPopulationShare?.[
+        yearIndex
+      ];
+    return count + (Number.isFinite(share) && share > 20);
+  }, 0);
+}
+
+function firstPopulationMilestoneAfter(rows, year, endYear) {
+  return populationMilestones(rows).find(
+    (milestone) =>
+      milestone.year > year && (endYear == null || milestone.year <= endYear),
+  );
+}
+
+function latestPopulationMilestoneBetween(rows, startYear, endYear) {
+  return milestonesInLifespan(
+    populationMilestones(rows),
+    startYear,
+    endYear,
+  ).at(-1);
+}
+
+export function lifetimeStoryContext({
+  country,
+  birthYear,
+  years,
+  demographicMetrics,
+  globalMetricsByYear,
+  currentDate,
+}) {
+  const birthIndex = yearIndex(years, birthYear);
+  const presentYear = lifetimePresentYear(years, currentDate);
+  const presentIndex = yearIndex(years, presentYear);
+  const lifeExpectancy = countryValue(
+    country,
+    demographicMetrics,
+    "lifeExpectancy",
+    birthIndex,
+  );
+  const lifespanEnd = projectedLifespanEnd(birthYear, lifeExpectancy);
+  const maxYear = years[years.length - 1];
+  const finalYear =
+    lifespanEnd == null
+      ? maxYear
+      : Math.min(Math.max(lifespanEnd, presentYear, birthYear), maxYear);
+  const finalIndex = yearIndex(years, finalYear);
+  const populationRows = globalPopulationRows(years, globalMetricsByYear);
+  const horizonMilestone = firstPopulationMilestoneAfter(
+    populationRows,
+    presentYear,
+    finalYear,
+  );
+  const horizonYear = horizonMilestone?.year ?? finalYear;
+  const horizonIndex = yearIndex(years, horizonYear);
+  return {
+    birthIndex,
+    presentYear,
+    presentIndex,
+    lifeExpectancy,
+    lifespanEnd,
+    finalYear,
+    finalIndex,
+    horizonMilestone,
+    horizonYear,
+    horizonIndex,
+    populationRows,
+  };
+}
+
+export function buildLifetimeStoryAct({
+  country,
+  actIndex,
+  birthYear,
+  years,
+  countries,
+  globalMetricsByYear,
+  demographicMetrics,
+  countryAgeStructure,
+  formatPopulation,
+  formatLifeExpectancy,
+  currentDate,
+}) {
+  const context = lifetimeStoryContext({
+    country,
+    birthYear,
+    years,
+    demographicMetrics,
+    globalMetricsByYear,
+    currentDate,
+  });
+  const birthPop = globalMetricsByYear.get(birthYear)?.population;
+  const presentPop = globalMetricsByYear.get(context.presentYear)?.population;
+  const finalPop = globalMetricsByYear.get(context.finalYear)?.population;
+  const countryLifeAtBirth = context.lifeExpectancy;
+  const presentAge = ageAt(birthYear, context.presentYear);
+  const finalAge = ageAt(birthYear, context.finalYear);
+  const horizonAge = ageAt(birthYear, context.horizonYear);
+  const addedSinceBirth =
+    Number.isFinite(birthPop) && Number.isFinite(presentPop)
+      ? presentPop - birthPop
+      : null;
+  const youngerShare = lifetimeAgeStructureShareYoungerThan({
+    country,
+    countryAgeStructure,
+    year: context.presentYear,
+    age: presentAge,
+  });
+  const selectedSuperAged =
+    context.horizonIndex >= 0 &&
+    (demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
+      context.horizonIndex
+    ] ?? 0) > 20;
+  const agedCount = lifetimeSuperAgedCount({
+    countries,
+    yearIndex: context.horizonIndex,
+    demographicMetrics,
+  });
+  const silverDeclineCount = lifetimeClusterCount({
+    archetype: "silverDecline",
+    countries,
+    years,
+    yearIndex: context.finalIndex,
+    demographicMetrics,
+  });
+  const growthCount = lifetimeClusterCount({
+    archetype: "growth",
+    countries,
+    years,
+    yearIndex: context.finalIndex,
+    demographicMetrics,
+  });
+  const lifespanCopy =
+    context.lifespanEnd != null && context.lifespanEnd < context.presentYear
+      ? `You have already lived beyond your birth-year life expectancy of ${context.lifespanEnd}; from here, the projection window stretches toward ${context.finalYear}`
+      : `Based on UN projections, your life expectancy stretches toward ${context.lifespanEnd ?? context.finalYear}`;
+  const recentMilestone = latestPopulationMilestoneBetween(
+    context.populationRows,
+    birthYear,
+    context.presentYear,
+  );
+
+  const acts = [
+    {
+      year: birthYear,
+      text: `When you arrived in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, life was moving at a different pace: average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}. Since that first breath, your life has been riding the wave of the fastest demographic expansion in human history.`,
+      stats: [
+        { value: formatPopulation(birthPop), label: "World population" },
+        {
+          value:
+            countryLifeAtBirth != null
+              ? formatLifeExpectancy(countryLifeAtBirth)
+              : "—",
+          label: `${country.name} life expectancy`,
+        },
+      ],
+    },
+    {
+      year: context.presentYear,
+      text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${recentMilestone ? ` You have already lived through major pivots, including the moment ${recentMilestone.label.toLowerCase()} in ${recentMilestone.year}.` : ""} The global community you live in today looks radically different from the one you were born into.`,
+      stats: [
+        { value: String(presentAge ?? "—"), label: "Your age today" },
+        {
+          value: formatPopulation(addedSinceBirth),
+          label: "Added since birth",
+        },
+      ],
+    },
+    {
+      year: context.horizonYear,
+      text: `${lifespanCopy}, giving you a front-row seat to the future.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${selectedSuperAged && agedCount != null ? `${country.name}, along with ${Math.max(0, agedCount - 1)} other countries, would have become super-aged societies.` : agedCount != null ? `${agedCount} countries would have become super-aged societies.` : "Many countries will be adjusting to older age structures."} A planet shaped by its own success at keeping people alive longer than ever before.`,
+      stats: [
+        { value: String(horizonAge ?? "—"), label: "Your age then" },
+        {
+          value: agedCount != null ? String(agedCount) : "—",
+          label: "Super-aged societies",
+        },
+      ],
+    },
+    {
+      year: context.finalYear,
+      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${silverDeclineCount != null && growthCount != null ? ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies, while ${growthCount} others will still be in Natural Expansion.` : ""} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
+      stats: [
+        { value: formatPopulation(finalPop), label: "World population" },
+        {
+          value:
+            silverDeclineCount != null ? String(silverDeclineCount) : "—",
+          label: "Silver Decline countries",
+        },
+        {
+          value: growthCount != null ? String(growthCount) : "—",
+          label: "Natural Expansion countries",
+        },
+      ],
+    },
+  ];
+
+  return acts[actIndex] ?? acts[0];
 }
