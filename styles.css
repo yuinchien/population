@@ -902,7 +902,7 @@ body.country-detail #colorMode {
         display: table;
         /*font-family: var(--font-sans);*/
         font-size: 1rem;
-        font-weight: 700;
+        font-weight: 500;
         background: var(--detail-color);
         color: var(--color-bg);
         border-radius: 20px;
@@ -1889,7 +1889,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-population-change {
-    width: min(100%, 820px);
+    width: min(100%, 900px);
     justify-self: center;
     color: var(--color-yellow);
     font-family: var(--font-sans);
@@ -1905,7 +1905,7 @@ button.lg .material-symbols-outlined {
 
 .lifetime-population-segment {
     position: relative;
-    min-width: 120px;
+    /*min-width: 120px;*/
     display: flex;
     align-items: center;
     justify-content: flex-end;
