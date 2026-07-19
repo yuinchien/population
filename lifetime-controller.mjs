@@ -33,7 +33,7 @@ function actLabel(index) {
   return [
     "The Arrival",
     "Present",
-    "Future",
+    "The Horizon",
   ][index] ?? "Lifetime";
 }
 
@@ -193,6 +193,7 @@ export function createLifetimeController({
   function createLifeExpectancyComparison(rows) {
     const chart = document.createElement("div");
     chart.className = "lifetime-le-comparison";
+
     const values = rows.map((row) => row.value);
     const max = Math.max(...values);
     const min = Math.min(...values);
@@ -221,7 +222,7 @@ export function createLifetimeController({
     return chart;
   }
 
-  function createPopulationChangeChart(change) {
+function createPopulationChangeChart(change) {
     const chart = document.createElement("div");
     chart.className = "lifetime-population-change";
     chart.style.setProperty(
@@ -260,8 +261,143 @@ export function createLifetimeController({
     axis.append(birthTick, presentTick);
 
     chart.append(bar, axis);
-    return chart;
+  return chart;
+}
+
+function createGlobalLifeExpectancyChart(change) {
+  const rows = change?.rows ?? [];
+  if (!rows.length) return null;
+
+  const svgNs = "http://www.w3.org/2000/svg";
+  const width = 560;
+  const height = 430;
+  const padding = { top: 68, right: 18, bottom: 48, left: 44 };
+  const innerWidth = width - padding.left - padding.right;
+  const innerHeight = height - padding.top - padding.bottom;
+  const yearsOnly = rows.map((row) => row.year);
+  const values = rows.map((row) => row.value);
+  const minYear = Math.min(...yearsOnly);
+  const maxYear = Math.max(change?.maxYear ?? yearsOnly.at(-1), ...yearsOnly);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const valuePadding = Math.max(2, (maxValue - minValue) * 0.12);
+  const yMin = minValue - valuePadding;
+  const yMax = maxValue + valuePadding;
+  const rangeYear = maxYear - minYear || 1;
+  const rangeValue = yMax - yMin || 1;
+  const xFor = (year) => padding.left + ((year - minYear) / rangeYear) * innerWidth;
+  const yFor = (value) =>
+    padding.top + innerHeight - ((value - yMin) / rangeValue) * innerHeight;
+  const baselineY = padding.top + innerHeight;
+  const format = METRICS.lifeExpectancy.format;
+
+  const chart = document.createElement("div");
+  chart.className = "lifetime-global-life-chart";
+
+  const title = document.createElement("div");
+  title.className = "lifetime-global-life-title";
+  title.textContent = change?.title ?? "Global life expectancy";
+
+  const svg = document.createElementNS(svgNs, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute(
+    "aria-label",
+    `${title.textContent} from ${minYear} to ${maxYear}`,
+  );
+
+  const linePoints = rows.map((row) => `${xFor(row.year)},${yFor(row.value)}`);
+  const line = document.createElementNS(svgNs, "polyline");
+  line.setAttribute("class", "lifetime-global-life-line");
+  line.setAttribute("points", linePoints.join(" "));
+  line.setAttribute("fill", "none");
+
+  const highlightedRows = rows.filter(
+    (row) => row.year >= change.birthYear && row.year <= change.finalYear,
+  );
+  if (highlightedRows.length >= 2) {
+    const area = document.createElementNS(svgNs, "path");
+    const areaTop = highlightedRows
+      .map((row, index) => `${index === 0 ? "M" : "L"} ${xFor(row.year)} ${yFor(row.value)}`)
+      .join(" ");
+    const first = highlightedRows[0];
+    const last = highlightedRows.at(-1);
+    area.setAttribute("class", "lifetime-global-life-area");
+    area.setAttribute(
+      "d",
+      `${areaTop} L ${xFor(last.year)} ${baselineY} L ${xFor(first.year)} ${baselineY} Z`,
+    );
+    svg.append(area);
   }
+
+  const yAxis = document.createElementNS(svgNs, "line");
+  yAxis.setAttribute("class", "lifetime-global-life-axis");
+  yAxis.setAttribute("x1", padding.left);
+  yAxis.setAttribute("x2", padding.left);
+  yAxis.setAttribute("y1", padding.top);
+  yAxis.setAttribute("y2", baselineY);
+
+  const xAxis = document.createElementNS(svgNs, "line");
+  xAxis.setAttribute("class", "lifetime-global-life-axis");
+  xAxis.setAttribute("x1", padding.left);
+  xAxis.setAttribute("x2", padding.left + innerWidth);
+  xAxis.setAttribute("y1", baselineY);
+  xAxis.setAttribute("y2", baselineY);
+
+  svg.append(yAxis, xAxis, line);
+
+  const markerYears = [
+    { year: change.birthYear, value: change.birthValue, anchor: "middle" },
+    { year: change.finalYear, value: change.finalValue, anchor: "middle" },
+  ].filter(
+    (marker, index, all) =>
+      Number.isFinite(marker.year) &&
+      Number.isFinite(marker.value) &&
+      all.findIndex((item) => item.year === marker.year) === index,
+  );
+
+  markerYears.forEach((marker) => {
+    const x = xFor(marker.year);
+    const y = yFor(marker.value);
+    const guide = document.createElementNS(svgNs, "line");
+    guide.setAttribute("class", "lifetime-global-life-guide");
+    guide.setAttribute("x1", x);
+    guide.setAttribute("x2", x);
+    guide.setAttribute("y1", y);
+    guide.setAttribute("y2", baselineY);
+
+    const dot = document.createElementNS(svgNs, "circle");
+    dot.setAttribute("class", "lifetime-global-life-dot");
+    dot.setAttribute("cx", x);
+    dot.setAttribute("cy", y);
+    dot.setAttribute("r", 5);
+
+    const value = document.createElementNS(svgNs, "text");
+    value.setAttribute("class", "lifetime-global-life-value");
+    value.setAttribute("x", x);
+    value.setAttribute("y", y - 18);
+    value.setAttribute("text-anchor", marker.anchor);
+    value.textContent = format(marker.value).replace(/\s*yrs$/, "");
+
+    svg.append(guide, dot, value);
+  });
+
+  const axisYears = [...new Set([minYear, change.birthYear, change.finalYear, maxYear])]
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b);
+  axisYears.forEach((year) => {
+    const label = document.createElementNS(svgNs, "text");
+    label.setAttribute("class", "lifetime-global-life-year");
+    label.setAttribute("x", xFor(year));
+    label.setAttribute("y", baselineY + 30);
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = year;
+    svg.append(label);
+  });
+
+  chart.append(title, svg);
+  return chart;
+}
 
   function createStorySection(country, index) {
     const act = buildAct(country, index);
@@ -297,6 +433,15 @@ export function createLifetimeController({
       section.classList.add("is-present");
       section.append(group, createPopulationChangeChart(act.populationChange));
       return section;
+    }
+
+    if (act.globalLifeExpectancy) {
+      section.classList.add("is-horizon");
+      const chart = createGlobalLifeExpectancyChart(act.globalLifeExpectancy);
+      if (chart) {
+        section.append(group, chart);
+        return section;
+      }
     }
 
     const statRow = document.createElement("div");

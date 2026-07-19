@@ -1704,7 +1704,7 @@ select::picker(select) {
 
     h1 {
         font-family: var(--font-serif);
-        font-size: 2.6rem;
+        font-size: 2.4rem;
         line-height: 1;
         font-weight: 400;
         margin: 0;
@@ -1713,6 +1713,7 @@ select::picker(select) {
         font-size: 1.6rem;
         line-height: 1.25;
         margin: 0;
+
         /*color: var(--color-muted);*/
     }
 }
@@ -1838,18 +1839,11 @@ button.lg .material-symbols-outlined {
     grid-column: 2;
 }
 
-.lifetime-story-section .lifetime-stat-row,
-.lifetime-story-section .lifetime-le-comparison {
-    /*grid-column: 1;*/
-    /*grid-row: 1 / span 2;*/
-    /*align-self: center;*/
-}
-
 .lifetime-story-section.is-present {
     grid-template-columns: minmax(320px, 880px);
     justify-content: center;
     align-content: center;
-    gap: clamp(64px, 10vh, 110px);
+    gap: 48px;
 }
 
 .lifetime-story-section.is-present .lifetime-section-text,
@@ -1865,6 +1859,33 @@ button.lg .material-symbols-outlined {
 .lifetime-story-section.is-present .lifetime-section-label,
 .lifetime-story-section.is-present .lifetime-act-copy {
     grid-column: auto;
+}
+
+.lifetime-story-section.is-horizon {
+    grid-template-columns: minmax(320px, 560px) minmax(360px, 620px);
+    justify-content: center;
+    align-items: center;
+    gap: clamp(48px, 9vw, 160px);
+}
+
+.lifetime-story-section.is-horizon .lifetime-section-text,
+.lifetime-story-section.is-horizon .lifetime-global-life-chart {
+    grid-column: auto;
+}
+
+.lifetime-story-section.is-horizon .lifetime-section-text {
+    justify-self: end;
+}
+
+.lifetime-story-section.is-horizon .lifetime-section-label,
+.lifetime-story-section.is-horizon .lifetime-act-copy {
+    grid-column: auto;
+    justify-self: start;
+    text-align: left;
+}
+
+.lifetime-story-section.is-horizon .lifetime-act-copy {
+    max-width: 520px;
 }
 
 .lifetime-population-change {
@@ -1925,8 +1946,8 @@ button.lg .material-symbols-outlined {
     content: "";
     position: absolute;
     top: -40px;
+    bottom: 0;
     width: 1px;
-    height: 94px;
     background: var(--color-yellow);
     opacity: 0.75;
 }
@@ -1947,6 +1968,66 @@ button.lg .material-symbols-outlined {
 
 .lifetime-population-tick.present::before {
     right: 0;
+}
+
+.lifetime-global-life-chart {
+    width: min(100%, 620px);
+    justify-self: start;
+    color: var(--color-yellow);
+}
+
+.lifetime-global-life-title {
+    margin: 0 0 8px 32px;
+    color: var(--color-muted);
+    /*font-size: 1.2rem;
+    line-height: 1.2;*/
+}
+
+.lifetime-global-life-chart svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.lifetime-global-life-axis {
+    stroke: var(--color-border);
+    stroke-width: 1;
+}
+
+.lifetime-global-life-guide {
+    stroke: color-mix(in srgb, var(--color-yellow) 55%, transparent);
+    stroke-width: 1;
+}
+
+.lifetime-global-life-area {
+    fill: color-mix(in srgb, var(--color-yellow) 23%, transparent);
+}
+
+.lifetime-global-life-line {
+    stroke: var(--color-yellow);
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.lifetime-global-life-dot {
+    fill: var(--color-yellow);
+}
+
+.lifetime-global-life-value,
+.lifetime-global-life-year {
+    fill: var(--color-yellow);
+    font-family: var(--font-sans);
+    font-weight: 500;
+}
+
+.lifetime-global-life-value {
+    font-size: 1.25rem;
+}
+
+.lifetime-global-life-year {
+    font-size: 1rem;
 }
 
 /* The Arrival act's life-expectancy comparison: one pill per row, width scaled
@@ -1974,7 +2055,7 @@ button.lg .material-symbols-outlined {
     background: color-mix(in srgb, var(--color-text) 40%, transparent);
     color: var(--color-bg);
     border-radius: 999px;
-    padding: 4px 12px;
+    padding: 0px 8px;
     white-space: nowrap;
     transition: width 0.4s ease;
 }
@@ -2037,9 +2118,8 @@ button.lg .material-symbols-outlined {
 .lifetime-section-label {
     justify-self: center;
     font-family: var(--font-serif);
-    font-size: 1.2rem;
+    font-size: 1.4rem;
     color: var(--color-text);
-    color: var(--color-muted);
     margin-bottom: 16px;
 }
 
@@ -2047,9 +2127,7 @@ button.lg .material-symbols-outlined {
     justify-self: center;
     text-align: center;
     color: var(--color-text);
-    /*font-family: var(--font-serif);*/
-    /*font-size: 1.5rem;*/
-    /*line-height: 1.5;*/
+    max-width: 500px;
 }
 
 .lifetime-journey {
@@ -2093,9 +2171,23 @@ body.view-lifetime-started #viewMode {
     .lifetime-story-section .lifetime-act-copy,
     .lifetime-story-section .lifetime-stat-row,
     .lifetime-story-section.is-present .lifetime-section-text,
-    .lifetime-story-section.is-present .lifetime-population-change {
+    .lifetime-story-section.is-present .lifetime-population-change,
+    .lifetime-story-section.is-horizon .lifetime-section-text,
+    .lifetime-story-section.is-horizon .lifetime-global-life-chart {
         grid-column: 1;
         grid-row: auto;
+        justify-self: center;
+    }
+
+    .lifetime-story-section.is-horizon {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+
+    .lifetime-story-section.is-horizon .lifetime-section-label,
+    .lifetime-story-section.is-horizon .lifetime-act-copy {
+        justify-self: center;
+        text-align: center;
     }
 
     .lifetime-act-copy {

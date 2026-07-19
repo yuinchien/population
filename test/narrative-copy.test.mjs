@@ -82,10 +82,10 @@ test("superAgedSocietiesSentence and legacyClusterSentence format lifetime copy"
       selectedCountryIsSuperAged: true,
       count: 4,
     }),
-    "Japan, along with 3 other countries, would have become super-aged societies.",
+    "Japan will be among 4 nations classified as super-aged societies, grappling with shrinking, aging populations.",
   );
   assert.equal(
     legacyClusterSentence({ silverDeclineCount: 12, growthCount: 34 }),
-    " 12 countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies, while 34 others will still be in Natural Expansion.",
+    " 12 countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies",
   );
 });

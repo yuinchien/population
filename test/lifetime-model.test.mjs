@@ -199,10 +199,11 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
     },
   ];
   const globalMetricsByYear = new Map([
-    [1990, { population: 5e9 }],
-    [2026, { population: 8.2e9 }],
-    [2037, { population: 9e9 }],
-    [2084, { population: 10e9 }],
+    [1990, { population: 5e9, lifeExpectancy: 60.3 }],
+    [2026, { population: 8.2e9, lifeExpectancy: 73.8 }],
+    [2037, { population: 9e9, lifeExpectancy: 75.4 }],
+    [2084, { population: 10e9, lifeExpectancy: 80.3 }],
+    [2070, { population: 9.8e9, lifeExpectancy: 79.1 }],
   ]);
   const demographicMetrics = {
     countries: {
@@ -230,8 +231,18 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
 
   assert.equal(act.year, 2070);
-  assert.match(act.text, /In 2070, you will be 80 years old/);
-  assert.match(act.text, /By the time you turn 47/);
-  assert.match(act.text, /world population passes 9b/);
+  assert.match(act.text, /By 2070, you will be 80 years old/);
+  assert.match(
+    act.text,
+    /Global life expectancy at birth has risen to 79.1 yrs from 60.3 yrs since 1990/,
+  );
+  assert.equal(act.globalLifeExpectancy.birthYear, 1990);
+  assert.equal(act.globalLifeExpectancy.finalYear, 2070);
+  assert.equal(act.globalLifeExpectancy.birthValue, 60.3);
+  assert.equal(act.globalLifeExpectancy.finalValue, 79.1);
+  assert.deepEqual(
+    act.globalLifeExpectancy.rows.map((row) => row.year),
+    [1990, 2026, 2037, 2070, 2084],
+  );
   assert.deepEqual(act.stats[0], { value: "80", label: "Your age then" });
 });

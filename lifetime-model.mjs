@@ -117,6 +117,16 @@ function globalPopulationRows(years, globalMetricsByYear) {
     .filter((row) => Number.isFinite(row.value));
 }
 
+function globalLifeExpectancyRows(years, globalMetricsByYear, extraYears = []) {
+  return [...new Set([...(years ?? []), ...extraYears])]
+    .map((year) => ({
+      year,
+      value: globalMetricsByYear?.get(year)?.lifeExpectancy,
+    }))
+    .filter((row) => Number.isFinite(row.value))
+    .sort((a, b) => a.year - b.year);
+}
+
 export function lifetimeAgeStructureShareYoungerThan({
   country,
   countryAgeStructure,
@@ -340,6 +350,10 @@ export function buildLifetimeStoryAct({
   const birthPop = globalMetricsByYear.get(birthYear)?.population;
   const presentPop = globalMetricsByYear.get(context.presentYear)?.population;
   const finalPop = globalMetricsByYear.get(context.finalYear)?.population;
+  const globalLifeAtBirth = globalMetricsByYear.get(birthYear)?.lifeExpectancy;
+  const globalLifeAtFinal = globalMetricsByYear.get(
+    context.finalYear,
+  )?.lifeExpectancy;
   const countryLifeAtBirth = context.lifeExpectancy;
   const presentAge = ageAt(birthYear, context.presentYear);
   const finalAge = ageAt(birthYear, context.finalYear);
@@ -397,6 +411,22 @@ export function buildLifetimeStoryAct({
     silverDeclineCount,
     growthCount,
   });
+  const globalLifeChangeCopy =
+    Number.isFinite(globalLifeAtBirth) && Number.isFinite(globalLifeAtFinal)
+      ? ` Global life expectancy at birth has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)} since ${birthYear}, the year you were born.`
+      : "";
+  const globalLifeExpectancy = {
+    title: "Global life expectancy",
+    birthYear,
+    finalYear: context.finalYear,
+    maxYear: years[years.length - 1],
+    birthValue: globalLifeAtBirth,
+    finalValue: globalLifeAtFinal,
+    rows: globalLifeExpectancyRows(years, globalMetricsByYear, [
+      birthYear,
+      context.finalYear,
+    ]),
+  };
 
   const lifeComparison = lifetimeLifeExpectancyComparison({
     country,
@@ -408,7 +438,7 @@ export function buildLifetimeStoryAct({
   const acts = [
     {
       year: birthYear,
-      text: `When you arrived in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, life was moving at a different pace: average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}. Since that first breath, your life has been riding the wave of the fastest demographic expansion in human history.`,
+      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}. Since that first breath, your life has been riding the wave of the fastest demographic expansion in human history.`,
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
@@ -423,7 +453,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.presentYear,
-      text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${recentMilestone ? ` You have already lived through major pivots, including the moment ${recentMilestone.label.toLowerCase()} in ${recentMilestone.year}.` : ""} The global community you live in today looks radically different from the one you were born into.`,
+      text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${recentMilestone ? ` You have already lived through major pivots, including the moment ${recentMilestone.label.toLowerCase()} in ${recentMilestone.year}.` : ""}`,
       populationChange: {
         birthYear,
         presentYear: context.presentYear,
@@ -450,7 +480,8 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.finalYear,
-      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}. ${horizonAgingCopy}${finalClusterCopy}.`,
+      text: `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.${globalLifeChangeCopy} ${horizonAgingCopy}`,
+      globalLifeExpectancy,
       stats: [
         { value: String(finalAge ?? "—"), label: "Your age then" },
         { value: formatPopulation(finalPop), label: "World population" },

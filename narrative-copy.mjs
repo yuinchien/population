@@ -129,7 +129,7 @@ export function superAgedSocietiesSentence({
   count,
 }) {
   if (selectedCountryIsSuperAged && count != null) {
-    return `${countryName}, along with ${Math.max(0, count - 1)} other countries, would have become super-aged societies.`;
+    return `${countryName} will be among ${count} nations classified as super-aged societies, grappling with shrinking, aging populations.`;
   }
   if (count != null) {
     return `${count} countries would have become super-aged societies.`;
@@ -139,5 +139,5 @@ export function superAgedSocietiesSentence({
 
 export function legacyClusterSentence({ silverDeclineCount, growthCount }) {
   if (silverDeclineCount == null || growthCount == null) return "";
-  return ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies, while ${growthCount} others will still be in Natural Expansion.`;
+  return ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies`;
 }
