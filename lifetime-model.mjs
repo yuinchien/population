@@ -424,6 +424,22 @@ export function buildLifetimeStoryAct({
     {
       year: context.presentYear,
       text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${recentMilestone ? ` You have already lived through major pivots, including the moment ${recentMilestone.label.toLowerCase()} in ${recentMilestone.year}.` : ""} The global community you live in today looks radically different from the one you were born into.`,
+      populationChange: {
+        birthYear,
+        presentYear: context.presentYear,
+        birthPopulation: formatPopulation(birthPop),
+        addedPopulation: formatPopulation(addedSinceBirth),
+        birthShare:
+          Number.isFinite(birthPop) && Number.isFinite(presentPop) && presentPop
+            ? birthPop / presentPop
+            : null,
+        addedShare:
+          Number.isFinite(addedSinceBirth) &&
+          Number.isFinite(presentPop) &&
+          presentPop
+            ? addedSinceBirth / presentPop
+            : null,
+      },
       stats: [
         { value: String(presentAge ?? "—"), label: "Your age today" },
         {
@@ -434,7 +450,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.finalYear,
-      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}.${context.horizonMilestone ? ` By the time you turn ${horizonAge}, ${context.horizonMilestone.label.toLowerCase()}.` : ""} ${horizonAgingCopy}${finalClusterCopy} You will have lived through the crescendo of human population growth. That is not just a dataset; it is the backdrop of your life.`,
+      text: `In ${context.finalYear}, you will be ${finalAge ?? "—"} years old. World population will hover around ${formatPopulation(finalPop)}. ${horizonAgingCopy}${finalClusterCopy}.`,
       stats: [
         { value: String(finalAge ?? "—"), label: "Your age then" },
         { value: formatPopulation(finalPop), label: "World population" },

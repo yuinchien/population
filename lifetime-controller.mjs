@@ -25,6 +25,10 @@ function createLifetimeStat(value, label) {
   return stat;
 }
 
+function percentFromShare(share, fallback) {
+  return `${(Number.isFinite(share) ? share : fallback) * 100}%`;
+}
+
 function actLabel(index) {
   return [
     "The Arrival",
@@ -217,6 +221,48 @@ export function createLifetimeController({
     return chart;
   }
 
+  function createPopulationChangeChart(change) {
+    const chart = document.createElement("div");
+    chart.className = "lifetime-population-change";
+    chart.style.setProperty(
+      "--lifetime-birth-share",
+      percentFromShare(change?.birthShare, 0.5),
+    );
+
+    const birthSegment = document.createElement("div");
+    birthSegment.className = "lifetime-population-segment birth";
+    birthSegment.style.width = percentFromShare(change?.birthShare, 0.5);
+
+    const birthValue = document.createElement("span");
+    birthValue.className = "lifetime-population-value";
+    birthValue.textContent = change?.birthPopulation ?? "N/A";
+    birthSegment.append(birthValue);
+
+    const addedSegment = document.createElement("div");
+    addedSegment.className = "lifetime-population-segment added";
+    addedSegment.style.width = percentFromShare(change?.addedShare, 0.5);
+    addedSegment.textContent = change?.addedPopulation
+      ? `+${change.addedPopulation}`
+      : "+N/A";
+
+    const bar = document.createElement("div");
+    bar.className = "lifetime-population-bar";
+    bar.append(birthSegment, addedSegment);
+
+    const axis = document.createElement("div");
+    axis.className = "lifetime-population-axis";
+    const birthTick = document.createElement("div");
+    birthTick.className = "lifetime-population-tick birth";
+    birthTick.textContent = change?.birthYear ?? "";
+    const presentTick = document.createElement("div");
+    presentTick.className = "lifetime-population-tick present";
+    presentTick.textContent = change?.presentYear ?? "";
+    axis.append(birthTick, presentTick);
+
+    chart.append(bar, axis);
+    return chart;
+  }
+
   function createStorySection(country, index) {
     const act = buildAct(country, index);
     const section = document.createElement("section");
@@ -244,6 +290,12 @@ export function createLifetimeController({
       // Comparison chart fills the left grid column; label + copy stay in the
       // right column via the existing .lifetime-story-section rules.
       section.append(createLifeExpectancyComparison(act.comparison), group);
+      return section;
+    }
+
+    if (act.populationChange) {
+      section.classList.add("is-present");
+      section.append(group, createPopulationChangeChart(act.populationChange));
       return section;
     }
 

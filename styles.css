@@ -1846,6 +1846,110 @@ button.lg .material-symbols-outlined {
     /*align-self: center;*/
 }
 
+.lifetime-story-section.is-present {
+    grid-template-columns: minmax(320px, 880px);
+    justify-content: center;
+    align-content: center;
+    gap: clamp(64px, 10vh, 110px);
+}
+
+.lifetime-story-section.is-present .lifetime-section-text,
+.lifetime-story-section.is-present .lifetime-population-change {
+    grid-column: 1;
+}
+
+.lifetime-story-section.is-present .lifetime-section-text {
+    max-width: 760px;
+    justify-self: center;
+}
+
+.lifetime-story-section.is-present .lifetime-section-label,
+.lifetime-story-section.is-present .lifetime-act-copy {
+    grid-column: auto;
+}
+
+.lifetime-population-change {
+    width: min(100%, 820px);
+    justify-self: center;
+    color: var(--color-yellow);
+    font-family: var(--font-sans);
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.lifetime-population-bar {
+    display: flex;
+    align-items: stretch;
+    height: 40px;
+}
+
+.lifetime-population-segment {
+    position: relative;
+    min-width: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 12px;
+    /*font-size: 1.5rem;*/
+    /*line-height: 1;*/
+}
+
+.lifetime-population-segment.birth {
+    color: var(--color-background);
+    background: color-mix(in srgb, var(--color-yellow) 50%, transparent);
+}
+
+.lifetime-population-segment.added {
+    justify-content: center;
+    color: var(--color-bg);
+    background: var(--color-yellow);
+    border-radius: 999px;
+    font-weight: 500;
+}
+
+.lifetime-population-axis {
+    position: relative;
+    height: 54px;
+}
+
+.lifetime-population-tick {
+    position: absolute;
+    top: 0;
+    padding-top: 20px;
+    padding-right: 12px;
+    /*font-size: 1.6rem;*/
+    /*line-height: 1;*/
+    color: var(--color-yellow);
+}
+
+.lifetime-population-tick::before {
+    content: "";
+    position: absolute;
+    top: -40px;
+    width: 1px;
+    height: 94px;
+    background: var(--color-yellow);
+    opacity: 0.75;
+}
+
+.lifetime-population-tick.birth {
+    left: var(--lifetime-birth-share, 50%);
+    transform: translateX(-100%);
+}
+
+.lifetime-population-tick.birth::before {
+    right: 0;
+}
+
+.lifetime-population-tick.present {
+    right: 0;
+    transform: translateX(0);
+}
+
+.lifetime-population-tick.present::before {
+    right: 0;
+}
+
 /* The Arrival act's life-expectancy comparison: one pill per row, width scaled
    to the value (but never narrower than its label), the person's country
    pinned on top and highlighted. */
@@ -1855,6 +1959,7 @@ button.lg .material-symbols-outlined {
     gap: 4px;
     font-family: var(--font-sans);
     font-weight: 500;
+    font-size: 1.2rem;
 }
 
 .lifetime-le-row {
@@ -1987,13 +2092,29 @@ body.view-lifetime-started #viewMode {
 
     .lifetime-story-section .lifetime-section-label,
     .lifetime-story-section .lifetime-act-copy,
-    .lifetime-story-section .lifetime-stat-row {
+    .lifetime-story-section .lifetime-stat-row,
+    .lifetime-story-section.is-present .lifetime-section-text,
+    .lifetime-story-section.is-present .lifetime-population-change {
         grid-column: 1;
         grid-row: auto;
     }
 
     .lifetime-act-copy {
         max-width: 24ch;
+    }
+
+    .lifetime-population-bar {
+        height: 44px;
+    }
+
+    .lifetime-population-segment {
+        min-width: 96px;
+        padding: 0 12px;
+        font-size: 1.1rem;
+    }
+
+    .lifetime-population-tick {
+        font-size: 1.2rem;
     }
 }
 
