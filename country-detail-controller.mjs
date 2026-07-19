@@ -114,6 +114,23 @@ export function createCountryDetailController({
     if (match) onOpenCountry(match);
   });
 
+  function sparklineTooltipTarget(event) {
+    const target = event.target.closest?.(".sparkline-dot[data-tooltip]");
+    return target && elements.countrySparklines.contains(target)
+      ? target
+      : null;
+  }
+
+  elements.countrySparklines?.addEventListener("pointermove", (event) => {
+    const target = sparklineTooltipTarget(event);
+    if (!target) {
+      hideTooltip();
+      return;
+    }
+    showTooltip(event, target.dataset.tooltip);
+  });
+  elements.countrySparklines?.addEventListener("pointerleave", hideTooltip);
+
   function computeSimilarCountries(country) {
     const countries = getCountries();
     if (!getDemographicMetrics()) return [];
@@ -191,13 +208,6 @@ export function createCountryDetailController({
     label.textContent = definition.label;
     const value = document.createElement("div");
     value.className = "sparkline-value";
-    dot.addEventListener("pointerenter", (event) =>
-      showTooltip(event, value.textContent),
-    );
-    dot.addEventListener("pointermove", (event) =>
-      showTooltip(event, value.textContent),
-    );
-    dot.addEventListener("pointerleave", hideTooltip);
     titleCaption.append(label, value);
     card.append(titleCaption, svg);
 
@@ -681,6 +691,7 @@ export function createCountryDetailController({
         const format = definition.formatPanel ?? definition.format;
         valueEl.textContent = format(value);
         if (value != null) {
+          dot.dataset.tooltip = valueEl.textContent;
           const [dx, dy] = toXY(index, value);
           dotLine.setAttribute("x1", dx);
           dotLine.setAttribute("x2", dx);
@@ -691,6 +702,7 @@ export function createCountryDetailController({
           dotLine.style.display = "";
           dot.style.display = "";
         } else {
+          delete dot.dataset.tooltip;
           dotLine.style.display = "none";
           dot.style.display = "none";
         }

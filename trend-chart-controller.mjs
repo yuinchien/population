@@ -40,6 +40,25 @@ export function createTrendChartController({
 }) {
   let animationHandle = null;
 
+  function tooltipTarget(event) {
+    const target = event.target.closest?.(".trend-line-hit[data-tooltip]");
+    return target && svg.contains(target) ? target : null;
+  }
+
+  svg.addEventListener("pointermove", (event) => {
+    const target = tooltipTarget(event);
+    if (!target) {
+      hideTooltip();
+      return;
+    }
+    showTooltip(
+      event,
+      target.dataset.tooltip,
+      target.dataset.tooltipColor ?? null,
+    );
+  });
+  svg.addEventListener("pointerleave", hideTooltip);
+
   function cancelAnimation() {
     animationHandle?.cancel();
     animationHandle = null;
@@ -188,19 +207,14 @@ export function createTrendChartController({
       const historicalHit = svgEl("path", {
         class: "trend-line-hit",
         d: pathFor(series, 0, cutoffIndex),
+        "data-tooltip": item.name,
+        "data-tooltip-color": item.color,
       });
       const projectedHit = svgEl("path", {
         class: "trend-line-hit",
         d: pathFor(series, cutoffIndex, n - 1),
-      });
-      [historicalHit, projectedHit].forEach((hit) => {
-        hit.addEventListener("pointerenter", (event) =>
-          showTooltip(event, item.name, item.color),
-        );
-        hit.addEventListener("pointermove", (event) =>
-          showTooltip(event, item.name, item.color),
-        );
-        hit.addEventListener("pointerleave", hideTooltip);
+        "data-tooltip": item.name,
+        "data-tooltip-color": item.color,
       });
       children.push(historical, projected, historicalHit, projectedHit);
       if (animate) {
