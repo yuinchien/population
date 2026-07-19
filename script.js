@@ -2642,9 +2642,9 @@ function renderLifetimeAbout(country) {
     lifetimeCountrySeries(country.iso3, "lifeExpectancy")[birthIndex] ?? null;
   const finalYear = projectedLifespanEnd(lifetimeBirthYear, lifeExpectancy);
 
-  const headline = document.createElement("p");
-  headline.className = "lifetime-headline";
-  headline.textContent = `Born in ${lifetimeBirthYear}, ${country.name}.`;
+  // const headline = document.createElement("p");
+  // headline.className = "lifetime-headline";
+  // headline.textContent = `Born in ${lifetimeBirthYear}, ${country.name}.`;
 
   const statRow = document.createElement("div");
   statRow.className = "lifetime-stat-row";
@@ -2659,7 +2659,7 @@ function renderLifetimeAbout(country) {
     ),
   );
 
-  const children = [headline, statRow];
+  const children = [statRow];
 
   const globalRows = yearsData
     .map((year) => ({ year, value: globalMetricsByYear.get(year)?.population }))
