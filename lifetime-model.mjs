@@ -300,14 +300,19 @@ export function countryPopulationPeakYearBetween({
   const peak = years.reduce((best, year, index) => {
     const value = series[index];
     if (!Number.isFinite(value)) return best;
-    return !best || value > best.value ? { year, value } : best;
+    return !best || value > best.value ? { year, value, index } : best;
   }, null);
+  // A max at the first or last data year isn't a genuine peak — the series just
+  // ran out while still rising or falling, so there's no confirmed turning
+  // point (mirrors computePeakYear's boundary rule in data-loader.mjs). This is
+  // what keeps a country still growing at 2100 from being called "peaked."
+  if (!peak || peak.index === 0 || peak.index === years.length - 1) {
+    return null;
+  }
   const startsInRange = includeStart
-    ? peak?.year >= startYear
-    : peak?.year > startYear;
-  return peak && startsInRange && peak.year <= endYear
-    ? peak.year
-    : null;
+    ? peak.year >= startYear
+    : peak.year > startYear;
+  return startsInRange && peak.year <= endYear ? peak.year : null;
 }
 
 // The only pivot worth surfacing here is the personal one — the country's
@@ -479,9 +484,12 @@ export function lifetimeLifeExpectancyComparison({
   return rows;
 }
 
-export function buildLifetimeStoryAct({
+// Builds all three acts [arrival, present, horizon] in one pass so the shared,
+// expensive work (cluster/aging counts across every country, the life-
+// expectancy comparison, etc.) happens once per render rather than once per
+// section. Callers index into the returned array.
+export function buildLifetimeStory({
   country,
-  actIndex,
   birthYear,
   years,
   countries,
@@ -493,7 +501,6 @@ export function buildLifetimeStoryAct({
   formatPopulation,
   formatLifeExpectancy,
   currentDate,
-
 }) {
   const context = lifetimeStoryContext({
     country,
@@ -628,8 +635,8 @@ export function buildLifetimeStoryAct({
     getPopulationSeries,
   });
   const projectedCountryPeakCopy =
-    (projectedCountryPeakYear != null) && (projectedCountryPeakYear!=2100)
-      ? ` ${country.name} is projected to reach its population peak in ${projectedCountryPeakYear}.`
+    projectedCountryPeakYear != null
+      ? `${country.name} is projected to reach its population peak in ${projectedCountryPeakYear}.`
       : "";
   const horizonAgingCopy = agingSocietiesSentence({
     countryName: country.name,
@@ -752,5 +759,12 @@ export function buildLifetimeStoryAct({
     },
   ];
 
+  return acts;
+}
+
+// Convenience wrapper for a single act by index. Kept for callers (and tests)
+// that want one act; prefer buildLifetimeStory when rendering the whole story.
+export function buildLifetimeStoryAct({ actIndex, ...params }) {
+  const acts = buildLifetimeStory(params);
   return acts[actIndex] ?? acts[0];
 }

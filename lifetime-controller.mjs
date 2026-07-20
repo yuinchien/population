@@ -4,7 +4,7 @@ import {
 } from "./data-loader.mjs";
 import { trackEvent } from "./analytics.mjs";
 import {
-  buildLifetimeStoryAct,
+  buildLifetimeStory,
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
 import { METRICS } from "./metrics.mjs";
@@ -131,10 +131,9 @@ export function createLifetimeController({
     return `Born ${birthYear} in ${country.name}.`;
   }
 
-  function buildAct(country, index) {
-    return buildLifetimeStoryAct({
+  function buildStory(country) {
+    return buildLifetimeStory({
       country,
-      actIndex: index,
       birthYear,
       years: years(),
       countries: countries(),
@@ -453,8 +452,7 @@ function createGlobalLifeExpectancyChart(change) {
   return chart;
 }
 
-  function createStorySection(country, index) {
-    const act = buildAct(country, index);
+  function createStorySection(act, index) {
     const section = document.createElement("section");
     section.className = "lifetime-story-section";
     section.dataset.index = String(index);
@@ -567,8 +565,8 @@ function createGlobalLifeExpectancyChart(change) {
 
   function renderStory(country) {
     if (!active || !started()) return;
-    const sections = Array.from({ length: LIFETIME_SECTION_COUNT }, (_, index) =>
-      createStorySection(country, index),
+    const sections = buildStory(country).map((act, index) =>
+      createStorySection(act, index),
     );
     elements.lifetimeAbout.replaceChildren(...sections);
     renderProgressDots();
@@ -632,7 +630,8 @@ function createGlobalLifeExpectancyChart(change) {
     }
 
     actIndex = 0;
-    const targetYear = buildAct(country, 0).year;
+    // The Arrival act opens on the birth year; no need to build the story here.
+    const targetYear = birthYear;
     trackEvent("lifetime_begin", {
       birthYear,
       country: country.iso3,
