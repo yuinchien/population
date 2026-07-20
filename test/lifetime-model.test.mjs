@@ -340,11 +340,15 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
   assert.match(
     arrivalAct.text,
-    /Testland\s+was already an aging society, and the average life expectancy at birth was 80 yrs\./,
+    /In Testland,\s+the nation was already an aging society,/,
   );
   assert.match(
     arrivalAct.text,
-    /The youth dependency ratio was high at 82\.4 children per 100 working-age adults\./,
+    /the youth dependency ratio was high at 82\.4 children per 100 working-age adults,/,
+  );
+  assert.match(
+    arrivalAct.text,
+    /the average life expectancy at birth was 80 yrs\./,
   );
 });
 
