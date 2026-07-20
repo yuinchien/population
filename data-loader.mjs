@@ -7,6 +7,7 @@ export const DATA_URLS = {
   countryDemographics: "./data/country-demographic-metrics.json",
   countryAgeStructure: "./data/country-age-structure.json",
   countryBorders: "./data/country-borders.json",
+  countryTrajectory: "./data/country-trajectory.json",
 };
 
 export const ISO3_TO_ISO2 = {
@@ -346,6 +347,12 @@ export async function loadPopulationData({
     urls.countryDemographics,
     fetchImpl,
   );
+
+  const countryTrajectoryPromise = fetchJson(
+    urls.countryTrajectory,
+    fetchImpl,
+  );
+
   // Same deferred treatment — the population pyramid only reads it once a
   // country detail panel is open, so it's fired off but kept out of the
   // first-paint Promise.all.
@@ -388,6 +395,7 @@ export async function loadPopulationData({
     years,
     incomeGroups,
     countryDemographicMetricsPromise,
+    countryTrajectoryPromise,
     countryAgeStructurePromise,
     countryBordersPromise,
     historicalCutoffYear,

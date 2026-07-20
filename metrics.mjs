@@ -126,6 +126,16 @@ export const METRICS = {
     // between net immigration and net emigration stands out.
     referenceValue: 0,
   },
+  youthDependencyRatio: {
+    key: "youthDependencyRatio",
+    label: "Youth dependency ratio",
+    detailLabel: "Youth dependency ratio",
+    defaultDirection: "desc",
+    format: formatDependencyRatio,
+    formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
+    formatRange: formatDependencyRatio,
+    referenceValue: 0,
+  },
 };
 
 export const DETAIL_METRIC_KEYS = [
@@ -145,6 +155,7 @@ export const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "populationGrowth",
   "ageDependencyRatio",
   "netMigrationRate",
+  "youthDependencyRatio",
 ];
 
 export const CHART_METRIC_KEYS = [

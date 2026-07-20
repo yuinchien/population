@@ -343,6 +343,16 @@ function lifetimePresentPivotSentence({
   return ` You have already lived through major pivots, like ${pivotCopy}.`;
 }
 
+export function countryTrajectorySummary(countryTrajectory, country) {
+  const trajectories = countryTrajectory?.demographic_trajectories ?? [];
+  const match = trajectories.find((trajectory) =>
+    trajectory.iso3_list?.includes(country?.iso3),
+  );
+  const template = match?.summary_template;
+  if (!template || !country?.name) return "";
+  return template.replaceAll("[COUNTRY]", country.name);
+}
+
 function lifetimeArrivalAgingClause(olderShareAtBirth) {
   if (!Number.isFinite(olderShareAtBirth)) return "";
   const stage = currentAgingStage(olderShareAtBirth);
@@ -453,9 +463,11 @@ export function buildLifetimeStoryAct({
   getPopulationSeries,
   demographicMetrics,
   countryAgeStructure,
+  countryTrajectory,
   formatPopulation,
   formatLifeExpectancy,
   currentDate,
+
 }) {
   const context = lifetimeStoryContext({
     country,
@@ -481,6 +493,7 @@ export function buildLifetimeStoryAct({
   const arrivalAgingClause = lifetimeArrivalAgingClause(
     countryOlderShareAtBirth,
   );
+
   const presentAge = ageAt(birthYear, context.presentYear);
   const finalAge = ageAt(birthYear, context.finalYear);
   const horizonAge = ageAt(birthYear, context.horizonYear);
@@ -506,6 +519,8 @@ export function buildLifetimeStoryAct({
   const selectedOlderShareAtHorizon = selectedOlderPopulationShare?.[
     agingYearIndex
   ];
+
+
   const agingSocietyCount = lifetimeAgingSocietyCount({
     countries,
     yearIndex: agingYearIndex,
@@ -579,6 +594,7 @@ export function buildLifetimeStoryAct({
     silverDeclineCount,
     growthCount,
   });
+  const trajectoryCopy = countryTrajectorySummary(countryTrajectory, country);
   const globalLifeChangeCopy =
     Number.isFinite(globalLifeAtBirth) && Number.isFinite(globalLifeAtFinal)
       ? ` Since your birth in ${birthYear}, global life expectancy has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)}.`
@@ -602,6 +618,7 @@ export function buildLifetimeStoryAct({
     demographicMetrics,
     yearIndex: context.birthIndex,
   });
+
 
   const acts = [
     {
@@ -648,7 +665,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.finalYear,
-      text: `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.${globalLifeChangeCopy}${projectedCountryPeakCopy} ${horizonAgingCopy}`,
+      text: `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.${globalLifeChangeCopy}${projectedCountryPeakCopy} ${horizonAgingCopy}${trajectoryCopy ? ` ${trajectoryCopy}` : ""}`,
       globalLifeExpectancy,
       stats: [
         { value: String(finalAge ?? "—"), label: "Your age then" },

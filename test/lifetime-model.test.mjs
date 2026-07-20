@@ -4,6 +4,7 @@ import {
   ageAt,
   buildLifetimeStoryAct,
   countryPopulationPeakYearBetween,
+  countryTrajectorySummary,
   lifetimeAgeStructureShareYoungerThan,
   lifetimeAgingSocietyCount,
   lifetimeLifeExpectancyComparison,
@@ -13,6 +14,26 @@ import {
   populationMilestones,
   milestonesInLifespan,
 } from "../lifetime-model.mjs";
+
+test("countryTrajectorySummary replaces the selected country's name", () => {
+  const summary = countryTrajectorySummary(
+    {
+      demographic_trajectories: [
+        {
+          summary_template:
+            "Sustained growth will reshape [COUNTRY] through 2100.",
+          iso3_list: ["COD", "ETH"],
+        },
+      ],
+    },
+    { iso3: "COD", name: "Congo, Dem. Rep." },
+  );
+
+  assert.equal(
+    summary,
+    "Sustained growth will reshape Congo, Dem. Rep. through 2100.",
+  );
+});
 
 test("lifetimeLifeExpectancyComparison pins the highlighted country above region means", () => {
   const countries = [

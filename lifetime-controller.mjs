@@ -40,6 +40,7 @@ function actLabel(index) {
 
 export function createLifetimeController({
   elements,
+  getCountryTrajectory,
   getCountries,
   getYears,
   getGlobalMetricsByYear,
@@ -68,6 +69,7 @@ export function createLifetimeController({
   const years = () => getYears() ?? [];
   const demographicMetrics = () => getCountryDemographicMetrics?.() ?? null;
   const ageStructure = () => getCountryAgeStructure?.() ?? null;
+  const countryTrajectory = () => getCountryTrajectory?.() ?? null;
   const globalMetricsByYear = () => getGlobalMetricsByYear?.() ?? new Map();
   const populationSeriesFor = (country) =>
     getPopulationSeries?.(country) ?? country?.populations ?? [];
@@ -140,6 +142,7 @@ export function createLifetimeController({
       getPopulationSeries: populationSeriesFor,
       demographicMetrics: demographicMetrics(),
       countryAgeStructure: ageStructure(),
+      countryTrajectory: countryTrajectory(),
       formatPopulation,
       formatLifeExpectancy: METRICS.lifeExpectancy.format,
     });

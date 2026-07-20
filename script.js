@@ -387,6 +387,7 @@ let activeGlobalTrendMilestonesCache = null;
 let activeGlobalTrendMilestonesCacheScenario = null;
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
+let countryTrajectory = null;
 // Age-structure shares for the country-detail population pyramid, lazily
 // loaded (see country-pyramid.mjs). null until it resolves; a country opened
 // before then just renders without its pyramid until the data lands.
@@ -3062,6 +3063,10 @@ async function init() {
         renderDetailPanel();
       }
     });
+    appData.countryTrajectoryPromise.then((data) => {
+      countryTrajectory = data;
+      if (lifetimeController?.isActive()) lifetimeController.render();
+    });
     // Same deferred treatment — only the country detail panel's population
     // pyramid reads it, so it lands in the background and refreshes an
     // already-open country once it arrives.
@@ -3069,6 +3074,7 @@ async function init() {
       countryAgeStructure = data;
       if (selectedCountry) renderCountryDetail();
     });
+
     // Same deferred treatment — only used to draw a border under the
     // pointer on hover, never needed before then.
     appData.countryBordersPromise.then((data) => {
@@ -3082,9 +3088,11 @@ async function init() {
     highMetricsByYear = appData.highMetricsByYear;
     lowMetricsByYear = appData.lowMetricsByYear;
 
+
     setupScene(countriesData, appData.incomeGroups);
     lifetimeController = createLifetimeController({
       elements,
+      getCountryTrajectory: () => countryTrajectory,
       getCountries: () => countriesData,
       getYears: () => yearsData,
       getGlobalMetricsByYear: activeGlobalMetricsMap,
