@@ -290,7 +290,7 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   assert.match(act.text, /By 2070, you will be 80 years old/);
   assert.match(
     act.text,
-    /Global life expectancy at birth has risen to 79.1 yrs from 60.3 yrs since 1990/,
+    /Since your birth in 1990, global life expectancy has risen to 79.1 yrs from 60.3 yrs/,
   );
   assert.equal(act.globalLifeExpectancy.birthYear, 1990);
   assert.equal(act.globalLifeExpectancy.finalYear, 2070);
@@ -302,6 +302,67 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   );
   assert.deepEqual(act.stats[0], { value: "80", label: "Your age then" });
   assert.deepEqual(act.stats[2], { value: "1", label: "Aging societies" });
+
+  const arrivalAct = buildLifetimeStoryAct({
+    country: countries[0],
+    actIndex: 0,
+    birthYear: 1990,
+    years,
+    countries,
+    globalMetricsByYear,
+    demographicMetrics,
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${value / 1e9}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+  assert.match(
+    arrivalAct.text,
+    /In Testland, average life expectancy at birth was 80 yrs, and was already an aging society\./,
+  );
+});
+
+test("arrival lifetime copy names countries below the aging threshold at birth", () => {
+  const years = [2010, 2026, 2077, 2100];
+  const country = {
+    iso3: "IND",
+    name: "India",
+    region: "South Asia",
+    populations: [1.2e9, 1.4e9, 1.6e9, 1.5e9],
+  };
+  const act = buildLifetimeStoryAct({
+    country,
+    actIndex: 0,
+    birthYear: 2010,
+    years,
+    countries: [country],
+    globalMetricsByYear: new Map([
+      [2010, { population: 7e9, lifeExpectancy: 70.1 }],
+      [2026, { population: 8.3e9, lifeExpectancy: 73 }],
+      [2077, { population: 10.3e9, lifeExpectancy: 79.7 }],
+      [2100, { population: 10.1e9, lifeExpectancy: 82 }],
+    ]),
+    demographicMetrics: {
+      countries: {
+        IND: {
+          lifeExpectancy: [67.2, 71, 80, 85],
+          fertility: [2.5, 2, 1.7, 1.6],
+          netMigrationRate: [0, 0, 0, 0],
+          populationGrowth: [1, 0.8, 0, -0.2],
+          olderPopulationShare: [5, 8, 20, 25],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+
+  assert.match(
+    act.text,
+    /In India, average life expectancy at birth was 67.2 yrs, and remains below the aging-society threshold\./,
+  );
 });
 
 test("present lifetime copy includes country population peak when it happened since birth", () => {

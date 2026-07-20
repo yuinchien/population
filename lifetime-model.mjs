@@ -313,6 +313,14 @@ function lifetimePresentPivotSentence({
   return ` You have already lived through major pivots, including ${pivotCopy}.`;
 }
 
+function lifetimeArrivalAgingClause(olderShareAtBirth) {
+  if (!Number.isFinite(olderShareAtBirth)) return "";
+  const stage = currentAgingStage(olderShareAtBirth);
+  if (!stage) return ", and remains below the aging-society threshold";
+  const article = stage.label.startsWith("a") ? "an" : "a";
+  return `, and was already ${article} ${stage.label}`;
+}
+
 export function lifetimeStoryContext({
   country,
   birthYear,
@@ -436,6 +444,13 @@ export function buildLifetimeStoryAct({
     context.finalYear,
   )?.lifeExpectancy;
   const countryLifeAtBirth = context.lifeExpectancy;
+  const countryOlderShareAtBirth =
+    demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
+      context.birthIndex
+    ];
+  const arrivalAgingClause = lifetimeArrivalAgingClause(
+    countryOlderShareAtBirth,
+  );
   const presentAge = ageAt(birthYear, context.presentYear);
   const finalAge = ageAt(birthYear, context.finalYear);
   const horizonAge = ageAt(birthYear, context.horizonYear);
@@ -547,7 +562,7 @@ export function buildLifetimeStoryAct({
   const acts = [
     {
       year: birthYear,
-      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}. Since that first breath, your life has been riding the wave of the fastest demographic expansion in human history.`,
+      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}${arrivalAgingClause}.`,
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
