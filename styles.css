@@ -2079,7 +2079,7 @@ button.lg .material-symbols-outlined {
     flex: none;
     min-width: max-content;
     max-width: 100%;
-    background: color-mix(in srgb, var(--color-text) 40%, transparent);
+    background: var(--color-muted);
     color: var(--color-bg);
     border-radius: 999px;
     padding: 4px 10px;
