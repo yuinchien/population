@@ -1916,6 +1916,10 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-population-change {
+    /* Floor on the "added" segment so its label never overflows when the
+       share is tiny; the birth tick's position keys off the same value so it
+       stays glued to the segment boundary. */
+    --lifetime-added-min: 64px;
     width: min(100%, 1080px);
     justify-self: center;
     color: var(--color-yellow);
@@ -1948,6 +1952,7 @@ button.lg .material-symbols-outlined {
 
 .lifetime-population-segment.added {
     justify-content: center;
+    min-width: var(--lifetime-added-min);
     color: var(--color-bg);
     background: var(--color-yellow);
     border-radius: 999px;
@@ -1980,7 +1985,10 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-population-tick.birth {
-    left: var(--lifetime-birth-share, 50%);
+    /* The added segment can't shrink past --lifetime-added-min, so when its
+       share is tiny the real boundary sits at (100% - that floor), left of
+       --lifetime-birth-share. Track whichever boundary is further left. */
+    left: min(var(--lifetime-birth-share, 50%), calc(100% - var(--lifetime-added-min)));
     transform: translateX(-100%);
 }
 
@@ -2223,6 +2231,12 @@ body.view-lifetime-started #viewMode {
 
     .lifetime-population-bar {
         height: 44px;
+    }
+
+    .lifetime-population-change {
+        /* Keep the added floor and the birth tick in sync with the 96px
+           per-segment min-width below. */
+        --lifetime-added-min: 96px;
     }
 
     .lifetime-population-segment {

@@ -277,14 +277,6 @@ function firstPopulationMilestoneAfter(rows, year, endYear) {
   );
 }
 
-function latestPopulationMilestoneBetween(rows, startYear, endYear) {
-  return milestonesInLifespan(
-    populationMilestones(rows),
-    startYear,
-    endYear,
-  ).at(-1);
-}
-
 export function countryPopulationPeakYearBetween({
   country,
   years,
@@ -318,30 +310,16 @@ export function countryPopulationPeakYearBetween({
     : null;
 }
 
-function lifetimePresentPivotSentence({
-  recentMilestone,
-  country,
-  countryPeakYear,
-}) {
+// The only pivot worth surfacing here is the personal one — the country's
+// own population peak, when it fell within the reader's lifetime so far.
+// (A global milestone like "world population passed 8B" applies to everyone
+// alive and reads as filler, so it's deliberately left out.)
+function lifetimePresentPivotSentence({ country, countryPeakYear }) {
+  if (countryPeakYear == null) return "";
   const possessiveCountryName = country.name.endsWith("s")
     ? `${country.name}'`
     : `${country.name}'s`;
-  const pivots = [];
-  if (recentMilestone) {
-    const milestoneCopy = recentMilestone.label
-      .replace(/^World population passes /, "the world population passing ")
-      .replace(/(\d+)B\b/, "$1 billion");
-    pivots.push(`${milestoneCopy} in ${recentMilestone.year}`);
-  }
-  if (countryPeakYear != null) {
-    pivots.push(`${possessiveCountryName} population peak in ${countryPeakYear}`);
-  }
-  if (!pivots.length) return "";
-  const pivotCopy =
-    pivots.length === 1
-      ? pivots[0]
-      : `${pivots.slice(0, -1).join(", ")} and ${pivots.at(-1)}`;
-  return ` You have already lived through major pivots, like ${pivotCopy}.`;
+  return ` You have already lived through ${possessiveCountryName} population peak in ${countryPeakYear}.`;
 }
 
 export function countryTrajectorySummary(countryTrajectory, country) {
@@ -360,7 +338,7 @@ function lifetimeArrivalAgingClause(olderShareAtBirth) {
   // Below the aging-society threshold, no aging note is added to the copy.
   if (!stage) return "";
   const article = stage.label.startsWith("a") ? "an" : "a";
-  return ` the nation was already ${article} ${stage.label},`;
+  return ` the nation was officially ${article} ${stage.label},`;
 }
 
 function lifetimeArrivalYouthDependencyClause(youthDependencyRatioAtBirth) {
@@ -601,11 +579,6 @@ export function buildLifetimeStoryAct({
     presentYear: context.presentYear,
     finalYear: context.finalYear,
   });
-  const recentMilestone = latestPopulationMilestoneBetween(
-    context.populationRows,
-    birthYear,
-    context.presentYear,
-  );
   const countryPeakYear = countryPopulationPeakYearBetween({
     country,
     years,
@@ -614,7 +587,6 @@ export function buildLifetimeStoryAct({
     getPopulationSeries,
   });
   const presentPivotCopy = lifetimePresentPivotSentence({
-    recentMilestone,
     country,
     countryPeakYear,
   });

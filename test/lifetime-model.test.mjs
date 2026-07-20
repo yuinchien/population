@@ -340,7 +340,7 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
   assert.match(
     arrivalAct.text,
-    /In Testland,\s+the nation was already an aging society,/,
+    /In Testland,\s+the nation was officially an aging society,/,
   );
   assert.match(
     arrivalAct.text,
@@ -439,8 +439,11 @@ test("present lifetime copy includes country population peak when it happened si
 
   assert.match(
     act.text,
-    /major pivots, like the world population passing 8 billion in 2022 and Taiwan's population peak in 2020\./,
+    /You have already lived through Taiwan's population peak in 2020\./,
   );
+  // The generic global milestone (world population passing 8B) is
+  // deliberately omitted — it applies to everyone and isn't personal.
+  assert.doesNotMatch(act.text, /world population passing/);
 });
 
 test("horizon lifetime copy includes projected country population peak before 2100", () => {
