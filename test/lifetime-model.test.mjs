@@ -290,6 +290,7 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
         netMigrationRate: [0, 2, 2, 2],
         populationGrowth: [1, 0.2, 0.1, 0],
         olderPopulationShare: [10, 18, 21, 30],
+        youthDependencyRatio: [82.4, 50, 40, 30],
       },
     },
   };
@@ -341,9 +342,13 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
     arrivalAct.text,
     /Testland\s+was already an aging society, and the average life expectancy at birth was 80 yrs\./,
   );
+  assert.match(
+    arrivalAct.text,
+    /The youth dependency ratio was high at 82\.4 children per 100 working-age adults\./,
+  );
 });
 
-test("arrival lifetime copy names countries below the aging threshold at birth", () => {
+test("arrival lifetime copy omits the aging note for countries below the threshold at birth", () => {
   const years = [2010, 2026, 2077, 2100];
   const country = {
     iso3: "IND",
@@ -371,6 +376,7 @@ test("arrival lifetime copy names countries below the aging threshold at birth",
           netMigrationRate: [0, 0, 0, 0],
           populationGrowth: [1, 0.8, 0, -0.2],
           olderPopulationShare: [5, 8, 20, 25],
+          youthDependencyRatio: [80, 65, 50, 40],
         },
       },
     },
@@ -380,10 +386,14 @@ test("arrival lifetime copy names countries below the aging threshold at birth",
     formatLifeExpectancy: (value) => `${value} yrs`,
   });
 
+  // Below the threshold there is no aging clause — the sentence goes straight
+  // from the country name to life expectancy.
   assert.match(
     act.text,
-    /India\s+remained below the aging-society threshold, and the average life expectancy at birth was 67.2 yrs\./,
+    /In India,\s+the average life expectancy at birth was 67.2 yrs\./,
   );
+  assert.doesNotMatch(act.text, /aging society|aging-society threshold/);
+  assert.doesNotMatch(act.text, /youth dependency ratio was high/);
 });
 
 test("present lifetime copy includes country population peak when it happened since birth", () => {
@@ -425,7 +435,7 @@ test("present lifetime copy includes country population peak when it happened si
 
   assert.match(
     act.text,
-    /major pivots, like the world population passing 8B in 2022 and Taiwan's population peak in 2020\./,
+    /major pivots, like the world population passing 8 billion in 2022 and Taiwan's population peak in 2020\./,
   );
 });
 
@@ -527,4 +537,78 @@ test("horizon lifetime copy preserves the selected country's UN aging stage", ()
   );
   assert.doesNotMatch(act.text, /Japan became a super-aged society in 2005/);
   assert.doesNotMatch(act.text, /Japan will be among .* aging societies/);
+});
+
+test("arrival copy names the country population peak when it predates the birth year", () => {
+  const years = [2000, 2010, 2020, 2030];
+  const country = {
+    iso3: "PKL",
+    name: "Peakland",
+    _incomeLabel: "High-income countries",
+    populations: [90, 100, 95, 90], // all-time peak at 2010, before birth
+  };
+  const act = buildLifetimeStoryAct({
+    country,
+    actIndex: 0,
+    birthYear: 2020,
+    years,
+    countries: [country],
+    globalMetricsByYear: new Map(
+      years.map((year) => [year, { population: 8e9, lifeExpectancy: 75 }]),
+    ),
+    demographicMetrics: {
+      countries: {
+        PKL: {
+          lifeExpectancy: [80, 81, 82, 83],
+          fertility: [1.5, 1.4, 1.3, 1.2],
+          netMigrationRate: [0, 0, 0, 0],
+          populationGrowth: [0.1, 0, -0.2, -0.3],
+          olderPopulationShare: [10, 14, 18, 22],
+          youthDependencyRatio: [30, 28, 26, 24],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2020, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+  assert.match(act.text, /the population had already peaked in 2010/);
+});
+
+test("arrival copy omits the population peak when it does not predate birth", () => {
+  const years = [2000, 2010, 2020, 2030];
+  const country = {
+    iso3: "GRW",
+    name: "Growland",
+    _incomeLabel: "Middle-income countries",
+    populations: [90, 100, 110, 120], // still growing — peak is not before birth
+  };
+  const act = buildLifetimeStoryAct({
+    country,
+    actIndex: 0,
+    birthYear: 2000,
+    years,
+    countries: [country],
+    globalMetricsByYear: new Map(
+      years.map((year) => [year, { population: 8e9, lifeExpectancy: 70 }]),
+    ),
+    demographicMetrics: {
+      countries: {
+        GRW: {
+          lifeExpectancy: [70, 71, 72, 73],
+          fertility: [2.5, 2.4, 2.3, 2.2],
+          netMigrationRate: [0, 0, 0, 0],
+          populationGrowth: [1, 1, 1, 1],
+          olderPopulationShare: [5, 6, 7, 8],
+          youthDependencyRatio: [40, 40, 40, 40],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2020, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+  assert.doesNotMatch(act.text, /peaked in/);
 });

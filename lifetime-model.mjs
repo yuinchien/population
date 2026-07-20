@@ -329,7 +329,8 @@ function lifetimePresentPivotSentence({
   const pivots = [];
   if (recentMilestone) {
     const milestoneCopy = recentMilestone.label
-      .replace(/^World population passes /, "the world population passing ");
+      .replace(/^World population passes /, "the world population passing ")
+      .replace(/(\d+)B\b/, "$1 billion");
     pivots.push(`${milestoneCopy} in ${recentMilestone.year}`);
   }
   if (countryPeakYear != null) {
@@ -356,9 +357,35 @@ export function countryTrajectorySummary(countryTrajectory, country) {
 function lifetimeArrivalAgingClause(olderShareAtBirth) {
   if (!Number.isFinite(olderShareAtBirth)) return "";
   const stage = currentAgingStage(olderShareAtBirth);
-  if (!stage) return " remained below the aging-society threshold";
+  // Below the aging-society threshold, no aging note is added to the copy.
+  if (!stage) return "";
   const article = stage.label.startsWith("a") ? "an" : "a";
-  return ` was already ${article} ${stage.label}`;
+  return ` the nation was already ${article} ${stage.label},`;
+}
+
+function lifetimeArrivalYouthDependencyClause(youthDependencyRatioAtBirth) {
+  if (
+    !Number.isFinite(youthDependencyRatioAtBirth) ||
+    youthDependencyRatioAtBirth <= 80
+  ) {
+    return "";
+  }
+
+  return ` the youth dependency ratio was high at ${Number(youthDependencyRatioAtBirth).toFixed(1)} children per 100 working-age adults, `;
+}
+
+// When the country's population had already peaked before the person was born,
+// the peak belongs in the Arrival act (peaks during their life show up in the
+// Present/Horizon acts instead). `peakYear` is the country's all-time peak.
+function lifetimeArrivalPeakClause(peakYear, birthYear) {
+  if (
+    !Number.isFinite(peakYear) ||
+    !Number.isFinite(birthYear) ||
+    peakYear >= birthYear
+  ) {
+    return "";
+  }
+  return ` the population had already peaked in ${peakYear},`;
 }
 
 export function lifetimeStoryContext({
@@ -490,8 +517,29 @@ export function buildLifetimeStoryAct({
     demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
       context.birthIndex
     ];
+  const countryYouthDependencyRatioAtBirth =
+    demographicMetrics?.countries?.[country.iso3]?.youthDependencyRatio?.[
+      context.birthIndex
+    ];
   const arrivalAgingClause = lifetimeArrivalAgingClause(
     countryOlderShareAtBirth,
+  );
+  const arrivalYouthDependencyClause = lifetimeArrivalYouthDependencyClause(
+    countryYouthDependencyRatioAtBirth,
+  );
+  // The country's all-time population peak; when it predates the birth year it
+  // is surfaced in the Arrival act.
+  const allTimeCountryPeakYear = countryPopulationPeakYearBetween({
+    country,
+    years,
+    startYear: years[0],
+    endYear: years[years.length - 1],
+    includeStart: true,
+    getPopulationSeries,
+  });
+  const arrivalPeakClause = lifetimeArrivalPeakClause(
+    allTimeCountryPeakYear,
+    birthYear,
   );
 
   const presentAge = ageAt(birthYear, context.presentYear);
@@ -623,7 +671,7 @@ export function buildLifetimeStoryAct({
   const acts = [
     {
       year: birthYear,
-      text: `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPop)} people. ${country.name} ${arrivalAgingClause}, and the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
+      text: `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPop)} people. In ${country.name}, ${arrivalPeakClause}${arrivalAgingClause}${arrivalYouthDependencyClause} the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
