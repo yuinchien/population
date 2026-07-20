@@ -343,9 +343,9 @@ function lifetimePresentPivotSentence({
 function lifetimeArrivalAgingClause(olderShareAtBirth) {
   if (!Number.isFinite(olderShareAtBirth)) return "";
   const stage = currentAgingStage(olderShareAtBirth);
-  if (!stage) return ", and remains below the aging-society threshold";
+  if (!stage) return " remains below the aging-society threshold";
   const article = stage.label.startsWith("a") ? "an" : "a";
-  return `, and was already ${article} ${stage.label}`;
+  return ` was already ${article} ${stage.label}`;
 }
 
 export function lifetimeStoryContext({
@@ -603,7 +603,7 @@ export function buildLifetimeStoryAct({
   const acts = [
     {
       year: birthYear,
-      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. In ${country.name}, average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}${arrivalAgingClause}.`,
+      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. ${country.name} ${arrivalAgingClause}, and the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
