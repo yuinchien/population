@@ -17,6 +17,12 @@ function formatAverageYears(value) {
 }
 
 function metricRows(globalData, key) {
+  if (globalData instanceof Map) {
+    return [...globalData.entries()]
+      .map(([year, metrics]) => ({ year, value: metrics?.[key] }))
+      .filter((row) => Number.isFinite(row.value))
+      .sort((a, b) => a.year - b.year);
+  }
   return [...(globalData[key] || [])].sort((a, b) => a.year - b.year);
 }
 
@@ -99,7 +105,7 @@ export function computeGlobalTrendMilestones(
       milestones,
       tenBillion.year,
       "Ten Billion World",
-      `${tenBillion.year} is the first year the medium projection puts the world above 10B people.`,
+      `${tenBillion.year} is the first year the selected projection puts the world above 10B people.`,
       4,
     );
   }
@@ -267,12 +273,13 @@ export function buildDetailStatus({
   isProjected,
   legend,
   metricFor,
+  populationFor = (country) => country.populations[currentYearIndex],
 }) {
   const label = displayGroupLabel(legend.label);
   const projected = isProjected ? "projected " : "";
   const populationEntries = countriesWithNumericValue(
     countries,
-    (country) => country.populations[currentYearIndex],
+    populationFor,
   );
 
   if (!populationEntries.length) {

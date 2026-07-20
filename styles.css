@@ -2082,7 +2082,7 @@ button.lg .material-symbols-outlined {
     background: color-mix(in srgb, var(--color-text) 40%, transparent);
     color: var(--color-bg);
     border-radius: 999px;
-    padding: 0px 8px;
+    padding: 4px 10px;
     white-space: nowrap;
     transition: width 0.4s ease;
 }

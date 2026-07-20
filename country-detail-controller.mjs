@@ -3,7 +3,7 @@ import {
   COUNTRY_SPARKLINE_METRIC_KEYS,
   METRICS,
 } from "./metrics.mjs";
-import { flagIconUrl } from "./data-loader.mjs";
+import { computePeakYear, flagIconUrl } from "./data-loader.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import {
   ageBandStart,
@@ -75,6 +75,7 @@ export function createCountryDetailController({
   setCurrentYearIndex,
   getHistoricalCutoffYear,
   getCountries,
+  getPopulationSeries = (country) => country?.populations ?? [],
   getColorMode,
   getDemographicMetrics,
   getAgeStructure,
@@ -322,6 +323,7 @@ export function createCountryDetailController({
 
   function buildCharts(country, { animate = false } = {}) {
     const years = getYears();
+    const populationSeries = getPopulationSeries(country);
     cancelChartAnimations(animationHandles);
     const chartWidth = elements.countryChart.clientWidth || COUNTRY_CHART_WIDTH;
     const chartHeight =
@@ -335,6 +337,7 @@ export function createCountryDetailController({
       xyFor,
     } = createCountryChartGeometry({
       country,
+      populationSeries,
       years,
       historicalCutoffYear: getHistoricalCutoffYear(),
       width: chartWidth,
@@ -368,7 +371,7 @@ export function createCountryDetailController({
 
     const bars = document.createDocumentFragment();
     for (let i = 0; i < n; i++) {
-      const value = country.populations[i];
+      const value = populationSeries[i];
       if (value == null) continue;
       const [x, y] = xyFor(i, value);
       const isProjected = i >= cutoffIndex;
@@ -385,10 +388,10 @@ export function createCountryDetailController({
     svg.append(bars);
 
     const axisY = chartHeight - 6;
-    const peakIndex = years.indexOf(country.peakYear);
+    const peakIndex = years.indexOf(computePeakYear(populationSeries, years));
     const peakDotSize = 8.2;
-    if (peakIndex !== -1) {
-      const [px, py] = xyFor(peakIndex, country.populations[peakIndex]);
+    if (peakIndex !== -1 && Number.isFinite(populationSeries[peakIndex])) {
+      const [px, py] = xyFor(peakIndex, populationSeries[peakIndex]);
       const peakLine = svgEl("line", {
         class: "country-chart-peak-line",
         x1: px,
@@ -479,7 +482,7 @@ export function createCountryDetailController({
     svg.append(markerLine, markerDot, markerLabel, markerDragHit);
 
     chartLayout = {
-      populations: country.populations,
+      populations: populationSeries,
       xyFor,
       markerLine,
       markerDot,

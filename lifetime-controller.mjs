@@ -43,6 +43,7 @@ export function createLifetimeController({
   getCountries,
   getYears,
   getGlobalMetricsByYear,
+  getPopulationSeries,
   getCountryDemographicMetrics,
   getCountryAgeStructure,
   getViewMode,
@@ -68,6 +69,8 @@ export function createLifetimeController({
   const demographicMetrics = () => getCountryDemographicMetrics?.() ?? null;
   const ageStructure = () => getCountryAgeStructure?.() ?? null;
   const globalMetricsByYear = () => getGlobalMetricsByYear?.() ?? new Map();
+  const populationSeriesFor = (country) =>
+    getPopulationSeries?.(country) ?? country?.populations ?? [];
 
   function presentYear() {
     return lifetimePresentYear(years());
@@ -126,6 +129,7 @@ export function createLifetimeController({
       years: years(),
       countries: countries(),
       globalMetricsByYear: globalMetricsByYear(),
+      getPopulationSeries: populationSeriesFor,
       demographicMetrics: demographicMetrics(),
       countryAgeStructure: ageStructure(),
       formatPopulation,

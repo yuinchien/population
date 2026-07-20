@@ -414,7 +414,7 @@ export function createClusterController({
           populationGrowth,
           incomeLabel: node.country._incomeLabel,
           ...populationDeclineContext(
-            node.country.populations,
+            chartSeriesFor(node.country, AXES.population),
             getYears(),
             yearIndex,
             population,
@@ -632,6 +632,12 @@ export function createClusterController({
     simulation?.alpha(Math.max(simulation.alpha(), 0.4)).restart();
   }
 
+  function refreshData(yearIndex = currentYearIndex) {
+    medianAgeDomain = null;
+    populationMax = null;
+    if (active) renderLayout(yearIndex);
+  }
+
   function setColorMode(mode) {
     if (mode === colorMode) return;
     colorMode = mode;
@@ -654,6 +660,7 @@ export function createClusterController({
     // otherwise trigger a redraw.
     redraw: paintFrame,
     resize,
+    refreshData,
     setColorMode,
     setYear,
   };

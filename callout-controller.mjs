@@ -19,6 +19,7 @@ export function createCalloutController({
   getViewMode,
   isTransitioning,
   getColor,
+  getPeakYear = (country) => country.peakYear,
   getPopulation,
   formatPopulation,
   getTextColor,
@@ -75,7 +76,7 @@ export function createCalloutController({
     if (!countries.length) return;
     const viewMode = getViewMode();
     countries
-      .filter((country) => country.peakYear === year)
+      .filter((country) => getPeakYear(country) === year)
       .forEach((country) => {
         const anchor = computeAnchor(country, viewMode);
         const outward = computeOutwardPoint(anchor, viewMode);

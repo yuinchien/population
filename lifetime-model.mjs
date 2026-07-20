@@ -100,15 +100,17 @@ function yearIndex(years, year) {
   return years.indexOf(year);
 }
 
-function countrySeries(country, demographicMetrics, key) {
+function countrySeries(country, demographicMetrics, key, getPopulationSeries) {
   return key === "population"
-    ? country?.populations ?? []
+    ? getPopulationSeries?.(country) ?? country?.populations ?? []
     : demographicMetrics?.countries?.[country?.iso3]?.[key] ?? [];
 }
 
-function countryValue(country, demographicMetrics, key, index) {
+function countryValue(country, demographicMetrics, key, index, getPopulationSeries) {
   if (!country || index < 0) return null;
-  return countrySeries(country, demographicMetrics, key)[index] ?? null;
+  return countrySeries(country, demographicMetrics, key, getPopulationSeries)[
+    index
+  ] ?? null;
 }
 
 function globalPopulationRows(years, globalMetricsByYear) {
@@ -162,9 +164,11 @@ export function lifetimeCountryArchetype({
   years,
   yearIndex,
   demographicMetrics,
+  getPopulationSeries,
 }) {
   if (!country || yearIndex < 0) return null;
-  const seriesFor = (key) => countrySeries(country, demographicMetrics, key);
+  const seriesFor = (key) =>
+    countrySeries(country, demographicMetrics, key, getPopulationSeries);
   const population = seriesFor("population")[yearIndex] ?? null;
   const rawArchetype = classifyCountry({
     fertility: seriesFor("fertility")[yearIndex],
@@ -191,6 +195,7 @@ export function lifetimeClusterCount({
   years,
   yearIndex,
   demographicMetrics,
+  getPopulationSeries,
 }) {
   if (!demographicMetrics || yearIndex < 0) return null;
   return countries.reduce((count, country) => {
@@ -201,6 +206,7 @@ export function lifetimeClusterCount({
         years,
         yearIndex,
         demographicMetrics,
+        getPopulationSeries,
       }) === archetype)
     );
   }, 0);
@@ -242,6 +248,7 @@ export function lifetimeStoryContext({
   years,
   demographicMetrics,
   globalMetricsByYear,
+  getPopulationSeries,
   currentDate,
 }) {
   const birthIndex = yearIndex(years, birthYear);
@@ -252,6 +259,7 @@ export function lifetimeStoryContext({
     demographicMetrics,
     "lifeExpectancy",
     birthIndex,
+    getPopulationSeries,
   );
   const lifespanEnd = projectedLifespanEnd(birthYear, lifeExpectancy);
   const maxYear = years[years.length - 1];
@@ -333,6 +341,7 @@ export function buildLifetimeStoryAct({
   years,
   countries,
   globalMetricsByYear,
+  getPopulationSeries,
   demographicMetrics,
   countryAgeStructure,
   formatPopulation,
@@ -345,6 +354,7 @@ export function buildLifetimeStoryAct({
     years,
     demographicMetrics,
     globalMetricsByYear,
+    getPopulationSeries,
     currentDate,
   });
   const birthPop = globalMetricsByYear.get(birthYear)?.population;
@@ -384,6 +394,7 @@ export function buildLifetimeStoryAct({
     years,
     yearIndex: context.finalIndex,
     demographicMetrics,
+    getPopulationSeries,
   });
   const growthCount = lifetimeClusterCount({
     archetype: "growth",
@@ -391,6 +402,7 @@ export function buildLifetimeStoryAct({
     years,
     yearIndex: context.finalIndex,
     demographicMetrics,
+    getPopulationSeries,
   });
   const lifespanCopy = lifespanProjectionSentence({
     lifespanEnd: context.lifespanEnd,

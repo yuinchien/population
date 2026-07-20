@@ -1,4 +1,4 @@
-import { convertAlpha3ToAlpha2 } from "./data-loader.mjs";
+import { computePeakYear, convertAlpha3ToAlpha2 } from "./data-loader.mjs";
 import {
   countryPopulationLeadSegments,
   countryPopulationTrendSegments,
@@ -11,12 +11,16 @@ export function buildCountrySummary({
   years,
   historicalCutoffYear,
   formatPopulation,
+  populationSeries,
   demographicNarrative = "",
 }) {
+  const resolvedPopulationSeries = populationSeries ?? country.populations;
   const isProjected = year > historicalCutoffYear;
   const index = years.indexOf(year);
-  const population = formatPopulation(country.populations[index]);
-  const peakYear = country.peakYear;
+  const population = formatPopulation(resolvedPopulationSeries[index]);
+  const peakYear =
+    computePeakYear(resolvedPopulationSeries, years) ??
+    (populationSeries ? null : country.peakYear);
   const iso2 = convertAlpha3ToAlpha2(country.iso3)?.toLowerCase();
   const lead = countryPopulationLeadSegments({
     countryName: country.name,
@@ -28,7 +32,7 @@ export function buildCountrySummary({
   const peakPopulation =
     peakYear == null
       ? null
-      : formatPopulation(country.populations[years.indexOf(peakYear)]);
+      : formatPopulation(resolvedPopulationSeries[years.indexOf(peakYear)]);
   const peakIsProjected = peakYear != null && peakYear > historicalCutoffYear;
   const trend = countryPopulationTrendSegments({
     year,

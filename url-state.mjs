@@ -1,6 +1,12 @@
 export function serializeUrlState(state) {
   const params = new URLSearchParams();
   if (state.mode === "map") params.set("mode", "map");
+  if (
+    state.projection !== "medium" &&
+    ["high", "low"].includes(state.projection)
+  ) {
+    params.set("projection", state.projection);
+  }
 
   if (state.view === "chart") {
     params.set("view", "chart");
@@ -31,6 +37,10 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
   const year = Number(params.get("year"));
   if (years.includes(year)) state.year = year;
   if (params.get("mode") === "map") state.mode = "map";
+  const projection = params.get("projection");
+  if (["high", "medium", "low"].includes(projection)) {
+    state.projection = projection;
+  }
 
   const view = params.get("view");
   if (view === "chart") {

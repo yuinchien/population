@@ -5,6 +5,7 @@ import { createCalloutController } from "./callout-controller.mjs";
 import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 import {
   buildDetailStatus,
+  computeGlobalTrendMilestones,
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
@@ -24,6 +25,7 @@ import {
 import { createCountryDetailController } from "./country-detail-controller.mjs";
 import {
   convertAlpha3ToAlpha2,
+  computePeakYear,
   loadPopulationData,
   flagIconUrl
 } from "./data-loader.mjs";
@@ -180,7 +182,8 @@ const calloutController = createCalloutController({
   getViewMode: () => viewMode,
   isTransitioning: () => !!transition,
   getColor: colorFor,
-  getPopulation: (country) => country.populations[currentYearIndex],
+  getPeakYear: activePeakYear,
+  getPopulation: (country) => activePopulationAt(country),
   formatPopulation: formatPeakPopulation,
   getTextColor: (color) =>
     foregroundForColor(`#${color.getHexString()}`),
@@ -378,6 +381,10 @@ let historicalCutoffYear = Infinity;
 let globalMetricsByYear = new Map();
 let highMetricsByYear = new Map();
 let lowMetricsByYear = new Map();
+let activeGlobalMetricsCache = null;
+let activeGlobalMetricsCacheScenario = null;
+let activeGlobalTrendMilestonesCache = null;
+let activeGlobalTrendMilestonesCacheScenario = null;
 let globalTrendMilestones = new Map();
 let countryDemographicMetrics = null;
 // Age-structure shares for the country-detail population pyramid, lazily
@@ -428,6 +435,84 @@ let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
 let isHoldPhase = false;
+
+function activePopulationSeries(country) {
+  if (chartProjectionScenario === "high") {
+    return country?.populationsHigh ?? country?.populations ?? [];
+  }
+  if (chartProjectionScenario === "low") {
+    return country?.populationsLow ?? country?.populations ?? [];
+  }
+  return country?.populations ?? [];
+}
+
+function activePopulationAt(country, index = currentYearIndex) {
+  return activePopulationSeries(country)[index] ?? country?.populations?.[index];
+}
+
+function peakYearForSeries(series, years = yearsData) {
+  return computePeakYear(series ?? [], years);
+}
+
+function activePeakYear(country) {
+  return peakYearForSeries(activePopulationSeries(country));
+}
+
+function activeVariantMetricsByYear() {
+  if (chartProjectionScenario === "high") return highMetricsByYear;
+  if (chartProjectionScenario === "low") return lowMetricsByYear;
+  return null;
+}
+
+function activeGlobalMetricsForYear(year) {
+  const base = globalMetricsByYear.get(year);
+  const variant = activeVariantMetricsByYear()?.get(year);
+  return variant ? { ...(base ?? {}), ...variant } : base;
+}
+
+function activeGlobalMetricsMap() {
+  const variant = activeVariantMetricsByYear();
+  if (!variant?.size) return globalMetricsByYear;
+  if (
+    activeGlobalMetricsCache &&
+    activeGlobalMetricsCacheScenario === chartProjectionScenario
+  ) {
+    return activeGlobalMetricsCache;
+  }
+  activeGlobalMetricsCache = new Map(
+    [...globalMetricsByYear.entries()].map(([year, metrics]) => [
+      year,
+      { ...metrics, ...(variant.get(year) ?? {}) },
+    ]),
+  );
+  activeGlobalMetricsCacheScenario = chartProjectionScenario;
+  return activeGlobalMetricsCache;
+}
+
+function invalidateProjectionMetricsCache() {
+  activeGlobalMetricsCache = null;
+  activeGlobalMetricsCacheScenario = null;
+  activeGlobalTrendMilestonesCache = null;
+  activeGlobalTrendMilestonesCacheScenario = null;
+}
+
+function activeGlobalTrendMilestones() {
+  if (chartProjectionScenario === "medium") return globalTrendMilestones;
+  if (
+    activeGlobalTrendMilestonesCache &&
+    activeGlobalTrendMilestonesCacheScenario === chartProjectionScenario
+  ) {
+    return activeGlobalTrendMilestonesCache;
+  }
+  activeGlobalTrendMilestonesCache = computeGlobalTrendMilestones(
+    activeGlobalMetricsMap(),
+    countriesData,
+    yearsData,
+    historicalCutoffYear,
+  );
+  activeGlobalTrendMilestonesCacheScenario = chartProjectionScenario;
+  return activeGlobalTrendMilestonesCache;
+}
 let isProjectedYear = false;
 const timer = new THREE.Timer();
 timer.connect(document);
@@ -766,7 +851,7 @@ function buildPeakStatus(year, peakCountries, isProjected) {
 // the main (no country/group selected) view.
 function buildGlobalPopulationStatus(year) {
   const isProjected = year > historicalCutoffYear;
-  const metrics = globalMetricsByYear.get(year);
+  const metrics = activeGlobalMetricsForYear(year);
   const population = metrics?.population;
   if (population == null) return "";
   const verb = isProjected ? "is" : "was";
@@ -800,7 +885,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
       historicalCutoffYear,
       seriesFor: (key) =>
         key === "population"
-          ? selectedCountry.populations
+          ? activePopulationSeries(selectedCountry)
           : countryDemographicMetrics?.countries?.[selectedCountry.iso3]?.[
               key
             ] ?? [],
@@ -826,6 +911,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
         years: yearsData,
         historicalCutoffYear,
         formatPopulation: formatPeakPopulation,
+        populationSeries: activePopulationSeries(selectedCountry),
         demographicNarrative,
       }),
     );
@@ -842,15 +928,16 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
         isProjected,
         legend: selectedLegend,
         metricFor,
+        populationFor: activePopulationAt,
       }),
     );
     return;
   }
 
   const peakCountries = countriesData.filter(
-    (country) => country.peakYear === year,
+    (country) => activePeakYear(country) === year,
   );
-  const milestone = globalTrendMilestones.get(year);
+  const milestone = activeGlobalTrendMilestones().get(year);
   updateMilestoneNav(year);
   const leadText = milestone
     ? `${milestone.text}${
@@ -877,7 +964,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
 // Milestone years in chronological order, so "Milestone #N" counts forward
 // through history the same way the ‹/› buttons step through it.
 function sortedMilestoneYears() {
-  return [...globalTrendMilestones.keys()].sort((a, b) => a - b);
+  return [...activeGlobalTrendMilestones().keys()].sort((a, b) => a - b);
 }
 
 // Off a milestone year, prev/next target the nearest milestone on either
@@ -1088,7 +1175,7 @@ function applyYear(year, { instant = false } = {}) {
   let cursor = 0;
 
   countriesData.forEach((country) => {
-    const pop = country.populations[yearIndex];
+    const pop = activePopulationAt(country, yearIndex);
     if (pop == null) return;
     const activeCount = Math.min(
       country.dots.length,
@@ -1260,7 +1347,11 @@ function selectedCountries() {
 // ratio bar) and how to format it for display. Header cells are generated
 // from this list too, so clicking one always lines up with the right column.
 function detailColumns() {
-  return buildDetailColumns({ currentYearIndex, metricFor });
+  return buildDetailColumns({
+    currentYearIndex,
+    metricFor,
+    populationFor: activePopulationAt,
+  });
 }
 
 // Keep the comparison table focused on the chart's current question:
@@ -1542,7 +1633,7 @@ function closeCountryDetail() {
 // country/group detail, or the chart view with its metric and selected
 // countries — instead of always landing back on the plain globe.
 function urlStateFromApp() {
-  const state = { mode: viewMode };
+  const state = { mode: viewMode, projection: chartProjectionScenario };
   if (chartPanelActive) {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (clusterActive) {
@@ -1575,6 +1666,7 @@ function applyUrlStateFromLocation(search) {
     years: yearsData,
     countryCodes: countriesData.map((country) => country.iso3),
   });
+  if (state.projection) setProjectionScenario(state.projection, { sync: false });
   if (state.year != null) goToYear(state.year);
   if (state.mode === "map") setViewMode("map");
 
@@ -1692,6 +1784,7 @@ const countryDetailController = createCountryDetailController({
   },
   getHistoricalCutoffYear: () => historicalCutoffYear,
   getCountries: () => countriesData,
+  getPopulationSeries: activePopulationSeries,
   getColorMode: () => colorMode,
   getDemographicMetrics: () => countryDemographicMetrics,
   getAgeStructure: () => countryAgeStructure,
@@ -1727,11 +1820,43 @@ function openCountryDetail(country) {
   syncUrlFromState();
 }
 
-function renderCountryDetail() {
+function renderCountryDetail(options = { animate: true }) {
   const country = selectedCountry;
   if (!country || currentYearIndex < 0) return;
   assertElements(elements, COUNTRY_DETAIL_ELEMENT_KEYS, "country detail");
-  countryDetailController.render(country, { animate: true });
+  countryDetailController.render(country, options);
+}
+
+function setProjectionScenario(scenario, { sync = true } = {}) {
+  if (!["medium", "high", "low"].includes(scenario)) return;
+  if (scenario === chartProjectionScenario) {
+    if (elements.chartProjectionScenario) {
+      elements.chartProjectionScenario.value = scenario;
+    }
+    if (sync) syncUrlFromState();
+    return;
+  }
+  chartProjectionScenario = scenario;
+  invalidateProjectionMetricsCache();
+  if (elements.chartProjectionScenario) {
+    elements.chartProjectionScenario.value = scenario;
+  }
+
+  if (chartPanelActive) {
+    renderTrendChart();
+    renderChartTable();
+  } else if (clusterActive) {
+    clusterController.refreshData(currentYearIndex);
+    if (currentYearIndex >= 0) updateYearLabels(yearsData[currentYearIndex]);
+  } else if (lifetimeController?.isActive()) {
+    lifetimeController.render();
+    if (currentYearIndex >= 0) updateYearLabels(yearsData[currentYearIndex]);
+  } else if (currentYearIndex >= 0) {
+    applyYear(yearsData[currentYearIndex], { instant: true });
+    if (selectedCountry) renderCountryDetail({ animate: false });
+  }
+
+  if (sync) syncUrlFromState();
 }
 
 // Population comes from the dots dataset (same series peakYear/dots are
@@ -1743,13 +1868,7 @@ function chartSeriesFor(country, key) {
 }
 
 function chartPopulationSeries(country) {
-  if (chartProjectionScenario === "high") {
-    return country.populationsHigh ?? country.populations;
-  }
-  if (chartProjectionScenario === "low") {
-    return country.populationsLow ?? country.populations;
-  }
-  return country.populations;
+  return activePopulationSeries(country);
 }
 
 function chartCountryList() {
@@ -2968,7 +3087,8 @@ async function init() {
       elements,
       getCountries: () => countriesData,
       getYears: () => yearsData,
-      getGlobalMetricsByYear: () => globalMetricsByYear,
+      getGlobalMetricsByYear: activeGlobalMetricsMap,
+      getPopulationSeries: activePopulationSeries,
       getCountryDemographicMetrics: () => countryDemographicMetrics,
       getCountryAgeStructure: () => countryAgeStructure,
       getViewMode: () => viewMode,
@@ -2986,13 +3106,16 @@ async function init() {
       years: yearsData,
       countryCodes: countriesData.map((country) => country.iso3),
     });
+    if (initialUrlState.projection) {
+      chartProjectionScenario = initialUrlState.projection;
+    }
     initializeViewMode(initialUrlState.mode);
 
     const minYear = yearsData[0];
     const maxYear = yearsData[yearsData.length - 1];
     // Randomized per page load from the same data-driven milestones used in
     // the status copy, rather than maintaining a second hardcoded year list.
-    const defaultYears = prioritizedMilestoneYears(globalTrendMilestones, {
+    const defaultYears = prioritizedMilestoneYears(activeGlobalTrendMilestones(), {
       minYear,
       maxYear,
     });
@@ -3100,10 +3223,7 @@ async function init() {
     // updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
       const scenario = elements.chartProjectionScenario.value;
-      if (!["medium", "high", "low"].includes(scenario)) return;
-      chartProjectionScenario = scenario;
-      renderTrendChart();
-      renderChartTable();
+      setProjectionScenario(scenario);
     });
     renderChartMetricTabs();
     renderChartCountryChips();
@@ -3378,7 +3498,7 @@ function updateTooltip(event) {
     return;
   }
 
-  const pop = country.populations[currentYearIndex] ?? country.population;
+  const pop = activePopulationAt(country) ?? country.population;
   const groupColor = colorFor(country);
 
   const tooltipColor = `#${groupColor.getHexString()}`;

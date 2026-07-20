@@ -30,6 +30,26 @@ test("URL state round-trips the cluster view", () => {
   });
 });
 
+test("URL state round-trips global projection scenario", () => {
+  const query = serializeUrlState({
+    view: "chart",
+    metric: "population",
+    countries: ["IND"],
+    projection: "high",
+    year: 2050,
+  });
+  assert.deepEqual(
+    parseUrlState(query, { years: [2050], countryCodes: ["IND"] }),
+    {
+      view: "chart",
+      metric: "population",
+      countries: ["IND"],
+      projection: "high",
+      year: 2050,
+    },
+  );
+});
+
 test("URL state round-trips the lifetime view", () => {
   const query = serializeUrlState({
     view: "lifetime",

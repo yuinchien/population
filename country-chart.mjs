@@ -2,6 +2,7 @@ import { chartXFor, chartYFor } from "./chart-math.mjs";
 
 export function createCountryChartGeometry({
   country,
+  populationSeries = country.populations,
   years,
   historicalCutoffYear,
   width,
@@ -13,7 +14,7 @@ export function createCountryChartGeometry({
   const maxPopulation = Math.max(
     0,
     ...country.populationsHigh,
-    ...country.populations,
+    ...populationSeries,
   );
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
