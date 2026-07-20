@@ -323,21 +323,24 @@ function lifetimePresentPivotSentence({
   country,
   countryPeakYear,
 }) {
+  const possessiveCountryName = country.name.endsWith("s")
+    ? `${country.name}'`
+    : `${country.name}'s`;
   const pivots = [];
   if (recentMilestone) {
-    pivots.push(`the moment ${recentMilestone.label} in ${recentMilestone.year}`);
+    const milestoneCopy = recentMilestone.label
+      .replace(/^World population passes /, "the world population passing ");
+    pivots.push(`${milestoneCopy} in ${recentMilestone.year}`);
   }
   if (countryPeakYear != null) {
-    pivots.push(
-      `${country.name} reaching its population peak in ${countryPeakYear}`,
-    );
+    pivots.push(`${possessiveCountryName} population peak in ${countryPeakYear}`);
   }
   if (!pivots.length) return "";
   const pivotCopy =
     pivots.length === 1
       ? pivots[0]
       : `${pivots.slice(0, -1).join(", ")} and ${pivots.at(-1)}`;
-  return ` You have already lived through major pivots, including ${pivotCopy}.`;
+  return ` You have already lived through major pivots, like ${pivotCopy}.`;
 }
 
 function lifetimeArrivalAgingClause(olderShareAtBirth) {
@@ -603,7 +606,7 @@ export function buildLifetimeStoryAct({
   const acts = [
     {
       year: birthYear,
-      text: `When you were born in ${birthYear}, you joined a global family of ${formatPopulation(birthPop)} people. ${country.name} ${arrivalAgingClause}, and the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
+      text: `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPop)} people. ${country.name} ${arrivalAgingClause}, and the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },

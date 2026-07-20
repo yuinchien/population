@@ -37,7 +37,7 @@ test("computeGlobalTrendMilestones finds the expected WPP global trend years", a
   assert.match(milestones.get(2061).text, /^Ten Billion World\..*above 10B/s);
   assert.match(
     milestones.get(2063).text,
-    /^The Great Age Inversion\..*65 and older outnumber children under 15/s,
+    /^The Great Age Inversion\..*people aged 65\+ outnumber children under 15/s,
   );
   assert.match(
     milestones.get(2070).text,
@@ -93,7 +93,10 @@ test("computeGlobalTrendMilestones adds The African Century when country data is
   assert.ok(africanCentury, "expected an African Century milestone");
   const [year, milestone] = africanCentury;
   assert.equal(year, 2036);
-  assert.match(milestone.text, /Sub-Saharan Africa's share of global population growth/);
+  assert.match(
+    milestone.text,
+    /Sub-Saharan Africa will account for more than half of all global population growth/,
+  );
 
   // Omitting country data (e.g. the plain globalData-only call above)
   // shouldn't add or crash on this milestone — it simply can't be computed.

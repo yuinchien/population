@@ -318,7 +318,7 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
   assert.match(
     arrivalAct.text,
-    /In Testland, average life expectancy at birth was 80 yrs, and was already an aging society\./,
+    /Testland\s+was already an aging society, and the average life expectancy at birth was 80 yrs\./,
   );
 });
 
@@ -361,7 +361,7 @@ test("arrival lifetime copy names countries below the aging threshold at birth",
 
   assert.match(
     act.text,
-    /In India, average life expectancy at birth was 67.2 yrs, and remains below the aging-society threshold\./,
+    /India\s+remained below the aging-society threshold, and the average life expectancy at birth was 67.2 yrs\./,
   );
 });
 
@@ -404,7 +404,7 @@ test("present lifetime copy includes country population peak when it happened si
 
   assert.match(
     act.text,
-    /major pivots, including the moment World population passes 8B in 2022 and Taiwan reaching its population peak in 2020\./,
+    /major pivots, like the world population passing 8 billion in 2022 and Taiwan's population peak in 2020\./,
   );
 });
 
