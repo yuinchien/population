@@ -1867,7 +1867,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-story-section.is-present {
-    grid-template-columns: minmax(320px, 880px);
+    grid-template-columns: minmax(320px, 1080px);
     justify-content: center;
     align-content: center;
     gap: 48px;
@@ -1916,7 +1916,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-population-change {
-    width: min(100%, 900px);
+    width: min(100%, 1080px);
     justify-self: center;
     color: var(--color-yellow);
     font-family: var(--font-sans);

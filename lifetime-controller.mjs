@@ -295,8 +295,8 @@ function createPopulationChangeChart(change) {
     addedSegment.className = "lifetime-population-segment added";
     addedSegment.style.width = percentFromShare(change?.addedShare, 0.5);
     addedSegment.textContent = change?.addedPopulation
-      ? `+${change.addedPopulation}`
-      : "+N/A";
+      ? `${change.addedPopulation}`
+      : "N/A";
 
     const bar = document.createElement("div");
     bar.className = "lifetime-population-bar";

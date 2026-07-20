@@ -451,6 +451,59 @@ test("horizon lifetime copy includes projected country population peak before 21
   );
   assert.match(
     act.text,
-    /Taiwan will be among 1 nation classified as aging societies, navigating the needs of a rapidly aging population\./,
+    /Taiwan will be among 1 nation classified as super-aged societies, with 65\+ share reaching 22.0% of its population\./,
   );
+});
+
+test("horizon lifetime copy preserves the selected country's UN aging stage", () => {
+  const years = [2005, 2010, 2026, 2093, 2100];
+  const japan = {
+    iso3: "JPN",
+    name: "Japan",
+    populations: [128e6, 128e6, 123e6, 80e6, 75e6],
+  };
+  const peer = {
+    iso3: "PEER",
+    name: "Peerland",
+    populations: [10e6, 11e6, 12e6, 13e6, 14e6],
+  };
+  const act = buildLifetimeStoryAct({
+    country: japan,
+    actIndex: 2,
+    birthYear: 2010,
+    years,
+    countries: [japan, peer],
+    globalMetricsByYear: new Map([
+      [2005, { population: 6.5e9, lifeExpectancy: 68 }],
+      [2010, { population: 7e9, lifeExpectancy: 70.1 }],
+      [2026, { population: 8.3e9, lifeExpectancy: 73 }],
+      [2093, { population: 10.3e9, lifeExpectancy: 81.1 }],
+      [2100, { population: 10.1e9, lifeExpectancy: 82 }],
+    ]),
+    demographicMetrics: {
+      countries: {
+        JPN: {
+          lifeExpectancy: [82, 83.2, 85, 88, 89],
+          fertility: [1.3, 1.3, 1.2, 1.2, 1.2],
+          netMigrationRate: [0, 0, 0, 0, 0],
+          populationGrowth: [-0.1, -0.1, -0.4, -1, -1],
+          olderPopulationShare: [20.1, 23, 30, 38, 40],
+        },
+        PEER: {
+          olderPopulationShare: [5, 6, 10, 22, 23],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+
+  assert.match(
+    act.text,
+    /Japan will be among 2 nations classified as super-aged societies, with 65\+ share reaching 38.0% of its population\./,
+  );
+  assert.doesNotMatch(act.text, /Japan became a super-aged society in 2005/);
+  assert.doesNotMatch(act.text, /Japan will be among .* aging societies/);
 });

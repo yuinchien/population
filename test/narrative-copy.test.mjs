@@ -94,6 +94,16 @@ test("superAgedSocietiesSentence and legacyClusterSentence format lifetime copy"
     "India will be among 64 nations classified as aging societies, navigating the needs of a rapidly aging population.",
   );
   assert.equal(
+    agingSocietiesSentence({
+      countryName: "Japan",
+      selectedCountryIsAging: true,
+      selectedStage: { key: "superAged", label: "super-aged society" },
+      olderShare: 37.6,
+      count: 142,
+    }),
+    "Japan will be among 142 nations classified as super-aged societies, with 65+ share reaching 37.6% of its population.",
+  );
+  assert.equal(
     legacyClusterSentence({ silverDeclineCount: 12, growthCount: 34 }),
     " 12 countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies",
   );

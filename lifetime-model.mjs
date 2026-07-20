@@ -101,6 +101,17 @@ function yearIndex(years, year) {
   return years.indexOf(year);
 }
 
+function nearestYearIndex(years, year) {
+  if (!Array.isArray(years) || !years.length || !Number.isFinite(year)) {
+    return -1;
+  }
+  return years.reduce((bestIndex, candidateYear, index) => {
+    const bestDistance = Math.abs(years[bestIndex] - year);
+    const distance = Math.abs(candidateYear - year);
+    return distance < bestDistance ? index : bestIndex;
+  }, 0);
+}
+
 function countrySeries(country, demographicMetrics, key, getPopulationSeries) {
   return key === "population"
     ? getPopulationSeries?.(country) ?? country?.populations ?? []
@@ -240,6 +251,22 @@ export function lifetimeAgingSocietyCount({
         yearIndex
       ];
     return count + (currentAgingStage(share) ? 1 : 0);
+  }, 0);
+}
+
+function lifetimeAgingStageCount({
+  countries,
+  yearIndex,
+  demographicMetrics,
+  stage,
+}) {
+  if (!stage || !demographicMetrics || yearIndex < 0) return null;
+  return countries.reduce((count, country) => {
+    const share =
+      demographicMetrics.countries?.[country.iso3]?.olderPopulationShare?.[
+        yearIndex
+      ];
+    return count + (currentAgingStage(share)?.key === stage.key ? 1 : 0);
   }, 0);
 }
 
@@ -464,17 +491,28 @@ export function buildLifetimeStoryAct({
     year: context.presentYear,
     age: presentAge,
   });
+  const selectedOlderPopulationShare =
+    demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare;
+  const agingYearIndex =
+    context.finalIndex >= 0
+      ? context.finalIndex
+      : nearestYearIndex(years, context.finalYear);
   const selectedAgingStage =
-    context.horizonIndex >= 0 &&
-    currentAgingStage(
-      demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
-        context.horizonIndex
-      ],
-    );
+    agingYearIndex >= 0 &&
+    currentAgingStage(selectedOlderPopulationShare?.[agingYearIndex]);
+  const selectedOlderShareAtHorizon = selectedOlderPopulationShare?.[
+    agingYearIndex
+  ];
   const agingSocietyCount = lifetimeAgingSocietyCount({
     countries,
-    yearIndex: context.horizonIndex,
+    yearIndex: agingYearIndex,
     demographicMetrics,
+  });
+  const selectedAgingStageCount = lifetimeAgingStageCount({
+    countries,
+    yearIndex: agingYearIndex,
+    demographicMetrics,
+    stage: selectedAgingStage,
   });
   const silverDeclineCount = lifetimeClusterCount({
     archetype: "silverDecline",
@@ -529,7 +567,10 @@ export function buildLifetimeStoryAct({
   const horizonAgingCopy = agingSocietiesSentence({
     countryName: country.name,
     selectedCountryIsAging: !!selectedAgingStage,
-    count: agingSocietyCount,
+    selectedStage: selectedAgingStage,
+    year: context.finalYear,
+    olderShare: selectedOlderShareAtHorizon,
+    count: selectedAgingStage ? selectedAgingStageCount : agingSocietyCount,
   });
   const finalClusterCopy = legacyClusterSentence({
     silverDeclineCount,
