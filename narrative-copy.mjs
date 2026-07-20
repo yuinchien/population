@@ -160,9 +160,11 @@ export function agingSocietiesSentence({
     return `${countryName} will be among ${count} ${unit} classified as aging societies, navigating the needs of a rapidly aging population.`;
   }
   if (count != null) {
-    return `${count} ${unit} will be classified as aging societies, navigating the needs of a rapidly aging population.`;
+    return "";
+    // return `${count} ${unit} will be classified as aging societies, navigating the needs of a rapidly aging population.`;
   }
-  return "Many countries will be adjusting to older age structures.";
+  return "";
+  // return "Many countries will be adjusting to older age structures.";
 }
 
 export function legacyClusterSentence({ silverDeclineCount, growthCount }) {
