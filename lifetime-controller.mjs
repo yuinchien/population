@@ -322,18 +322,17 @@ function createGlobalLifeExpectancyChart(change) {
 
   const svgNs = "http://www.w3.org/2000/svg";
   const width = 560;
-  const height = 430;
-  const padding = { top: 68, right: 18, bottom: 48, left: 44 };
+  const height = 480;
+  const padding = { top: 20, right: 18, bottom: 48, left: 44 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
   const yearsOnly = rows.map((row) => row.year);
   const values = rows.map((row) => row.value);
   const minYear = Math.min(...yearsOnly);
   const maxYear = Math.max(change?.maxYear ?? yearsOnly.at(-1), ...yearsOnly);
-  const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
-  const valuePadding = Math.max(2, (maxValue - minValue) * 0.12);
-  const yMin = minValue - valuePadding;
+  const valuePadding = Math.max(2, maxValue * 0.08);
+  const yMin = 0;
   const yMax = maxValue + valuePadding;
   const rangeYear = maxYear - minYear || 1;
   const rangeValue = yMax - yMin || 1;

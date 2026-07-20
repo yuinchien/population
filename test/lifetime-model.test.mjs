@@ -404,7 +404,7 @@ test("present lifetime copy includes country population peak when it happened si
 
   assert.match(
     act.text,
-    /major pivots, like the world population passing 8 billion in 2022 and Taiwan's population peak in 2020\./,
+    /major pivots, like the world population passing 8B in 2022 and Taiwan's population peak in 2020\./,
   );
 });
 
