@@ -121,6 +121,14 @@ export function createLifetimeController({
       : null;
   }
 
+  function lifetimeStartedTitle() {
+    const country = selectedCountry();
+    if (!Number.isFinite(birthYear) || !country?.name) {
+      return "Your Lifespan.";
+    }
+    return `Born ${birthYear} in ${country.name}.`;
+  }
+
   function buildAct(country, index) {
     return buildLifetimeStoryAct({
       country,
@@ -585,7 +593,7 @@ function createGlobalLifeExpectancyChart(change) {
     document.body.classList.toggle("view-lifetime-started", started());
     if (elements.headerTitle) {
       elements.headerTitle.textContent = started()
-        ? "Your Lifespan."
+        ? lifetimeStartedTitle()
         : "World Population.";
     }
     if (elements.buttonsContainer) {
