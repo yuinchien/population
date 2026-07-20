@@ -242,6 +242,55 @@ function latestPopulationMilestoneBetween(rows, startYear, endYear) {
   ).at(-1);
 }
 
+export function countryPopulationPeakYearBetween({
+  country,
+  years,
+  birthYear,
+  presentYear,
+  getPopulationSeries,
+}) {
+  const series = getPopulationSeries?.(country) ?? country?.populations ?? [];
+  if (
+    !country ||
+    !Array.isArray(years) ||
+    !Array.isArray(series) ||
+    !Number.isFinite(birthYear) ||
+    !Number.isFinite(presentYear)
+  ) {
+    return null;
+  }
+  const peak = years.reduce((best, year, index) => {
+    const value = series[index];
+    if (!Number.isFinite(value)) return best;
+    return !best || value > best.value ? { year, value } : best;
+  }, null);
+  return peak && peak.year >= birthYear && peak.year <= presentYear
+    ? peak.year
+    : null;
+}
+
+function lifetimePresentPivotSentence({
+  recentMilestone,
+  country,
+  countryPeakYear,
+}) {
+  const pivots = [];
+  if (recentMilestone) {
+    pivots.push(`the moment ${recentMilestone.label} in ${recentMilestone.year}`);
+  }
+  if (countryPeakYear != null) {
+    pivots.push(
+      `${country.name} reaching its population peak in ${countryPeakYear}`,
+    );
+  }
+  if (!pivots.length) return "";
+  const pivotCopy =
+    pivots.length === 1
+      ? pivots[0]
+      : `${pivots.slice(0, -1).join(", ")} and ${pivots.at(-1)}`;
+  return ` You have already lived through major pivots, including ${pivotCopy}.`;
+}
+
 export function lifetimeStoryContext({
   country,
   birthYear,
@@ -414,6 +463,18 @@ export function buildLifetimeStoryAct({
     birthYear,
     context.presentYear,
   );
+  const countryPeakYear = countryPopulationPeakYearBetween({
+    country,
+    years,
+    birthYear,
+    presentYear: context.presentYear,
+    getPopulationSeries,
+  });
+  const presentPivotCopy = lifetimePresentPivotSentence({
+    recentMilestone,
+    country,
+    countryPeakYear,
+  });
   const horizonAgingCopy = superAgedSocietiesSentence({
     countryName: country.name,
     selectedCountryIsSuperAged: selectedSuperAged,
@@ -465,7 +526,7 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.presentYear,
-      text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${recentMilestone ? ` You have already lived through major pivots, including the moment ${recentMilestone.label} in ${recentMilestone.year}.` : ""}`,
+      text: `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.${youngerShare != null ? ` In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.` : ""}${presentPivotCopy}`,
       populationChange: {
         birthYear,
         presentYear: context.presentYear,

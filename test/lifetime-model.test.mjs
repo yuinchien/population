@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   ageAt,
   buildLifetimeStoryAct,
+  countryPopulationPeakYearBetween,
   lifetimeAgeStructureShareYoungerThan,
   lifetimeLifeExpectancyComparison,
   lifetimePresentYear,
@@ -131,6 +132,33 @@ test("milestonesInLifespan with no end year includes everything from birth on", 
   assert.deepEqual(milestonesInLifespan(milestones, 2000, null), milestones);
 });
 
+test("countryPopulationPeakYearBetween finds active-series peaks during lifetime present", () => {
+  const years = [1985, 2020, 2026, 2100];
+  const country = {
+    iso3: "TWN",
+    name: "Taiwan",
+    populations: [19e6, 23.6e6, 23.1e6, 16e6],
+  };
+  assert.equal(
+    countryPopulationPeakYearBetween({
+      country,
+      years,
+      birthYear: 1985,
+      presentYear: 2026,
+    }),
+    2020,
+  );
+  assert.equal(
+    countryPopulationPeakYearBetween({
+      country,
+      years,
+      birthYear: 1985,
+      presentYear: 2010,
+    }),
+    null,
+  );
+});
+
 test("lifetimePresentYear clamps today's calendar year to available data", () => {
   assert.equal(
     lifetimePresentYear([1950, 1951, 1952], new Date(1940, 0, 1)),
@@ -245,4 +273,47 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
     [1990, 2026, 2037, 2070, 2084],
   );
   assert.deepEqual(act.stats[0], { value: "80", label: "Your age then" });
+});
+
+test("present lifetime copy includes country population peak when it happened since birth", () => {
+  const years = [1985, 2020, 2022, 2026, 2100];
+  const country = {
+    iso3: "TWN",
+    name: "Taiwan",
+    populations: [19e6, 23.6e6, 23.2e6, 23.1e6, 16e6],
+  };
+  const act = buildLifetimeStoryAct({
+    country,
+    actIndex: 1,
+    birthYear: 1985,
+    years,
+    countries: [country],
+    globalMetricsByYear: new Map([
+      [1985, { population: 4.9e9, lifeExpectancy: 62 }],
+      [2020, { population: 7.8e9, lifeExpectancy: 72 }],
+      [2022, { population: 8e9, lifeExpectancy: 72.5 }],
+      [2026, { population: 8.3e9, lifeExpectancy: 73 }],
+      [2100, { population: 10.1e9, lifeExpectancy: 82 }],
+    ]),
+    demographicMetrics: {
+      countries: {
+        TWN: {
+          lifeExpectancy: [73, 80, 81, 82, 86],
+          fertility: [2, 1, 1, 1, 1],
+          netMigrationRate: [0, 0, 0, 0, 0],
+          populationGrowth: [1, 0, -0.1, -0.1, -1],
+          olderPopulationShare: [5, 15, 16, 18, 35],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+
+  assert.match(
+    act.text,
+    /major pivots, including the moment World population passes 8B in 2022 and Taiwan reaching its population peak in 2020\./,
+  );
 });
