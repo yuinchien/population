@@ -154,7 +154,7 @@ export function agingSocietiesSentence({
     const shareCopy = Number.isFinite(olderShare)
       ? `, with 65+ share reaching ${olderShare.toFixed(1)}% of its population`
       : "";
-    return `${countryName} will be among ${count} ${unit} classified as ${pluralStageLabel}${shareCopy}.`;
+    return `${countryName} will be among ${count} ${unit} classified as ${pluralStageLabel}.`;
   }
   if (selectedCountryIsAging && count != null) {
     return `${countryName} will be among ${count} ${unit} classified as aging societies, navigating the needs of a rapidly aging population.`;

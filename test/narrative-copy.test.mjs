@@ -101,7 +101,7 @@ test("superAgedSocietiesSentence and legacyClusterSentence format lifetime copy"
       olderShare: 37.6,
       count: 142,
     }),
-    "Japan will be among 142 nations classified as super-aged societies, with 65+ share reaching 37.6% of its population.",
+    "Japan will be among 142 nations classified as super-aged societies.",
   );
   assert.equal(
     legacyClusterSentence({ silverDeclineCount: 12, growthCount: 34 }),

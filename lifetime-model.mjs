@@ -579,7 +579,7 @@ export function buildLifetimeStoryAct({
     getPopulationSeries,
   });
   const projectedCountryPeakCopy =
-    projectedCountryPeakYear != null
+    (projectedCountryPeakYear != null) && (projectedCountryPeakYear!=2100)
       ? ` ${country.name} is projected to reach its population peak in ${projectedCountryPeakYear}.`
       : "";
   const horizonAgingCopy = agingSocietiesSentence({
