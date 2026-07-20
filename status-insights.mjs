@@ -122,7 +122,7 @@ export function computeGlobalTrendMilestones(
     milestones,
     2063,
     "The Great Age Inversion",
-    "2063 is the projected age-structure tipping point when people aged 65 and older outnumber children under 15 for the first time.",
+    "2063 is the projected age-structure tipping point when people aged 65+ outnumber children under 15 for the first time.",
     4,
   );
 
@@ -200,7 +200,7 @@ export function computeGlobalTrendMilestones(
         milestones,
         africanCenturyYear,
         "The African Century",
-        `${africanCenturyYear} is the year Sub-Saharan Africa's share of global population growth since ${baseYear} first tops half — more than half of everyone added to the planet from here on is projected to be born there.`,
+        `In ${africanCenturyYear}, Sub-Saharan Africa will account for more than half of all global population growth since ${baseYear}.`,
         4,
       );
     }

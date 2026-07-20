@@ -343,7 +343,7 @@ function lifetimePresentPivotSentence({
 function lifetimeArrivalAgingClause(olderShareAtBirth) {
   if (!Number.isFinite(olderShareAtBirth)) return "";
   const stage = currentAgingStage(olderShareAtBirth);
-  if (!stage) return " remains below the aging-society threshold";
+  if (!stage) return " remained below the aging-society threshold";
   const article = stage.label.startsWith("a") ? "an" : "a";
   return ` was already ${article} ${stage.label}`;
 }
