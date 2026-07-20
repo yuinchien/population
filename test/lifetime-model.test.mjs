@@ -5,6 +5,7 @@ import {
   buildLifetimeStoryAct,
   countryPopulationPeakYearBetween,
   lifetimeAgeStructureShareYoungerThan,
+  lifetimeAgingSocietyCount,
   lifetimeLifeExpectancyComparison,
   lifetimePresentYear,
   lifetimeSuperAgedCount,
@@ -152,10 +153,20 @@ test("countryPopulationPeakYearBetween finds active-series peaks during lifetime
     countryPopulationPeakYearBetween({
       country,
       years,
-      birthYear: 1985,
-      presentYear: 2010,
+      startYear: 1985,
+      endYear: 2010,
     }),
     null,
+  );
+  assert.equal(
+    countryPopulationPeakYearBetween({
+      country,
+      years,
+      startYear: 1985,
+      endYear: 2020,
+      includeStart: false,
+    }),
+    2020,
   );
 });
 
@@ -209,6 +220,23 @@ test("lifetimeSuperAgedCount counts countries above the 20% 65+ threshold", () =
           AAA: { olderPopulationShare: [10, 20.1] },
           BBB: { olderPopulationShare: [10, 20] },
           CCC: { olderPopulationShare: [10, 30] },
+        },
+      },
+    }),
+    2,
+  );
+});
+
+test("lifetimeAgingSocietyCount counts countries at any UN aging stage", () => {
+  assert.equal(
+    lifetimeAgingSocietyCount({
+      countries: [{ iso3: "AAA" }, { iso3: "BBB" }, { iso3: "CCC" }],
+      yearIndex: 1,
+      demographicMetrics: {
+        countries: {
+          AAA: { olderPopulationShare: [5, 6.9] },
+          BBB: { olderPopulationShare: [5, 7] },
+          CCC: { olderPopulationShare: [5, 20.1] },
         },
       },
     }),
@@ -273,6 +301,7 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
     [1990, 2026, 2037, 2070, 2084],
   );
   assert.deepEqual(act.stats[0], { value: "80", label: "Your age then" });
+  assert.deepEqual(act.stats[2], { value: "1", label: "Aging societies" });
 });
 
 test("present lifetime copy includes country population peak when it happened since birth", () => {
@@ -315,5 +344,52 @@ test("present lifetime copy includes country population peak when it happened si
   assert.match(
     act.text,
     /major pivots, including the moment World population passes 8B in 2022 and Taiwan reaching its population peak in 2020\./,
+  );
+});
+
+test("horizon lifetime copy includes projected country population peak before 2100", () => {
+  const years = [1985, 2026, 2058, 2070, 2100];
+  const country = {
+    iso3: "TWN",
+    name: "Taiwan",
+    populations: [19e6, 23.1e6, 23.5e6, 24e6, 18e6],
+  };
+  const act = buildLifetimeStoryAct({
+    country,
+    actIndex: 2,
+    birthYear: 1985,
+    years,
+    countries: [country],
+    globalMetricsByYear: new Map([
+      [1985, { population: 4.9e9, lifeExpectancy: 62 }],
+      [2026, { population: 8.3e9, lifeExpectancy: 73 }],
+      [2058, { population: 9.9e9, lifeExpectancy: 77.9 }],
+      [2070, { population: 10.1e9, lifeExpectancy: 79 }],
+      [2100, { population: 10.1e9, lifeExpectancy: 82 }],
+    ]),
+    demographicMetrics: {
+      countries: {
+        TWN: {
+          lifeExpectancy: [73, 80, 82, 84, 86],
+          fertility: [2, 1, 1, 1, 1],
+          netMigrationRate: [0, 0, 0, 0, 0],
+          populationGrowth: [1, 0, 0, -0.1, -1],
+          olderPopulationShare: [5, 18, 22, 25, 35],
+        },
+      },
+    },
+    countryAgeStructure: null,
+    currentDate: new Date(2026, 0, 1),
+    formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    formatLifeExpectancy: (value) => `${value} yrs`,
+  });
+
+  assert.match(
+    act.text,
+    /Taiwan is projected to reach its population peak in 2070\./,
+  );
+  assert.match(
+    act.text,
+    /Taiwan will be among 1 nation classified as aging societies, navigating the needs of a rapidly aging population\./,
   );
 });

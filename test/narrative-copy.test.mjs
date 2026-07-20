@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  agingSocietiesSentence,
   countryPopulationLeadSegments,
   countryPopulationTrendSegments,
   legacyClusterSentence,
@@ -83,6 +84,14 @@ test("superAgedSocietiesSentence and legacyClusterSentence format lifetime copy"
       count: 4,
     }),
     "Japan will be among 4 nations classified as super-aged societies, grappling with shrinking, aging populations.",
+  );
+  assert.equal(
+    agingSocietiesSentence({
+      countryName: "India",
+      selectedCountryIsAging: true,
+      count: 64,
+    }),
+    "India will be among 64 nations classified as aging societies, navigating the needs of a rapidly aging population.",
   );
   assert.equal(
     legacyClusterSentence({ silverDeclineCount: 12, growthCount: 34 }),

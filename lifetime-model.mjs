@@ -3,14 +3,15 @@ import {
   populationDeclineContext,
   refineArchetypeForPhase,
 } from "./cluster-model.mjs";
+import { currentAgingStage } from "./country-aging-narrative.mjs";
 import {
   ageBandStart,
   interpolateAgeStructure,
 } from "./country-pyramid.mjs";
 import {
+  agingSocietiesSentence,
   legacyClusterSentence,
   lifespanProjectionSentence,
-  superAgedSocietiesSentence,
 } from "./narrative-copy.mjs";
 import { displayGroupLabel } from "./status-insights.mjs";
 
@@ -227,6 +228,21 @@ export function lifetimeSuperAgedCount({
   }, 0);
 }
 
+export function lifetimeAgingSocietyCount({
+  countries,
+  yearIndex,
+  demographicMetrics,
+}) {
+  if (!demographicMetrics || yearIndex < 0) return null;
+  return countries.reduce((count, country) => {
+    const share =
+      demographicMetrics.countries?.[country.iso3]?.olderPopulationShare?.[
+        yearIndex
+      ];
+    return count + (currentAgingStage(share) ? 1 : 0);
+  }, 0);
+}
+
 function firstPopulationMilestoneAfter(rows, year, endYear) {
   return populationMilestones(rows).find(
     (milestone) =>
@@ -247,6 +263,9 @@ export function countryPopulationPeakYearBetween({
   years,
   birthYear,
   presentYear,
+  startYear = birthYear,
+  endYear = presentYear,
+  includeStart = true,
   getPopulationSeries,
 }) {
   const series = getPopulationSeries?.(country) ?? country?.populations ?? [];
@@ -254,8 +273,8 @@ export function countryPopulationPeakYearBetween({
     !country ||
     !Array.isArray(years) ||
     !Array.isArray(series) ||
-    !Number.isFinite(birthYear) ||
-    !Number.isFinite(presentYear)
+    !Number.isFinite(startYear) ||
+    !Number.isFinite(endYear)
   ) {
     return null;
   }
@@ -264,7 +283,10 @@ export function countryPopulationPeakYearBetween({
     if (!Number.isFinite(value)) return best;
     return !best || value > best.value ? { year, value } : best;
   }, null);
-  return peak && peak.year >= birthYear && peak.year <= presentYear
+  const startsInRange = includeStart
+    ? peak?.year >= startYear
+    : peak?.year > startYear;
+  return peak && startsInRange && peak.year <= endYear
     ? peak.year
     : null;
 }
@@ -427,12 +449,14 @@ export function buildLifetimeStoryAct({
     year: context.presentYear,
     age: presentAge,
   });
-  const selectedSuperAged =
+  const selectedAgingStage =
     context.horizonIndex >= 0 &&
-    (demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
-      context.horizonIndex
-    ] ?? 0) > 20;
-  const agedCount = lifetimeSuperAgedCount({
+    currentAgingStage(
+      demographicMetrics?.countries?.[country.iso3]?.olderPopulationShare?.[
+        context.horizonIndex
+      ],
+    );
+  const agingSocietyCount = lifetimeAgingSocietyCount({
     countries,
     yearIndex: context.horizonIndex,
     demographicMetrics,
@@ -475,10 +499,22 @@ export function buildLifetimeStoryAct({
     country,
     countryPeakYear,
   });
-  const horizonAgingCopy = superAgedSocietiesSentence({
+  const projectedCountryPeakYear = countryPopulationPeakYearBetween({
+    country,
+    years,
+    startYear: context.presentYear,
+    endYear: years[years.length - 1],
+    includeStart: false,
+    getPopulationSeries,
+  });
+  const projectedCountryPeakCopy =
+    projectedCountryPeakYear != null
+      ? ` ${country.name} is projected to reach its population peak in ${projectedCountryPeakYear}.`
+      : "";
+  const horizonAgingCopy = agingSocietiesSentence({
     countryName: country.name,
-    selectedCountryIsSuperAged: selectedSuperAged,
-    count: agedCount,
+    selectedCountryIsAging: !!selectedAgingStage,
+    count: agingSocietyCount,
   });
   const finalClusterCopy = legacyClusterSentence({
     silverDeclineCount,
@@ -486,7 +522,7 @@ export function buildLifetimeStoryAct({
   });
   const globalLifeChangeCopy =
     Number.isFinite(globalLifeAtBirth) && Number.isFinite(globalLifeAtFinal)
-      ? ` Global life expectancy at birth has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)} since ${birthYear}, the year you were born.`
+      ? ` Since your birth in ${birthYear}, global life expectancy has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)}.`
       : "";
   const globalLifeExpectancy = {
     title: "Global life expectancy",
@@ -553,14 +589,14 @@ export function buildLifetimeStoryAct({
     },
     {
       year: context.finalYear,
-      text: `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.${globalLifeChangeCopy} ${horizonAgingCopy}`,
+      text: `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.${globalLifeChangeCopy}${projectedCountryPeakCopy} ${horizonAgingCopy}`,
       globalLifeExpectancy,
       stats: [
         { value: String(finalAge ?? "—"), label: "Your age then" },
         { value: formatPopulation(finalPop), label: "World population" },
         {
-          value: agedCount != null ? String(agedCount) : "—",
-          label: "Super-aged societies",
+          value: agingSocietyCount != null ? String(agingSocietyCount) : "—",
+          label: "Aging societies",
         },
         {
           value:

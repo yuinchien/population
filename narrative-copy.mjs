@@ -137,6 +137,21 @@ export function superAgedSocietiesSentence({
   return "Many countries will be adjusting to older age structures.";
 }
 
+export function agingSocietiesSentence({
+  countryName,
+  selectedCountryIsAging,
+  count,
+}) {
+  const unit = count === 1 ? "nation" : "nations";
+  if (selectedCountryIsAging && count != null) {
+    return `${countryName} will be among ${count} ${unit} classified as aging societies, navigating the needs of a rapidly aging population.`;
+  }
+  if (count != null) {
+    return `${count} ${unit} will be classified as aging societies, navigating the needs of a rapidly aging population.`;
+  }
+  return "Many countries will be adjusting to older age structures.";
+}
+
 export function legacyClusterSentence({ silverDeclineCount, growthCount }) {
   if (silverDeclineCount == null || growthCount == null) return "";
   return ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies`;
