@@ -71,6 +71,7 @@ export function getAppElements(root = document) {
     lifetimeClose: root.querySelector("#lifetimeClose"),
     lifetimeForm: root.querySelector("#lifetimeForm"),
     lifetimeBirthYear: root.querySelector("#lifetimeBirthYear"),
+    lifetimeBirthYearError: root.querySelector("#lifetimeBirthYearError"),
     lifetimeCountry: root.querySelector("#lifetimeCountry"),
     lifetimeCountrySuggestions: root.querySelector("#lifetimeCountrySuggestions"),
     lifetimeStory: root.querySelector("#lifetimeStory"),

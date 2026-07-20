@@ -73,6 +73,45 @@ export function createLifetimeController({
     return lifetimePresentYear(years());
   }
 
+  function birthYearBounds() {
+    const availableYears = years();
+    const min = availableYears[0] ?? 1950;
+    return {
+      min,
+      max: presentYear() ?? availableYears.at(-1) ?? min,
+    };
+  }
+
+  function birthYearErrorMessage(value) {
+    const rawValue = String(value ?? "").trim();
+    if (!rawValue) return "";
+    const year = Number(rawValue);
+    const { min, max } = birthYearBounds();
+    if (
+      !Number.isInteger(year) ||
+      !years().includes(year) ||
+      year < min ||
+      year > max
+    ) {
+      return `Enter a birth year from ${min} to ${max}.`;
+    }
+    return "";
+  }
+
+  function updateBirthYearError() {
+    const message = birthYearErrorMessage(elements.lifetimeBirthYear?.value);
+    if (elements.lifetimeBirthYear) {
+      elements.lifetimeBirthYear.setAttribute(
+        "aria-invalid",
+        message ? "true" : "false",
+      );
+    }
+    if (elements.lifetimeBirthYearError) {
+      elements.lifetimeBirthYearError.textContent = message;
+      elements.lifetimeBirthYearError.hidden = !message;
+    }
+  }
+
   function selectedCountry() {
     return countryIso
       ? countries().find((country) => country.iso3 === countryIso)
@@ -555,6 +594,7 @@ function createGlobalLifeExpectancyChart(change) {
     if (country && document.activeElement !== elements.lifetimeCountry) {
       elements.lifetimeCountry.value = country.name;
     }
+    updateBirthYearError();
     const ready =
       Number.isFinite(birthYear) && birthYear <= presentYear() && !!country;
     elements.lifetimeButtonBegin.disabled = !ready;
@@ -571,6 +611,7 @@ function createGlobalLifeExpectancyChart(change) {
     const country = selectedCountry();
     if (!Number.isFinite(birthYear) || !country) {
       actIndex = -1;
+      updateBirthYearError();
       render();
       syncUrl();
       return;
@@ -755,7 +796,9 @@ function createGlobalLifeExpectancyChart(change) {
   }
 
   function setBirthYearMax() {
-    elements.lifetimeBirthYear.max = String(presentYear());
+    const { min, max } = birthYearBounds();
+    elements.lifetimeBirthYear.min = String(min);
+    elements.lifetimeBirthYear.max = String(max);
   }
 
   return {

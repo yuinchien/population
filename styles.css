@@ -1680,6 +1680,7 @@ select::picker(select) {
     overflow: hidden;
     display: flex;
     justify-content: center;
+    padding: 0 var(--margin);
 }
 
 .lifetime-view > .detail-close {
@@ -1767,6 +1768,13 @@ button.lg .material-symbols-outlined {
     font-size: 1.8rem;
 }
 
+.lifetime-birth-year-field {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+
 .lifetime-input {
     font: var(--font-sans);
     color: var(--color-yellow);
@@ -1780,6 +1788,25 @@ button.lg .material-symbols-outlined {
     outline: none;
     border-bottom-color: var(--color-yellow);
 }
+
+/*.lifetime-input[aria-invalid="true"] {
+    border-bottom-color: var(--color-orange);
+}*/
+
+.lifetime-input-error {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: min(320px, 80vw);
+    /*color: var(--color-orange);*/
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    line-height: 1.2;
+    text-align: center;
+}
+
 #lifetimeBirthYear {
     width: 280px;
 }

@@ -155,17 +155,26 @@
                 </h1>
                 <p class="intro-text">The world’s population has shifted dramatically since 1950, and it will change even faster by 2100. Enter your birth year and country to trace your personal timeline against the rise, peak, and future of humanity.</p>
                 <form id="lifetimeForm" class="lifetime-form" autocomplete="off">
-                    <input
-                        id="lifetimeBirthYear"
-                        class="lifetime-input"
-                        type="number"
-                        min="1950"
-                        max="2100"
-                        step="1"
-                        inputmode="numeric"
-                        placeholder="Birth Year"
-                        aria-label="Birth year"
-                    />
+                    <span class="lifetime-birth-year-field">
+                        <input
+                            id="lifetimeBirthYear"
+                            class="lifetime-input"
+                            type="number"
+                            min="1950"
+                            max="2100"
+                            step="1"
+                            inputmode="numeric"
+                            placeholder="Birth Year"
+                            aria-label="Birth year"
+                            aria-describedby="lifetimeBirthYearError"
+                        />
+                        <span
+                            id="lifetimeBirthYearError"
+                            class="lifetime-input-error"
+                            role="status"
+                            hidden
+                        ></span>
+                    </span>
                     <span class="lifetime-country-picker">
                         <input
                             id="lifetimeCountry"
@@ -187,7 +196,7 @@
                 </form>
 
                 <div id="lifetimeStory" class="lifetime-story" hidden>
-                    <div id="lifetimeAbout" class="lifetime-about"></div>
+                    <div id="lifetimeAbout" class="lifetime-about no-scrollbar"></div>
                     <div id="lifetimeJourney" class="lifetime-journey"></div>
                 </div>
 
