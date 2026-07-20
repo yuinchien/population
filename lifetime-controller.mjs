@@ -280,14 +280,14 @@ export function createLifetimeController({
 function createPopulationChangeChart(change) {
     const chart = document.createElement("div");
     chart.className = "lifetime-population-change";
-    chart.style.setProperty(
-      "--lifetime-birth-share",
-      percentFromShare(change?.birthShare, 0.5),
-    );
+    // One source of truth for the birth/added split: the CSS var (used to
+    // place the birth tick) and the birth segment width must never drift.
+    const birthWidth = percentFromShare(change?.birthShare, 0.5);
+    chart.style.setProperty("--lifetime-birth-share", birthWidth);
 
     const birthSegment = document.createElement("div");
     birthSegment.className = "lifetime-population-segment birth";
-    birthSegment.style.width = percentFromShare(change?.birthShare, 0.5);
+    birthSegment.style.width = birthWidth;
 
     const birthValue = document.createElement("span");
     birthValue.className = "lifetime-population-value";

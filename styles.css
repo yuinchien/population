@@ -1919,7 +1919,7 @@ button.lg .material-symbols-outlined {
     /* Floor on the "added" segment so its label never overflows when the
        share is tiny; the birth tick's position keys off the same value so it
        stays glued to the segment boundary. */
-    --lifetime-added-min: 64px;
+    --lifetime-added-min: 84px;
     width: min(100%, 1080px);
     justify-self: center;
     color: var(--color-yellow);
