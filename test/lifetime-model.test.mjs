@@ -340,15 +340,11 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
   assert.match(
     arrivalAct.text,
-    /In Testland,\s+the nation was officially an aging society,/,
+    /In Testland, the average life expectancy at birth was 80 yrs\./,
   );
   assert.match(
     arrivalAct.text,
-    /the youth dependency ratio was high at 82\.4 children per 100 working-age adults,/,
-  );
-  assert.match(
-    arrivalAct.text,
-    /the average life expectancy at birth was 80 yrs\./,
+    /By then it had officially become an aging society and youth dependency was high at 82\.4 children per 100 working-age adults\./,
   );
 });
 
@@ -580,7 +576,10 @@ test("arrival copy names the country population peak when it predates the birth 
     formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
     formatLifeExpectancy: (value) => `${value} yrs`,
   });
-  assert.match(act.text, /the population had already peaked in 2010/);
+  assert.match(
+    act.text,
+    /By then its population had already peaked in 2010 and it had officially become an aged society\./,
+  );
 });
 
 test("arrival copy omits the population peak when it does not predate birth", () => {
