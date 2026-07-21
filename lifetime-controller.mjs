@@ -476,7 +476,7 @@ export function createLifetimeController({
     if (!Number.isFinite(birthYear) || !country?.name) {
       return "Your Lifespan.";
     }
-    return `Born ${birthYear} in ${country.name}.`;
+    return `Born ${birthYear} in ${country.name}`;
   }
 
   function buildStory(country) {
