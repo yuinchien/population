@@ -23,7 +23,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
-const COUNTRY_CHART_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
+const COUNTRY_CHART_PADDING = { top: 28, right: 0, bottom: 18, left: 0 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -421,7 +421,7 @@ export function createCountryDetailController({
       const peakLabel = svgEl("text", {
         class: "country-chart-peak-label",
         x: px,
-        y: axisY,
+        y: axisY + 4,
         "text-anchor": peakTextAnchor,
       });
       peakLabel.textContent = "PEAK";
@@ -435,14 +435,14 @@ export function createCountryDetailController({
     const labelFirst = svgEl("text", {
       class: "country-chart-axis-label",
       x: x0,
-      y: axisY,
+      y: axisY + 4,
       "text-anchor": "start",
     });
     labelFirst.textContent = years[0];
     const labelLast = svgEl("text", {
       class: "country-chart-axis-label",
       x: x1,
-      y: axisY,
+      y: axisY + 4,
       "text-anchor": "end",
     });
     labelLast.textContent = years[n - 1];

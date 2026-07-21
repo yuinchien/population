@@ -341,6 +341,11 @@ button.milestone-nav-btn {
     }
 }
 
+.overlay {
+    /*font-weight: 500;*/
+    transition: opacity 0.2s ease;
+}
+
 #buttonsContainer {
     display: flex;
     align-items: center;
@@ -349,9 +354,8 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    padding: var(--margin);
+    margin: var(--margin);
     z-index: var(--z-panel);
-    transition: opacity 0.2s ease;
 }
 
 .icon-button {
@@ -979,6 +983,7 @@ body.detail #detailSummary {
 }
 
 
+
 .country-chart {
     display: block;
     width: 100%;
@@ -1109,15 +1114,18 @@ body.detail #detailSummary {
    row-1 items are pinned explicitly: the summary comes first in the DOM (so it
    stacks on top on mobile), which under sparse auto-placement would otherwise
    push the wide chart card down to its own row. */
-.country-detail > .country-chart-card {
-    grid-column: 2 / span 2;
+.country-chart-card {
     grid-row: 1;
-    padding-bottom: 0;
+    flex: none;
+    grid-column: span 2;
 }
 
-.country-detail > #countrySummary {
+#countrySummary {
     grid-column: 1;
     grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 }
 
 
@@ -1422,7 +1430,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: flex-start;
-    padding: 0 340px 0 var(--margin);
+    padding: 0 280px 0 var(--margin);
     margin-top: var(--margin);
     gap: calc(var(--margin) / 2);
 }
@@ -1678,7 +1686,7 @@ select::picker(select) {
 .search-country-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 8px var(--margin);
+    gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
 }
@@ -1723,7 +1731,7 @@ select::picker(select) {
     /* Above the search-view scrim and the detail overlay so it stays the way
        back to the list even while a country detail is open on top. */
     z-index: var(--z-panel);
-    width: calc(50% - var(--margin) );
+    width: min(560px, calc(100vw - 2 * var(--margin) - 260px));
     height: var(--button-size);
 }
 
@@ -1816,6 +1824,8 @@ body.view-search:not(.detail) .timeline {
         font-size: 1.6rem;
         line-height: 1.25;
         margin: 0;
+
+        /*color: var(--color-muted);*/
     }
 }
 
@@ -2377,10 +2387,6 @@ button.lg .material-symbols-outlined {
     opacity: 1;
 }
 
-#viewMode .title {
-    display: none;
-}
-
 body.view-lifetime-started #viewMode {
     display: none;
 }
@@ -2546,7 +2552,8 @@ body.view-lifetime-started #viewMode {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 8px;
+    padding: 6px 8px;
+    height: var(--button-size);
     border-radius: 8px;
     border: none;
     background: var(--color-surface);
@@ -2611,7 +2618,7 @@ body.view-lifetime-started #viewMode {
 }
 
 .chip-input.expanded {
-    padding: 6px 40px 6px 6px; /* clears .chip-input-cancel */
+    padding-right: 40px; /* clears .chip-input-cancel */
 }
 
 .chip-input-chips {
@@ -2880,7 +2887,6 @@ body.info-open .menu-shim {
     }
     .country-sparklines {
         grid-template-columns: repeat(2, 1fr);
-        margin-top: var(--margin);
     }
 }
 
@@ -2889,15 +2895,14 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1;
         --margin: 12px;
     }
+    .header-title {
+        display: none;
+    }
     .paragraph {
         font-size: 1.2rem;
     }
     .custom-select {
         min-width: auto;
-    }
-    .search-bar {
-        width: 100%;
-        padding-right: 80px;
     }
     /* Pinned at the bottom of .chart-view (its last flex child, after
        .chart-card takes all the remaining space) — scrolls horizontally
@@ -2952,52 +2957,22 @@ body.info-open .menu-shim {
         padding-right: 0;
     }
 
-    .menu-toggle {
+    body:not(.view-chart) .menu-toggle {
         display: block;
     }
-    body.view-lifetime.view-lifetime-started .menu-toggle {
-        display: none;
-    }
-
     #buttonsContainer {
         top: 0;
         right: 0;
-        max-height: none;
-        align-items: flex-start;
     }
-    #viewMode {
-        flex-direction: column;
-        width: 100%;
-        .title {
-            display: block;
-        }
-        &.button-group button {
-            justify-content: flex-start;
-            gap: 12px;
-        }
-    }
-    #infoButton {
+    body.menu-open.view-chart #buttonsContainer {
         display: none;
     }
-    .lifetime-content {
-        h1 {
-            font-size: 2rem;
-            line-height: 1.2;
-        }
-        p {
-            font-size: 1.1rem;
-        }
-    }
-    .lifetime-form {
-        /*font-size: 1.4rem;*/
-    }
-
 
     .legend-wrapper {
         display: none;
     }
 
-    #buttonsContainer {
+    .overlay {
         position: fixed;
         z-index: var(--z-menu);
         top: 0;
@@ -3027,11 +3002,11 @@ body.info-open .menu-shim {
         flex-wrap: wrap;
     }
 
-    body.menu-open #buttonsContainer {
+    body.menu-open:not(.view-chart) #buttonsContainer {
         transform: translateX(0);
     }
 
-    body.menu-open .menu-shim {
+    body.menu-open:not(.view-chart) .menu-shim {
         display: block;
         opacity: 1;
     }

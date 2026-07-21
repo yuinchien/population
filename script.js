@@ -925,18 +925,18 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   }
   if (selectedLegend && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
-    renderDetailStatus(
-      buildDetailStatus({
-        year,
-        countries: groupCountries ?? selectedCountries(),
-        allCountries: countriesData,
-        currentYearIndex,
-        isProjected,
-        legend: selectedLegend,
-        metricFor,
-        populationFor: activePopulationAt,
-      }),
-    );
+    // renderDetailStatus(
+    //   buildDetailStatus({
+    //     year,
+    //     countries: groupCountries ?? selectedCountries(),
+    //     allCountries: countriesData,
+    //     currentYearIndex,
+    //     isProjected,
+    //     legend: selectedLegend,
+    //     metricFor,
+    //     populationFor: activePopulationAt,
+    //   }),
+    // );
     return;
   }
 
@@ -1091,7 +1091,7 @@ function renderCountrySummary(summary) {
   elements.detailSummary.hidden = true;
   elements.countrySummary.hidden = false;
   const badge = document.createElement("div");
-  badge.className = "badge";
+  badge.className = "badge sparkline-caption";
   badge.textContent = badgeLabel();
 
   if (summary.flagUrl) {
@@ -1117,15 +1117,15 @@ function renderCountrySummary(summary) {
   elements.countrySummary.replaceChildren(badge, copy);
 }
 
-function renderDetailStatus(status) {
-  elements.detailSummary.hidden = false;
-  elements.detailFlag.hidden = true;
-  elements.detailFlag.style.backgroundImage = "";
-  const badge = document.createElement("span");
-  badge.className = "badge";
-  badge.textContent = badgeLabel();
-  elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
-}
+// function renderDetailStatus(status) {
+//   elements.detailSummary.hidden = false;
+//   elements.detailFlag.hidden = true;
+//   elements.detailFlag.style.backgroundImage = "";
+//   const badge = document.createElement("span");
+//   badge.className = "badge ";
+//   badge.textContent = badgeLabel();
+//   elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
+// }
 
 function applyYear(year, { instant = false } = {}) {
   const yearIndex = yearsData.indexOf(year);
