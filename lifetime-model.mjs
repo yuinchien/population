@@ -8,11 +8,7 @@ import {
   ageBandStart,
   interpolateAgeStructure,
 } from "./country-pyramid.mjs";
-import {
-  agingSocietiesSentence,
-  legacyClusterSentence,
-  lifespanProjectionSentence,
-} from "./narrative-copy.mjs";
+import { agingSocietiesSentence } from "./narrative-copy.mjs";
 import { displayGroupLabel } from "./status-insights.mjs";
 
 // Pure helpers for the Lifetime view — no DOM, no data fetching — so the
@@ -123,12 +119,6 @@ function countryValue(country, demographicMetrics, key, index, getPopulationSeri
   return countrySeries(country, demographicMetrics, key, getPopulationSeries)[
     index
   ] ?? null;
-}
-
-function globalPopulationRows(years, globalMetricsByYear) {
-  return years
-    .map((year) => ({ year, value: globalMetricsByYear?.get(year)?.population }))
-    .filter((row) => Number.isFinite(row.value));
 }
 
 function globalLifeExpectancyRows(years, globalMetricsByYear, extraYears = []) {
@@ -268,13 +258,6 @@ function lifetimeAgingStageCount({
       ];
     return count + (currentAgingStage(share)?.key === stage.key ? 1 : 0);
   }, 0);
-}
-
-function firstPopulationMilestoneAfter(rows, year, endYear) {
-  return populationMilestones(rows).find(
-    (milestone) =>
-      milestone.year > year && (endYear == null || milestone.year <= endYear),
-  );
 }
 
 export function countryPopulationPeakYearBetween({
@@ -418,14 +401,6 @@ export function lifetimeStoryContext({
       ? maxYear
       : Math.min(Math.max(lifespanEnd, presentYear, birthYear), maxYear);
   const finalIndex = yearIndex(years, finalYear);
-  const populationRows = globalPopulationRows(years, globalMetricsByYear);
-  const horizonMilestone = firstPopulationMilestoneAfter(
-    populationRows,
-    presentYear,
-    finalYear,
-  );
-  const horizonYear = horizonMilestone?.year ?? finalYear;
-  const horizonIndex = yearIndex(years, horizonYear);
   return {
     birthIndex,
     presentYear,
@@ -434,10 +409,6 @@ export function lifetimeStoryContext({
     lifespanEnd,
     finalYear,
     finalIndex,
-    horizonMilestone,
-    horizonYear,
-    horizonIndex,
-    populationRows,
   };
 }
 
@@ -558,7 +529,6 @@ export function buildLifetimeStory({
 
   const presentAge = ageAt(birthYear, context.presentYear);
   const finalAge = ageAt(birthYear, context.finalYear);
-  const horizonAge = ageAt(birthYear, context.horizonYear);
   const addedSinceBirth =
     Number.isFinite(birthPop) && Number.isFinite(presentPop)
       ? presentPop - birthPop
@@ -610,11 +580,6 @@ export function buildLifetimeStory({
     demographicMetrics,
     getPopulationSeries,
   });
-  const lifespanCopy = lifespanProjectionSentence({
-    lifespanEnd: context.lifespanEnd,
-    presentYear: context.presentYear,
-    finalYear: context.finalYear,
-  });
   const countryPeakYear = countryPopulationPeakYearBetween({
     country,
     years,
@@ -645,10 +610,6 @@ export function buildLifetimeStory({
     year: context.finalYear,
     olderShare: selectedOlderShareAtHorizon,
     count: selectedAgingStage ? selectedAgingStageCount : agingSocietyCount,
-  });
-  const finalClusterCopy = legacyClusterSentence({
-    silverDeclineCount,
-    growthCount,
   });
   const trajectoryCopy = countryTrajectorySummary(countryTrajectory, country);
   const globalLifeChangeCopy =
