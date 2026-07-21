@@ -1089,9 +1089,18 @@ function renderCountrySummary(summary) {
   // full-width #detailSummary banner — so hide that one here.
   elements.detailSummary.hidden = true;
   elements.countrySummary.hidden = false;
-  const badge = document.createElement("div");
-  badge.className = "badge sparkline-caption";
-  badge.textContent = badgeLabel();
+  // Same .sparkline-caption label/value pattern the other cards use (e.g.
+  // the Population card's "Population" / "115.1M"), so this card's caption
+  // reads as one of the set rather than a one-off badge.
+  const caption = document.createElement("div");
+  caption.className = "sparkline-caption";
+  const label = document.createElement("div");
+  label.className = "sparkline-label";
+  label.textContent = "Summary";
+  const value = document.createElement("div");
+  value.className = "sparkline-value";
+  value.textContent = badgeLabel();
+  caption.append(label, value);
 
   if (summary.flagUrl) {
     elements.detailFlag.style.backgroundImage = `url(${summary.flagUrl})`;
@@ -1113,7 +1122,7 @@ function renderCountrySummary(summary) {
     span.textContent = segment.text;
     copy.append(span);
   });
-  elements.countrySummary.replaceChildren(badge, copy);
+  elements.countrySummary.replaceChildren(caption, copy);
 }
 
 // function renderDetailStatus(status) {
