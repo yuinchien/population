@@ -163,19 +163,7 @@ canvas.hovering-dot {
     line-height: 1.4;
 }
 
-.overlay {
-    font-weight: 500;
-    transition: opacity 0.2s ease;
-}
 
-#overlayMain {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    padding: var(--margin);
-}
 
 body.view-cluster #overlayMain {
     z-index: var(--z-panel);
@@ -353,7 +341,6 @@ button.milestone-nav-btn {
     }
 }
 
-
 #buttonsContainer {
     display: flex;
     align-items: center;
@@ -362,16 +349,9 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    margin: var(--margin);
-    /* Leaves room for #themeToggle, which sits at the same right edge and
-       needs to stay visible (and clickable) regardless of view/detail
-       state — unlike this group, it isn't hidden by .hide-for-detail /
-       .hide-for-chart. */
-    /*margin-right: calc(var(--margin) + var(--button-size) + 8px);*/
-    /* --z-panel, above --z-dock's .chart-view — otherwise the chart panel,
-       which needs to cover the canvas the same way the detail panel does,
-       covers this toggle too and there'd be no way back to Globe/Map. */
+    padding: var(--margin);
     z-index: var(--z-panel);
+    transition: opacity 0.2s ease;
 }
 
 .icon-button {
@@ -390,6 +370,9 @@ button.milestone-nav-btn {
 
 .icon-button .material-symbols-outlined {
     font-size: 24px;
+}
+#infoButton {
+    background: var(--color-bg);
 }
 
 .slider-container {
@@ -2071,7 +2054,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-population-segment.birth {
-    color: var(--color-background);
+    /*color: var(--color-background);*/
     background: color-mix(in srgb, var(--color-yellow) 50%, transparent);
 }
 
@@ -2327,7 +2310,7 @@ button.lg .material-symbols-outlined {
     grid-template-columns: minmax(160px, 1fr) auto;
     align-items: center;
     gap: 16px;
-    color: var(--color-background);
+    /*color: var(--color-background);*/
     background: var(--color-muted);
     border-radius: 999px;
     padding: 8px 16px;
@@ -2397,6 +2380,10 @@ button.lg .material-symbols-outlined {
 .lifetime-progress-dot.active {
     background: var(--color-text);
     opacity: 1;
+}
+
+#viewMode .title {
+    display: none;
 }
 
 body.view-lifetime-started #viewMode {
@@ -2804,11 +2791,20 @@ body.detail #calloutLayer {
     outline-offset: 2px;
 }
 
+.legend-wrapper {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    padding: var(--margin);
+}
+
 .menu-toggle {
     display: none;
     position: fixed;
     top: var(--margin);
-    left: var(--margin);
+    right: var(--margin);
     z-index: var(--z-menu);
     width: var(--button-size);
     height: var(--button-size);
@@ -2960,26 +2956,46 @@ body.info-open .menu-shim {
         padding-right: 0;
     }
 
-    body:not(.view-chart) .menu-toggle {
+    .menu-toggle {
         display: block;
     }
     #buttonsContainer {
         top: 0;
         right: 0;
+        max-height: none;
+        align-items: flex-start;
     }
-    body.menu-open.view-chart #buttonsContainer {
+    #viewMode {
+        flex-direction: column;
+        width: 100%;
+        .title {
+            display: block;
+        }
+        &.button-group button {
+            justify-content: flex-start;
+            gap: 12px;
+        }
+    }
+    #infoButton {
+        display: none;
+    }
+    /*body.menu-open.view-chart #buttonsContainer {
+        display: none;
+    }*/
+
+    .legend-wrapper {
         display: none;
     }
 
-    .overlay {
+    #buttonsContainer {
         position: fixed;
         z-index: var(--z-menu);
         top: 0;
         bottom: 0;
-        left: 0;
+        right: 0;
         width: var(--overlay-width);
         padding: var(--margin);
-        transform: translateX(-120%);
+        transform: translateX(120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
 
         background: var(--color-scrim-strong);
@@ -3001,7 +3017,7 @@ body.info-open .menu-shim {
         flex-wrap: wrap;
     }
 
-    body.menu-open:not(.view-chart) #overlayMain {
+    body.menu-open:not(.view-chart) #buttonsContainer {
         transform: translateX(0);
     }
 

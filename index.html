@@ -65,6 +65,10 @@
             <span class="menu-toggle-icon"></span>
         </button>
         <div id="menuShim" class="menu-shim"></div>
+
+        <!--<div id="overlayMain" class="overlay">
+        </div>-->
+
         <div id="buttonsContainer" class="hide-for-detail">
             <button
                 id="infoButton"
@@ -89,6 +93,7 @@
                     <span class="material-symbols-outlined">
                         Search
                     </span>
+                    <span class="title">Search</span>
                 </button>
                 <button
                     type="button"
@@ -99,6 +104,7 @@
                     <span class="material-symbols-outlined">
                         accessibility_new
                     </span>
+                    <span class="title">Lifetime</span>
                 </button>
 
                 <button
@@ -110,6 +116,7 @@
                     <span class="material-symbols-outlined">
                     show_chart
                     </span>
+                    <span class="title">Charts</span>
                 </button>
                 <button
                     type="button"
@@ -120,6 +127,7 @@
                     <span class="material-symbols-outlined">
                     bubble_chart
                     </span>
+                    <span class="title">Cluster</span>
                 </button>
                 <button
                     type="button"
@@ -131,6 +139,7 @@
                     <span class="material-symbols-outlined">
                     globe
                     </span>
+                    <span class="title">Globe</span>
                 </button>
                 <button
                     type="button"
@@ -141,6 +150,7 @@
                     <span class="material-symbols-outlined">
                         map
                     </span>
+                    <span class="title">Map</span>
                 </button>
             </div>
         </div>
@@ -305,29 +315,27 @@
             <p id="status" class="paragraph">Loading population data…</p>
         </div>
 
-        <div id="overlayMain" class="overlay">
-            <div class="legend-wrapper">
-                <div id="colorMode" class="tab-group" hidden>
-                    <button
-                        type="button"
-                        data-mode="region"
-                        class="active"
-                        aria-label="region"
-                        title="Region"
-                    >
-                        Region
-                    </button>
-                    <button
-                        type="button"
-                        data-mode="income"
-                        aria-label="Income group"
-                        title="Income group"
-                    >
-                        Income group
-                    </button>
-                </div>
-                <div id="legend"></div>
+        <div class="legend-wrapper">
+            <div id="colorMode" class="tab-group" hidden>
+                <button
+                    type="button"
+                    data-mode="region"
+                    class="active"
+                    aria-label="region"
+                    title="Region"
+                >
+                    Region
+                </button>
+                <button
+                    type="button"
+                    data-mode="income"
+                    aria-label="Income group"
+                    title="Income group"
+                >
+                    Income group
+                </button>
             </div>
+            <div id="legend"></div>
         </div>
 
         <div class="milestone-progress">
