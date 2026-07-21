@@ -165,10 +165,10 @@ canvas.hovering-dot {
 
 
 
-body.view-cluster #overlayMain {
+/*body.view-cluster #overlayMain {
     z-index: var(--z-panel);
     pointer-events: auto;
-}
+}*/
 
 .footer {
     flex: 1;
@@ -341,10 +341,9 @@ button.milestone-nav-btn {
     }
 }
 
-.overlay {
-    /*font-weight: 500;*/
+/*.overlay {
     transition: opacity 0.2s ease;
-}
+}*/
 
 #buttonsContainer {
     display: flex;
@@ -354,8 +353,10 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    margin: var(--margin);
+    padding: var(--margin);
     z-index: var(--z-panel);
+    transition: opacity 0.2s ease;
+    max-height: none;
 }
 
 .icon-button {
@@ -2391,6 +2392,10 @@ body.view-lifetime-started #viewMode {
     display: none;
 }
 
+#viewMode .title {
+    display: none;
+}
+
 @media (max-width: 800px) {
     .lifetime-story-section {
         grid-template-columns: 1fr;
@@ -2895,9 +2900,12 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1;
         --margin: 12px;
     }
-    .header-title {
+    #infoButton {
         display: none;
     }
+    /*.header-title {
+        display: none;
+    }*/
     .paragraph {
         font-size: 1.2rem;
     }
@@ -2957,22 +2965,18 @@ body.info-open .menu-shim {
         padding-right: 0;
     }
 
-    body:not(.view-chart) .menu-toggle {
+    .menu-toggle {
         display: block;
     }
-    #buttonsContainer {
-        top: 0;
-        right: 0;
-    }
-    body.menu-open.view-chart #buttonsContainer {
+    /*body.menu-open.view-chart #buttonsContainer {
         display: none;
-    }
+    }*/
 
     .legend-wrapper {
         display: none;
     }
 
-    .overlay {
+    #buttonsContainer {
         position: fixed;
         z-index: var(--z-menu);
         top: 0;
@@ -2982,10 +2986,21 @@ body.info-open .menu-shim {
         padding: var(--margin);
         transform: translateX(120%);
         box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
-
         background: var(--color-scrim-strong);
         -webkit-backdrop-filter: blur(16px);
         backdrop-filter: blur(16px);
+        display: block;
+    }
+
+    #viewMode {
+        flex-direction: column;
+        .title {
+            display: block;
+        }
+        button {
+            justify-content: flex-start;
+            gap: 12px;
+        }
     }
 
     .detail-panel {
@@ -3002,11 +3017,11 @@ body.info-open .menu-shim {
         flex-wrap: wrap;
     }
 
-    body.menu-open:not(.view-chart) #buttonsContainer {
+    body.menu-open #buttonsContainer {
         transform: translateX(0);
     }
 
-    body.menu-open:not(.view-chart) .menu-shim {
+    body.menu-open .menu-shim {
         display: block;
         opacity: 1;
     }
