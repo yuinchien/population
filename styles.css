@@ -975,13 +975,18 @@ body.country-detail #colorMode {
     }
 }
 
+#countrySummary,
+.country-chart-card {
+    margin-bottom: var(--margin);
+}
+
 .country-detail {
     min-height: 0;
     overflow: auto;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     align-content: start;
-    gap: var(--margin);
+    gap: 0 var(--margin);
 }
 
 .detail-table-container {
@@ -1270,7 +1275,6 @@ body.country-detail #colorMode {
     min-width: 0;
     /*border-radius: 8px;*/
     border-top: var(--border);
-    padding: 12px 0;
     /*padding: 12px;*/
     background: var(--color-lighten);
 }
@@ -1280,7 +1284,7 @@ body.country-detail #colorMode {
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    margin-bottom: 12px;
+    margin: 12px 0;
 }
 
 .sparkline-label {
