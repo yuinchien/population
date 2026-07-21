@@ -103,8 +103,11 @@ export function renderSortableTable({
   rowsEl.onclick = (event) => {
     const row = event.target.closest("[data-row-index]");
     if (!row || !rowsEl.contains(row)) return;
-    const detailRow = sorted[Number(row.dataset.rowIndex)];
-    if (detailRow) onRowClick(detailRow);
+    // `sorted` holds plain countries (not the {country, ratio, cells} rows
+    // built above) — named distinctly from that wrapper to avoid confusing
+    // the two.
+    const country = sorted[Number(row.dataset.rowIndex)];
+    if (country) onRowClick(country);
   };
   rowsEl.replaceChildren(...rows);
 }

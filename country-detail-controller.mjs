@@ -435,29 +435,6 @@ export function createCountryDetailController({
       svg.append(peakLabel);
     }
 
-    const [x0] = xyFor(0, 0);
-    const [x1] = xyFor(n - 1, 0);
-    // const labelFirst = svgEl("text", {
-    //   class: "country-chart-axis-label",
-    //   x: x0,
-    //   y: axisY + 4,
-    //   "text-anchor": "start",
-    // });
-    // labelFirst.textContent = years[0];
-    // const labelLast = svgEl("text", {
-    //   class: "country-chart-axis-label",
-    //   x: x1,
-    //   y: axisY + 4,
-    //   "text-anchor": "end",
-    // });
-    // labelLast.textContent = years[n - 1];
-    // if (animate) {
-    //   labelFirst.style.opacity = "0";
-    //   labelLast.style.opacity = "0";
-    // }
-    // revealElements.push(labelFirst, labelLast);
-    // svg.append(labelFirst, labelLast);
-
     const markerDot = svgEl("circle", {
       id: "countryChartMarkerDot",
       class: "country-chart-marker-dot",
