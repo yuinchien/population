@@ -41,6 +41,8 @@
 
     --shadow: 0 0 2px rgba(0,0,0,.4);
 
+    --curve: cubic-bezier(0.2, 0.0, 0, 1.0);
+
     /* A single documented stacking order instead of hand-picked numbers
        scattered through the file — each tier's comment says what it needs
        to sit above/below, so a new fixed-position element can be slotted
@@ -1685,12 +1687,26 @@ select::picker(select) {
     padding: calc(var(--margin)*2 + 40px) var(--margin) var(--margin);
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px); /* Adjust distance for more/less slide */
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
 .search-country-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
 }
 
 .search-country-item {
@@ -1707,6 +1723,9 @@ select::picker(select) {
     font-weight: 500;
     text-align: left;
     cursor: pointer;
+
+      /* Calculate delay based on index variable */
+    /*animation-delay: calc(var(--i) * 22ms);*/
 }
 
 .search-country-item:hover,
@@ -1736,6 +1755,7 @@ select::picker(select) {
     width: calc(100vw - var(--margin) - 338px);
     height: var(--button-size);
 }
+
 
 .search-chip-input {
     max-width: none;
@@ -1814,6 +1834,9 @@ body.view-search:not(.detail) .timeline {
     gap: 16px;
     letter-spacing: 0;
     padding-bottom: 40px;
+
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
 
     h1 {
         font-family: var(--font-serif);
@@ -2913,6 +2936,7 @@ body.info-open .menu-shim {
     .custom-select {
         min-width: auto;
     }
+
     /* Pinned at the bottom of .chart-view (its last flex child, after
        .chart-card takes all the remaining space) — scrolls horizontally
        instead of wrapping, since wrapping to multiple rows on a narrow

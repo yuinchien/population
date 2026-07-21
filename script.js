@@ -2658,10 +2658,11 @@ function setSearchActive(active) {
 function renderSearchCountryGrid() {
   const items = [...countriesData]
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((country) => {
+    .map((country, index) => {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "search-country-item";
+      item.style.setProperty('--i', index);
       item.dataset.iso3 = country.iso3;
       const flag = document.createElement("span");
       flag.className = "search-country-item-flag";
