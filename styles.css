@@ -529,7 +529,7 @@ body.country-detail #colorMode {
     display: flex;
     flex-direction: column;
     margin-top: 12px;
-    pointer-events: none;
+    /*pointer-events: none;*/
 }
 .legend-item {
     display: flex;
@@ -883,25 +883,13 @@ body.country-detail #colorMode {
     white-space: nowrap;
 }
 
-
-
 .detail-summary {
     color: var(--color-text);
-    /*max-width: 920px;*/
-    /* A grid item's default min-width is auto (its content's min-content
-       size), not 0 — without this, the summary paragraph refuses to wrap
-       narrower than that even when its actual grid track (e.g. the chart
-       view's half-width table column) has less room than that, and
-       overflows visibly into whatever sits next to it instead of wrapping
-       to fit. */
+    max-width: 960px;
     min-width: 0;
-    /*font-family: var(--font-sans);*/
-    /*letter-spacing: 0em;*/
-    /*margin: -8px 0 var(--margin) 0;*/
 
     .badge {
         display: table;
-        /*font-family: var(--font-sans);*/
         font-size: 1rem;
         font-weight: 500;
         background: var(--detail-color);
@@ -936,6 +924,10 @@ body.country-detail #colorMode {
         height: 3px;
         background-color: var(--detail-color);
     }
+}
+
+body.detail #detailSummary {
+    display: none;
 }
 
 #chartInsightCaption {
@@ -1782,30 +1774,12 @@ select::picker(select) {
     display: none;
 }
 
-/* In search view the button dock and search bar stay pinned even while a
-   country detail overlay is open on top (the chip's X is the way back). */
-body.view-search.detail .hide-for-detail {
-    opacity: 1;
-    pointer-events: auto;
-    max-height: 300px;
-}
-
-/* The detail panel shares --z-panel and comes later in the DOM, so it would
-   paint over the pinned bar/dock — lift them above it (and above the mobile
-   detail panel's own over-menu bump). */
-body.view-search.detail #searchBar,
-body.view-search.detail #buttonsContainer {
-    z-index: calc(var(--z-panel-over-menu) + 1);
-}
-
-/* The search chip stands in for the detail panel's own flag + title header,
-   so that header is dropped and the content clears the pinned search bar. */
-body.view-search .detail-panel-header {
+/* Picking a country from the search list opens the normal country-detail
+   panel — with its own .detail-panel-header and close button — so the search
+   bar steps out of the way rather than staying pinned over it. Closing that
+   panel returns to the list. */
+body.view-search.detail #searchBar {
     display: none;
-}
-
-body.view-search .detail-panel {
-    padding-top: calc(var(--margin)*2 + var(--button-size));
 }
 
 /* The bare country list is year-agnostic, so the timeline just clutters it —

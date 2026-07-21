@@ -1522,10 +1522,7 @@ function setDetailSort(key) {
 function updateViewModeAvailability() {
   const isOpen = !elements.detailPanel.hidden;
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
-    // A country detail opened from Search keeps the dock live so you can
-    // switch views straight from it; every other entry point still locks the
-    // toggle while the panel is open (see the comment above).
-    btn.disabled = isOpen && !searchActive;
+    btn.disabled = isOpen;
   });
   document.body.classList.toggle("detail", isOpen);
   document.body.classList.toggle(
