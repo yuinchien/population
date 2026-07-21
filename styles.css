@@ -886,7 +886,7 @@ body.country-detail #colorMode {
 
 .detail-summary {
     color: var(--color-text);
-    max-width: 920px;
+    /*max-width: 920px;*/
     /* A grid item's default min-width is auto (its content's min-content
        size), not 0 — without this, the summary paragraph refuses to wrap
        narrower than that even when its actual grid track (e.g. the chart
@@ -894,9 +894,9 @@ body.country-detail #colorMode {
        overflows visibly into whatever sits next to it instead of wrapping
        to fit. */
     min-width: 0;
-    font-family: var(--font-sans);
-    letter-spacing: 0em;
-    margin: -8px 0 var(--margin) 0;
+    /*font-family: var(--font-sans);*/
+    /*letter-spacing: 0em;*/
+    /*margin: -8px 0 var(--margin) 0;*/
 
     .badge {
         display: table;
@@ -1096,6 +1096,10 @@ body.country-detail #colorMode {
     grid-column: span 1;
     grid-template-rows: auto 1fr;
     min-height: 220px;
+}
+
+#countryPyramidCard[hidden] {
+    display: none;
 }
 
 .country-pyramid-card {
@@ -1668,6 +1672,133 @@ select::picker(select) {
     z-index: var(--z-dock);
     background: var(--color-scrim-strong);
     overflow: hidden;
+}
+
+/* --- Search view: full country list + single-select search bar -------- */
+
+.search-view {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-dock);
+    background: var(--color-scrim-strong);
+    overflow-y: auto;
+    /* Top padding clears the fixed search bar (left) and button dock (right). */
+    padding: calc(var(--margin) + 72px) var(--margin) var(--margin);
+}
+
+.search-country-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 2px 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.search-country-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+.search-country-item:hover,
+.search-country-item:focus-visible {
+    background: var(--color-surface);
+    outline: none;
+}
+
+.search-country-item-flag {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.search-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: var(--margin);
+    /* Above the search-view scrim and the detail overlay so it stays the way
+       back to the list even while a country detail is open on top. */
+    z-index: var(--z-panel);
+    width: min(560px, calc(100vw - 2 * var(--margin) - 260px));
+    height: var(--button-size);
+}
+
+.search-chip-input {
+    max-width: none;
+    flex-wrap: nowrap;
+    padding: 10px 16px;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.search-bar-icon {
+    flex: none;
+    font-size: var(--icon-size);
+    color: var(--color-muted);
+}
+
+/* The chart picker tints chips by series color; the search bar has no series,
+   so its chip reads as a plain surface pill instead. */
+.search-chip-input .chip {
+    background: var(--color-surface-raised);
+    color: var(--color-text);
+}
+
+/* Once a country is picked, the chip is the whole bar — the input steps aside
+   until the chip is removed. */
+.search-chip-input.has-selection .chip-input-field {
+    display: none;
+}
+
+/* In search view the button dock and search bar stay pinned even while a
+   country detail overlay is open on top (the chip's X is the way back). */
+body.view-search.detail .hide-for-detail {
+    opacity: 1;
+    pointer-events: auto;
+    max-height: 300px;
+}
+
+/* The detail panel shares --z-panel and comes later in the DOM, so it would
+   paint over the pinned bar/dock — lift them above it (and above the mobile
+   detail panel's own over-menu bump). */
+body.view-search.detail #searchBar,
+body.view-search.detail #buttonsContainer {
+    z-index: calc(var(--z-panel-over-menu) + 1);
+}
+
+/* The search chip stands in for the detail panel's own flag + title header,
+   so that header is dropped and the content clears the pinned search bar. */
+body.view-search .detail-panel-header {
+    display: none;
+}
+
+body.view-search .detail-panel {
+    padding-top: calc(var(--margin) + 68px);
+}
+
+/* The bare country list is year-agnostic, so the timeline just clutters it —
+   but it returns once a (year-driven) country detail is open. Same
+   opacity/max-height fade as .hide-for-chart above. */
+body.view-search:not(.detail) .timeline {
+    overflow: hidden;
+    opacity: 0;
+    max-height: 0;
+    pointer-events: none;
 }
 
 /* Lifetime view: full-screen personal story. The first state is a compact
@@ -2357,7 +2488,8 @@ body.view-lifetime-started #viewMode {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 8px;
+    padding: 6px 8px;
+    height: var(--button-size);
     border-radius: 8px;
     border: none;
     background: var(--color-surface);

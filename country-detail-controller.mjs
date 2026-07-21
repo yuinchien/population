@@ -552,6 +552,9 @@ export function createCountryDetailController({
     }
 
     elements.countrySparklines.replaceChildren();
+    if (elements.countryPyramidCard) {
+      elements.countrySparklines.append(elements.countryPyramidCard);
+    }
     const metrics = getDemographicMetrics();
     sparklineInstances = COUNTRY_SPARKLINE_METRIC_KEYS.map((key) => {
       const series = metrics?.countries?.[country.iso3]?.[key] ?? [];

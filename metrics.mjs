@@ -150,11 +150,11 @@ export const DETAIL_METRIC_KEYS = [
 
 export const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "fertility",
+  "populationGrowth",
+  "netMigrationRate",
   "lifeExpectancy",
   "medianAge",
-  "populationGrowth",
   "ageDependencyRatio",
-  "netMigrationRate",
   "youthDependencyRatio",
 ];
 

@@ -75,11 +75,21 @@
                 title="Info"
             >
                 <span class="material-symbols-outlined" aria-hidden="true"
-                    >tune</span
+                    >settings</span
                 >
             </button>
 
             <div id="viewMode" class="button-group" hidden>
+                <button
+                    type="button"
+                    data-mode="search"
+                    aria-label="Search"
+                    title="Search"
+                >
+                    <span class="material-symbols-outlined">
+                        Search
+                    </span>
+                </button>
                 <button
                     type="button"
                     data-mode="lifetime"
@@ -90,6 +100,7 @@
                         accessibility_new
                     </span>
                 </button>
+
                 <button
                     type="button"
                     data-mode="chart"
@@ -134,6 +145,37 @@
             </div>
         </div>
 
+        <div id="searchBar" class="search-bar" hidden>
+            <div
+                id="searchCountryPicker"
+                class="chip-input search-chip-input expanded"
+            >
+                <span
+                    class="material-symbols-outlined search-bar-icon"
+                    aria-hidden="true"
+                    >search</span
+                >
+                <div id="searchCountryChips" class="chip-input-chips"></div>
+                <input
+                    id="searchCountryInput"
+                    class="chip-input-field"
+                    type="text"
+                    autocomplete="off"
+                    placeholder="Search country"
+                    aria-label="Search country"
+                />
+                <div
+                    id="searchCountrySuggestions"
+                    class="chip-suggestions no-scrollbar"
+                    hidden
+                ></div>
+            </div>
+        </div>
+
+        <section id="searchView" class="search-view glass" hidden>
+            <div id="searchCountryGrid" class="search-country-grid no-scrollbar"></div>
+        </section>
+
         <section id="clusterView" class="cluster-view glass" hidden>
             <div class="cluster-canvas">
                 <canvas id="clusterCanvas"></canvas>
@@ -153,7 +195,7 @@
                 <h1 class="lifetime-form-lead">
                     See the world through your lifespan
                 </h1>
-                <p class="intro-text">The world’s population has shifted dramatically since 1950, and it will change even faster by 2100. Enter your birth year and country to trace your personal timeline against the rise, peak, and future of humanity.</p>
+                <p class="intro-text">Human population has shifted dramatically since 1950—and the next chapter will unfold even faster. Enter your birth year and country to see where your life intersects with the rise, peak, and future of the global population.</p>
                 <form id="lifetimeForm" class="lifetime-form" autocomplete="off">
                     Born
                     <span class="lifetime-birth-year-field">
@@ -486,7 +528,7 @@
                 </button>
             </div>
 
-            <div id="detailSummary" class="detail-summary paragraph" hidden></div>
+            <div id="detailSummary" class="detail-summary paragraph sparkline-card" hidden></div>
 
             <div id="detailHeader" class="detail-row header"></div>
             <div id="detailRows" class="detail-rows no-scrollbar"></div>
@@ -506,58 +548,58 @@
                     ></svg>
                 </div>
 
-                <div id="countryPyramidCard" class="sparkline-card" hidden>
-                    <div class="sparkline-caption">
-                        <div class="sparkline-label">Age structure</div>
-                        <div id="countryPyramidStage" class="sparkline-value"></div>
-                        <div class="pyramid-info">
-                            <span
-                                class="material-symbols-outlined pyramid-info-icon"
-                                tabindex="0"
-                                role="button"
-                                aria-label="About age-structure terms"
-                                >info</span
-                            >
-                            <div class="pyramid-info-tooltip glass" role="tooltip">
-                                <div class="pyramid-sex-legend">
-                                    <span class="pyramid-legend-item"
-                                        ><span
-                                            class="pyramid-sex-label female"
-                                        ></span
-                                        >Female</span
-                                    >
-                                    <span class="pyramid-legend-item"
-                                        ><span
-                                            class="pyramid-sex-label male"
-                                        ></span
-                                        >Male</span
-                                    >
+                <div id="countrySparklines" class="country-sparklines">
+                    <div id="countryPyramidCard" class="sparkline-card" hidden>
+                        <div class="sparkline-caption">
+                            <div class="sparkline-label">Age structure</div>
+                            <div id="countryPyramidStage" class="sparkline-value"></div>
+                            <div class="pyramid-info">
+                                <span
+                                    class="material-symbols-outlined pyramid-info-icon"
+                                    tabindex="0"
+                                    role="button"
+                                    aria-label="About age-structure terms"
+                                    >info</span
+                                >
+                                <div class="pyramid-info-tooltip glass" role="tooltip">
+                                    <div class="pyramid-sex-legend">
+                                        <span class="pyramid-legend-item"
+                                            ><span
+                                                class="pyramid-sex-label female"
+                                            ></span
+                                            >Female</span
+                                        >
+                                        <span class="pyramid-legend-item"
+                                            ><span
+                                                class="pyramid-sex-label male"
+                                            ></span
+                                            >Male</span
+                                        >
+                                    </div>
+                                    <dl class="pyramid-aging-defs">
+                                        <div>
+                                            <dt>Aging society</dt>
+                                            <dd>65+ exceeds 7% of population</dd>
+                                        </div>
+                                        <div>
+                                            <dt>Aged society</dt>
+                                            <dd>65+ exceeds 14% of population</dd>
+                                        </div>
+                                        <div>
+                                            <dt>Super-aged society</dt>
+                                            <dd>65+ exceed 20% of population</dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                                <dl class="pyramid-aging-defs">
-                                    <div>
-                                        <dt>Aging society</dt>
-                                        <dd>65+ exceeds 7% of population</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Aged society</dt>
-                                        <dd>65+ exceeds 14% of population</dd>
-                                    </div>
-                                    <div>
-                                        <dt>Super-aged society</dt>
-                                        <dd>65+ exceed 20% of population</dd>
-                                    </div>
-                                </dl>
                             </div>
                         </div>
+
+                        <div
+                            id="countryPyramid"
+                            class="country-pyramid country-pyramid--stacked"
+                        ></div>
                     </div>
-
-                    <div
-                        id="countryPyramid"
-                        class="country-pyramid country-pyramid--stacked"
-                    ></div>
                 </div>
-
-                <div id="countrySparklines" class="country-sparklines"></div>
 
                 <div id="countrySimilar" class="country-similar" hidden>
                     <span class="country-similar-label"

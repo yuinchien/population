@@ -21,6 +21,9 @@ export function serializeUrlState(state) {
     params.set("group", state.group);
   } else if (state.view === "cluster") {
     params.set("view", "cluster");
+  } else if (state.view === "search") {
+    params.set("view", "search");
+    if (state.country) params.set("country", state.country);
   } else if (state.view === "lifetime") {
     params.set("view", "lifetime");
     if (state.birthYear != null) params.set("birth", String(state.birthYear));
@@ -67,6 +70,10 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
     }
   } else if (view === "cluster") {
     state.view = "cluster";
+  } else if (view === "search") {
+    state.view = "search";
+    const country = params.get("country")?.toUpperCase();
+    if (countryCodes.includes(country)) state.country = country;
   } else if (view === "lifetime") {
     state.view = "lifetime";
     const birthYear = Number(params.get("birth"));

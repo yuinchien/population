@@ -419,6 +419,11 @@ let detailEntryMode = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let clusterActive = false;
+// Search view: a full country list plus a single-select chip search bar.
+// searchSelectedIso3 is the one picked country (whose detail is open), or
+// null when showing the bare list.
+let searchActive = false;
+let searchSelectedIso3 = null;
 let lifetimeController = null;
 let chartMetricKey = "ageDependencyRatio";
 let chartProjectionScenario = "medium";
@@ -1513,7 +1518,10 @@ function setDetailSort(key) {
 function updateViewModeAvailability() {
   const isOpen = !elements.detailPanel.hidden;
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
-    btn.disabled = isOpen;
+    // A country detail opened from Search keeps the dock live so you can
+    // switch views straight from it; every other entry point still locks the
+    // toggle while the panel is open (see the comment above).
+    btn.disabled = isOpen && !searchActive;
   });
   document.body.classList.toggle("detail", isOpen);
   document.body.classList.toggle(
@@ -1591,6 +1599,11 @@ function closeDetailPanel() {
     setchartPanelActive(true);
   } else if (restoreMode === "cluster") {
     setClusterActive(true);
+  } else if (restoreMode === "search") {
+    // Back to the bare list: drop the chip but stay in search view.
+    searchSelectedIso3 = null;
+    renderSearchCountryChip();
+    syncUrlFromState();
   } else {
     syncUrlFromState();
   }
@@ -1639,6 +1652,11 @@ function urlStateFromApp() {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (clusterActive) {
     Object.assign(state, { view: "cluster" });
+  } else if (searchActive) {
+    Object.assign(state, {
+      view: "search",
+      ...(searchSelectedIso3 ? { country: searchSelectedIso3 } : {}),
+    });
   } else if (lifetimeController?.isActive()) {
     lifetimeController.applyToUrlState(state);
   } else if (selectedCountry) {
@@ -1682,6 +1700,9 @@ function applyUrlStateFromLocation(search) {
     setchartPanelActive(true);
   } else if (state.view === "cluster") {
     setClusterActive(true);
+  } else if (state.view === "search") {
+    setSearchActive(true);
+    if (state.country) selectSearchCountry(state.country);
   } else if (state.view === "lifetime") {
     lifetimeController.applyUrlState(state);
     setLifetimeActive(true);
@@ -2589,6 +2610,208 @@ function setLifetimeActive(active) {
   lifetimeController?.setActive(active);
 }
 
+// --- Search view ----------------------------------------------------------
+// A full, alphabetized country list plus a single-select chip search bar.
+// Picking a country (from the list or the search box) opens the shared
+// country-detail overlay on top; the button dock and search bar stay pinned
+// (see the body.view-search.detail CSS override) so the chip's X is the way
+// back to the bare list.
+const SEARCH_SUGGESTION_LIMIT = 8;
+let searchSuggestionActiveIndex = -1;
+
+function setSearchActive(active) {
+  if (active === searchActive) return;
+  if (active) {
+    assertElements(
+      elements,
+      ["searchView", "searchBar", "searchCountryGrid", "searchCountryInput"],
+      "search view",
+    );
+  }
+  searchActive = active;
+  elements.searchView.hidden = !active;
+  elements.searchBar.hidden = !active;
+  document.body.classList.toggle("view-search", active);
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle(
+      "active",
+      btn.dataset.mode === (active ? "search" : viewMode),
+    ),
+  );
+  if (active) {
+    tourController.stop();
+    searchSelectedIso3 = null;
+    renderSearchCountryGrid();
+    renderSearchCountryChip();
+    elements.searchCountryInput.value = "";
+    hideSearchSuggestions();
+  } else {
+    // Leaving search entirely tears down any open detail this view opened,
+    // without routing through closeDetailPanel() (whose "search" restore
+    // would just reactivate this view). detailEntryMode is cleared first for
+    // the same reason.
+    if (selectedCountry && detailEntryMode === "search") {
+      detailEntryMode = null;
+      countryDetailController.reset();
+      selectedCountry = null;
+      elements.detailPanel.hidden = true;
+      updateViewModeAvailability();
+      renderLegend();
+      if (currentYearIndex >= 0) {
+        updateStatusPanel(yearsData[currentYearIndex], { instant: true });
+      }
+    }
+    searchSelectedIso3 = null;
+    renderSearchCountryChip();
+  }
+  syncUrlFromState();
+}
+
+function renderSearchCountryGrid() {
+  const items = [...countriesData]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((country) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "search-country-item";
+      item.dataset.iso3 = country.iso3;
+      const flag = document.createElement("span");
+      flag.className = "search-country-item-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+      const label = document.createElement("span");
+      label.textContent = country.name;
+      item.append(flag, label);
+      return item;
+    });
+  elements.searchCountryGrid.replaceChildren(...items);
+}
+
+function renderSearchCountryChip() {
+  const country =
+    searchSelectedIso3 &&
+    countriesData.find((c) => c.iso3 === searchSelectedIso3);
+  elements.searchCountryPicker.classList.toggle("has-selection", !!country);
+  if (!country) {
+    elements.searchCountryChips.replaceChildren();
+    return;
+  }
+  const chip = document.createElement("span");
+  chip.className = "chip";
+  const flag = document.createElement("span");
+  flag.className = "chip-flag";
+  flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+  const label = document.createElement("span");
+  label.textContent = country.name;
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "chip-remove";
+  remove.dataset.iso3 = country.iso3;
+  remove.setAttribute("aria-label", `Remove ${country.name}`);
+  const icon = document.createElement("span");
+  icon.className = "material-symbols-outlined";
+  icon.textContent = "close";
+  remove.append(icon);
+  chip.append(flag, label, remove);
+  elements.searchCountryChips.replaceChildren(chip);
+}
+
+function selectSearchCountry(iso3) {
+  const country = countriesData.find((c) => c.iso3 === iso3);
+  if (!country) return;
+  searchSelectedIso3 = iso3;
+  renderSearchCountryChip();
+  elements.searchCountryInput.value = "";
+  hideSearchSuggestions();
+  // Remembered so closeDetailPanel() returns here (see its "search" branch)
+  // rather than to whichever of Globe/Map is underneath.
+  detailEntryMode = "search";
+  openCountryDetail(country);
+}
+
+// Both ways out of a selection — the chip's X and the detail panel's own
+// close button — funnel through closeDetailPanel()'s "search" restore, which
+// clears the chip and re-shows the list.
+function clearSearchCountry() {
+  if (selectedCountry && detailEntryMode === "search") {
+    closeDetailPanel();
+  } else {
+    searchSelectedIso3 = null;
+    renderSearchCountryChip();
+    syncUrlFromState();
+  }
+  elements.searchCountryInput?.focus();
+}
+
+function searchCountryMatches(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const aliasIso2 = CHART_COUNTRY_CODE_ALIASES[q];
+  return countriesData
+    .filter((country) => {
+      const iso2 = convertAlpha3ToAlpha2(country.iso3);
+      return (
+        country.name.toLowerCase().includes(q) ||
+        (iso2 && iso2.toLowerCase().includes(q)) ||
+        (aliasIso2 && iso2 === aliasIso2)
+      );
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, SEARCH_SUGGESTION_LIMIT);
+}
+
+function hideSearchSuggestions() {
+  elements.searchCountrySuggestions.hidden = true;
+  elements.searchCountrySuggestions.replaceChildren();
+  searchSuggestionActiveIndex = -1;
+}
+
+function renderSearchSuggestions() {
+  const query = elements.searchCountryInput.value.trim();
+  if (!query) {
+    hideSearchSuggestions();
+    return;
+  }
+  const matches = searchCountryMatches(query);
+  elements.searchCountrySuggestions.hidden = false;
+  searchSuggestionActiveIndex = -1;
+  if (!matches.length) {
+    const empty = document.createElement("div");
+    empty.className = "chip-suggestions-empty";
+    empty.textContent = "No matching countries";
+    elements.searchCountrySuggestions.replaceChildren(empty);
+    return;
+  }
+  elements.searchCountrySuggestions.replaceChildren(
+    ...matches.map((country) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "chip-suggestion";
+      item.dataset.iso3 = country.iso3;
+      const flag = document.createElement("span");
+      flag.className = "chip-suggestion-flag";
+      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+      const label = document.createElement("span");
+      label.textContent = country.name;
+      item.append(flag, label);
+      return item;
+    }),
+  );
+}
+
+function moveSearchSuggestionActiveIndex(delta) {
+  const items =
+    elements.searchCountrySuggestions.querySelectorAll(".chip-suggestion");
+  if (!items.length) return;
+  searchSuggestionActiveIndex = Math.min(
+    items.length - 1,
+    Math.max(0, searchSuggestionActiveIndex + delta),
+  );
+  items.forEach((item, i) => {
+    item.classList.toggle("highlighted", i === searchSuggestionActiveIndex);
+  });
+  items[searchSuggestionActiveIndex].scrollIntoView({ block: "nearest" });
+}
+
 function setChartTableSort(key) {
   const next = nextSortState(chartTableSort, key, chartTableColumns());
   if (!next) return;
@@ -3199,24 +3422,35 @@ async function init() {
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         const mode = btn.dataset.mode;
+        if (mode === "search") {
+          setchartPanelActive(false);
+          setClusterActive(false);
+          setLifetimeActive(false);
+          setSearchActive(true);
+          return;
+        }
         if (mode === "chart") {
+          setSearchActive(false);
           setClusterActive(false);
           setLifetimeActive(false);
           setchartPanelActive(true);
           return;
         }
         if (mode === "cluster") {
+          setSearchActive(false);
           setchartPanelActive(false);
           setLifetimeActive(false);
           setClusterActive(true);
           return;
         }
         if (mode === "lifetime") {
+          setSearchActive(false);
           setchartPanelActive(false);
           setClusterActive(false);
           setLifetimeActive(true);
           return;
         }
+        setSearchActive(false);
         setchartPanelActive(false);
         setClusterActive(false);
         setLifetimeActive(false);
@@ -3321,6 +3555,51 @@ async function init() {
         setChartCountryPickerExpanded(false);
       }
     });
+
+    // Search view: full list + single-select chip search bar.
+    elements.searchCountryGrid.addEventListener("click", (event) => {
+      const item = event.target.closest(".search-country-item[data-iso3]");
+      if (!item || !elements.searchCountryGrid.contains(item)) return;
+      selectSearchCountry(item.dataset.iso3);
+    });
+    elements.searchCountryChips.addEventListener("click", (event) => {
+      const button = event.target.closest(".chip-remove[data-iso3]");
+      if (!button || !elements.searchCountryChips.contains(button)) return;
+      clearSearchCountry();
+    });
+    elements.searchCountrySuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest(".chip-suggestion[data-iso3]");
+      if (!button || !elements.searchCountrySuggestions.contains(button)) return;
+      selectSearchCountry(button.dataset.iso3);
+    });
+    elements.searchCountryInput.addEventListener("input", renderSearchSuggestions);
+    elements.searchCountryInput.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        if (elements.searchCountrySuggestions.hidden) return;
+        event.preventDefault();
+        moveSearchSuggestionActiveIndex(1);
+      } else if (event.key === "ArrowUp") {
+        if (elements.searchCountrySuggestions.hidden) return;
+        event.preventDefault();
+        moveSearchSuggestionActiveIndex(-1);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        const matches = searchCountryMatches(elements.searchCountryInput.value);
+        const match =
+          searchSuggestionActiveIndex >= 0
+            ? matches[searchSuggestionActiveIndex]
+            : matches[0];
+        if (match) selectSearchCountry(match.iso3);
+      } else if (event.key === "Escape") {
+        hideSearchSuggestions();
+      }
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.composedPath().includes(elements.searchCountryPicker)) {
+        hideSearchSuggestions();
+      }
+    });
+
     elements.detailClose.addEventListener("click", closeDetailPanel);
     elements.infoButton.addEventListener("click", openInfoPanel);
     elements.infoClose.addEventListener("click", closeInfoPanel);

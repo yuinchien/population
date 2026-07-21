@@ -30,6 +30,24 @@ test("URL state round-trips the cluster view", () => {
   });
 });
 
+test("URL state round-trips the search view", () => {
+  const bare = serializeUrlState({ view: "search", year: 2024 });
+  assert.deepEqual(parseUrlState(bare, { years: [2024] }), {
+    view: "search",
+    year: 2024,
+  });
+
+  const withCountry = serializeUrlState({
+    view: "search",
+    country: "JPN",
+    year: 2024,
+  });
+  assert.deepEqual(
+    parseUrlState(withCountry, { years: [2024], countryCodes: ["JPN"] }),
+    { view: "search", country: "JPN", year: 2024 },
+  );
+});
+
 test("URL state round-trips global projection scenario", () => {
   const query = serializeUrlState({
     view: "chart",
