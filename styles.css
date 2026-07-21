@@ -455,6 +455,7 @@ button.milestone-nav-btn {
     pointer-events: none;
     background: var(--color-bg);
     padding: 0 4px;
+    display: none;
 }
 
 .button-group {
