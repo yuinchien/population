@@ -21,7 +21,6 @@ export function getAppElements(root = document) {
     clusterArchetypeTooltip: root.querySelector("#clusterArchetypeTooltip"),
     yearSlider: root.querySelector("#yearSlider"),
     yearValue: root.querySelector("#yearValue"),
-    yearHoverValue: root.querySelector("#yearHoverValue"),
     colorMode: root.querySelector("#colorMode"),
     legend: root.querySelector("#legend"),
     viewMode: root.querySelector("#viewMode"),

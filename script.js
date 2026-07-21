@@ -107,7 +107,6 @@ assertElements(
     "clusterArchetypeTooltip",
     "yearSlider",
     "yearValue",
-    "yearHoverValue",
     "colorMode",
     "legend",
     "viewMode",
@@ -1284,18 +1283,6 @@ function updateYearHoverLabel(event) {
     1,
     Math.max(0, (event.clientX - rect.left - thumbSize / 2) / trackWidth),
   );
-  const year = Math.round(min + ratio * (max - min));
-  if (year === Number(slider.value)) {
-    elements.yearHoverValue.hidden = true;
-    return;
-  }
-  const thumbCenter = slider.offsetLeft + thumbSize / 2 + ratio * trackWidth;
-  elements.yearHoverValue.textContent = String(year);
-  elements.yearHoverValue.style.setProperty(
-    "--thumb-position",
-    `${thumbCenter}px`,
-  );
-  elements.yearHoverValue.hidden = false;
 }
 
 function legendEntriesFor(mode) {
@@ -3385,9 +3372,6 @@ async function init() {
     // cancel would make the tour immediately cancel its own steps.
     elements.yearSlider.addEventListener("pointerdown", tourController.stop);
     elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
-    elements.yearSlider.addEventListener("pointerleave", () => {
-      elements.yearHoverValue.hidden = true;
-    });
 
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
