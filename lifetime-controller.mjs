@@ -1,6 +1,7 @@
 import {
   convertAlpha3ToAlpha2,
   flagIconUrl,
+  preloadFlagIcons,
 } from "./data-loader.mjs";
 import { trackEvent } from "./analytics.mjs";
 import {
@@ -529,6 +530,7 @@ export function createLifetimeController({
       return;
     }
     const matches = countryMatches(query);
+    preloadFlagIcons(matches.map((country) => country.iso3));
     suggestionActiveIndex = -1;
     elements.lifetimeCountrySuggestions.hidden = false;
     if (!matches.length) {
@@ -574,6 +576,7 @@ export function createLifetimeController({
     const country = countries().find((item) => item.iso3 === iso3);
     if (!country) return;
     countryIso = iso3;
+    preloadFlagIcons([country.iso3]);
     elements.lifetimeCountry.value = country.name;
     hideCountrySuggestions();
     render();

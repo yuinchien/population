@@ -24,7 +24,8 @@ import { createCountryDetailController } from "./country-detail-controller.mjs";
 import {
   convertAlpha3ToAlpha2,
   loadPopulationData,
-  flagIconUrl
+  flagIconUrl,
+  preloadFlagIcons,
 } from "./data-loader.mjs";
 import {
   DEFAULT_COLOR,
@@ -1848,8 +1849,10 @@ function removeChartCountry(iso3) {
 
 
 function renderChartCountryChips() {
+  const countries = chartCountryList();
+  preloadFlagIcons(countries.map((country) => country.iso3));
   elements.chartCountryPickerSummaryFlags.replaceChildren(
-    ...chartCountryList().map((country) => {
+    ...countries.map((country) => {
       const flag = document.createElement("span");
       flag.className = "chip-input-summary-flag";
       flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
@@ -1857,7 +1860,7 @@ function renderChartCountryChips() {
     }),
   );
   elements.chartCountryChips.replaceChildren(
-    ...chartCountryList().map((country) => {
+    ...countries.map((country) => {
       const color = chartColorFor(country.iso3);
       const chip = document.createElement("span");
       chip.className = "chip";
@@ -2006,6 +2009,7 @@ function renderChartCountrySuggestions() {
     return;
   }
   const matches = chartCountryMatches(query);
+  preloadFlagIcons(matches.map((country) => country.iso3));
   elements.chartCountrySuggestions.hidden = false;
   // The list itself just changed (new keystroke), so whatever the arrow
   // keys had highlighted before no longer lines up with anything.
@@ -2496,8 +2500,11 @@ function setSearchActive(active) {
 }
 
 function renderSearchCountryGrid() {
-  const items = [...countriesData]
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const sortedCountries = [...countriesData].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  preloadFlagIcons(sortedCountries.map((country) => country.iso3));
+  const items = sortedCountries
     .map((country, index) => {
       const item = document.createElement("button");
       item.type = "button";
@@ -2524,6 +2531,7 @@ function renderSearchCountryChip() {
     elements.searchCountryChips.replaceChildren();
     return;
   }
+  preloadFlagIcons([country.iso3]);
   const chip = document.createElement("span");
   chip.className = "chip";
   const flag = document.createElement("span");
@@ -2601,6 +2609,7 @@ function renderSearchSuggestions() {
     return;
   }
   const matches = searchCountryMatches(query);
+  preloadFlagIcons(matches.map((country) => country.iso3));
   elements.searchCountrySuggestions.hidden = false;
   searchSuggestionActiveIndex = -1;
   if (!matches.length) {
@@ -3135,6 +3144,7 @@ async function init() {
     });
     countriesData = appData.countries;
     yearsData = appData.years;
+    preloadFlagIcons(selectedChartCountries);
     historicalCutoffYear = appData.historicalCutoffYear;
     projectionData.configure({
       countries: countriesData,

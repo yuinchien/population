@@ -274,8 +274,26 @@ export function flagIconUrl(iso3, square=true) {
   // codes, so this needs its own lowercasing rather than relying on a
   // case-insensitive filesystem lucking it into working (which local dev
   // sometimes does, but a GitHub Pages deploy never will).
+  const iso2 = convertAlpha3ToAlpha2(iso3);
+  if (!iso2) return null;
   const folder = square ? '1x1' : '4x3';
-  return `./flags/${folder}/${convertAlpha3ToAlpha2(iso3)?.toLowerCase()}.svg`;
+  return `./flags/${folder}/${iso2.toLowerCase()}.svg`;
+}
+
+const preloadedFlagUrls = new Set();
+
+export function preloadFlagIcon(iso3, options = {}) {
+  if (typeof Image === "undefined") return;
+  const url = flagIconUrl(iso3, options.square ?? true);
+  if (!url || preloadedFlagUrls.has(url)) return;
+  preloadedFlagUrls.add(url);
+  const image = new Image();
+  image.decoding = "async";
+  image.src = url;
+}
+
+export function preloadFlagIcons(iso3List = [], options = {}) {
+  iso3List.forEach((iso3) => preloadFlagIcon(iso3, options));
 }
 
 async function fetchJson(url, fetchImpl) {

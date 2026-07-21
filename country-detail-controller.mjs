@@ -3,7 +3,11 @@ import {
   COUNTRY_SPARKLINE_METRIC_KEYS,
   METRICS,
 } from "./metrics.mjs";
-import { computePeakYear, flagIconUrl } from "./data-loader.mjs";
+import {
+  computePeakYear,
+  flagIconUrl,
+  preloadFlagIcons,
+} from "./data-loader.mjs";
 import { createCountryChartGeometry } from "./country-chart.mjs";
 import {
   ageBandStart,
@@ -168,6 +172,7 @@ export function createCountryDetailController({
 
   function renderSimilarCountries(country) {
     const matches = computeSimilarCountries(country);
+    preloadFlagIcons(matches.map(({ country: match }) => match.iso3));
     elements.countrySimilar.hidden = matches.length === 0;
     if (!matches.length) return;
     elements.countrySimilarList.replaceChildren(
@@ -741,6 +746,7 @@ export function createCountryDetailController({
       `#${colorFor(country).getHexString()}`,
     );
     elements.detailTitle.textContent = country.name;
+    preloadFlagIcons([country.iso3]);
     elements.detailFlag.style.backgroundImage =
       `url(${flagIconUrl(country.iso3)})`;
     elements.detailFlag.hidden = false;
