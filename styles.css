@@ -1431,7 +1431,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: flex-start;
-    padding: 0 280px 0 var(--margin);
+    padding: 0 320px 0 var(--margin);
     margin-top: var(--margin);
     gap: calc(var(--margin) / 2);
 }
@@ -2557,8 +2557,8 @@ body.view-lifetime-started #viewMode {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
-    height: var(--button-size);
+    padding: 8px;
+    /*height: var(--button-size);*/
     border-radius: 8px;
     border: none;
     background: var(--color-surface);
@@ -2624,6 +2624,8 @@ body.view-lifetime-started #viewMode {
 
 .chip-input.expanded {
     padding-right: 40px; /* clears .chip-input-cancel */
+    padding-top: 6px;
+    padding-bottom: 6px;
 }
 
 .chip-input-chips {
