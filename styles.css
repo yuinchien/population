@@ -2549,8 +2549,7 @@ body.view-lifetime-started #viewMode {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
-    padding: 6px 8px;
-    height: var(--button-size);
+    padding: 8px;
     border-radius: 8px;
     border: none;
     background: var(--color-surface);
