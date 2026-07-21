@@ -8,7 +8,16 @@ import {
   ageBandStart,
   interpolateAgeStructure,
 } from "./country-pyramid.mjs";
-import { agingSocietiesSentence } from "./narrative-copy.mjs";
+import {
+  agingSocietiesSentence,
+  lifetimeArrivalCopy,
+  lifetimeArrivalFactsSentence,
+  lifetimeGlobalLifeExpectancySentence,
+  lifetimeHorizonCopy,
+  lifetimePresentCopy,
+  lifetimePresentPivotSentence,
+  lifetimeProjectedCountryPeakSentence,
+} from "./narrative-copy.mjs";
 import { displayGroupLabel } from "./status-insights.mjs";
 
 // Pure helpers for the Lifetime view — no DOM, no data fetching — so the
@@ -244,20 +253,95 @@ export function lifetimeAgingSocietyCount({
   }, 0);
 }
 
-function lifetimeAgingStageCount({
+function createEmptyLifetimeAggregates() {
+  return {
+    agingSocietyCount: null,
+    agingStageCounts: new Map(),
+    clusterCounts: new Map(),
+  };
+}
+
+function computeLifetimeAggregates({
   countries,
+  years,
   yearIndex,
   demographicMetrics,
-  stage,
+  getPopulationSeries,
 }) {
-  if (!stage || !demographicMetrics || yearIndex < 0) return null;
-  return countries.reduce((count, country) => {
+  if (!demographicMetrics || yearIndex < 0) {
+    return createEmptyLifetimeAggregates();
+  }
+
+  const aggregates = {
+    agingSocietyCount: 0,
+    agingStageCounts: new Map(),
+    clusterCounts: new Map(),
+  };
+
+  for (const country of countries ?? []) {
     const share =
       demographicMetrics.countries?.[country.iso3]?.olderPopulationShare?.[
         yearIndex
       ];
-    return count + (currentAgingStage(share)?.key === stage.key ? 1 : 0);
-  }, 0);
+    const stage = currentAgingStage(share);
+    if (stage) {
+      aggregates.agingSocietyCount += 1;
+      aggregates.agingStageCounts.set(
+        stage.key,
+        (aggregates.agingStageCounts.get(stage.key) ?? 0) + 1,
+      );
+    }
+
+    const archetype = lifetimeCountryArchetype({
+      country,
+      years,
+      yearIndex,
+      demographicMetrics,
+      getPopulationSeries,
+    });
+    if (archetype) {
+      aggregates.clusterCounts.set(
+        archetype,
+        (aggregates.clusterCounts.get(archetype) ?? 0) + 1,
+      );
+    }
+  }
+
+  return aggregates;
+}
+
+export function createLifetimeAggregateCache() {
+  const cache = new Map();
+
+  return {
+    clear() {
+      cache.clear();
+    },
+    get({
+      countries,
+      years,
+      yearIndex,
+      demographicMetrics,
+      getPopulationSeries,
+      scenarioKey = "medium",
+    }) {
+      const year = years?.[yearIndex] ?? yearIndex;
+      const key = `${scenarioKey}:${yearIndex}:${year}`;
+      if (!cache.has(key)) {
+        cache.set(
+          key,
+          computeLifetimeAggregates({
+            countries,
+            years,
+            yearIndex,
+            demographicMetrics,
+            getPopulationSeries,
+          }),
+        );
+      }
+      return cache.get(key);
+    },
+  };
 }
 
 export function countryPopulationPeakYearBetween({
@@ -298,18 +382,6 @@ export function countryPopulationPeakYearBetween({
   return startsInRange && peak.year <= endYear ? peak.year : null;
 }
 
-// The only pivot worth surfacing here is the personal one — the country's
-// own population peak, when it fell within the reader's lifetime so far.
-// (A global milestone like "world population passed 8B" applies to everyone
-// alive and reads as filler, so it's deliberately left out.)
-function lifetimePresentPivotSentence({ country, countryPeakYear }) {
-  if (countryPeakYear == null) return "";
-  const possessiveCountryName = country.name.endsWith("s")
-    ? `${country.name}'`
-    : `${country.name}'s`;
-  return ` You have already lived through ${possessiveCountryName} population peak in ${countryPeakYear}.`;
-}
-
 export function countryTrajectorySummary(countryTrajectory, country) {
   const trajectories = countryTrajectory?.demographic_trajectories ?? [];
   const match = trajectories.find((trajectory) =>
@@ -318,61 +390,6 @@ export function countryTrajectorySummary(countryTrajectory, country) {
   const template = match?.summary_template;
   if (!template || !country?.name) return "";
   return template.replaceAll("[COUNTRY]", country.name);
-}
-
-// Join sentence fragments into a paragraph: trim each, drop empties, and put a
-// single space between. Builders can return "" to skip a sentence without any
-// caller having to juggle leading/trailing spaces.
-function joinSentences(...parts) {
-  return parts
-    .map((part) => part?.trim())
-    .filter(Boolean)
-    .join(" ");
-}
-
-// Render a list of phrases as prose with an Oxford "and":
-// ["a"] -> "a"; ["a","b"] -> "a and b"; ["a","b","c"] -> "a, b, and c".
-function joinListProse(items) {
-  const list = items.filter(Boolean);
-  if (list.length <= 1) return list.join("");
-  if (list.length === 2) return `${list[0]} and ${list[1]}`;
-  return `${list.slice(0, -1).join(", ")}, and ${list.at(-1)}`;
-}
-
-// Arrival-act "context facts" — each returns a bare phrase (no leading space,
-// no trailing punctuation) so they can be woven into one prose list sentence
-// ("By then <a>, <b>, and <c>.") or dropped entirely by returning "".
-function lifetimeArrivalAgingPhrase(olderShareAtBirth) {
-  if (!Number.isFinite(olderShareAtBirth)) return "";
-  const stage = currentAgingStage(olderShareAtBirth);
-  // Below the aging-society threshold, no aging note is added to the copy.
-  if (!stage) return "";
-  const article = stage.label.startsWith("a") ? "an" : "a";
-  return `it had officially become ${article} ${stage.label}`;
-}
-
-function lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth) {
-  if (
-    !Number.isFinite(youthDependencyRatioAtBirth) ||
-    youthDependencyRatioAtBirth <= 80
-  ) {
-    return "";
-  }
-  return `youth dependency was high at ${Number(youthDependencyRatioAtBirth).toFixed(1)} children per 100 working-age adults`;
-}
-
-// When the country's population had already peaked before the person was born,
-// the peak belongs in the Arrival act (peaks during their life show up in the
-// Present/Horizon acts instead). `peakYear` is the country's all-time peak.
-function lifetimeArrivalPeakPhrase(peakYear, birthYear) {
-  if (
-    !Number.isFinite(peakYear) ||
-    !Number.isFinite(birthYear) ||
-    peakYear >= birthYear
-  ) {
-    return "";
-  }
-  return `its population had already peaked in ${peakYear}`;
 }
 
 export function lifetimeStoryContext({
@@ -472,6 +489,8 @@ export function buildLifetimeStory({
   formatPopulation,
   formatLifeExpectancy,
   currentDate,
+  aggregateCache,
+  aggregateKey,
 }) {
   const context = lifetimeStoryContext({
     country,
@@ -498,12 +517,6 @@ export function buildLifetimeStory({
     demographicMetrics?.countries?.[country.iso3]?.youthDependencyRatio?.[
       context.birthIndex
     ];
-  const arrivalAgingPhrase = lifetimeArrivalAgingPhrase(
-    countryOlderShareAtBirth,
-  );
-  const arrivalYouthDependencyPhrase = lifetimeArrivalYouthDependencyPhrase(
-    countryYouthDependencyRatioAtBirth,
-  );
   // The country's all-time population peak; when it predates the birth year it
   // is surfaced in the Arrival act.
   const allTimeCountryPeakYear = countryPopulationPeakYearBetween({
@@ -514,18 +527,12 @@ export function buildLifetimeStory({
     includeStart: true,
     getPopulationSeries,
   });
-  const arrivalPeakPhrase = lifetimeArrivalPeakPhrase(
-    allTimeCountryPeakYear,
+  const arrivalFactsSentence = lifetimeArrivalFactsSentence({
+    olderShareAtBirth: countryOlderShareAtBirth,
+    youthDependencyRatioAtBirth: countryYouthDependencyRatioAtBirth,
+    peakYear: allTimeCountryPeakYear,
     birthYear,
-  );
-  // The notable birth-year context facts, woven into a single sentence that
-  // stays out of the (cleaner) life-expectancy line. Order: peak, aging, youth.
-  const arrivalFacts = joinListProse([
-    arrivalPeakPhrase,
-    arrivalAgingPhrase,
-    arrivalYouthDependencyPhrase,
-  ]);
-  const arrivalFactsSentence = arrivalFacts ? `By then ${arrivalFacts}.` : "";
+  });
 
   const presentAge = ageAt(birthYear, context.presentYear);
   const finalAge = ageAt(birthYear, context.finalYear);
@@ -553,33 +560,39 @@ export function buildLifetimeStory({
   ];
 
 
-  const agingSocietyCount = lifetimeAgingSocietyCount({
-    countries,
-    yearIndex: agingYearIndex,
-    demographicMetrics,
-  });
-  const selectedAgingStageCount = lifetimeAgingStageCount({
-    countries,
-    yearIndex: agingYearIndex,
-    demographicMetrics,
-    stage: selectedAgingStage,
-  });
-  const silverDeclineCount = lifetimeClusterCount({
-    archetype: "silverDecline",
-    countries,
-    years,
-    yearIndex: context.finalIndex,
-    demographicMetrics,
-    getPopulationSeries,
-  });
-  const growthCount = lifetimeClusterCount({
-    archetype: "growth",
-    countries,
-    years,
-    yearIndex: context.finalIndex,
-    demographicMetrics,
-    getPopulationSeries,
-  });
+  const getAggregates = (yearIndexForAggregates) =>
+    aggregateCache?.get?.({
+      countries,
+      years,
+      yearIndex: yearIndexForAggregates,
+      demographicMetrics,
+      getPopulationSeries,
+      scenarioKey: aggregateKey,
+    }) ??
+    computeLifetimeAggregates({
+      countries,
+      years,
+      yearIndex: yearIndexForAggregates,
+      demographicMetrics,
+      getPopulationSeries,
+    });
+  const agingAggregates = getAggregates(agingYearIndex);
+  const clusterAggregates =
+    context.finalIndex === agingYearIndex
+      ? agingAggregates
+      : getAggregates(context.finalIndex);
+  const agingSocietyCount = agingAggregates.agingSocietyCount;
+  const selectedAgingStageCount = selectedAgingStage
+    ? (agingAggregates.agingStageCounts.get(selectedAgingStage.key) ?? 0)
+    : null;
+  const silverDeclineCount =
+    context.finalIndex >= 0 && demographicMetrics
+      ? (clusterAggregates.clusterCounts.get("silverDecline") ?? 0)
+      : null;
+  const growthCount =
+    context.finalIndex >= 0 && demographicMetrics
+      ? (clusterAggregates.clusterCounts.get("growth") ?? 0)
+      : null;
   const countryPeakYear = countryPopulationPeakYearBetween({
     country,
     years,
@@ -588,7 +601,7 @@ export function buildLifetimeStory({
     getPopulationSeries,
   });
   const presentPivotCopy = lifetimePresentPivotSentence({
-    country,
+    countryName: country.name,
     countryPeakYear,
   });
   const projectedCountryPeakYear = countryPopulationPeakYearBetween({
@@ -599,10 +612,10 @@ export function buildLifetimeStory({
     includeStart: false,
     getPopulationSeries,
   });
-  const projectedCountryPeakCopy =
-    projectedCountryPeakYear != null
-      ? `${country.name} is projected to reach its population peak in ${projectedCountryPeakYear}.`
-      : "";
+  const projectedCountryPeakCopy = lifetimeProjectedCountryPeakSentence({
+    countryName: country.name,
+    projectedCountryPeakYear,
+  });
   const horizonAgingCopy = agingSocietiesSentence({
     countryName: country.name,
     selectedCountryIsAging: !!selectedAgingStage,
@@ -612,10 +625,12 @@ export function buildLifetimeStory({
     count: selectedAgingStage ? selectedAgingStageCount : agingSocietyCount,
   });
   const trajectoryCopy = countryTrajectorySummary(countryTrajectory, country);
-  const globalLifeChangeCopy =
-    Number.isFinite(globalLifeAtBirth) && Number.isFinite(globalLifeAtFinal)
-      ? ` Since your birth in ${birthYear}, global life expectancy has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)}.`
-      : "";
+  const globalLifeChangeCopy = lifetimeGlobalLifeExpectancySentence({
+    birthYear,
+    globalLifeAtBirth,
+    globalLifeAtFinal,
+    formatLifeExpectancy,
+  });
   const globalLifeExpectancy = {
     title: "Global life expectancy",
     birthYear,
@@ -640,11 +655,15 @@ export function buildLifetimeStory({
   const acts = [
     {
       year: birthYear,
-      text: joinSentences(
-        `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPop)} people.`,
-        `In ${country.name}, the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
+      text: lifetimeArrivalCopy({
+        birthYear,
+        countryName: country.name,
+        birthPopulation: birthPop,
+        countryLifeAtBirth,
         arrivalFactsSentence,
-      ),
+        formatPopulation,
+        formatLifeExpectancy,
+      }),
       comparison: lifeComparison,
       stats: [
         { value: formatPopulation(birthPop), label: "World population" },
@@ -659,13 +678,13 @@ export function buildLifetimeStory({
     },
     {
       year: context.presentYear,
-      text: joinSentences(
-        `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.`,
-        youngerShare != null
-          ? `In ${country.name}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.`
-          : "",
+      text: lifetimePresentCopy({
+        countryName: country.name,
+        addedSinceBirth,
+        youngerShare,
         presentPivotCopy,
-      ),
+        formatPopulation,
+      }),
       populationChange: {
         birthYear,
         presentYear: context.presentYear,
@@ -692,13 +711,16 @@ export function buildLifetimeStory({
     },
     {
       year: context.finalYear,
-      text: joinSentences(
-        `By ${context.finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPop)} people.`,
+      text: lifetimeHorizonCopy({
+        finalYear: context.finalYear,
+        finalAge,
+        finalPopulation: finalPop,
         globalLifeChangeCopy,
         projectedCountryPeakCopy,
         horizonAgingCopy,
         trajectoryCopy,
-      ),
+        formatPopulation,
+      }),
       globalLifeExpectancy,
       stats: [
         { value: String(finalAge ?? "—"), label: "Your age then" },

@@ -5,6 +5,7 @@ import {
   buildLifetimeStoryAct,
   countryPopulationPeakYearBetween,
   countryTrajectorySummary,
+  createLifetimeAggregateCache,
   lifetimeAgeStructureShareYoungerThan,
   lifetimeAgingSocietyCount,
   lifetimeLifeExpectancyComparison,
@@ -263,6 +264,81 @@ test("lifetimeAgingSocietyCount counts countries at any UN aging stage", () => {
     }),
     2,
   );
+});
+
+test("createLifetimeAggregateCache reuses aggregate scans per year and scenario", () => {
+  const cache = createLifetimeAggregateCache();
+  const years = [2000, 2100];
+  const countries = [
+    {
+      iso3: "AAA",
+      _incomeLabel: "High-income countries",
+      populations: [100, 90],
+    },
+    {
+      iso3: "BBB",
+      _incomeLabel: "Low-income countries",
+      populations: [100, 200],
+    },
+  ];
+  const demographicMetrics = {
+    countries: {
+      AAA: {
+        fertility: [1.3, 1.2],
+        netMigrationRate: [0, -1],
+        populationGrowth: [-0.1, -0.5],
+        lifeExpectancy: [80, 90],
+        olderPopulationShare: [21, 35],
+      },
+      BBB: {
+        fertility: [3, 2.5],
+        netMigrationRate: [0, 0],
+        populationGrowth: [2, 1.5],
+        lifeExpectancy: [60, 70],
+        olderPopulationShare: [4, 6],
+      },
+    },
+  };
+  let populationSeriesReads = 0;
+  const getPopulationSeries = (country) => {
+    populationSeriesReads += 1;
+    return country.populations;
+  };
+
+  const first = cache.get({
+    countries,
+    years,
+    yearIndex: 1,
+    demographicMetrics,
+    getPopulationSeries,
+    scenarioKey: "medium",
+  });
+  const readsAfterFirst = populationSeriesReads;
+  const second = cache.get({
+    countries,
+    years,
+    yearIndex: 1,
+    demographicMetrics,
+    getPopulationSeries,
+    scenarioKey: "medium",
+  });
+
+  assert.equal(second, first);
+  assert.equal(populationSeriesReads, readsAfterFirst);
+  assert.equal(first.agingSocietyCount, 1);
+  assert.equal(first.agingStageCounts.get("superAged"), 1);
+
+  const third = cache.get({
+    countries,
+    years,
+    yearIndex: 1,
+    demographicMetrics,
+    getPopulationSeries,
+    scenarioKey: "high",
+  });
+
+  assert.notEqual(third, first);
+  assert.ok(populationSeriesReads > readsAfterFirst);
 });
 
 test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {

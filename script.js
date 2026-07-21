@@ -3155,6 +3155,7 @@ async function init() {
       getYears: () => yearsData,
       getGlobalMetricsByYear: activeGlobalMetricsMap,
       getPopulationSeries: activePopulationSeries,
+      getProjectionScenario: () => projectionData.scenario(),
       getCountryDemographicMetrics: () => countryDemographicMetrics,
       getCountryAgeStructure: () => countryAgeStructure,
       getViewMode: () => viewMode,

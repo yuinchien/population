@@ -1,3 +1,5 @@
+import { currentAgingStage } from "./country-aging-narrative.mjs";
+
 export const textSegment = (value) => ({ text: value });
 export const styledSegment = (value, className) => ({
   text: value,
@@ -170,4 +172,153 @@ export function agingSocietiesSentence({
 export function legacyClusterSentence({ silverDeclineCount, growthCount }) {
   if (silverDeclineCount == null || growthCount == null) return "";
   return ` ${silverDeclineCount} countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies`;
+}
+
+// Join sentence fragments into a paragraph: trim each, drop empties, and put a
+// single space between. Builders can return "" to skip a sentence without any
+// caller having to juggle leading/trailing spaces.
+export function joinSentences(...parts) {
+  return parts
+    .map((part) => part?.trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+// Render a list of phrases as prose with an Oxford "and":
+// ["a"] -> "a"; ["a","b"] -> "a and b"; ["a","b","c"] -> "a, b, and c".
+function joinListProse(items) {
+  const list = items.filter(Boolean);
+  if (list.length <= 1) return list.join("");
+  if (list.length === 2) return `${list[0]} and ${list[1]}`;
+  return `${list.slice(0, -1).join(", ")}, and ${list.at(-1)}`;
+}
+
+// Arrival-act "context facts" — each returns a bare phrase (no leading space,
+// no trailing punctuation) so they can be woven into one prose list sentence
+// ("By then <a>, <b>, and <c>.") or dropped entirely by returning "".
+function lifetimeArrivalAgingPhrase(olderShareAtBirth) {
+  if (!Number.isFinite(olderShareAtBirth)) return "";
+  const stage = currentAgingStage(olderShareAtBirth);
+  // Below the aging-society threshold, no aging note is added to the copy.
+  if (!stage) return "";
+  const article = stage.label.startsWith("a") ? "an" : "a";
+  return `it had officially become ${article} ${stage.label}`;
+}
+
+function lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth) {
+  if (
+    !Number.isFinite(youthDependencyRatioAtBirth) ||
+    youthDependencyRatioAtBirth <= 80
+  ) {
+    return "";
+  }
+  return `youth dependency was high at ${Number(youthDependencyRatioAtBirth).toFixed(1)} children per 100 working-age adults`;
+}
+
+// When the country's population had already peaked before the person was born,
+// the peak belongs in the Arrival act (peaks during their life show up in the
+// Present/Horizon acts instead). `peakYear` is the country's all-time peak.
+function lifetimeArrivalPeakPhrase(peakYear, birthYear) {
+  if (
+    !Number.isFinite(peakYear) ||
+    !Number.isFinite(birthYear) ||
+    peakYear >= birthYear
+  ) {
+    return "";
+  }
+  return `its population had already peaked in ${peakYear}`;
+}
+
+export function lifetimeArrivalFactsSentence({
+  olderShareAtBirth,
+  youthDependencyRatioAtBirth,
+  peakYear,
+  birthYear,
+}) {
+  const arrivalFacts = joinListProse([
+    lifetimeArrivalPeakPhrase(peakYear, birthYear),
+    lifetimeArrivalAgingPhrase(olderShareAtBirth),
+    lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth),
+  ]);
+  return arrivalFacts ? `By then ${arrivalFacts}.` : "";
+}
+
+export function lifetimePresentPivotSentence({ countryName, countryPeakYear }) {
+  if (countryPeakYear == null || !countryName) return "";
+  const possessiveCountryName = countryName.endsWith("s")
+    ? `${countryName}'`
+    : `${countryName}'s`;
+  return ` You have already lived through ${possessiveCountryName} population peak in ${countryPeakYear}.`;
+}
+
+export function lifetimeProjectedCountryPeakSentence({
+  countryName,
+  projectedCountryPeakYear,
+}) {
+  return projectedCountryPeakYear != null && countryName
+    ? `${countryName} is projected to reach its population peak in ${projectedCountryPeakYear}.`
+    : "";
+}
+
+export function lifetimeGlobalLifeExpectancySentence({
+  birthYear,
+  globalLifeAtBirth,
+  globalLifeAtFinal,
+  formatLifeExpectancy,
+}) {
+  return Number.isFinite(globalLifeAtBirth) &&
+    Number.isFinite(globalLifeAtFinal)
+    ? ` Since your birth in ${birthYear}, global life expectancy has risen to ${formatLifeExpectancy(globalLifeAtFinal)} from ${formatLifeExpectancy(globalLifeAtBirth)}.`
+    : "";
+}
+
+export function lifetimeArrivalCopy({
+  birthYear,
+  countryName,
+  birthPopulation,
+  countryLifeAtBirth,
+  arrivalFactsSentence,
+  formatPopulation,
+  formatLifeExpectancy,
+}) {
+  return joinSentences(
+    `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPopulation)} people.`,
+    `In ${countryName}, the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
+    arrivalFactsSentence,
+  );
+}
+
+export function lifetimePresentCopy({
+  countryName,
+  addedSinceBirth,
+  youngerShare,
+  presentPivotCopy,
+  formatPopulation,
+}) {
+  return joinSentences(
+    `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.`,
+    youngerShare != null
+      ? `In ${countryName}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.`
+      : "",
+    presentPivotCopy,
+  );
+}
+
+export function lifetimeHorizonCopy({
+  finalYear,
+  finalAge,
+  finalPopulation,
+  globalLifeChangeCopy,
+  projectedCountryPeakCopy,
+  horizonAgingCopy,
+  trajectoryCopy,
+  formatPopulation,
+}) {
+  return joinSentences(
+    `By ${finalYear}, you will be ${finalAge ?? "—"} years old in a world of roughly ${formatPopulation(finalPopulation)} people.`,
+    globalLifeChangeCopy,
+    projectedCountryPeakCopy,
+    horizonAgingCopy,
+    trajectoryCopy,
+  );
 }

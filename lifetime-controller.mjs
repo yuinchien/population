@@ -9,6 +9,7 @@ import {
 } from "./chart-animation.mjs";
 import {
   buildLifetimeStory,
+  createLifetimeAggregateCache,
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
 import { METRICS } from "./metrics.mjs";
@@ -381,6 +382,7 @@ export function createLifetimeController({
   getYears,
   getGlobalMetricsByYear,
   getPopulationSeries,
+  getProjectionScenario,
   getCountryDemographicMetrics,
   getCountryAgeStructure,
   getViewMode,
@@ -409,6 +411,7 @@ export function createLifetimeController({
   // animations are tracked so a rebuild/teardown can cancel them.
   let entranceObserver = null;
   let entranceAnimations = [];
+  const aggregateCache = createLifetimeAggregateCache();
 
   const countries = () => getCountries() ?? [];
   const years = () => getYears() ?? [];
@@ -489,6 +492,8 @@ export function createLifetimeController({
       countryTrajectory: countryTrajectory(),
       formatPopulation,
       formatLifeExpectancy: METRICS.lifeExpectancy.format,
+      aggregateCache,
+      aggregateKey: getProjectionScenario?.() ?? "medium",
     });
   }
 

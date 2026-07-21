@@ -5,6 +5,13 @@ import {
   countryPopulationLeadSegments,
   countryPopulationTrendSegments,
   legacyClusterSentence,
+  lifetimeArrivalCopy,
+  lifetimeArrivalFactsSentence,
+  lifetimeGlobalLifeExpectancySentence,
+  lifetimeHorizonCopy,
+  lifetimePresentCopy,
+  lifetimePresentPivotSentence,
+  lifetimeProjectedCountryPeakSentence,
   migrationMomentumSentence,
   superAgedSocietiesSentence,
 } from "../narrative-copy.mjs";
@@ -106,5 +113,88 @@ test("superAgedSocietiesSentence and legacyClusterSentence format lifetime copy"
   assert.equal(
     legacyClusterSentence({ silverDeclineCount: 12, growthCount: 34 }),
     " 12 countries are projected to be in Silver Decline, adjusting to shrinking, super-aged societies",
+  );
+});
+
+test("lifetime arrival copy joins birth context facts without model data", () => {
+  const facts = lifetimeArrivalFactsSentence({
+    olderShareAtBirth: 15,
+    youthDependencyRatioAtBirth: 82.4,
+    peakYear: 2005,
+    birthYear: 2010,
+  });
+
+  assert.equal(
+    facts,
+    "By then its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults.",
+  );
+  assert.equal(
+    lifetimeArrivalCopy({
+      birthYear: 2010,
+      countryName: "Japan",
+      birthPopulation: 7e9,
+      countryLifeAtBirth: 83.2,
+      arrivalFactsSentence: facts,
+      formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+      formatLifeExpectancy: (value) => `${value} yrs`,
+    }),
+    "When you were born in 2010, you joined a global population of 7.0B people. In Japan, the average life expectancy at birth was 83.2 yrs. By then its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults.",
+  );
+});
+
+test("lifetime present copy keeps personal population peak wording centralized", () => {
+  const pivot = lifetimePresentPivotSentence({
+    countryName: "Italy",
+    countryPeakYear: 2014,
+  });
+
+  assert.equal(
+    pivot,
+    " You have already lived through Italy's population peak in 2014.",
+  );
+  assert.equal(
+    lifetimePresentCopy({
+      countryName: "Italy",
+      addedSinceBirth: 2.1e9,
+      youngerShare: 23,
+      presentPivotCopy: pivot,
+      formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    }),
+    "Fast forward to today. The world has added 2.1B people since your birth year. In Italy, about 23% of people alive now are younger than you. You have already lived through Italy's population peak in 2014.",
+  );
+});
+
+test("lifetime horizon copy combines global life, peak, aging, and trajectory sentences", () => {
+  assert.equal(
+    lifetimeGlobalLifeExpectancySentence({
+      birthYear: 2000,
+      globalLifeAtBirth: 66.4,
+      globalLifeAtFinal: 80,
+      formatLifeExpectancy: (value) => `${value.toFixed(1)} yrs`,
+    }),
+    " Since your birth in 2000, global life expectancy has risen to 80.0 yrs from 66.4 yrs.",
+  );
+  assert.equal(
+    lifetimeProjectedCountryPeakSentence({
+      countryName: "India",
+      projectedCountryPeakYear: 2061,
+    }),
+    "India is projected to reach its population peak in 2061.",
+  );
+  assert.equal(
+    lifetimeHorizonCopy({
+      finalYear: 2080,
+      finalAge: 80,
+      finalPopulation: 10.3e9,
+      globalLifeChangeCopy:
+        " Since your birth in 2000, global life expectancy has risen to 80.0 yrs from 66.4 yrs.",
+      projectedCountryPeakCopy:
+        "India is projected to reach its population peak in 2061.",
+      horizonAgingCopy:
+        "India will be among 130 nations classified as aging societies.",
+      trajectoryCopy: "Its long-term trajectory is shifting.",
+      formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
+    }),
+    "By 2080, you will be 80 years old in a world of roughly 10.3B people. Since your birth in 2000, global life expectancy has risen to 80.0 yrs from 66.4 yrs. India is projected to reach its population peak in 2061. India will be among 130 nations classified as aging societies. Its long-term trajectory is shifting.",
   );
 });
