@@ -573,8 +573,12 @@ function createGlobalLifeExpectancyChart(change) {
       `.lifetime-story-section[data-index="${index}"]`,
     );
     if (!section) return;
+    // "instant" must be the literal scroll value, not "auto" — the container's
+    // scroll-behavior: smooth would otherwise animate what's meant to be a
+    // jump (e.g. the reset-to-first when a fresh story is rendered), showing a
+    // distracting scroll-back from wherever the previous story was left.
     section.scrollIntoView({
-      behavior: behavior === "instant" ? "auto" : behavior,
+      behavior: behavior === "instant" ? "instant" : behavior,
       block: "start",
     });
     setActiveSection(index);
@@ -670,6 +674,9 @@ function createGlobalLifeExpectancyChart(change) {
     scrollLockedUntil = 0;
     lastWheelAt = 0;
     elements.lifetimeAbout?.replaceChildren();
+    // Drop the scroll position too, so the next story opens at the first
+    // section instead of the browser restoring where the last one was left.
+    if (elements.lifetimeAbout) elements.lifetimeAbout.scrollTop = 0;
     elements.lifetimeJourney?.replaceChildren();
     render();
     syncUrl();
