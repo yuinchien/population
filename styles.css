@@ -1131,6 +1131,22 @@ body.country-detail #colorMode {
     grid-column: 1 / -1;
 }
 
+/* Country detail's own summary sits in the chart card's row, one column wide
+   (the chart card spans the other two) — desktop only; the mobile rule below
+   drops .country-detail to a plain block stack where it flows on top. Both
+   row-1 items are pinned explicitly: the summary comes first in the DOM (so it
+   stacks on top on mobile), which under sparse auto-placement would otherwise
+   push the wide chart card down to its own row. */
+.country-detail > .country-chart-card {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+}
+
+.country-detail > #countrySummary {
+    grid-column: 3;
+    grid-row: 1;
+}
+
 
 
 .pyramid-bar {
@@ -1788,7 +1804,7 @@ body.view-search .detail-panel-header {
 }
 
 body.view-search .detail-panel {
-    padding-top: calc(var(--margin) + 68px);
+    padding-top: calc(var(--margin)*2 + var(--button-size));
 }
 
 /* The bare country list is year-agnostic, so the timeline just clutters it —

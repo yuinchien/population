@@ -1085,7 +1085,11 @@ function showStatus(text, { instant = false } = {}) {
 
 
 function renderCountrySummary(summary) {
-  elements.detailSummary.hidden = false;
+  // Country detail has its own summary element inside the #countryDetail grid
+  // (it sits in the chart card's row), separate from the group view's
+  // full-width #detailSummary banner — so hide that one here.
+  elements.detailSummary.hidden = true;
+  elements.countrySummary.hidden = false;
   const badge = document.createElement("div");
   badge.className = "badge";
   badge.textContent = badgeLabel();
@@ -1110,7 +1114,7 @@ function renderCountrySummary(summary) {
     span.textContent = segment.text;
     copy.append(span);
   });
-  elements.detailSummary.replaceChildren(badge, copy);
+  elements.countrySummary.replaceChildren(badge, copy);
 }
 
 function renderDetailStatus(status) {
