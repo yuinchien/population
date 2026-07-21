@@ -1055,6 +1055,10 @@ body.country-detail #colorMode {
     background: var(--detail-color);
     border-radius: 20px;
     padding: 4px 8px;
+    display: none;
+}
+#countryChartMarkerYearLabel {
+    display: none;
 }
 
 .country-chart-axis-label.muted {
@@ -1073,11 +1077,17 @@ body.country-detail #colorMode {
 }
 
 .country-chart-marker-label,
+.country-chart-marker-year-label,
 .country-chart-peak-value-label {
     font-size: 12px;
     font-weight: 500;
     fill: var(--color-text);
     text-anchor: middle;
+}
+
+.country-chart-marker-year-label {
+    font-size: 11px;
+    fill: var(--color-text);
 }
 
 .country-chart-year-drag {

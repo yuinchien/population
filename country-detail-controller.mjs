@@ -23,7 +23,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
-const COUNTRY_CHART_PADDING = { top: 28, right: 0, bottom: 18, left: 0 };
+const COUNTRY_CHART_PADDING = { top: 28, right: 0, bottom: 0, left: 0 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
@@ -432,26 +432,26 @@ export function createCountryDetailController({
 
     const [x0] = xyFor(0, 0);
     const [x1] = xyFor(n - 1, 0);
-    const labelFirst = svgEl("text", {
-      class: "country-chart-axis-label",
-      x: x0,
-      y: axisY + 4,
-      "text-anchor": "start",
-    });
-    labelFirst.textContent = years[0];
-    const labelLast = svgEl("text", {
-      class: "country-chart-axis-label",
-      x: x1,
-      y: axisY + 4,
-      "text-anchor": "end",
-    });
-    labelLast.textContent = years[n - 1];
-    if (animate) {
-      labelFirst.style.opacity = "0";
-      labelLast.style.opacity = "0";
-    }
-    revealElements.push(labelFirst, labelLast);
-    svg.append(labelFirst, labelLast);
+    // const labelFirst = svgEl("text", {
+    //   class: "country-chart-axis-label",
+    //   x: x0,
+    //   y: axisY + 4,
+    //   "text-anchor": "start",
+    // });
+    // labelFirst.textContent = years[0];
+    // const labelLast = svgEl("text", {
+    //   class: "country-chart-axis-label",
+    //   x: x1,
+    //   y: axisY + 4,
+    //   "text-anchor": "end",
+    // });
+    // labelLast.textContent = years[n - 1];
+    // if (animate) {
+    //   labelFirst.style.opacity = "0";
+    //   labelLast.style.opacity = "0";
+    // }
+    // revealElements.push(labelFirst, labelLast);
+    // svg.append(labelFirst, labelLast);
 
     const markerDot = svgEl("circle", {
       id: "countryChartMarkerDot",
@@ -461,6 +461,10 @@ export function createCountryDetailController({
     const markerLabel = svgEl("text", {
       id: "countryChartMarkerLabel",
       class: "country-chart-marker-label",
+    });
+    const markerYearLabel = svgEl("text", {
+      id: "countryChartMarkerYearLabel",
+      class: "country-chart-marker-year-label",
     });
     const markerLine = svgEl("line", {
       id: "countryChartMarkerLine",
@@ -477,16 +481,19 @@ export function createCountryDetailController({
       markerLine.style.opacity = "0";
       markerDot.style.opacity = "0";
       markerLabel.style.opacity = "0";
+      markerYearLabel.style.opacity = "0";
     }
-    revealElements.push(markerLine, markerDot, markerLabel);
-    svg.append(markerLine, markerDot, markerLabel, markerDragHit);
+    revealElements.push(markerLine, markerDot, markerLabel, markerYearLabel);
+    svg.append(markerLine, markerDot, markerLabel, markerYearLabel, markerDragHit);
 
     chartLayout = {
       populations: populationSeries,
       xyFor,
+      axisLabelY: axisY + 4,
       markerLine,
       markerDot,
       markerLabel,
+      markerYearLabel,
       markerDragHit,
     };
 
@@ -661,9 +668,11 @@ export function createCountryDetailController({
     const {
       populations,
       xyFor,
+      axisLabelY,
       markerLine,
       markerDot,
       markerLabel,
+      markerYearLabel,
       markerDragHit,
     } = chartLayout;
     const population = populations[index];
@@ -683,8 +692,14 @@ export function createCountryDetailController({
         "y",
         Math.max(y - 14, COUNTRY_CHART_LABEL_MIN_Y),
       );
-      markerLabel.textContent =
-        population != null ? formatPopulation(population) : "";
+      markerLabel.textContent = String(year);
+      markerYearLabel?.setAttribute("x", x);
+      markerYearLabel?.setAttribute("y", axisLabelY);
+      markerYearLabel?.setAttribute(
+        "text-anchor",
+        index === 0 ? "start" : index === years.length - 1 ? "end" : "middle",
+      );
+      if (markerYearLabel) markerYearLabel.textContent = String(year);
       markerDragHit?.setAttribute("x", x - 9);
     }
 
