@@ -73,8 +73,13 @@ function createLifeExpectancyComparison(rows) {
     // Zoomed proportional width so close life-expectancy values still read as
     // different; a floor keeps the shortest bar visible, the ceiling leaves
     // room for the value label, and CSS min-width keeps long labels legible
-    // inside their pill.
-    bar.style.width = `${(0.2 + 0.6 * ((row.value - min) / range)) * 100}%`;
+    // inside their pill. Stored as a custom property (not the width style
+    // directly) so the entrance animation — a plain 0 -> target width grow,
+    // see .lifetime-le-bar in styles.css — has something to animate toward.
+    bar.style.setProperty(
+      "--lifetime-le-bar-width",
+      `${(0.3 + 0.6 * ((row.value - min) / range)) * 100}%`,
+    );
     const name = document.createElement("span");
     name.className = "lifetime-le-name";
     name.textContent = row.label;

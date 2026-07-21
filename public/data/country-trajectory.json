@@ -6,9 +6,9 @@
       "un_trajectory": "Continuous Growth",
       "summary_template": "Driven primarily by net inward migration, [COUNTRY] is projected to maintain long-term population growth and workforce expansion despite below-replacement fertility.",
       "iso3_list": [
-        "ABW", "AND", "ARE", "AUS", "BHR", "BMU", "CAN", "CYM", "GIB", "GRL",
-        "ISR", "KWT", "LCA", "MAC", "NCL", "NZL", "OMN", "QAT", "SGP", "SXM",
-        "TCA", "USA"
+        "ABW", "AND", "ARE", "AUS", "BHR", "BMU", "BRN", "CAN", "CYM", "GRL",
+        "ISR", "KWT", "LCA", "MAC", "MCO", "NCL", "NZL", "OMN", "QAT", "SAU",
+        "SGP", "TCA", "USA"
       ]
     },
     {
@@ -18,8 +18,8 @@
       "summary_template": "Inward migration helps buffer natural population decline in [COUNTRY], moderating the pace of structural workforce aging and long-term population contraction.",
       "iso3_list": [
         "AUT", "BEL", "CHE", "CYP", "CZE", "DEU", "DNK", "FIN", "FRA", "FRO",
-        "GBR", "GGY", "IMN", "IRL", "ISL", "JEY", "LIE", "LUX", "MCX", "MLT",
-        "NLD", "NOR", "SMR", "SWE"
+        "GBR", "IMN", "IRL", "ISL", "LIE", "LUX", "MLT", "NLD", "NOR", "SMR",
+        "SWE", "SYC"
       ]
     },
     {
@@ -28,9 +28,9 @@
       "un_trajectory": "Immediate & Deep Shrinkage",
       "summary_template": "With fertility remaining well below replacement level, [COUNTRY] faces persistent population contraction and rapid structural aging of its workforce.",
       "iso3_list": [
-        "ASM", "BIH", "BLR", "EST", "ESP", "GRC", "HRV", "ITA", "JPN", "KOR",
-        "LTU", "LVA", "MNE", "MKD", "PRT", "PRI", "SRB", "SVK", "SVN", "TWN",
-        "UKR", "VIR"
+        "ASM", "BIH", "BLR", "ESP", "EST", "GRC", "HKG", "HRV", "ITA", "JPN",
+        "KOR", "LTU", "LVA", "MKD", "MNE", "PRI", "PRK", "PRT", "SRB", "SVK",
+        "SVN", "TWN", "UKR", "VIR"
       ]
     },
     {
@@ -39,9 +39,10 @@
       "un_trajectory": "Peak 2025–2050 -> Steep Decline",
       "summary_template": "Characterized by rapidly declining fertility, [COUNTRY] approaches a demographic peak by mid-century followed by long-term population decline and demographic aging.",
       "iso3_list": [
-        "ALB", "ARM", "AZE", "BGR", "BRA", "CHL", "CHN", "COL", "CRI", "CUB",
-        "GEO", "HUN", "IRN", "JAM", "LBN", "LKA", "MDA", "MEX", "MUS", "POL",
-        "ROU", "RUS", "THA", "TUR", "URY", "VNM"
+        "ALB", "ARM", "AZE", "BGR", "BHS", "BRA", "CHL", "CHN", "COL", "CPV",
+        "CRI", "CUB", "DZA", "GEO", "GRD", "HUN", "IRN", "JAM", "LBN", "LBY",
+        "LKA", "MDA", "MDV", "MEX", "MMR", "MUS", "NIC", "POL", "PYF", "ROU",
+        "RUS", "THA", "TTO", "TUR", "URY", "VNM"
       ]
     },
     {
@@ -50,10 +51,11 @@
       "un_trajectory": "Growth -> Peak 2060–2085 -> Plateau",
       "summary_template": "Supported by an expanding working-age population, [COUNTRY] maintains demographic momentum through mid-century before overall population growth stabilizes.",
       "iso3_list": [
-        "ARG", "BGD", "BOL", "BTN", "DOM", "ECU", "EGY", "FJI", "GTM", "GUY",
-        "HND", "IDN", "IND", "IRQ", "JOR", "KAZ", "KGZ", "KHM", "LAO", "MAR",
-        "MNG", "MYS", "NPL", "PAN", "PER", "PHL", "PNG", "PRY", "SLV", "SUR",
-        "SYR", "TJI", "TKM", "TLS", "TUN", "UZB", "VUT", "ZAF"
+        "ARG", "BGD", "BLZ", "BOL", "BTN", "BWA", "DOM", "ECU", "EGY", "FJI",
+        "GAB", "GTM", "GUY", "HND", "IDN", "IND", "IRQ", "JOR", "KAZ", "KGZ",
+        "KHM", "LAO", "MAR", "MNG", "MYS", "NPL", "PAN", "PER", "PHL", "PNG",
+        "PRY", "SLV", "SUR", "SYR", "TJK", "TKM", "TLS", "TUN", "UZB", "VUT",
+        "ZAF"
       ]
     },
     {
@@ -62,11 +64,11 @@
       "un_trajectory": "Expansion Through 2100",
       "summary_template": "Driven by a highly youthful demographic structure, [COUNTRY] will experience sustained workforce growth and strong long-term population expansion throughout the century.",
       "iso3_list": [
-        "AGO", "BDI", "BEN", "BFA", "CAF", "CIV", "CMR", "COD", "COG", "COM",
-        "DJI", "ERI", "ETH", "GHA", "GIN", "GMB", "GNB", "GNQ", "KEN", "LBR",
-        "LSO", "MDG", "MLI", "MOZ", "MRT", "MWI", "NAM", "NER", "NGA", "PAK",
-        "RWA", "SDN", "SEN", "SLE", "SOM", "SSD", "STP", "SWZ", "TCD", "TGO",
-        "TZA", "UGA", "YEM", "ZMB", "ZWE"
+        "AFG", "AGO", "BDI", "BEN", "BFA", "CAF", "CIV", "CMR", "COD", "COG",
+        "COM", "DJI", "ERI", "ETH", "GHA", "GIN", "GMB", "GNB", "GNQ", "KEN",
+        "LBR", "LSO", "MDG", "MLI", "MOZ", "MRT", "MWI", "NAM", "NER", "NGA",
+        "PAK", "RWA", "SDN", "SEN", "SLE", "SOM", "SSD", "STP", "SWZ", "TCD",
+        "TGO", "TZA", "UGA", "YEM", "ZMB", "ZWE"
       ]
     },
     {
@@ -75,8 +77,8 @@
       "un_trajectory": "Multi-Decade Depopulation",
       "summary_template": "Driven by persistent net emigration and low fertility rates, [COUNTRY] faces long-term population contraction and ongoing workforce constraints.",
       "iso3_list": [
-        "ATG", "DMA", "FSM", "GDD", "GUM", "HTI", "KIR", "KNA", "MHL", "MNP",
-        "NRU", "PLW", "SLB", "SPM", "TON", "VCT", "WSM"
+        "ATG", "BRB", "DMA", "FSM", "GUM", "HTI", "KIR", "KNA", "MHL", "MNP",
+        "NRU", "PLW", "SLB", "TON", "TUV", "VCT", "VEN", "VGB", "WSM", "XKX"
       ]
     }
   ]

@@ -1992,7 +1992,7 @@ button.lg .material-symbols-outlined {
 
 .lifetime-story-section {
     min-height: 100vh;
-    padding: 18vh max(9vw, var(--margin));
+    padding: 18vh max(8vw, var(--margin));
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--margin);
@@ -2091,9 +2091,11 @@ button.lg .material-symbols-outlined {
     display: flex;
     align-items: stretch;
     height: 40px;
-    /* Entrance: same left-to-right reveal as the LE bars (see .is-in-view). */
-    clip-path: inset(0 100% 0 0);
-    transition: clip-path 0.7s ease;
+    /* Entrance: grows from 0 to full width (see .is-in-view) — the two
+       segments are already percentages of this bar, so they scale down to it
+       proportionally, no clipping involved. */
+    width: 0;
+    transition: width 0.7s ease;
 }
 
 .lifetime-population-segment {
@@ -2220,7 +2222,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-global-life-value {
-    font-size: 1.25rem;
+    font-size: 1.2rem;
 }
 
 .lifetime-global-life-year {
@@ -2236,7 +2238,7 @@ button.lg .material-symbols-outlined {
     gap: 4px;
     font-family: var(--font-sans);
     font-weight: 500;
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
 .lifetime-le-row {
@@ -2247,18 +2249,21 @@ button.lg .material-symbols-outlined {
 
 .lifetime-le-bar {
     flex: none;
-    min-width: max-content;
+    /*min-width: max-content;*/
     max-width: 100%;
     background: var(--color-muted);
     color: var(--color-bg);
     border-radius: 999px;
     padding: 4px 10px;
     white-space: nowrap;
-    /* Entrance: revealed left-to-right (see .is-in-view below). clip-path,
-       not width, so the bar's real width — floored by min-width — is untouched
-       and only the visible portion grows. */
-    clip-path: inset(0 100% 0 0);
-    transition: width 0.4s ease, clip-path 0.7s ease;
+    /* Entrance: grows from 0 to its data-driven width (--lifetime-le-bar-width,
+       set in JS), rather than clipping a fixed-width bar — no clip-path, so no
+       clip-path+border-radius rendering flicker (a known browser quirk). Rows
+       whose target width is under their own label's min-content size just pop
+       to that floor instead of visibly growing — an accepted tradeoff, since
+       their text is still invisible (opacity 0) at that point regardless. */
+    width: 0;
+    transition: width 0.7s ease;
 }
 
 .lifetime-le-row.is-highlight .lifetime-le-bar {
@@ -2297,15 +2302,15 @@ button.lg .material-symbols-outlined {
     transition: opacity 0.4s ease;
 }
 
-/* Bars finish their wipe, then the text/labels fade in. */
-.lifetime-story-section.is-in-view .lifetime-le-bar,
+/* Bars finish growing, then the text/labels fade in. */
 .lifetime-story-section.is-in-view .lifetime-population-bar {
-    clip-path: inset(0 0 0 0);
+    width: 100%;
 }
 
 .lifetime-story-section.is-in-view .lifetime-le-bar {
+    width: var(--lifetime-le-bar-width, 100%);
     /* Staggered cascade down the comparison list (--row-index set per row). */
-    transition-delay: 0s, calc(var(--row-index, 0) * 50ms);
+    transition-delay: calc(var(--row-index, 0) * 50ms);
 }
 
 .lifetime-story-section.is-in-view .lifetime-le-name,
@@ -2332,9 +2337,12 @@ button.lg .material-symbols-outlined {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .lifetime-le-bar,
+    .lifetime-le-bar {
+        width: var(--lifetime-le-bar-width, 100%);
+        transition: none;
+    }
     .lifetime-population-bar {
-        clip-path: none;
+        width: 100%;
         transition: none;
     }
     .lifetime-le-name,
