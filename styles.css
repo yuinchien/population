@@ -923,10 +923,6 @@ body.country-detail #colorMode {
     }
 }
 
-body.detail #detailSummary {
-    display: none;
-}
-
 #chartInsightCaption {
     display: table;
 }
@@ -1112,10 +1108,6 @@ body.detail #detailSummary {
     width: 100%;
     margin: 0 auto;
     /*overflow: hidden;*/
-}
-
-#detailSummary {
-    grid-column: 1 / -1;
 }
 
 /* Country detail's own summary sits in the chart card's row, one column wide

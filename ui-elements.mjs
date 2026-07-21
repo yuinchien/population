@@ -30,7 +30,6 @@ export function getAppElements(root = document) {
     detailFlag: root.querySelector("#detailFlag"),
     detailTitle: root.querySelector("#detailTitle"),
     detailSubtitle: root.querySelector("#detailSubtitle"),
-    detailSummary: root.querySelector("#detailSummary"),
     detailHeader: root.querySelector("#detailHeader"),
     detailRows: root.querySelector("#detailRows"),
     detailClose: root.querySelector("#detailClose"),

@@ -115,7 +115,6 @@ assertElements(
     "detailFlag",
     "detailTitle",
     "detailSubtitle",
-    "detailSummary",
     "detailHeader",
     "detailRows",
     "detailClose",
@@ -1084,10 +1083,6 @@ function showStatus(text, { instant = false } = {}) {
 
 
 function renderCountrySummary(summary) {
-  // Country detail has its own summary element inside the #countryDetail grid
-  // (it sits in the chart card's row), separate from the group view's
-  // full-width #detailSummary banner — so hide that one here.
-  elements.detailSummary.hidden = true;
   elements.countrySummary.hidden = false;
   // Same .sparkline-caption label/value pattern the other cards use (e.g.
   // the Population card's "Population" / "115.1M"), so this card's caption
@@ -1124,16 +1119,6 @@ function renderCountrySummary(summary) {
   });
   elements.countrySummary.replaceChildren(caption, copy);
 }
-
-// function renderDetailStatus(status) {
-//   elements.detailSummary.hidden = false;
-//   elements.detailFlag.hidden = true;
-//   elements.detailFlag.style.backgroundImage = "";
-//   const badge = document.createElement("span");
-//   badge.className = "badge ";
-//   badge.textContent = badgeLabel();
-//   elements.detailSummary.replaceChildren(badge, ` ${status.text}`);
-// }
 
 function applyYear(year, { instant = false } = {}) {
   const yearIndex = yearsData.indexOf(year);
@@ -1559,8 +1544,6 @@ function renderDetailPanel() {
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
-  // elements.detailPanel.insertBefore(elements.detailSummary, elements.detailHeader);
-  elements.detailSummary.hidden = false;
   elements.countryDetail.hidden = true;
   elements.detailHeader.hidden = false;
   elements.detailRows.hidden = false;
