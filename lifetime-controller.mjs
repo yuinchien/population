@@ -4,6 +4,10 @@ import {
 } from "./data-loader.mjs";
 import { trackEvent } from "./analytics.mjs";
 import {
+  runChartAnimation,
+  prefersReducedMotion,
+} from "./chart-animation.mjs";
+import {
   buildLifetimeStory,
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
@@ -12,6 +16,10 @@ import { METRICS } from "./metrics.mjs";
 const LIFETIME_SECTION_COUNT = 3;
 const LIFETIME_SCROLL_LOCK_MS = 900;
 const LIFETIME_WHEEL_IDLE_MS = 240;
+// The global-life curve rises from a flat baseline to its real shape, the same
+// entrance the trend chart uses (runChartAnimation + easeOutCubic).
+const LIFETIME_CURVE_GROW_MS = 700;
+const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 
 function createLifetimeStat(value, label) {
   const stat = document.createElement("div");
@@ -64,6 +72,10 @@ export function createLifetimeController({
   let scrollFrame = null;
   let scrollLockedUntil = 0;
   let lastWheelAt = 0;
+  // Reveals each section's charts once it scrolls into view; the running curve
+  // animations are tracked so a rebuild/teardown can cancel them.
+  let entranceObserver = null;
+  let entranceAnimations = [];
 
   const countries = () => getCountries() ?? [];
   const years = () => getYears() ?? [];
@@ -253,9 +265,11 @@ export function createLifetimeController({
     const min = Math.min(...values);
     const range = max - min || 1;
     const format = METRICS.lifeExpectancy.format;
-    rows.forEach((row) => {
+    rows.forEach((row, index) => {
       const item = document.createElement("div");
       item.className = `lifetime-le-row${row.highlight ? " is-highlight" : ""}`;
+      // Staggers each bar's reveal (see .lifetime-le-bar entrance CSS).
+      item.style.setProperty("--row-index", index);
       const bar = document.createElement("div");
       bar.className = "lifetime-le-bar";
       // Zoomed proportional width so close life-expectancy values still read as
@@ -296,9 +310,12 @@ function createPopulationChangeChart(change) {
     const addedSegment = document.createElement("div");
     addedSegment.className = "lifetime-population-segment added";
     addedSegment.style.width = percentFromShare(change?.addedShare, 0.5);
-    addedSegment.textContent = change?.addedPopulation
+    const addedValue = document.createElement("span");
+    addedValue.className = "lifetime-population-value";
+    addedValue.textContent = change?.addedPopulation
       ? `${change.addedPopulation}`
       : "N/A";
+    addedSegment.append(addedValue);
 
     const bar = document.createElement("div");
     bar.className = "lifetime-population-bar";
@@ -449,6 +466,34 @@ function createGlobalLifeExpectancyChart(change) {
   });
 
   chart.append(title, svg);
+
+  // Entrance: the curve rises from a flat baseline to its real shape (same
+  // technique as the trend chart). Started flat here so there's no pre-reveal
+  // flash; playEntrance() (fired when the section scrolls into view) animates
+  // it up. Under reduced motion the line just stays at its final points.
+  if (!prefersReducedMotion()) {
+    const flatPoints = rows
+      .map((row) => `${xFor(row.year)},${baselineY}`)
+      .join(" ");
+    line.setAttribute("points", flatPoints);
+    chart.playEntrance = () =>
+      runChartAnimation({
+        duration: LIFETIME_CURVE_GROW_MS,
+        easing: easeOutCubic,
+        onFrame: (eased) => {
+          line.setAttribute(
+            "points",
+            rows
+              .map(
+                (row) =>
+                  `${xFor(row.year)},${baselineY + (yFor(row.value) - baselineY) * eased}`,
+              )
+              .join(" "),
+          );
+        },
+      });
+  }
+
   return chart;
 }
 
@@ -491,6 +536,9 @@ function createGlobalLifeExpectancyChart(change) {
       section.classList.add("is-horizon");
       const chart = createGlobalLifeExpectancyChart(act.globalLifeExpectancy);
       if (chart) {
+        // Surfaced on the section so the entrance observer can rise the curve
+        // when this section scrolls into view.
+        if (chart.playEntrance) section.playEntrance = chart.playEntrance;
         section.append(group, chart);
         return section;
       }
@@ -563,6 +611,44 @@ function createGlobalLifeExpectancyChart(change) {
     scrollToSection(nextIndex);
   }
 
+  // Adds .is-in-view to each section the first time it scrolls into the story
+  // viewport (driving the CSS bar/text entrance) and fires its curve rise, then
+  // stops watching it — entrances play once per story build. Firing off an
+  // observer (rather than synchronously) guarantees the initial hidden state
+  // has painted, so the CSS transitions actually run.
+  function revealSection(section) {
+    if (!section || section.classList.contains("is-in-view")) return;
+    section.classList.add("is-in-view");
+    const handle = section.playEntrance?.();
+    if (handle) entranceAnimations.push(handle);
+  }
+
+  function teardownEntrances() {
+    entranceObserver?.disconnect();
+    entranceObserver = null;
+    entranceAnimations.forEach((handle) => handle?.cancel?.());
+    entranceAnimations = [];
+  }
+
+  function observeEntrances(sections) {
+    teardownEntrances();
+    if (typeof IntersectionObserver !== "function") {
+      sections.forEach(revealSection);
+      return;
+    }
+    entranceObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          revealSection(entry.target);
+          entranceObserver.unobserve(entry.target);
+        });
+      },
+      { root: elements.lifetimeAbout, threshold: 0.55 },
+    );
+    sections.forEach((section) => entranceObserver.observe(section));
+  }
+
   function renderStory(country) {
     if (!active || !started()) return;
     const sections = buildStory(country).map((act, index) =>
@@ -570,6 +656,7 @@ function createGlobalLifeExpectancyChart(change) {
     );
     elements.lifetimeAbout.replaceChildren(...sections);
     renderProgressDots();
+    observeEntrances(sections);
     requestAnimationFrame(() => scrollToSection(actIndex, "instant"));
   }
 
@@ -578,6 +665,7 @@ function createGlobalLifeExpectancyChart(change) {
       cancelAnimationFrame(scrollFrame);
       scrollFrame = null;
     }
+    teardownEntrances();
     actIndex = -1;
     scrollLockedUntil = 0;
     lastWheelAt = 0;

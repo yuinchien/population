@@ -529,6 +529,7 @@ body.country-detail #colorMode {
     display: flex;
     flex-direction: column;
     margin-top: 12px;
+    pointer-events: none;
 }
 .legend-item {
     display: flex;
@@ -2079,6 +2080,9 @@ button.lg .material-symbols-outlined {
     display: flex;
     align-items: stretch;
     height: 40px;
+    /* Entrance: same left-to-right reveal as the LE bars (see .is-in-view). */
+    clip-path: inset(0 100% 0 0);
+    transition: clip-path 0.7s ease;
 }
 
 .lifetime-population-segment {
@@ -2239,7 +2243,11 @@ button.lg .material-symbols-outlined {
     border-radius: 999px;
     padding: 4px 10px;
     white-space: nowrap;
-    transition: width 0.4s ease;
+    /* Entrance: revealed left-to-right (see .is-in-view below). clip-path,
+       not width, so the bar's real width — floored by min-width — is untouched
+       and only the visible portion grows. */
+    clip-path: inset(0 100% 0 0);
+    transition: width 0.4s ease, clip-path 0.7s ease;
 }
 
 .lifetime-le-row.is-highlight .lifetime-le-bar {
@@ -2254,6 +2262,84 @@ button.lg .material-symbols-outlined {
 
 .lifetime-le-row.is-highlight .lifetime-le-value {
     color: var(--color-yellow);
+}
+
+/* --- Section entrance animations -------------------------------------------
+   Each section's charts start hidden and reveal once it scrolls into view
+   (the controller adds .is-in-view via an IntersectionObserver). Bars wipe open
+   left-to-right; their text fades in just behind the wipe. The horizon curve
+   rises from a flat line in JS (runChartAnimation); the rest of that chart's
+   elements fade in here, after the curve has risen. */
+
+.lifetime-le-name,
+.lifetime-le-value,
+.lifetime-population-value,
+.lifetime-population-tick,
+.lifetime-global-life-title,
+.lifetime-global-life-area,
+.lifetime-global-life-axis,
+.lifetime-global-life-guide,
+.lifetime-global-life-dot,
+.lifetime-global-life-value,
+.lifetime-global-life-year {
+    opacity: 0;
+    transition: opacity 0.45s ease;
+}
+
+/* Bars finish their wipe, then the text/labels fade in. */
+.lifetime-story-section.is-in-view .lifetime-le-bar,
+.lifetime-story-section.is-in-view .lifetime-population-bar {
+    clip-path: inset(0 0 0 0);
+}
+
+.lifetime-story-section.is-in-view .lifetime-le-bar {
+    /* Staggered cascade down the comparison list (--row-index set per row). */
+    transition-delay: 0s, calc(var(--row-index, 0) * 70ms);
+}
+
+.lifetime-story-section.is-in-view .lifetime-le-name,
+.lifetime-story-section.is-in-view .lifetime-le-value {
+    opacity: 1;
+    transition-delay: calc(var(--row-index, 0) * 70ms + 0.28s);
+}
+
+.lifetime-story-section.is-in-view .lifetime-population-value,
+.lifetime-story-section.is-in-view .lifetime-population-tick {
+    opacity: 1;
+    transition-delay: 0.4s;
+}
+
+.lifetime-story-section.is-in-view .lifetime-global-life-title,
+.lifetime-story-section.is-in-view .lifetime-global-life-area,
+.lifetime-story-section.is-in-view .lifetime-global-life-axis,
+.lifetime-story-section.is-in-view .lifetime-global-life-guide,
+.lifetime-story-section.is-in-view .lifetime-global-life-dot,
+.lifetime-story-section.is-in-view .lifetime-global-life-value,
+.lifetime-story-section.is-in-view .lifetime-global-life-year {
+    opacity: 1;
+    transition-delay: 0.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lifetime-le-bar,
+    .lifetime-population-bar {
+        clip-path: none;
+        transition: none;
+    }
+    .lifetime-le-name,
+    .lifetime-le-value,
+    .lifetime-population-value,
+    .lifetime-population-tick,
+    .lifetime-global-life-title,
+    .lifetime-global-life-area,
+    .lifetime-global-life-axis,
+    .lifetime-global-life-guide,
+    .lifetime-global-life-dot,
+    .lifetime-global-life-value,
+    .lifetime-global-life-year {
+        opacity: 1;
+        transition: none;
+    }
 }
 
 .lifetime-stat-row {
