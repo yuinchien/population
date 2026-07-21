@@ -16,9 +16,13 @@ import { METRICS } from "./metrics.mjs";
 const LIFETIME_SECTION_COUNT = 3;
 const LIFETIME_SCROLL_LOCK_MS = 900;
 const LIFETIME_WHEEL_IDLE_MS = 240;
+const LIFETIME_COUNTRY_SUGGESTION_LIMIT = 40;
+// Long enough that clicking a suggestion (a blur then a click) still
+// registers before the list disappears out from under it.
+const LIFETIME_COUNTRY_BLUR_DISMISS_MS = 150;
 // The global-life curve rises from a flat baseline to its real shape, the same
 // entrance the trend chart uses (runChartAnimation + easeOutCubic).
-const LIFETIME_CURVE_GROW_MS = 700;
+const LIFETIME_CURVE_GROW_MS = 600;
 const easeOutCubic = (t) => 1 - (1 - t) ** 3;
 
 function createLifetimeStat(value, label) {
@@ -46,292 +50,86 @@ function actLabel(index) {
   ][index] ?? "Lifetime";
 }
 
-export function createLifetimeController({
-  elements,
-  getCountryTrajectory,
-  getCountries,
-  getYears,
-  getGlobalMetricsByYear,
-  getPopulationSeries,
-  getCountryDemographicMetrics,
-  getCountryAgeStructure,
-  getViewMode,
-  formatPopulation,
-  goToYear,
-  syncUrl,
-  stopTour,
-  catchUpScene,
-}) {
-  let active = false;
-  let birthYear = null;
-  let countryIso = null;
-  let actIndex = -1;
-  let suggestionActiveIndex = -1;
-  let titleBeforeLifetime = "";
-  let viewModeHiddenBeforeStory = false;
-  let scrollFrame = null;
-  let scrollLockedUntil = 0;
-  let lastWheelAt = 0;
-  // Reveals each section's charts once it scrolls into view; the running curve
-  // animations are tracked so a rebuild/teardown can cancel them.
-  let entranceObserver = null;
-  let entranceAnimations = [];
+// The four builders below (through createStorySection) are pure — none of
+// them touch controller state (elements, birthYear, etc.) — so they live at
+// module scope rather than nested inside createLifetimeController.
 
-  const countries = () => getCountries() ?? [];
-  const years = () => getYears() ?? [];
-  const demographicMetrics = () => getCountryDemographicMetrics?.() ?? null;
-  const ageStructure = () => getCountryAgeStructure?.() ?? null;
-  const countryTrajectory = () => getCountryTrajectory?.() ?? null;
-  const globalMetricsByYear = () => getGlobalMetricsByYear?.() ?? new Map();
-  const populationSeriesFor = (country) =>
-    getPopulationSeries?.(country) ?? country?.populations ?? [];
+function createLifeExpectancyComparison(rows) {
+  const chart = document.createElement("div");
+  chart.className = "lifetime-le-comparison";
 
-  function presentYear() {
-    return lifetimePresentYear(years());
-  }
-
-  function birthYearBounds() {
-    const availableYears = years();
-    const min = availableYears[0] ?? 1950;
-    return {
-      min,
-      max: presentYear() ?? availableYears.at(-1) ?? min,
-    };
-  }
-
-  function birthYearErrorMessage(value) {
-    const rawValue = String(value ?? "").trim();
-    if (!rawValue) return "";
-    const year = Number(rawValue);
-    const { min, max } = birthYearBounds();
-    if (
-      !Number.isInteger(year) ||
-      !years().includes(year) ||
-      year < min ||
-      year > max
-    ) {
-      return `Enter a birth year from ${min} to ${max}.`;
-    }
-    return "";
-  }
-
-  function updateBirthYearError() {
-    const message = birthYearErrorMessage(elements.lifetimeBirthYear?.value);
-    if (elements.lifetimeBirthYear) {
-      elements.lifetimeBirthYear.setAttribute(
-        "aria-invalid",
-        message ? "true" : "false",
-      );
-    }
-    if (elements.lifetimeBirthYearError) {
-      elements.lifetimeBirthYearError.textContent = message;
-      elements.lifetimeBirthYearError.hidden = !message;
-    }
-  }
-
-  function selectedCountry() {
-    return countryIso
-      ? countries().find((country) => country.iso3 === countryIso)
-      : null;
-  }
-
-  function lifetimeStartedTitle() {
-    const country = selectedCountry();
-    if (!Number.isFinite(birthYear) || !country?.name) {
-      return "Your Lifespan.";
-    }
-    return `Born ${birthYear} in ${country.name}.`;
-  }
-
-  function buildStory(country) {
-    return buildLifetimeStory({
-      country,
-      birthYear,
-      years: years(),
-      countries: countries(),
-      globalMetricsByYear: globalMetricsByYear(),
-      getPopulationSeries: populationSeriesFor,
-      demographicMetrics: demographicMetrics(),
-      countryAgeStructure: ageStructure(),
-      countryTrajectory: countryTrajectory(),
-      formatPopulation,
-      formatLifeExpectancy: METRICS.lifeExpectancy.format,
-    });
-  }
-
-  function started() {
-    return actIndex >= 0;
-  }
-
-  function countryMatches(query) {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return countries()
-      .filter((country) => {
-        const iso2 = convertAlpha3ToAlpha2(country.iso3);
-        return (
-          country.name.toLowerCase().includes(q) ||
-          (iso2 && iso2.toLowerCase().includes(q))
-        );
-      })
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, 40);
-  }
-
-  function hideCountrySuggestions() {
-    elements.lifetimeCountrySuggestions.hidden = true;
-    elements.lifetimeCountrySuggestions.replaceChildren();
-    suggestionActiveIndex = -1;
-  }
-
-  function renderCountrySuggestions() {
-    const query = elements.lifetimeCountry.value.trim();
-    if (!query) {
-      hideCountrySuggestions();
-      return;
-    }
-    const matches = countryMatches(query);
-    suggestionActiveIndex = -1;
-    elements.lifetimeCountrySuggestions.hidden = false;
-    if (!matches.length) {
-      const empty = document.createElement("div");
-      empty.className = "chip-suggestions-empty";
-      empty.textContent = "No matching countries";
-      elements.lifetimeCountrySuggestions.replaceChildren(empty);
-      return;
-    }
-    elements.lifetimeCountrySuggestions.replaceChildren(
-      ...matches.map((country) => {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "chip-suggestion";
-        item.dataset.iso3 = country.iso3;
-        const flag = document.createElement("span");
-        flag.className = "chip-suggestion-flag";
-        flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-        const label = document.createElement("span");
-        label.textContent = country.name;
-        item.append(flag, label);
-        return item;
-      }),
-    );
-  }
-
-  function moveSuggestionActive(delta) {
-    const items = elements.lifetimeCountrySuggestions.querySelectorAll(
-      ".chip-suggestion",
-    );
-    if (!items.length) return;
-    suggestionActiveIndex = Math.min(
-      items.length - 1,
-      Math.max(0, suggestionActiveIndex + delta),
-    );
-    items.forEach((item, i) =>
-      item.classList.toggle("highlighted", i === suggestionActiveIndex),
-    );
-    items[suggestionActiveIndex].scrollIntoView({ block: "nearest" });
-  }
-
-  function selectCountry(iso3) {
-    const country = countries().find((item) => item.iso3 === iso3);
-    if (!country) return;
-    countryIso = iso3;
-    elements.lifetimeCountry.value = country.name;
-    hideCountrySuggestions();
-    render();
-    syncUrl();
-  }
-
-  function setActiveSection(index) {
-    const clamped = Math.min(
-      LIFETIME_SECTION_COUNT - 1,
-      Math.max(0, index),
-    );
-    actIndex = clamped;
-    elements.lifetimeJourney
-      ?.querySelectorAll(".lifetime-progress-dot")
-      .forEach((dot, i) => {
-        dot.classList.toggle("active", i === clamped);
-        dot.setAttribute("aria-current", i === clamped ? "step" : "false");
-      });
-  }
-
-  function createLifeExpectancyComparison(rows) {
-    const chart = document.createElement("div");
-    chart.className = "lifetime-le-comparison";
-
-    const values = rows.map((row) => row.value);
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-    const range = max - min || 1;
-    const format = METRICS.lifeExpectancy.format;
-    rows.forEach((row, index) => {
-      const item = document.createElement("div");
-      item.className = `lifetime-le-row${row.highlight ? " is-highlight" : ""}`;
-      // Staggers each bar's reveal (see .lifetime-le-bar entrance CSS).
-      item.style.setProperty("--row-index", index);
-      const bar = document.createElement("div");
-      bar.className = "lifetime-le-bar";
-      // Zoomed proportional width so close life-expectancy values still read as
-      // different; a floor keeps the shortest bar visible, the ceiling leaves
-      // room for the value label, and CSS min-width keeps long labels legible
-      // inside their pill.
-      bar.style.width = `${(0.2 + 0.6 * ((row.value - min) / range)) * 100}%`;
-      const name = document.createElement("span");
-      name.className = "lifetime-le-name";
-      name.textContent = row.label;
-      bar.append(name);
-      const value = document.createElement("span");
-      value.className = "lifetime-le-value";
-      value.textContent = format(row.value);
-      item.append(bar, value);
-      chart.append(item);
-    });
-    return chart;
-  }
+  const values = rows.map((row) => row.value);
+  const max = Math.max(...values);
+  const min = Math.min(...values);
+  const range = max - min || 1;
+  const format = METRICS.lifeExpectancy.format;
+  rows.forEach((row, index) => {
+    const item = document.createElement("div");
+    item.className = `lifetime-le-row${row.highlight ? " is-highlight" : ""}`;
+    // Staggers each bar's reveal (see .lifetime-le-bar entrance CSS).
+    item.style.setProperty("--row-index", index);
+    const bar = document.createElement("div");
+    bar.className = "lifetime-le-bar";
+    // Zoomed proportional width so close life-expectancy values still read as
+    // different; a floor keeps the shortest bar visible, the ceiling leaves
+    // room for the value label, and CSS min-width keeps long labels legible
+    // inside their pill.
+    bar.style.width = `${(0.2 + 0.6 * ((row.value - min) / range)) * 100}%`;
+    const name = document.createElement("span");
+    name.className = "lifetime-le-name";
+    name.textContent = row.label;
+    bar.append(name);
+    const value = document.createElement("span");
+    value.className = "lifetime-le-value";
+    value.textContent = format(row.value);
+    item.append(bar, value);
+    chart.append(item);
+  });
+  return chart;
+}
 
 function createPopulationChangeChart(change) {
-    const chart = document.createElement("div");
-    chart.className = "lifetime-population-change";
-    // One source of truth for the birth/added split: the CSS var (used to
-    // place the birth tick) and the birth segment width must never drift.
-    const birthWidth = percentFromShare(change?.birthShare, 0.5);
-    chart.style.setProperty("--lifetime-birth-share", birthWidth);
+  const chart = document.createElement("div");
+  chart.className = "lifetime-population-change";
+  // One source of truth for the birth/added split: the CSS var (used to
+  // place the birth tick) and the birth segment width must never drift.
+  const birthWidth = percentFromShare(change?.birthShare, 0.5);
+  chart.style.setProperty("--lifetime-birth-share", birthWidth);
 
-    const birthSegment = document.createElement("div");
-    birthSegment.className = "lifetime-population-segment birth";
-    birthSegment.style.width = birthWidth;
+  const birthSegment = document.createElement("div");
+  birthSegment.className = "lifetime-population-segment birth";
+  birthSegment.style.width = birthWidth;
 
-    const birthValue = document.createElement("span");
-    birthValue.className = "lifetime-population-value";
-    birthValue.textContent = change?.birthPopulation ?? "N/A";
-    birthSegment.append(birthValue);
+  const birthValue = document.createElement("span");
+  birthValue.className = "lifetime-population-value";
+  birthValue.textContent = change?.birthPopulation ?? "N/A";
+  birthSegment.append(birthValue);
 
-    const addedSegment = document.createElement("div");
-    addedSegment.className = "lifetime-population-segment added";
-    addedSegment.style.width = percentFromShare(change?.addedShare, 0.5);
-    const addedValue = document.createElement("span");
-    addedValue.className = "lifetime-population-value";
-    addedValue.textContent = change?.addedPopulation
-      ? `${change.addedPopulation}`
-      : "N/A";
-    addedSegment.append(addedValue);
+  const addedSegment = document.createElement("div");
+  addedSegment.className = "lifetime-population-segment added";
+  addedSegment.style.width = percentFromShare(change?.addedShare, 0.5);
+  const addedValue = document.createElement("span");
+  addedValue.className = "lifetime-population-value";
+  addedValue.textContent = change?.addedPopulation
+    ? `${change.addedPopulation}`
+    : "N/A";
+  addedSegment.append(addedValue);
 
-    const bar = document.createElement("div");
-    bar.className = "lifetime-population-bar";
-    bar.append(birthSegment, addedSegment);
+  const bar = document.createElement("div");
+  bar.className = "lifetime-population-bar";
+  bar.append(birthSegment, addedSegment);
 
-    const axis = document.createElement("div");
-    axis.className = "lifetime-population-axis";
-    const birthTick = document.createElement("div");
-    birthTick.className = "lifetime-population-tick birth";
-    birthTick.textContent = change?.birthYear ?? "";
-    const presentTick = document.createElement("div");
-    presentTick.className = "lifetime-population-tick present";
-    presentTick.textContent = change?.presentYear ?? "";
-    axis.append(birthTick, presentTick);
+  const axis = document.createElement("div");
+  axis.className = "lifetime-population-axis";
+  const birthTick = document.createElement("div");
+  birthTick.className = "lifetime-population-tick birth";
+  birthTick.textContent = change?.birthYear ?? "";
+  const presentTick = document.createElement("div");
+  presentTick.className = "lifetime-population-tick present";
+  presentTick.textContent = change?.presentYear ?? "";
+  axis.append(birthTick, presentTick);
 
-    chart.append(bar, axis);
+  chart.append(bar, axis);
   return chart;
 }
 
@@ -497,61 +295,271 @@ function createGlobalLifeExpectancyChart(change) {
   return chart;
 }
 
-  function createStorySection(act, index) {
-    const section = document.createElement("section");
-    section.className = "lifetime-story-section";
-    section.dataset.index = String(index);
-    section.tabIndex = -1;
+function createStorySection(act, index) {
+  const section = document.createElement("section");
+  section.className = "lifetime-story-section";
+  section.dataset.index = String(index);
+  section.tabIndex = -1;
 
-    const label = document.createElement("div");
-    label.className = "lifetime-section-label";
-    label.textContent = actLabel(index);
+  const label = document.createElement("div");
+  label.className = "lifetime-section-label";
+  label.textContent = actLabel(index);
 
-    const copy = document.createElement("p");
-    copy.className = "lifetime-act-copy";
-    copy.textContent = act.text;
+  const copy = document.createElement("p");
+  copy.className = "lifetime-act-copy";
+  copy.textContent = act.text;
 
-    const group = document.createElement("div");
-    group.className = "lifetime-section-text";
-    group.append(label, copy);
+  const group = document.createElement("div");
+  group.className = "lifetime-section-text";
+  group.append(label, copy);
 
-    // The Arrival act compares your country's life expectancy at birth against
-    // every world region for that year — a two-column split (chart | copy)
-    // rather than the stacked stat row the other acts use.
-    if (act.comparison?.length) {
-      section.classList.add("has-comparison");
-      // Comparison chart fills the left grid column; label + copy stay in the
-      // right column via the existing .lifetime-story-section rules.
-      section.append(createLifeExpectancyComparison(act.comparison), group);
-      return section;
-    }
-
-    if (act.populationChange) {
-      section.classList.add("is-present");
-      section.append(group, createPopulationChangeChart(act.populationChange));
-      return section;
-    }
-
-    if (act.globalLifeExpectancy) {
-      section.classList.add("is-horizon");
-      const chart = createGlobalLifeExpectancyChart(act.globalLifeExpectancy);
-      if (chart) {
-        // Surfaced on the section so the entrance observer can rise the curve
-        // when this section scrolls into view.
-        if (chart.playEntrance) section.playEntrance = chart.playEntrance;
-        section.append(group, chart);
-        return section;
-      }
-    }
-
-    const statRow = document.createElement("div");
-    statRow.className = "lifetime-stat-row";
-    statRow.append(
-      ...act.stats.map((stat) => createLifetimeStat(stat.value, stat.label)),
-    );
-
-    section.append(label, copy, statRow);
+  // The Arrival act compares your country's life expectancy at birth against
+  // every world region for that year — a two-column split (chart | copy)
+  // rather than the stacked stat row the other acts use.
+  if (act.comparison?.length) {
+    section.classList.add("has-comparison");
+    // Comparison chart fills the left grid column; label + copy stay in the
+    // right column via the existing .lifetime-story-section rules.
+    section.append(createLifeExpectancyComparison(act.comparison), group);
     return section;
+  }
+
+  if (act.populationChange) {
+    section.classList.add("is-present");
+    section.append(group, createPopulationChangeChart(act.populationChange));
+    return section;
+  }
+
+  if (act.globalLifeExpectancy) {
+    section.classList.add("is-horizon");
+    const chart = createGlobalLifeExpectancyChart(act.globalLifeExpectancy);
+    if (chart) {
+      // Surfaced on the section so the entrance observer can rise the curve
+      // when this section scrolls into view.
+      if (chart.playEntrance) section.playEntrance = chart.playEntrance;
+      section.append(group, chart);
+      return section;
+    }
+  }
+
+  const statRow = document.createElement("div");
+  statRow.className = "lifetime-stat-row";
+  statRow.append(
+    ...act.stats.map((stat) => createLifetimeStat(stat.value, stat.label)),
+  );
+
+  section.append(label, copy, statRow);
+  return section;
+}
+
+export function createLifetimeController({
+  elements,
+  getCountryTrajectory,
+  getCountries,
+  getYears,
+  getGlobalMetricsByYear,
+  getPopulationSeries,
+  getCountryDemographicMetrics,
+  getCountryAgeStructure,
+  getViewMode,
+  formatPopulation,
+  goToYear,
+  syncUrl,
+  stopTour,
+  catchUpScene,
+}) {
+  let active = false;
+  let birthYear = null;
+  let countryIso = null;
+  let actIndex = -1;
+  let suggestionActiveIndex = -1;
+  let titleBeforeLifetime = "";
+  let viewModeHiddenBeforeStory = false;
+  let scrollFrame = null;
+  let scrollLockedUntil = 0;
+  let lastWheelAt = 0;
+  // Reveals each section's charts once it scrolls into view; the running curve
+  // animations are tracked so a rebuild/teardown can cancel them.
+  let entranceObserver = null;
+  let entranceAnimations = [];
+
+  const countries = () => getCountries() ?? [];
+  const years = () => getYears() ?? [];
+  const demographicMetrics = () => getCountryDemographicMetrics?.() ?? null;
+  const ageStructure = () => getCountryAgeStructure?.() ?? null;
+  const countryTrajectory = () => getCountryTrajectory?.() ?? null;
+  const globalMetricsByYear = () => getGlobalMetricsByYear?.() ?? new Map();
+  const populationSeriesFor = (country) =>
+    getPopulationSeries?.(country) ?? country?.populations ?? [];
+
+  function presentYear() {
+    return lifetimePresentYear(years());
+  }
+
+  function birthYearBounds() {
+    const availableYears = years();
+    const min = availableYears[0] ?? 1950;
+    return {
+      min,
+      max: presentYear() ?? availableYears.at(-1) ?? min,
+    };
+  }
+
+  function birthYearErrorMessage(value) {
+    const rawValue = String(value ?? "").trim();
+    if (!rawValue) return "";
+    const year = Number(rawValue);
+    const { min, max } = birthYearBounds();
+    if (
+      !Number.isInteger(year) ||
+      !years().includes(year) ||
+      year < min ||
+      year > max
+    ) {
+      return `Enter a birth year from ${min} to ${max}.`;
+    }
+    return "";
+  }
+
+  function updateBirthYearError() {
+    const message = birthYearErrorMessage(elements.lifetimeBirthYear?.value);
+    if (elements.lifetimeBirthYear) {
+      elements.lifetimeBirthYear.setAttribute(
+        "aria-invalid",
+        message ? "true" : "false",
+      );
+    }
+    if (elements.lifetimeBirthYearError) {
+      elements.lifetimeBirthYearError.textContent = message;
+      elements.lifetimeBirthYearError.hidden = !message;
+    }
+  }
+
+  function selectedCountry() {
+    return countryIso
+      ? countries().find((country) => country.iso3 === countryIso)
+      : null;
+  }
+
+  function lifetimeStartedTitle() {
+    const country = selectedCountry();
+    if (!Number.isFinite(birthYear) || !country?.name) {
+      return "Your Lifespan.";
+    }
+    return `Born ${birthYear} in ${country.name}.`;
+  }
+
+  function buildStory(country) {
+    return buildLifetimeStory({
+      country,
+      birthYear,
+      years: years(),
+      countries: countries(),
+      globalMetricsByYear: globalMetricsByYear(),
+      getPopulationSeries: populationSeriesFor,
+      demographicMetrics: demographicMetrics(),
+      countryAgeStructure: ageStructure(),
+      countryTrajectory: countryTrajectory(),
+      formatPopulation,
+      formatLifeExpectancy: METRICS.lifeExpectancy.format,
+    });
+  }
+
+  function started() {
+    return actIndex >= 0;
+  }
+
+  function countryMatches(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return countries()
+      .filter((country) => {
+        const iso2 = convertAlpha3ToAlpha2(country.iso3);
+        return (
+          country.name.toLowerCase().includes(q) ||
+          (iso2 && iso2.toLowerCase().includes(q))
+        );
+      })
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, LIFETIME_COUNTRY_SUGGESTION_LIMIT);
+  }
+
+  function hideCountrySuggestions() {
+    elements.lifetimeCountrySuggestions.hidden = true;
+    elements.lifetimeCountrySuggestions.replaceChildren();
+    suggestionActiveIndex = -1;
+  }
+
+  function renderCountrySuggestions() {
+    const query = elements.lifetimeCountry.value.trim();
+    if (!query) {
+      hideCountrySuggestions();
+      return;
+    }
+    const matches = countryMatches(query);
+    suggestionActiveIndex = -1;
+    elements.lifetimeCountrySuggestions.hidden = false;
+    if (!matches.length) {
+      const empty = document.createElement("div");
+      empty.className = "chip-suggestions-empty";
+      empty.textContent = "No matching countries";
+      elements.lifetimeCountrySuggestions.replaceChildren(empty);
+      return;
+    }
+    elements.lifetimeCountrySuggestions.replaceChildren(
+      ...matches.map((country) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "chip-suggestion";
+        item.dataset.iso3 = country.iso3;
+        const flag = document.createElement("span");
+        flag.className = "chip-suggestion-flag";
+        flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+        const label = document.createElement("span");
+        label.textContent = country.name;
+        item.append(flag, label);
+        return item;
+      }),
+    );
+  }
+
+  function moveSuggestionActive(delta) {
+    const items = elements.lifetimeCountrySuggestions.querySelectorAll(
+      ".chip-suggestion",
+    );
+    if (!items.length) return;
+    suggestionActiveIndex = Math.min(
+      items.length - 1,
+      Math.max(0, suggestionActiveIndex + delta),
+    );
+    items.forEach((item, i) =>
+      item.classList.toggle("highlighted", i === suggestionActiveIndex),
+    );
+    items[suggestionActiveIndex].scrollIntoView({ block: "nearest" });
+  }
+
+  function selectCountry(iso3) {
+    const country = countries().find((item) => item.iso3 === iso3);
+    if (!country) return;
+    countryIso = iso3;
+    elements.lifetimeCountry.value = country.name;
+    hideCountrySuggestions();
+    render();
+    syncUrl();
+  }
+
+  function setActiveSection(index) {
+    const clamped = Math.min(
+      LIFETIME_SECTION_COUNT - 1,
+      Math.max(0, index),
+    );
+    actIndex = clamped;
+    elements.lifetimeJourney
+      ?.querySelectorAll(".lifetime-progress-dot")
+      .forEach((dot, i) => {
+        dot.classList.toggle("active", i === clamped);
+        dot.setAttribute("aria-current", i === clamped ? "step" : "false");
+      });
   }
 
   function renderProgressDots() {
@@ -825,7 +833,7 @@ function createGlobalLifeExpectancyChart(change) {
         hideCountrySuggestions();
         const country = selectedCountry();
         elements.lifetimeCountry.value = country ? country.name : "";
-      }, 150);
+      }, LIFETIME_COUNTRY_BLUR_DISMISS_MS);
     });
     elements.lifetimeCountry?.addEventListener("keydown", (event) => {
       if (event.key === "ArrowDown") {
