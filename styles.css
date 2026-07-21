@@ -1681,7 +1681,7 @@ select::picker(select) {
 .search-country-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2px 24px;
+    gap: 8px var(--margin);
     max-width: 1600px;
     margin: 0 auto;
 }
@@ -1726,7 +1726,7 @@ select::picker(select) {
     /* Above the search-view scrim and the detail overlay so it stays the way
        back to the list even while a country detail is open on top. */
     z-index: var(--z-panel);
-    width: min(560px, calc(100vw - 2 * var(--margin) - 260px));
+    width: calc(50% - var(--margin) );
     height: var(--button-size);
 }
 
@@ -1819,8 +1819,6 @@ body.view-search:not(.detail) .timeline {
         font-size: 1.6rem;
         line-height: 1.25;
         margin: 0;
-
-        /*color: var(--color-muted);*/
     }
 }
 
@@ -2894,14 +2892,15 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1;
         --margin: 12px;
     }
-    .header-title {
-        display: none;
-    }
     .paragraph {
         font-size: 1.2rem;
     }
     .custom-select {
         min-width: auto;
+    }
+    .search-bar {
+        width: 100%;
+        padding-right: 80px;
     }
     /* Pinned at the bottom of .chart-view (its last flex child, after
        .chart-card takes all the remaining space) — scrolls horizontally
@@ -2959,6 +2958,10 @@ body.info-open .menu-shim {
     .menu-toggle {
         display: block;
     }
+    body.view-lifetime.view-lifetime-started .menu-toggle {
+        display: none;
+    }
+
     #buttonsContainer {
         top: 0;
         right: 0;
@@ -2979,9 +2982,19 @@ body.info-open .menu-shim {
     #infoButton {
         display: none;
     }
-    /*body.menu-open.view-chart #buttonsContainer {
-        display: none;
-    }*/
+    .lifetime-content {
+        h1 {
+            font-size: 2rem;
+            line-height: 1.2;
+        }
+        p {
+            font-size: 1.1rem;
+        }
+    }
+    .lifetime-form {
+        /*font-size: 1.4rem;*/
+    }
+
 
     .legend-wrapper {
         display: none;
@@ -3017,11 +3030,11 @@ body.info-open .menu-shim {
         flex-wrap: wrap;
     }
 
-    body.menu-open:not(.view-chart) #buttonsContainer {
+    body.menu-open #buttonsContainer {
         transform: translateX(0);
     }
 
-    body.menu-open:not(.view-chart) .menu-shim {
+    body.menu-open .menu-shim {
         display: block;
         opacity: 1;
     }
