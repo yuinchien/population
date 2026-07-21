@@ -5,7 +5,6 @@ import { createCalloutController } from "./callout-controller.mjs";
 import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 import {
   buildDetailStatus,
-  computeGlobalTrendMilestones,
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";
@@ -24,7 +23,6 @@ import { nextSortState, renderSortableTable } from "./detail-table-view.mjs";
 import { createCountryDetailController } from "./country-detail-controller.mjs";
 import {
   convertAlpha3ToAlpha2,
-  computePeakYear,
   loadPopulationData,
   flagIconUrl
 } from "./data-loader.mjs";
@@ -56,6 +54,10 @@ import {
 import { createClusterController } from "./cluster-controller.mjs";
 import { createTrendChartController } from "./trend-chart-controller.mjs";
 import { CLUSTER_ARCHETYPES } from "./cluster-config.mjs";
+import {
+  createProjectionScenarioData,
+  isProjectionScenario,
+} from "./projection-scenario-data.mjs";
 import {
   createTooltipLine,
   hideTooltip as hideTooltipElement,
@@ -375,14 +377,7 @@ let countriesData = [];
 let yearsData = [];
 let currentYearIndex = -1;
 let historicalCutoffYear = Infinity;
-let globalMetricsByYear = new Map();
-let highMetricsByYear = new Map();
-let lowMetricsByYear = new Map();
-let activeGlobalMetricsCache = null;
-let activeGlobalMetricsCacheScenario = null;
-let activeGlobalTrendMilestonesCache = null;
-let activeGlobalTrendMilestonesCacheScenario = null;
-let globalTrendMilestones = new Map();
+const projectionData = createProjectionScenarioData();
 let countryDemographicMetrics = null;
 let countryTrajectory = null;
 // Age-structure shares for the country-detail population pyramid, lazily
@@ -423,7 +418,6 @@ let searchActive = false;
 let searchSelectedIso3 = null;
 let lifetimeController = null;
 let chartMetricKey = "ageDependencyRatio";
-let chartProjectionScenario = "medium";
 // Insertion-order array (not a Set) so a country keeps the same line color
 // for as long as it stays selected, even as others are toggled around it.
 let selectedChartCountries = ["USA", "JPN", "IND", "DEU", "NGA"];
@@ -440,81 +434,27 @@ let isScrambledPhase = false;
 let isHoldPhase = false;
 
 function activePopulationSeries(country) {
-  if (chartProjectionScenario === "high") {
-    return country?.populationsHigh ?? country?.populations ?? [];
-  }
-  if (chartProjectionScenario === "low") {
-    return country?.populationsLow ?? country?.populations ?? [];
-  }
-  return country?.populations ?? [];
+  return projectionData.populationSeries(country);
 }
 
 function activePopulationAt(country, index = currentYearIndex) {
-  return activePopulationSeries(country)[index] ?? country?.populations?.[index];
-}
-
-function peakYearForSeries(series, years = yearsData) {
-  return computePeakYear(series ?? [], years);
+  return projectionData.populationAt(country, index);
 }
 
 function activePeakYear(country) {
-  return peakYearForSeries(activePopulationSeries(country));
-}
-
-function activeVariantMetricsByYear() {
-  if (chartProjectionScenario === "high") return highMetricsByYear;
-  if (chartProjectionScenario === "low") return lowMetricsByYear;
-  return null;
+  return projectionData.peakYear(country);
 }
 
 function activeGlobalMetricsForYear(year) {
-  const base = globalMetricsByYear.get(year);
-  const variant = activeVariantMetricsByYear()?.get(year);
-  return variant ? { ...(base ?? {}), ...variant } : base;
+  return projectionData.globalMetricsForYear(year);
 }
 
 function activeGlobalMetricsMap() {
-  const variant = activeVariantMetricsByYear();
-  if (!variant?.size) return globalMetricsByYear;
-  if (
-    activeGlobalMetricsCache &&
-    activeGlobalMetricsCacheScenario === chartProjectionScenario
-  ) {
-    return activeGlobalMetricsCache;
-  }
-  activeGlobalMetricsCache = new Map(
-    [...globalMetricsByYear.entries()].map(([year, metrics]) => [
-      year,
-      { ...metrics, ...(variant.get(year) ?? {}) },
-    ]),
-  );
-  activeGlobalMetricsCacheScenario = chartProjectionScenario;
-  return activeGlobalMetricsCache;
-}
-
-function invalidateProjectionMetricsCache() {
-  activeGlobalMetricsCache = null;
-  activeGlobalMetricsCacheScenario = null;
-  activeGlobalTrendMilestonesCache = null;
-  activeGlobalTrendMilestonesCacheScenario = null;
+  return projectionData.globalMetricsMap();
 }
 
 function activeGlobalTrendMilestones() {
-  if (chartProjectionScenario === "medium") return globalTrendMilestones;
-  if (
-    activeGlobalTrendMilestonesCache &&
-    activeGlobalTrendMilestonesCacheScenario === chartProjectionScenario
-  ) {
-    return activeGlobalTrendMilestonesCache;
-  }
-  activeGlobalTrendMilestonesCache = computeGlobalTrendMilestones(
-    activeGlobalMetricsMap(),
-    countriesData,
-    yearsData,
-    historicalCutoffYear,
-  );
-  activeGlobalTrendMilestonesCacheScenario = chartProjectionScenario;
-  return activeGlobalTrendMilestonesCache;
+  return projectionData.globalTrendMilestones();
 }
 let isProjectedYear = false;
 const timer = new THREE.Timer();
@@ -1536,7 +1476,7 @@ function closeCountryDetail() {
 // country/group detail, or the chart view with its metric and selected
 // countries — instead of always landing back on the plain globe.
 function urlStateFromApp() {
-  const state = { mode: viewMode, projection: chartProjectionScenario };
+  const state = { mode: viewMode, projection: projectionData.scenario() };
   if (chartPanelActive) {
     Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
   } else if (clusterActive) {
@@ -1739,16 +1679,15 @@ function renderCountryDetail(options = { animate: true }) {
 }
 
 function setProjectionScenario(scenario, { sync = true } = {}) {
-  if (!["medium", "high", "low"].includes(scenario)) return;
-  if (scenario === chartProjectionScenario) {
+  if (!isProjectionScenario(scenario)) return;
+  if (scenario === projectionData.scenario()) {
     if (elements.chartProjectionScenario) {
       elements.chartProjectionScenario.value = scenario;
     }
     if (sync) syncUrlFromState();
     return;
   }
-  chartProjectionScenario = scenario;
-  invalidateProjectionMetricsCache();
+  projectionData.setScenario(scenario);
   if (elements.chartProjectionScenario) {
     elements.chartProjectionScenario.value = scenario;
   }
@@ -2733,7 +2672,7 @@ function capitalizeFirstLetter(str) {
 function badgeLabel() {
   return yearsData[currentYearIndex] < historicalCutoffYear
     ? `Historical`
-    : `${capitalizeFirstLetter(chartProjectionScenario)} Projection`;
+    : `${capitalizeFirstLetter(projectionData.scenario())} Projection`;
 }
 
 function renderChartInsight() {
@@ -3197,10 +3136,15 @@ async function init() {
     countriesData = appData.countries;
     yearsData = appData.years;
     historicalCutoffYear = appData.historicalCutoffYear;
-    globalMetricsByYear = appData.globalMetricsByYear;
-    globalTrendMilestones = appData.globalTrendMilestones;
-    highMetricsByYear = appData.highMetricsByYear;
-    lowMetricsByYear = appData.lowMetricsByYear;
+    projectionData.configure({
+      countries: countriesData,
+      years: yearsData,
+      historicalCutoffYear,
+      globalMetricsByYear: appData.globalMetricsByYear,
+      globalTrendMilestones: appData.globalTrendMilestones,
+      highMetricsByYear: appData.highMetricsByYear,
+      lowMetricsByYear: appData.lowMetricsByYear,
+    });
 
 
     setupScene(countriesData, appData.incomeGroups);
@@ -3238,7 +3182,7 @@ async function init() {
       countryCodes: countriesData.map((country) => country.iso3),
     });
     if (initialUrlState.projection) {
-      chartProjectionScenario = initialUrlState.projection;
+      projectionData.setScenario(initialUrlState.projection);
     }
     initializeViewMode(initialUrlState.mode);
 
@@ -3358,7 +3302,7 @@ async function init() {
     lifetimeController.bindEvents();
 
     assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
-    elements.chartProjectionScenario.value = chartProjectionScenario;
+    elements.chartProjectionScenario.value = projectionData.scenario();
     // updateProjectionScenarioVisibility();
     elements.chartProjectionScenario.addEventListener("change", () => {
       const scenario = elements.chartProjectionScenario.value;

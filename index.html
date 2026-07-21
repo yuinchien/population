@@ -6,11 +6,12 @@
         <!-- Google tag (gtag.js) -->
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-B7JVVPGL92"></script>
         <script>
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-
-          gtag('config', 'G-B7JVVPGL92');
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-B7JVVPGL92');
+          }
         </script>
 
         <meta charset="utf-8" />
