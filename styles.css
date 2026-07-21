@@ -67,8 +67,8 @@
    instead of near-black. */
 :root[data-theme="light"] {
     color-scheme: light;
-    --color-bg: #F2F1EF;
-    --color-surface: #F4F2E9;
+    --color-bg: #F5f5f5;
+    --color-surface: #F0EDE1;
     --color-surface-raised: #ffffff;
     --color-text: #17140f;
     --color-muted: #5c5850;
@@ -343,10 +343,6 @@ button.milestone-nav-btn {
     }
 }
 
-/*.overlay {
-    transition: opacity 0.2s ease;
-}*/
-
 #buttonsContainer {
     display: flex;
     align-items: center;
@@ -379,7 +375,7 @@ button.milestone-nav-btn {
     font-size: 24px;
 }
 #infoButton {
-    background: var(--color-bg);
+    background: var(--color-surface);
 }
 
 .slider-container {
@@ -460,6 +456,14 @@ button.milestone-nav-btn {
     display: none;
 }
 
+#viewMode {
+    background-color: var(--color-surface);
+    padding: 2px;
+    border-radius: 24px;
+    overflow: hidden;
+    padding: 2px 4px;
+}
+
 .button-group {
     display: flex;
     gap: 2px;
@@ -477,20 +481,22 @@ button {
     gap: 4px;
     align-items: center;
     justify-content: center;
-    padding: 8px;
-    height: 40px;
+    padding: 6px;
+    height: var(--button-size);
     border: none;
     border-radius: 0;
     color: var(--color-text);
-    background: var(--color-surface-raised);
+    background: none;
     font: inherit;
     font-weight: 500;
     cursor: pointer;
     line-height: 1;
     transition: all 0.15s ease-out;
-
-
 }
+#viewMode.button-group button {
+    height: auto;
+}
+
 
 .button-group button.active {
     color: var(--color-bg);
@@ -1563,7 +1569,7 @@ select::picker(select) {
     left: 0;
     z-index: var(--z-dock);
     display: flex;
-    background: var(--color-scrim-strong);
+    background: var(--color-bg);
     flex-direction: column;
     /* Top padding clears the Globe/Map/Chart toggle, which — unlike when
        the detail panel opens — stays visible (and fixed-position) above
@@ -1808,7 +1814,7 @@ body.view-search:not(.detail) .timeline {
     position: fixed;
     inset: 0;
     z-index: var(--z-dock);
-    background: var(--color-scrim-strong);
+    background: var(--color-bg);
     overflow: hidden;
     display: flex;
     justify-content: center;
@@ -2411,6 +2417,8 @@ button.lg .material-symbols-outlined {
     background: var(--color-text);
     opacity: 1;
 }
+
+
 
 body.view-lifetime-started #viewMode {
     display: none;
