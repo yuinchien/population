@@ -136,6 +136,16 @@ export const METRICS = {
     formatRange: formatDependencyRatio,
     referenceValue: 0,
   },
+  oldAgeDependencyRatio: {
+    key: "oldAgeDependencyRatio",
+    label: "Old age dependency ratio",
+    detailLabel: "Old age dependency ratio",
+    defaultDirection: "desc",
+    format: formatDependencyRatio,
+    formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
+    formatRange: formatDependencyRatio,
+    referenceValue: 0,
+  },
 };
 
 export const DETAIL_METRIC_KEYS = [
@@ -156,6 +166,7 @@ export const COUNTRY_SPARKLINE_METRIC_KEYS = [
   "medianAge",
   "ageDependencyRatio",
   "youthDependencyRatio",
+  "oldAgeDependencyRatio",
 ];
 
 export const CHART_METRIC_KEYS = [

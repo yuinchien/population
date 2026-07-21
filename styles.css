@@ -1733,7 +1733,7 @@ select::picker(select) {
     /* Above the search-view scrim and the detail overlay so it stays the way
        back to the list even while a country detail is open on top. */
     z-index: var(--z-panel);
-    width: min(560px, calc(100vw - 2 * var(--margin) - 260px));
+    width: calc(100vw - var(--margin) - 338px);
     height: var(--button-size);
 }
 
@@ -2559,7 +2559,7 @@ body.view-lifetime-started #viewMode {
     align-items: center;
     gap: 8px;
     padding: 8px;
-    /*height: var(--button-size);*/
+    min-height: var(--button-size);
     border-radius: 8px;
     border: none;
     background: var(--color-surface);
@@ -2619,14 +2619,12 @@ body.view-lifetime-started #viewMode {
    (chips + search + cancel) takes over. Wrapping to as many lines as it
    needs is fine here, since this is now a deliberate, temporary editing
    state rather than permanent topbar real estate. */
-.chip-input.expanded .chip-input-summary {
-    display: none;
-}
 
 .chip-input.expanded {
     padding-right: 40px; /* clears .chip-input-cancel */
-    padding-top: 6px;
-    padding-bottom: 6px;
+}
+.chip-input.expanded .chip-input-summary {
+    display: none;
 }
 
 .chip-input-chips {
@@ -2906,9 +2904,9 @@ body.info-open .menu-shim {
     #infoButton {
         display: none;
     }
-    /*.header-title {
-        display: none;
-    }*/
+    .search-bar {
+        width: calc(100vw - 80px);
+    }
     .paragraph {
         font-size: 1.2rem;
     }
