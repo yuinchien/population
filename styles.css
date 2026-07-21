@@ -978,10 +978,6 @@ body.detail #detailSummary {
     gap: 12px;
 }
 
-.country-chart-card {
-    flex: none;
-    grid-column: span 2;
-}
 
 .country-chart {
     display: block;
@@ -1116,6 +1112,7 @@ body.detail #detailSummary {
 .country-detail > .country-chart-card {
     grid-column: 2 / span 2;
     grid-row: 1;
+    padding-bottom: 0;
 }
 
 .country-detail > #countrySummary {
@@ -1425,7 +1422,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: flex-start;
-    padding: 0 280px 0 var(--margin);
+    padding: 0 340px 0 var(--margin);
     margin-top: var(--margin);
     gap: calc(var(--margin) / 2);
 }
@@ -2614,7 +2611,7 @@ body.view-lifetime-started #viewMode {
 }
 
 .chip-input.expanded {
-    padding-right: 40px; /* clears .chip-input-cancel */
+    padding: 6px 40px 6px 6px; /* clears .chip-input-cancel */
 }
 
 .chip-input-chips {
@@ -2883,6 +2880,7 @@ body.info-open .menu-shim {
     }
     .country-sparklines {
         grid-template-columns: repeat(2, 1fr);
+        margin-top: var(--margin);
     }
 }
 

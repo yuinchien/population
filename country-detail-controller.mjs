@@ -421,7 +421,7 @@ export function createCountryDetailController({
       const peakLabel = svgEl("text", {
         class: "country-chart-peak-label",
         x: px,
-        y: axisY - 2,
+        y: axisY,
         "text-anchor": peakTextAnchor,
       });
       peakLabel.textContent = "PEAK";
@@ -435,14 +435,14 @@ export function createCountryDetailController({
     const labelFirst = svgEl("text", {
       class: "country-chart-axis-label",
       x: x0,
-      y: axisY - 2,
+      y: axisY,
       "text-anchor": "start",
     });
     labelFirst.textContent = years[0];
     const labelLast = svgEl("text", {
       class: "country-chart-axis-label",
       x: x1,
-      y: axisY - 2,
+      y: axisY,
       "text-anchor": "end",
     });
     labelLast.textContent = years[n - 1];
