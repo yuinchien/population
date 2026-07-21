@@ -1588,6 +1588,11 @@ function closeDetailPanel() {
     searchSelectedIso3 = null;
     renderSearchCountryChip();
     syncUrlFromState();
+  } else if (restoreMode === "lifetime") {
+    // preserveStory: true — the story's DOM/scroll position was left exactly
+    // as it was (see the "Explore Country's Dataset" onOpenCountry callback),
+    // so this just makes the same section visible again.
+    setLifetimeActive(true, { preserveStory: true });
   } else {
     syncUrlFromState();
   }
@@ -2590,8 +2595,8 @@ function setClusterActive(active) {
   syncUrlFromState();
 }
 
-function setLifetimeActive(active) {
-  lifetimeController?.setActive(active);
+function setLifetimeActive(active, options) {
+  lifetimeController?.setActive(active, options);
 }
 
 // --- Search view ----------------------------------------------------------
@@ -3316,6 +3321,15 @@ async function init() {
         if (currentYearIndex >= 0) {
           applyYear(yearsData[currentYearIndex], { instant: true });
         }
+      },
+      // "Explore <country>'s Dataset" on the Horizon act — jumps out to the
+      // full country-detail view. Remembered (see detailEntryMode) so closing
+      // that panel lands back on this same Horizon section, not the intro
+      // form or Globe/Map underneath.
+      onOpenCountry: (country) => {
+        detailEntryMode = "lifetime";
+        setLifetimeActive(false, { preserveStory: true });
+        openCountryDetail(country);
       },
     });
     const initialUrlState = parseUrlState(initialSearch, {

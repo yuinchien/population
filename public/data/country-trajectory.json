@@ -4,7 +4,7 @@
       "group_title": "Sustained High-Growth Migration Hubs",
       "primary_driver": "High Net Immigration",
       "un_trajectory": "Continuous Growth",
-      "summary_template": "While domestic fertility remains below replacement level, sustained net inward migration will drive long-term population expansion and economic growth in [COUNTRY].",
+      "summary_template": "Driven primarily by net inward migration, [COUNTRY] is projected to maintain long-term population growth and workforce expansion despite below-replacement fertility.",
       "iso3_list": [
         "ABW", "AND", "ARE", "AUS", "BHR", "BMU", "CAN", "CYM", "GIB", "GRL",
         "ISR", "KWT", "LCA", "MAC", "NCL", "NZL", "OMN", "QAT", "SGP", "SXM",
@@ -15,7 +15,7 @@
       "group_title": "Managed Migration & Plateau Buffers",
       "primary_driver": "Managed Immigration",
       "un_trajectory": "Stable Plateau -> Mild Decline",
-      "summary_template": "Inward migration will partially offset natural population decline in [COUNTRY], stabilizing population size before transitioning into a gradual contraction.",
+      "summary_template": "Inward migration helps buffer natural population decline in [COUNTRY], moderating the pace of structural workforce aging and long-term population contraction.",
       "iso3_list": [
         "AUT", "BEL", "CHE", "CYP", "CZE", "DEU", "DNK", "FIN", "FRA", "FRO",
         "GBR", "GGY", "IMN", "IRL", "ISL", "JEY", "LIE", "LUX", "MCX", "MLT",
@@ -26,7 +26,7 @@
       "group_title": "Early Hyper-Aging & Continuous Contraction",
       "primary_driver": "Ultra-low Fertility",
       "un_trajectory": "Immediate & Deep Shrinkage",
-      "summary_template": "Persisting in ultra-low fertility environments, [COUNTRY] will experience continuous depopulation and rapid structural workforce aging.",
+      "summary_template": "With fertility remaining well below replacement level, [COUNTRY] faces persistent population contraction and rapid structural aging of its workforce.",
       "iso3_list": [
         "ASM", "BIH", "BLR", "EST", "ESP", "GRC", "HRV", "ITA", "JPN", "KOR",
         "LTU", "LVA", "MNE", "MKD", "PRT", "PRI", "SRB", "SVK", "SVN", "TWN",
@@ -37,7 +37,7 @@
       "group_title": "Mid-Century Peak & Rapid Middle-Income Shrinkage",
       "primary_driver": "Rapid Fertility Collapse",
       "un_trajectory": "Peak 2025–2050 -> Steep Decline",
-      "summary_template": "Following a near-term or mid-century population peak, [COUNTRY] will undergo rapid depopulation and accelerated aging over subsequent decades.",
+      "summary_template": "Characterized by rapidly declining fertility, [COUNTRY] approaches a demographic peak by mid-century followed by long-term population decline and demographic aging.",
       "iso3_list": [
         "ALB", "ARM", "AZE", "BGR", "BRA", "CHL", "CHN", "COL", "CRI", "CUB",
         "GEO", "HUN", "IRN", "JAM", "LBN", "LKA", "MDA", "MEX", "MUS", "POL",
@@ -48,7 +48,7 @@
       "group_title": "Dividend Expansion & Late-Century Peak",
       "primary_driver": "Working-Age Expansion",
       "un_trajectory": "Growth -> Peak 2060–2085 -> Plateau",
-      "summary_template": "Benefiting from favorable demographic conditions, [COUNTRY] will leverage its working-age population momentum before its overall population reaches a long-term plateau.",
+      "summary_template": "Supported by an expanding working-age population, [COUNTRY] maintains demographic momentum through mid-century before overall population growth stabilizes.",
       "iso3_list": [
         "ARG", "BGD", "BOL", "BTN", "DOM", "ECU", "EGY", "FJI", "GTM", "GUY",
         "HND", "IDN", "IND", "IRQ", "JOR", "KAZ", "KGZ", "KHM", "LAO", "MAR",
@@ -60,7 +60,7 @@
       "group_title": "Primary Global Engine & Long-Term Growth",
       "primary_driver": "Youth Momentum",
       "un_trajectory": "Expansion Through 2100",
-      "summary_template": "Driven by a young population structure, [COUNTRY] will maintain a favorable dependency ratio over the coming decades, serving as a key driver of sustained workforce growth.",
+      "summary_template": "Driven by a highly youthful demographic structure, [COUNTRY] will experience sustained workforce growth and strong long-term population expansion throughout the century.",
       "iso3_list": [
         "AGO", "BDI", "BEN", "BFA", "CAF", "CIV", "CMR", "COD", "COG", "COM",
         "DJI", "ERI", "ETH", "GHA", "GIN", "GMB", "GNB", "GNQ", "KEN", "LBR",
@@ -73,7 +73,7 @@
       "group_title": "Structural Net Outflow & Depopulation",
       "primary_driver": "Persistent Emigration",
       "un_trajectory": "Multi-Decade Depopulation",
-      "summary_template": "Driven by structural youth emigration and low domestic fertility, [COUNTRY] will face persistent workforce depletion and long-term population decline.",
+      "summary_template": "Driven by persistent net emigration and low fertility rates, [COUNTRY] faces long-term population contraction and ongoing workforce constraints.",
       "iso3_list": [
         "ATG", "DMA", "FSM", "GDD", "GUM", "HTI", "KIR", "KNA", "MHL", "MNP",
         "NRU", "PLW", "SLB", "SPM", "TON", "VCT", "WSM"

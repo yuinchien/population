@@ -295,7 +295,23 @@ function createGlobalLifeExpectancyChart(change) {
   return chart;
 }
 
-function createStorySection(act, index) {
+// A CTA out of the personal story into the full country-detail view — clicked
+// via a delegated listener in bindEvents() (this function is pure, so it just
+// marks the country on the button's dataset rather than closing over a click
+// handler).
+function createExploreCountryLink(country) {
+  const possessiveCountryName = country.name.endsWith("s")
+    ? `${country.name}'`
+    : `${country.name}'s`;
+  const link = document.createElement("button");
+  link.type = "button";
+  link.className = "lifetime-explore-link";
+  link.dataset.iso3 = country.iso3;
+  link.textContent = `Explore ${possessiveCountryName} Dataset →`;
+  return link;
+}
+
+function createStorySection(act, index, country) {
   const section = document.createElement("section");
   section.className = "lifetime-story-section";
   section.dataset.index = String(index);
@@ -337,6 +353,7 @@ function createStorySection(act, index) {
       // Surfaced on the section so the entrance observer can rise the curve
       // when this section scrolls into view.
       if (chart.playEntrance) section.playEntrance = chart.playEntrance;
+      if (country) group.append(createExploreCountryLink(country));
       section.append(group, chart);
       return section;
     }
@@ -367,6 +384,7 @@ export function createLifetimeController({
   syncUrl,
   stopTour,
   catchUpScene,
+  onOpenCountry,
 }) {
   let active = false;
   let birthYear = null;
@@ -378,6 +396,10 @@ export function createLifetimeController({
   let scrollFrame = null;
   let scrollLockedUntil = 0;
   let lastWheelAt = 0;
+  // Hiding #lifetimeAbout (e.g. [hidden]/display:none while paused for
+  // "Explore Country's Dataset") doesn't reliably preserve its scrollTop —
+  // captured here on pause and restored on resume instead of trusting that.
+  let pausedScrollTop = null;
   // Reveals each section's charts once it scrolls into view; the running curve
   // animations are tracked so a rebuild/teardown can cancel them.
   let entranceObserver = null;
@@ -664,7 +686,7 @@ export function createLifetimeController({
   function renderStory(country) {
     if (!active || !started()) return;
     const sections = buildStory(country).map((act, index) =>
-      createStorySection(act, index),
+      createStorySection(act, index, country),
     );
     elements.lifetimeAbout.replaceChildren(...sections);
     renderProgressDots();
@@ -791,6 +813,12 @@ export function createLifetimeController({
         snapToAdjacentSection(-1);
       }
     });
+    elements.lifetimeAbout?.addEventListener("click", (event) => {
+      const link = event.target.closest(".lifetime-explore-link[data-iso3]");
+      if (!link || !elements.lifetimeAbout.contains(link)) return;
+      const country = countries().find((item) => item.iso3 === link.dataset.iso3);
+      if (country) onOpenCountry?.(country);
+    });
     elements.lifetimeAbout?.addEventListener("scroll", () => {
       if (!started() || scrollFrame != null) return;
       scrollFrame = requestAnimationFrame(() => {
@@ -863,8 +891,18 @@ export function createLifetimeController({
     });
   }
 
-  function setActive(nextActive) {
+  // preserveStory: true is the "Explore Country's Dataset" round-trip — the
+  // Horizon act jumps out to the full country-detail view and should land
+  // back on the exact same section (not the intro form) once that closes.
+  // It just toggles visibility, leaving actIndex/birthYear/countryIso and the
+  // already-built DOM (including which sections have already played their
+  // entrance) untouched, rather than tearing the story down and rebuilding it
+  // the way a genuine close/reopen does.
+  function setActive(nextActive, { preserveStory = false } = {}) {
     if (nextActive === active) return;
+    if (!nextActive && preserveStory) {
+      pausedScrollTop = elements.lifetimeAbout?.scrollTop ?? null;
+    }
     active = nextActive;
     elements.lifetimeView.hidden = !nextActive;
     document.body.classList.toggle("view-lifetime", nextActive);
@@ -879,10 +917,22 @@ export function createLifetimeController({
       ),
     );
     if (nextActive) {
-      titleBeforeLifetime = elements.headerTitle?.textContent ?? "";
-      viewModeHiddenBeforeStory = elements.buttonsContainer.hidden;
+      if (!preserveStory) {
+        titleBeforeLifetime = elements.headerTitle?.textContent ?? "";
+        viewModeHiddenBeforeStory = elements.buttonsContainer.hidden;
+        render();
+      } else if (pausedScrollTop != null) {
+        // Toggling [hidden] doesn't reliably preserve scrollTop across the
+        // round-trip — restore it explicitly once layout has settled.
+        const restoreTo = pausedScrollTop;
+        pausedScrollTop = null;
+        requestAnimationFrame(() => {
+          elements.lifetimeAbout.scrollTop = restoreTo;
+        });
+      }
       stopTour();
-      render();
+    } else if (preserveStory) {
+      // Nothing else to do — just hidden, ready to resume as-is.
     } else {
       resetStory();
       elements.lifetimeView.classList.remove("is-started");

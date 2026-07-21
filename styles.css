@@ -504,6 +504,7 @@ button {
 .button-group button.active {
     color: var(--color-bg);
     background: var(--color-text);
+    border-radius: 40px;
 }
 
 .button-group button:disabled {
@@ -1352,7 +1353,7 @@ body.country-detail #colorMode {
 .country-similar {
     grid-column: 1 / -1;
     flex: none;
-    margin-top: 4px;
+    margin-top: var(--margin);
     margin-bottom: var(--margin);
     padding-top: 16px;
     border-top: var(--border);
@@ -2053,6 +2054,25 @@ button.lg .material-symbols-outlined {
 .lifetime-story-section.is-horizon .lifetime-act-copy {
     max-width: 520px;
 }
+
+.lifetime-explore-link {
+    display: block;
+    margin-top: 16px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-yellow);
+    font-family: var(--font-sans);
+    font-size: 1.2rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+}
+
+/*.lifetime-explore-link:hover,
+.lifetime-explore-link:focus-visible {
+    text-decoration: underline;
+}*/
 
 .lifetime-population-change {
     /* Floor on the "added" segment so its label never overflows when the
