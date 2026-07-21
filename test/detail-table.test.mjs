@@ -98,6 +98,65 @@ test("buildDetailRows formats cells and computes population ratios", () => {
   );
 });
 
+test("buildDetailRows clamps population ratios to the drawable range", () => {
+  const columns = [
+    {
+      key: "name",
+      label: "Country",
+      className: "country",
+      value: (entry) => entry.name,
+      format: (value) => value,
+    },
+    {
+      key: "population",
+      label: "Population",
+      className: "number",
+      value: (entry) => entry.population,
+      format: String,
+    },
+  ];
+  const rows = buildDetailRows(
+    [
+      { name: "Positive", population: 100 },
+      { name: "Negative", population: -20 },
+    ],
+    columns,
+  );
+
+  assert.equal(rows[0].ratio, 1);
+  assert.equal(rows[1].ratio, 0);
+});
+
+test("buildDetailRows can compute ratios from hidden population values", () => {
+  const columns = [
+    {
+      key: "name",
+      label: "Country",
+      className: "country",
+      value: (entry) => entry.name,
+      format: (value) => value,
+    },
+    {
+      key: "ageDependencyRatio",
+      label: "Dependency ratio",
+      className: "number",
+      value: (entry) => entry.ageDependencyRatio,
+      format: String,
+    },
+  ];
+  const rows = buildDetailRows(
+    [
+      { name: "Large", population: 200, ageDependencyRatio: 55 },
+      { name: "Small", population: 50, ageDependencyRatio: 80 },
+    ],
+    columns,
+    { ratioValue: (entry) => entry.population },
+  );
+
+  assert.equal(rows[0].ratio, 1);
+  assert.equal(rows[1].ratio, 0.25);
+});
+
 function country(name, incomeLabel, region, metrics) {
   return {
     name,

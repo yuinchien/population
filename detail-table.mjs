@@ -73,20 +73,25 @@ export function selectDetailCountries({ countries, legend, columns, sort }) {
   );
 }
 
-export function buildDetailRows(countries, columns) {
+export function buildDetailRows(countries, columns, options = {}) {
   const populationColumn =
     columns.find((column) => column.key === "population") ?? columns[0];
+  const ratioValue = options.ratioValue ?? populationColumn.value;
+  const ratioValues = countries.map((country) => {
+    const value = ratioValue(country);
+    return Number.isFinite(value) ? value : 0;
+  });
   const highestValue = Math.max(
     0,
-    ...countries.map(populationColumn.value).filter(Number.isFinite),
+    ...ratioValues,
   );
-
-  return countries.map((country) => {
-    const population = populationColumn.value(country);
+  return countries.map((country, index) => {
+    const population = ratioValues[index];
     const ratio = highestValue > 0 ? population / highestValue : 0;
+    const boundedRatio = Math.min(1, Math.max(0, ratio));
     return {
       country,
-      ratio: Number.isFinite(ratio) ? ratio : 0,
+      ratio: Number.isFinite(boundedRatio) ? boundedRatio : 0,
       cells: columns.map((column) => ({
         key: column.key,
         className: column.className,

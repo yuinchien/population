@@ -777,6 +777,7 @@ body.country-detail #colorMode {
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
+    font-family: var(--font-mono);
 }
 
 .detail-rows {
@@ -786,6 +787,7 @@ body.country-detail #colorMode {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    font-family: var(--font-mono);
 }
 
 .detail-row {
@@ -798,6 +800,7 @@ body.country-detail #colorMode {
        table column actually has, and without this it forces that column
        wider than its layout allows instead of scrolling/wrapping within it. */
     min-width: 0;
+    position: relative;
 }
 
 .detail-row.header {
@@ -811,7 +814,9 @@ body.country-detail #colorMode {
 }
 
 .detail-rows .detail-row:hover {
-    background: var(--color-border);
+    /*outline: 1px solid color-mix(in srgb, var(--detail-color) 45%, transparent);*/
+    /*outline-offset: -1px;*/
+    background-color: color-mix(in srgb, var(--detail-color) 15%, transparent);;
 }
 
 .detail-cell.sortable {
@@ -834,9 +839,16 @@ body.country-detail #colorMode {
     min-width: 0;
     padding: 0;
     position: relative;
+    z-index: 1;
 }
 .detail-cell.country .detail-name {
     font-weight: 500;
+    position: relative;
+    z-index: 1;
+}
+.detail-cell.country:not(.sortable) {
+    isolation: isolate;
+    overflow: hidden;
 }
 #detailPanel .detail-cell.country:not(.sortable) .detail-name,
 #chartPanel .detail-cell.country:not(.sortable) .detail-name {
@@ -854,17 +866,17 @@ body.country-detail #colorMode {
     );
     z-index: -1;
 }
-#detailPanel .detail-cell.country:not(.sortable):before {
+.detail-cell.country .detail-ratio-bar {
     position: absolute;
-    content: "";
-    width: calc(var(--ratio, 0) * 100%);
+    inset: 0 auto 0 0;
     height: 100%;
     background-color: color-mix(
         in srgb,
         var(--detail-color) 50%,
         transparent
     );
-    z-index: -1;
+    z-index: 0;
+    pointer-events: none;
 }
 
 

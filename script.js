@@ -1386,9 +1386,15 @@ const CHART_BENCHMARK_LINES = {
   ],
 };
 
-function createDetailCell(text, className = "") {
+function createDetailCell(text, className = "", options = {}) {
   const cell = document.createElement("div");
   cell.className = `detail-cell ${className}`.trim();
+  if (options.ratio != null) {
+    const bar = document.createElement("span");
+    bar.className = "detail-ratio-bar";
+    bar.style.width = `${Math.min(1, Math.max(0, options.ratio)) * 100}%`;
+    cell.append(bar);
+  }
   const inner = document.createElement("span");
   inner.className = "detail-name";
   inner.textContent = text;
@@ -1418,6 +1424,8 @@ function renderSortableTable({
   // since a row there can represent any of several differently-colored
   // countries or categories, not one shared group.
   colorFor,
+  ratioValue,
+  ratioBarMode = "cell",
 }) {
   if (gridTemplateColumns) {
     headerEl.style.gridTemplateColumns = gridTemplateColumns;
@@ -1448,10 +1456,9 @@ function renderSortableTable({
   };
 
   const sorted = sortDetailCountries(countries, columns, sort);
-  const rows = buildDetailRows(sorted, columns).map((detailRow, index) => {
+  const rows = buildDetailRows(sorted, columns, { ratioValue }).map((detailRow, index) => {
     const row = document.createElement("div");
     row.dataset.rowIndex = String(index);
-    row.style.setProperty("--ratio", detailRow.ratio);
     row.className = "detail-row";
     if (gridTemplateColumns) {
       row.style.gridTemplateColumns = gridTemplateColumns;
@@ -1461,7 +1468,14 @@ function renderSortableTable({
       if (color) row.style.setProperty("--detail-color", color);
     }
     row.append(
-      ...detailRow.cells.map((cell) => createDetailCell(cell.text, cell.className)),
+      ...detailRow.cells.map((cell) =>
+        createDetailCell(cell.text, cell.className, {
+          ratio:
+            ratioBarMode === "cell" && cell.key === "name"
+              ? detailRow.ratio
+              : null,
+        }),
+      ),
     );
     return row;
   });
@@ -2870,6 +2884,7 @@ function renderChartTable() {
     onSort: setChartTableSort,
     onRowClick: (item) => item.onClick(),
     colorFor: (item) => item.color,
+    ratioValue: (item) => item.series("population")[currentYearIndex],
     gridTemplateColumns,
   });
 }
