@@ -188,6 +188,8 @@ canvas.hovering-dot {
     transition: all 0.15s;
 }
 
+body.view-chart .hide-for-chart,
+body.view-search .hide-for-search,
 body.view-lifetime .hide-for-lifetime,
 body.view-cluster .hide-for-cluster,
 body.detail .hide-for-detail {
@@ -2828,6 +2830,7 @@ body.detail #calloutLayer {
     display: flex;
     flex-direction: column;
     padding: var(--margin);
+    z-index: var(--z-panel);
 }
 
 .menu-toggle {

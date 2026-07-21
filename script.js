@@ -1532,6 +1532,10 @@ function renderDetailPanel() {
     "--detail-color",
     selectedLegend.color,
   );
+  // A region/income group has no single flag — clear whatever country flag a
+  // previous country-detail visit left showing in this shared header.
+  elements.detailFlag.hidden = true;
+  elements.detailFlag.style.backgroundImage = "";
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
