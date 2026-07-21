@@ -1443,6 +1443,8 @@ function renderDetailPanel() {
     columns,
     sort: detailSort,
     countries,
+    barMode: "country-cell",
+    barMetric: "population",
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
@@ -2768,7 +2770,7 @@ function renderChartTable() {
     onSort: setChartTableSort,
     onRowClick: (item) => item.onClick(),
     colorFor: (item) => item.color,
-    ratioValue: (item) => item.series("population")[currentYearIndex],
+    barMode: "none",
     gridTemplateColumns,
   });
 }

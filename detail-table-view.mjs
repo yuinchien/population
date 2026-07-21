@@ -16,6 +16,12 @@ export function createDetailCell(text, className = "", options = {}) {
   return cell;
 }
 
+function ratioValueForBar(columns, barMetric, barValue) {
+  if (barValue) return barValue;
+  const metricColumn = columns.find((column) => column.key === barMetric);
+  return metricColumn?.value;
+}
+
 // Shared by the group-detail table and the chart table: builds sortable
 // header cells (with the active sort's arrow) and per-country rows from the
 // same column/row-building helpers, wiring header clicks to onSort and row
@@ -31,15 +37,12 @@ export function renderSortableTable({
   onRowClick,
   gridTemplateColumns,
   // Optional: per-row --detail-color (tints .detail-cell.country's ratio
-  // bar — see styles.css). Left unset, rows just inherit whatever
-  // --detail-color the panel around the table already has — the group
-  // table's one shared group color, unchanged from before this existed.
-  // The chart table passes each row its own item's line color instead,
-  // since a row there can represent any of several differently-colored
-  // countries or categories, not one shared group.
+  // bar — see styles.css). Left unset, rows just inherit the surrounding
+  // panel color.
   colorFor,
-  ratioValue,
-  ratioBarMode = "cell",
+  barMode = "country-cell",
+  barMetric = "population",
+  barValue,
 }) {
   if (gridTemplateColumns) {
     headerEl.style.gridTemplateColumns = gridTemplateColumns;
@@ -70,6 +73,8 @@ export function renderSortableTable({
   };
 
   const sorted = sortDetailCountries(countries, columns, sort);
+  const ratioValue =
+    barMode === "none" ? undefined : ratioValueForBar(columns, barMetric, barValue);
   const rows = buildDetailRows(sorted, columns, { ratioValue }).map(
     (detailRow, index) => {
       const row = document.createElement("div");
@@ -86,7 +91,7 @@ export function renderSortableTable({
         ...detailRow.cells.map((cell) =>
           createDetailCell(cell.text, cell.className, {
             ratio:
-              ratioBarMode === "cell" && cell.key === "name"
+              barMode === "country-cell" && cell.key === "name"
                 ? detailRow.ratio
                 : null,
           }),
