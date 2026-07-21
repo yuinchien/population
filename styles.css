@@ -1692,12 +1692,12 @@ select::picker(select) {
     background: var(--color-scrim-strong);
     overflow-y: auto;
     /* Top padding clears the fixed search bar (left) and button dock (right). */
-    padding: calc(var(--margin) + 72px) var(--margin) var(--margin);
+    padding: calc(var(--margin)*2 + 40px) var(--margin) var(--margin);
 }
 
 .search-country-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
