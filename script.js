@@ -1668,6 +1668,7 @@ function openCountryDetail(country) {
   tourController.stop();
   selectedCountry = country;
   elements.tooltip.hidden = true;
+  recordRecentCountry(country.iso3);
   renderCountryDetail();
   syncUrlFromState();
 }
@@ -2442,6 +2443,49 @@ function setLifetimeActive(active, options) {
   lifetimeController?.setActive(active, options);
 }
 
+// --- Recently viewed countries ---------------------------------------------
+// Persisted across sessions (localStorage) so the search bar can offer a
+// quick way back in before the user has typed anything. Recorded from
+// openCountryDetail() — the single funnel every entry point (search, group
+// table, dot clicks, similar-countries, the Lifetime "Explore Dataset" link,
+// deep-linked URLs) already opens a country detail through.
+const RECENT_COUNTRIES_STORAGE_KEY = "recentCountries";
+const RECENT_COUNTRIES_LIMIT = 5;
+
+function getRecentCountryIsos() {
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem(RECENT_COUNTRIES_STORAGE_KEY) ?? "[]",
+    );
+    return Array.isArray(stored) ? stored : [];
+  } catch {
+    return [];
+  }
+}
+
+function recordRecentCountry(iso3) {
+  if (!iso3) return;
+  const withoutCurrent = getRecentCountryIsos().filter(
+    (code) => code !== iso3,
+  );
+  const next = [iso3, ...withoutCurrent].slice(0, RECENT_COUNTRIES_LIMIT);
+  try {
+    localStorage.setItem(RECENT_COUNTRIES_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Storage unavailable (private browsing, quota, etc.) — recent-countries
+    // is a convenience, not core functionality, so just skip persisting.
+  }
+}
+
+// Resolved against the live country list (rather than trusted blindly) so a
+// stale iso3 from an older dataset version can't produce a broken entry.
+function getRecentCountries() {
+  const isos = getRecentCountryIsos();
+  return isos
+    .map((iso3) => countriesData.find((country) => country.iso3 === iso3))
+    .filter(Boolean);
+}
+
 // --- Search view ----------------------------------------------------------
 // A full, alphabetized country list plus a single-select chip search bar.
 // Picking a country (from the list or the search box) opens the shared
@@ -2602,38 +2646,54 @@ function hideSearchSuggestions() {
   searchSuggestionActiveIndex = -1;
 }
 
+function buildSearchSuggestionItem(country) {
+  const item = document.createElement("button");
+  item.type = "button";
+  item.className = "chip-suggestion";
+  item.dataset.iso3 = country.iso3;
+  const flag = document.createElement("span");
+  flag.className = "chip-suggestion-flag";
+  flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
+  const label = document.createElement("span");
+  label.textContent = country.name;
+  item.append(flag, label);
+  return item;
+}
+
+// What the suggestion dropdown currently shows: search results once the user
+// has typed something, otherwise recently-viewed countries (if any) — used
+// both to render the dropdown and to resolve Enter/arrow-key selection, so
+// the two stay in sync no matter which list is showing.
+function searchSuggestionCandidates() {
+  const query = elements.searchCountryInput.value.trim();
+  return query ? searchCountryMatches(query) : getRecentCountries();
+}
+
 function renderSearchSuggestions() {
   const query = elements.searchCountryInput.value.trim();
-  if (!query) {
+  const candidates = searchSuggestionCandidates();
+  if (!query && !candidates.length) {
     hideSearchSuggestions();
     return;
   }
-  const matches = searchCountryMatches(query);
-  preloadFlagIcons(matches.map((country) => country.iso3));
+  preloadFlagIcons(candidates.map((country) => country.iso3));
   elements.searchCountrySuggestions.hidden = false;
   searchSuggestionActiveIndex = -1;
-  if (!matches.length) {
+  if (!candidates.length) {
     const empty = document.createElement("div");
     empty.className = "chip-suggestions-empty";
     empty.textContent = "No matching countries";
     elements.searchCountrySuggestions.replaceChildren(empty);
     return;
   }
-  elements.searchCountrySuggestions.replaceChildren(
-    ...matches.map((country) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "chip-suggestion";
-      item.dataset.iso3 = country.iso3;
-      const flag = document.createElement("span");
-      flag.className = "chip-suggestion-flag";
-      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-      const label = document.createElement("span");
-      label.textContent = country.name;
-      item.append(flag, label);
-      return item;
-    }),
-  );
+  const children = candidates.map(buildSearchSuggestionItem);
+  if (!query) {
+    const label = document.createElement("div");
+    label.className = "chip-suggestions-label";
+    label.textContent = "Recently viewed";
+    children.unshift(label);
+  }
+  elements.searchCountrySuggestions.replaceChildren(...children);
 }
 
 function moveSearchSuggestionActiveIndex(delta) {
@@ -3425,6 +3485,9 @@ async function init() {
       selectSearchCountry(button.dataset.iso3);
     });
     elements.searchCountryInput.addEventListener("input", renderSearchSuggestions);
+    // Shows recently-viewed countries before any input — see
+    // searchSuggestionCandidates()'s empty-query branch.
+    elements.searchCountryInput.addEventListener("focus", renderSearchSuggestions);
     elements.searchCountryInput.addEventListener("keydown", (event) => {
       if (event.key === "ArrowDown") {
         if (elements.searchCountrySuggestions.hidden) return;
@@ -3436,11 +3499,11 @@ async function init() {
         moveSearchSuggestionActiveIndex(-1);
       } else if (event.key === "Enter") {
         event.preventDefault();
-        const matches = searchCountryMatches(elements.searchCountryInput.value);
+        const candidates = searchSuggestionCandidates();
         const match =
           searchSuggestionActiveIndex >= 0
-            ? matches[searchSuggestionActiveIndex]
-            : matches[0];
+            ? candidates[searchSuggestionActiveIndex]
+            : candidates[0];
         if (match) selectSearchCountry(match.iso3);
       } else if (event.key === "Escape") {
         hideSearchSuggestions();
