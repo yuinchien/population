@@ -807,6 +807,7 @@ body.country-detail #colorMode {
     min-height: 28px;
     color: var(--color-muted);
     border-bottom: var(--border);
+    font-family: var(--font-mono);
 }
 
 .detail-rows .detail-row {
