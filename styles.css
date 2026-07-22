@@ -2804,7 +2804,7 @@ body.view-lifetime-started #viewMode {
     align-items: center;
     gap: 8px;
     width: 100%;
-    padding: 16px;
+    padding: 10px 16px;
     border: none;
     background: transparent;
     color: var(--color-text);
