@@ -56,6 +56,10 @@ function actLabel(index) {
   ][index] ?? "Lifetime";
 }
 
+function capitalizeFirstLetter(value) {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : "";
+}
+
 // The four builders below (through createStorySection) are pure — none of
 // them touch controller state (elements, birthYear, etc.) — so they live at
 // module scope rather than nested inside createLifetimeController.
@@ -322,7 +326,7 @@ function createExploreCountryLink(country) {
   return link;
 }
 
-function createStorySection(act, index, country) {
+function createStorySection(act, index, country, projectionScenario) {
   const section = document.createElement("section");
   section.className = "lifetime-story-section";
   section.dataset.index = String(index);
@@ -344,7 +348,16 @@ function createStorySection(act, index, country) {
 
   const label = document.createElement("div");
   label.className = "lifetime-section-label";
-  label.textContent = actLabel(index); // TODO: Add projection scenario
+  label.append(document.createTextNode(actLabel(index)));
+  // The Horizon act is the only one that lands on a projected (not
+  // historical) year, so it's the only label that needs to say which UN
+  // projection variant that year's numbers come from.
+  if (index === 2 && projectionScenario) {
+    const scenarioSuffix = document.createElement("span");
+    scenarioSuffix.className = "lifetime-section-label-scenario";
+    scenarioSuffix.textContent = ` (${capitalizeFirstLetter(projectionScenario)} Projection)`;
+    label.append(scenarioSuffix);
+  }
 
   const copy = document.createElement("p");
   copy.className = "lifetime-act-copy";
@@ -743,8 +756,9 @@ export function createLifetimeController({
 
   function renderStory(country) {
     if (!active || !started()) return;
+    const projectionScenario = getProjectionScenario?.() ?? "medium";
     const sections = buildStory(country).map((act, index) =>
-      createStorySection(act, index, country),
+      createStorySection(act, index, country, projectionScenario),
     );
     elements.lifetimeAbout.replaceChildren(...sections);
     renderProgressDots();

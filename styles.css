@@ -2484,6 +2484,10 @@ button.lg .material-symbols-outlined {
     margin-bottom: 16px;
 }
 
+.lifetime-section-label-scenario {
+    opacity: 0.5;
+}
+
 .lifetime-act-copy {
     justify-self: center;
     text-align: center;
