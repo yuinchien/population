@@ -907,6 +907,13 @@ export function createLifetimeController({
       render();
       syncUrl();
     });
+    elements.lifetimeBirthYear?.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || elements.lifetimeButtonBegin.disabled) {
+        return;
+      }
+      event.preventDefault();
+      begin();
+    });
     elements.lifetimeCountry?.addEventListener("input", () => {
       if (!elements.lifetimeCountry.value.trim() && countryIso) {
         countryIso = null;
@@ -938,10 +945,18 @@ export function createLifetimeController({
         const items = elements.lifetimeCountrySuggestions.querySelectorAll(
           ".chip-suggestion",
         );
-        if (!items.length) return;
-        event.preventDefault();
-        const index = suggestionActiveIndex >= 0 ? suggestionActiveIndex : 0;
-        selectCountry(items[index].dataset.iso3);
+        if (items.length) {
+          event.preventDefault();
+          const index = suggestionActiveIndex >= 0 ? suggestionActiveIndex : 0;
+          selectCountry(items[index].dataset.iso3);
+          return;
+        }
+        // No suggestions open (e.g. a country is already picked) — Enter
+        // begins the story, same as clicking Begin, once it's ready.
+        if (!elements.lifetimeButtonBegin.disabled) {
+          event.preventDefault();
+          begin();
+        }
       } else if (event.key === "Escape") {
         hideCountrySuggestions();
       }

@@ -452,7 +452,7 @@ test("arrival lifetime copy omits the aging note for countries below the thresho
           netMigrationRate: [0, 0, 0, 0],
           populationGrowth: [1, 0.8, 0, -0.2],
           olderPopulationShare: [5, 8, 20, 25],
-          youthDependencyRatio: [80, 65, 50, 40],
+          youthDependencyRatio: [55, 65, 50, 40],
         },
       },
     },

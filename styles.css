@@ -2006,7 +2006,7 @@ button.lg .material-symbols-outlined {
 }
 .lifetime-country-picker .chip-suggestions {
     right: auto;
-    min-width: 280px;
+    min-width: 360px;
     max-height: 320px;
     font-family: var(--font-sans);
     font-size: 1.1rem;
