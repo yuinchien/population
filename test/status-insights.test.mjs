@@ -215,11 +215,13 @@ test("METRICS centralizes shared metric order, labels, and formatters", () => {
   assert.deepEqual(DETAIL_METRIC_KEYS, [
     "population",
     "populationGrowth",
+    "netMigrationRate",
     "fertility",
     "lifeExpectancy",
     "medianAge",
     "ageDependencyRatio",
-    "netMigrationRate",
+    "oldAgeDependencyRatio",
+    "youthDependencyRatio",
   ]);
   assert.equal(METRICS.population.detailLabel, "Population");
   assert.equal(METRICS.populationGrowth.detailLabel, "Growth rate");

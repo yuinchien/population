@@ -2766,9 +2766,6 @@ function renderChartTable() {
     const fallback = columns.find((column) => column.key !== "name");
     chartTableSort = { key: fallback.key, direction: fallback.defaultDirection };
   }
-  const metricColumnCount = columns.length - 1;
-  const gridTemplateColumns =
-    `minmax(150px, 1fr) repeat(${metricColumnCount}, minmax(120px, 0.8fr))`;
   renderSortableTable({
     headerEl: elements.chartTableHeader,
     rowsEl: elements.chartTableRows,
@@ -2779,7 +2776,6 @@ function renderChartTable() {
     onRowClick: (item) => item.onClick(),
     colorFor: (item) => item.color,
     barMode: "none",
-    gridTemplateColumns,
   });
 }
 

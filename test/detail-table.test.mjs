@@ -94,7 +94,18 @@ test("buildDetailRows formats cells and computes population ratios", () => {
   assert.equal(rows[1].ratio, 0.5);
   assert.deepEqual(
     rows[0].cells.map((cell) => cell.text),
-    ["Aland", "8,000,000", "N/A", "1.9", "N/A", "N/A", "N/A", "N/A"],
+    [
+      "Aland",
+      "8,000,000",
+      "N/A",
+      "N/A",
+      "1.9",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+      "N/A",
+    ],
   );
 });
 

@@ -22,6 +22,16 @@ function ratioValueForBar(columns, barMetric, barValue) {
   return metricColumn?.value;
 }
 
+// The first column (country name) is always the flexible one; every metric
+// column after it gets an equal, narrower share. Works for any column
+// count/selection — a single metric, a hand-picked subset, or the full
+// list — since it's derived from how many columns there are, not from
+// which metrics they happen to be.
+function gridTemplateColumnsFor(columnCount) {
+  const metricColumnCount = Math.max(0, columnCount - 1);
+  return `minmax(200px, 1fr) repeat(${metricColumnCount}, minmax(190px, 0.8fr))`;
+}
+
 // Shared by the group-detail table and the chart table: builds sortable
 // header cells (with the active sort's arrow) and per-country rows from the
 // same column/row-building helpers, wiring header clicks to onSort and row
@@ -35,7 +45,6 @@ export function renderSortableTable({
   countries,
   onSort,
   onRowClick,
-  gridTemplateColumns,
   // Optional: per-row --detail-color (tints .detail-cell.country's ratio
   // bar — see styles.css). Left unset, rows just inherit the surrounding
   // panel color.
@@ -44,11 +53,8 @@ export function renderSortableTable({
   barMetric = "population",
   barValue,
 }) {
-  if (gridTemplateColumns) {
-    headerEl.style.gridTemplateColumns = gridTemplateColumns;
-  } else {
-    headerEl.style.removeProperty("grid-template-columns");
-  }
+  const gridTemplateColumns = gridTemplateColumnsFor(columns.length);
+  headerEl.style.gridTemplateColumns = gridTemplateColumns;
   headerEl.replaceChildren(
     ...columns.map((column) => {
       const arrow =
@@ -80,9 +86,7 @@ export function renderSortableTable({
       const row = document.createElement("div");
       row.dataset.rowIndex = String(index);
       row.className = "detail-row";
-      if (gridTemplateColumns) {
-        row.style.gridTemplateColumns = gridTemplateColumns;
-      }
+      row.style.gridTemplateColumns = gridTemplateColumns;
       if (colorFor) {
         const color = colorFor(detailRow.country);
         if (color) row.style.setProperty("--detail-color", color);

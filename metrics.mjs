@@ -129,7 +129,7 @@ export const METRICS = {
   youthDependencyRatio: {
     key: "youthDependencyRatio",
     label: "Youth dependency ratio",
-    detailLabel: "Youth dependency ratio",
+    detailLabel: "Youth dependency",
     defaultDirection: "desc",
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
@@ -139,7 +139,7 @@ export const METRICS = {
   oldAgeDependencyRatio: {
     key: "oldAgeDependencyRatio",
     label: "Old age dependency ratio",
-    detailLabel: "Old age dependency ratio",
+    detailLabel: "Old age dependency",
     defaultDirection: "desc",
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
@@ -151,11 +151,13 @@ export const METRICS = {
 export const DETAIL_METRIC_KEYS = [
   "population",
   "populationGrowth",
+  "netMigrationRate",
   "fertility",
   "lifeExpectancy",
   "medianAge",
   "ageDependencyRatio",
-  "netMigrationRate",
+  "oldAgeDependencyRatio",
+  "youthDependencyRatio"
 ];
 
 export const COUNTRY_SPARKLINE_METRIC_KEYS = [
