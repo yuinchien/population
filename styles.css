@@ -1334,6 +1334,7 @@ body.country-detail #colorMode {
     fill: var(--detail-color);
     opacity: .2;
     stroke: none;
+    stroke-linejoin: round;
 }
 
 .sparkline-area.projected {
@@ -1357,6 +1358,7 @@ body.country-detail #colorMode {
     stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
     opacity: 0.9;
+    stroke-linejoin: round;
 }
 
 
@@ -1373,6 +1375,35 @@ body.country-detail #colorMode {
 
 .sparkline-dot {
     fill: var(--detail-color);
+}
+
+/* Population growth's migration overlay: bars in --color-text rather than
+   --detail-color, so they stay visible against that same card's own
+   --detail-color line/area instead of blending into it. */
+.sparkline-overlay-bar {
+    stroke: var(--color-text);
+    stroke-width: var(--chart-stroke-width);
+    opacity: 1;
+}
+
+.sparkline-overlay-bar.projected {
+    opacity: 0.4;
+}
+
+.sparkline-overlay-legend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--color-muted);
+}
+
+.sparkline-overlay-legend-swatch {
+    width: 10px;
+    height: 8px;
+    background: var(--color-text);
+    opacity: 0.55;
 }
 
 .country-similar {

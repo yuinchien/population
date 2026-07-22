@@ -11,8 +11,13 @@ export function createSparklineGeometry({
   width,
   height,
   referenceValue,
+  // Defaults to `series` — pass a wider array (e.g. series plus an overlay
+  // series sharing this chart's baseline) so the value range fits both
+  // without the overlay getting clipped. The line/area still only ever
+  // draws `series` itself.
+  rangeValues = series,
 }) {
-  const { min, range } = computeValueRange(series, referenceValue);
+  const { min, range } = computeValueRange(rangeValues, referenceValue);
   const baselineValue = referenceValue ?? min;
   const baselineY = chartYFor(baselineValue, min, range, height);
   const n = series.length;

@@ -344,7 +344,7 @@ function createStorySection(act, index, country) {
 
   const label = document.createElement("div");
   label.className = "lifetime-section-label";
-  label.textContent = actLabel(index);
+  label.textContent = actLabel(index); // TODO: Add projection scenario
 
   const copy = document.createElement("p");
   copy.className = "lifetime-act-copy";

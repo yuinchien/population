@@ -16,6 +16,7 @@ import {
   maxBandTotal,
 } from "./country-pyramid.mjs";
 import { createSparklineGeometry } from "./sparkline-chart.mjs";
+import { computeGrowthDecomposition } from "./growth-decomposition-model.mjs";
 import {
   cancelChartAnimations,
   runChartAnimation,
@@ -220,14 +221,26 @@ export function createCountryDetailController({
     return { card, svg, dotLine, dot, valueEl: value };
   }
 
-  function populateSparkline(instance, series, cutoffIndex, key, { animate }) {
+  // `overlayValues`, when given (only for the "populationGrowth" card),
+  // draws a bar per year behind the area/line for a second series that
+  // shares this card's zero baseline — currently net migration, so the
+  // growth line visually shows how much of it migration is driving. The
+  // value range widens to fit both series so neither gets clipped.
+  function populateSparkline(
+    instance,
+    series,
+    cutoffIndex,
+    key,
+    { animate, overlayValues } = {},
+  ) {
     const { svg, dotLine, dot } = instance;
     const width = svg.clientWidth || 160;
     const height = svg.clientHeight || 40;
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
 
     const configuredReferenceValue = METRICS[key]?.referenceValue;
-    const { min } = computeValueRange(series, configuredReferenceValue);
+    const rangeValues = overlayValues ? [...series, ...overlayValues] : series;
+    const { min } = computeValueRange(rangeValues, configuredReferenceValue);
     const referenceValue = configuredReferenceValue ?? min;
     const n = series.length;
     const { baselineY, toXY, yFor, pathFor, areaFor } =
@@ -237,10 +250,31 @@ export function createCountryDetailController({
         width,
         height,
         referenceValue: configuredReferenceValue,
+        rangeValues,
       });
 
     const elementsToAppend = [];
     const initialYFor = animate ? () => baselineY : yFor;
+    const overlayBars = [];
+    if (overlayValues) {
+      const bars = document.createDocumentFragment();
+      for (let i = 0; i < n; i++) {
+        const value = overlayValues[i];
+        if (value == null) continue;
+        const isProjected = i >= cutoffIndex;
+        const [x, targetY] = toXY(i, value);
+        const bar = svgEl("line", {
+          class: `sparkline-overlay-bar${isProjected ? " projected" : ""}`,
+          x1: x.toFixed(1),
+          x2: x.toFixed(1),
+          y1: baselineY.toFixed(1),
+          y2: (animate ? baselineY : targetY).toFixed(1),
+        });
+        if (animate) overlayBars.push({ bar, targetY });
+        bars.append(bar);
+      }
+      elementsToAppend.push(bars);
+    }
     const historicalArea = svgEl("path", {
       class: "sparkline-area historical",
       d: areaFor(0, cutoffIndex, initialYFor),
@@ -286,6 +320,17 @@ export function createCountryDetailController({
     }
     svg.append(...elementsToAppend, dotLine, dot);
 
+    if (overlayValues) {
+      const legend = document.createElement("div");
+      legend.className = "sparkline-overlay-legend";
+      const swatch = document.createElement("span");
+      swatch.className = "sparkline-overlay-legend-swatch";
+      const label = document.createElement("span");
+      label.textContent = "Migration";
+      legend.append(swatch, label);
+      instance.card.append(legend);
+    }
+
     if (animate) {
       const totalDuration = chartLineGrowMs + chartMarkerFadeInMs;
       animationHandles.push(runChartAnimation({
@@ -311,6 +356,12 @@ export function createCountryDetailController({
             "d",
             areaFor(cutoffIndex, n - 1, animatedYFor),
           );
+          overlayBars.forEach(({ bar, targetY }) => {
+            bar.setAttribute(
+              "y2",
+              baselineY + (targetY - baselineY) * growT,
+            );
+          });
 
           const fadeT = Math.min(
             1,
@@ -545,12 +596,29 @@ export function createCountryDetailController({
       elements.countrySparklines.append(elements.countryPyramidCard);
     }
     const metrics = getDemographicMetrics();
-    sparklineInstances = COUNTRY_SPARKLINE_METRIC_KEYS.map((key) => {
+    sparklineInstances = [];
+    COUNTRY_SPARKLINE_METRIC_KEYS.forEach((key) => {
       const series = metrics?.countries?.[country.iso3]?.[key] ?? [];
       const instance = buildSparklineCard(key);
       elements.countrySparklines.append(instance.card);
-      populateSparkline(instance, series, cutoffIndex, key, { animate });
-      return { key, series, ...instance };
+
+      // Overlays net migration as bars behind the growth line/area itself
+      // rather than as a separate card, so it's immediately visible how
+      // much of a country's growth (or decline) migration is driving.
+      const overlayValues =
+        key === "populationGrowth"
+          ? computeGrowthDecomposition({
+              populationGrowth: series,
+              netMigrationRate:
+                metrics?.countries?.[country.iso3]?.netMigrationRate ?? [],
+            }).migration
+          : undefined;
+
+      populateSparkline(instance, series, cutoffIndex, key, {
+        animate,
+        overlayValues,
+      });
+      sparklineInstances.push({ key, series, overlayValues, ...instance });
     });
   }
 
@@ -688,13 +756,17 @@ export function createCountryDetailController({
     updatePyramid(year);
 
     sparklineInstances.forEach(
-      ({ key, series, dotLine, dot, valueEl, toXY, baselineY }) => {
+      ({ key, series, overlayValues, dotLine, dot, valueEl, toXY, baselineY }) => {
         const value = series[index];
         const definition = METRICS[key];
         const format = definition.formatPanel ?? definition.format;
         valueEl.textContent = format(value);
         if (value != null) {
-          dot.dataset.tooltip = valueEl.textContent;
+          const overlayValue = overlayValues?.[index];
+          dot.dataset.tooltip =
+            overlayValue != null
+              ? `${valueEl.textContent} (migration ${format(overlayValue)})`
+              : valueEl.textContent;
           const [dx, dy] = toXY(index, value);
           dotLine.setAttribute("x1", dx);
           dotLine.setAttribute("x2", dx);
