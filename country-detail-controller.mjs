@@ -27,7 +27,7 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
-const COUNTRY_CHART_PADDING = { top: 28, right: 0, bottom: 0, left: 0 };
+const COUNTRY_CHART_PADDING = { top: 8, right: 0, bottom: 0, left: 0 };
 const COUNTRY_CHART_LABEL_MIN_Y = 12;
 const COUNTRY_PYRAMID_VIEW = { width: 300, height: 300 };
 const COUNTRY_PYRAMID_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };

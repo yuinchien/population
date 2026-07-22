@@ -1082,6 +1082,7 @@ body.country-detail #colorMode {
     font-size: 12px;
     font-weight: 500;
     fill: var(--color-text);
+    font-family: var(--font-mono);
     text-anchor: middle;
 }
 
@@ -1308,6 +1309,7 @@ body.country-detail #colorMode {
     gap: 8px;
     font-weight: 500;
     margin: 12px 0;
+    font-family: var(--font-mono);
 }
 
 .sparkline-label {
