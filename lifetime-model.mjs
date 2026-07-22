@@ -603,6 +603,7 @@ export function buildLifetimeStory({
   const presentPivotCopy = lifetimePresentPivotSentence({
     countryName: country.name,
     countryPeakYear,
+    nameAlreadyUsed: youngerShare != null,
   });
   const projectedCountryPeakYear = countryPopulationPeakYearBetween({
     country,
@@ -618,6 +619,7 @@ export function buildLifetimeStory({
   });
   const horizonAgingCopy = agingSocietiesSentence({
     countryName: country.name,
+    subject: projectedCountryPeakCopy ? "It" : country.name,
     selectedCountryIsAging: !!selectedAgingStage,
     selectedStage: selectedAgingStage,
     year: context.finalYear,
@@ -650,7 +652,6 @@ export function buildLifetimeStory({
     demographicMetrics,
     yearIndex: context.birthIndex,
   });
-
 
   const acts = [
     {

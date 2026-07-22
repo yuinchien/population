@@ -141,12 +141,14 @@ export function superAgedSocietiesSentence({
 
 export function agingSocietiesSentence({
   countryName,
+  subject,
   selectedCountryIsAging,
   selectedStage,
   year,
   olderShare,
   count,
 }) {
+  const name = subject ?? countryName;
   const unit = count === 1 ? "nation" : "nations";
   if (selectedStage && count != null) {
     const pluralStageLabel = selectedStage.label.replace(
@@ -156,10 +158,10 @@ export function agingSocietiesSentence({
     const shareCopy = Number.isFinite(olderShare)
       ? `, with 65+ share reaching ${olderShare.toFixed(1)}% of its population`
       : "";
-    return `${countryName} will be among ${count} ${unit} classified as ${pluralStageLabel}${shareCopy}.`;
+    return `${name} will be among ${count} ${unit} classified as ${pluralStageLabel}${shareCopy}.`;
   }
   if (selectedCountryIsAging && count != null) {
-    return `${countryName} will be among ${count} ${unit} classified as aging societies, navigating the needs of a rapidly aging population.`;
+    return `${name} will be among ${count} ${unit} classified as aging societies, navigating the needs of a rapidly aging population.`;
   }
   if (count != null) {
     return "";
@@ -229,26 +231,51 @@ function lifetimeArrivalPeakPhrase(peakYear, birthYear) {
   return `its population had already peaked in ${peakYear}`;
 }
 
+// Bare, lowercase, unpunctuated clause — the caller weaves this directly into
+// the sentence that already established the birth year, rather than
+// reintroducing it with a separate "By then" (which reads as a later point in
+// time even though it's the same year).
 export function lifetimeArrivalFactsSentence({
   olderShareAtBirth,
   youthDependencyRatioAtBirth,
   peakYear,
   birthYear,
 }) {
-  const arrivalFacts = joinListProse([
+  return joinListProse([
     lifetimeArrivalPeakPhrase(peakYear, birthYear),
     lifetimeArrivalAgingPhrase(olderShareAtBirth),
     lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth),
   ]);
-  return arrivalFacts ? `By then ${arrivalFacts}.` : "";
 }
 
-export function lifetimePresentPivotSentence({ countryName, countryPeakYear }) {
-  if (countryPeakYear == null || !countryName) return "";
-  const possessiveCountryName = countryName.endsWith("s")
-    ? `${countryName}'`
-    : `${countryName}'s`;
-  return ` You have already lived through ${possessiveCountryName} population peak in ${countryPeakYear}.`;
+function possessive(name) {
+  return name.endsWith("s") ? `${name}'` : `${name}'s`;
+}
+
+// `nameAlreadyUsed` lets the caller avoid repeating the country's name a
+// second time in the same paragraph (e.g. right after the "younger than you"
+// sentence already named it) by falling back to "its".
+export function lifetimePresentPivotSentence({
+  countryName,
+  countryPeakYear,
+  nameAlreadyUsed = false,
+}) {
+  if (!countryName) return "";
+  const subject = nameAlreadyUsed ? "its" : possessive(countryName);
+  const capitalizedSubject = `${subject[0].toUpperCase()}${subject.slice(1)}`;
+  if (countryPeakYear != null) {
+    return ` You have already lived through ${subject} population peak in ${countryPeakYear}.`;
+  }
+  // No peak yet: still give Present a closing beat instead of trailing off.
+  return ` ${capitalizedSubject} population is still climbing as you read this.`;
+}
+
+// Sharpens the raw "younger than you" percentage once it crosses the midpoint
+// — the number alone doesn't tell you you're now on the older half.
+export function lifetimeYoungerShareSentence({ countryName, youngerShare }) {
+  if (youngerShare == null) return "";
+  const base = `In ${countryName}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.`;
+  return base;
 }
 
 export function lifetimeProjectedCountryPeakSentence({
@@ -281,10 +308,16 @@ export function lifetimeArrivalCopy({
   formatPopulation,
   formatLifeExpectancy,
 }) {
+  const lifeExpectancyText =
+    countryLifeAtBirth != null
+      ? formatLifeExpectancy(countryLifeAtBirth)
+      : "not available";
+  const lifeExpectancySentence = arrivalFactsSentence
+    ? `In ${countryName}, the average life expectancy at birth was ${lifeExpectancyText} — that same year, ${arrivalFactsSentence}.`
+    : `In ${countryName}, the average life expectancy at birth was ${lifeExpectancyText}.`;
   return joinSentences(
     `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPopulation)} people.`,
-    `In ${countryName}, the average life expectancy at birth was ${countryLifeAtBirth != null ? formatLifeExpectancy(countryLifeAtBirth) : "not available"}.`,
-    arrivalFactsSentence,
+    lifeExpectancySentence,
   );
 }
 
@@ -297,9 +330,7 @@ export function lifetimePresentCopy({
 }) {
   return joinSentences(
     `Fast forward to today. The world has added ${formatPopulation(addedSinceBirth)} people since your birth year.`,
-    youngerShare != null
-      ? `In ${countryName}, about ${youngerShare.toFixed(0)}% of people alive now are younger than you.`
-      : "",
+    lifetimeYoungerShareSentence({ countryName, youngerShare }),
     presentPivotCopy,
   );
 }

@@ -126,7 +126,7 @@ test("lifetime arrival copy joins birth context facts without model data", () =>
 
   assert.equal(
     facts,
-    "By then its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults.",
+    "its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults",
   );
   assert.equal(
     lifetimeArrivalCopy({
@@ -138,7 +138,7 @@ test("lifetime arrival copy joins birth context facts without model data", () =>
       formatPopulation: (value) => `${(value / 1e9).toFixed(1)}B`,
       formatLifeExpectancy: (value) => `${value} yrs`,
     }),
-    "When you were born in 2010, you joined a global population of 7.0B people. In Japan, the average life expectancy at birth was 83.2 yrs. By then its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults.",
+    "When you were born in 2010, you joined a global population of 7.0B people. In Japan, the average life expectancy at birth was 83.2 yrs — that same year, its population had already peaked in 2005, it had officially become an aged society, and youth dependency was high at 82.4 children per 100 working-age adults.",
   );
 });
 
