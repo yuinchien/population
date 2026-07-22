@@ -210,7 +210,7 @@ function lifetimeArrivalAgingPhrase(olderShareAtBirth) {
 function lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth) {
   if (
     !Number.isFinite(youthDependencyRatioAtBirth) ||
-    youthDependencyRatioAtBirth <= 80
+    youthDependencyRatioAtBirth <= 60
   ) {
     return "";
   }
