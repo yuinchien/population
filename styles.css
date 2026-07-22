@@ -1850,6 +1850,23 @@ body.view-search:not(.detail) .timeline {
     font-size: 2.4rem;
 }
 
+/* Per-section "download as image" button — sits just left of the shared,
+   fixed close button (positioned within the section itself, not fixed, since
+   each act gets its own button rather than one global button). */
+.lifetime-section-download {
+    position: absolute;
+    top: var(--margin);
+    right: calc(var(--button-size));
+    z-index: 2;
+    font-size: 1.6rem;
+    opacity: 0.75;
+}
+
+.lifetime-section-download:hover,
+.lifetime-section-download:focus-visible {
+    opacity: 1;
+}
+
 .lifetime-content {
     width: 100%;
     max-width: 960px;
@@ -2013,6 +2030,7 @@ button.lg .material-symbols-outlined {
 }
 
 .lifetime-story-section {
+    position: relative;
     min-height: 100vh;
     padding: 18vh max(8vw, var(--margin));
     display: grid;

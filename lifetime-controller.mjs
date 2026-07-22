@@ -14,6 +14,10 @@ import {
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
 import { METRICS } from "./metrics.mjs";
+import {
+  downloadBlob,
+  renderLifetimeShareCard,
+} from "./lifetime-share-card.mjs";
 
 const LIFETIME_SECTION_COUNT = 3;
 const LIFETIME_SCROLL_LOCK_MS = 900;
@@ -324,6 +328,20 @@ function createStorySection(act, index, country) {
   section.dataset.index = String(index);
   section.tabIndex = -1;
 
+  // Download-as-image, positioned next to the (fixed, shared) close button —
+  // clicked via a delegated listener in bindEvents(), which resolves the act
+  // to draw from this section's own data-index at click time.
+  const download = document.createElement("button");
+  download.type = "button";
+  download.className = "lifetime-section-download detail-close";
+  download.setAttribute("aria-label", `Download ${actLabel(index)} as an image`);
+  download.title = "Download as image";
+  const downloadIcon = document.createElement("span");
+  downloadIcon.className = "material-symbols-outlined";
+  downloadIcon.textContent = "download";
+  download.append(downloadIcon);
+  section.append(download);
+
   const label = document.createElement("div");
   label.className = "lifetime-section-label";
   label.textContent = actLabel(index);
@@ -496,6 +514,33 @@ export function createLifetimeController({
       aggregateCache,
       aggregateKey: getProjectionScenario?.() ?? "medium",
     });
+  }
+
+  // Rebuilds the story (cheap — aggregateCache memoizes the expensive part)
+  // and draws whichever act this section holds to a PNG, named for the
+  // section and country. Errors (e.g. canvas unsupported) are logged rather
+  // than thrown, since a failed download shouldn't break the story itself.
+  function downloadSectionImage(section) {
+    if (!section) return;
+    const index = Number(section.dataset.index);
+    const country = selectedCountry();
+    if (!country || !Number.isFinite(birthYear) || !Number.isFinite(index)) {
+      return;
+    }
+    const act = buildStory(country)[index];
+    if (!act) return;
+    const title = `Born ${birthYear} in ${country.name}.`;
+    renderLifetimeShareCard({ title, label: actLabel(index), act })
+      .then((blob) => {
+        const slug = actLabel(index)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        downloadBlob(blob, `lifetime-${slug}-${country.iso3.toLowerCase()}.png`);
+      })
+      .catch((error) => {
+        console.error("Failed to download lifetime section image:", error);
+      });
   }
 
   function started() {
@@ -828,9 +873,15 @@ export function createLifetimeController({
     });
     elements.lifetimeAbout?.addEventListener("click", (event) => {
       const link = event.target.closest(".lifetime-explore-link[data-iso3]");
-      if (!link || !elements.lifetimeAbout.contains(link)) return;
-      const country = countries().find((item) => item.iso3 === link.dataset.iso3);
-      if (country) onOpenCountry?.(country);
+      if (link && elements.lifetimeAbout.contains(link)) {
+        const country = countries().find((item) => item.iso3 === link.dataset.iso3);
+        if (country) onOpenCountry?.(country);
+        return;
+      }
+      const downloadButton = event.target.closest(".lifetime-section-download");
+      if (downloadButton && elements.lifetimeAbout.contains(downloadButton)) {
+        downloadSectionImage(downloadButton.closest(".lifetime-story-section"));
+      }
     });
     elements.lifetimeAbout?.addEventListener("scroll", () => {
       if (!started() || scrollFrame != null) return;
