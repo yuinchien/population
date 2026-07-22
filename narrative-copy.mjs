@@ -195,16 +195,29 @@ function joinListProse(items) {
   return `${list.slice(0, -1).join(", ")}, and ${list.at(-1)}`;
 }
 
-// Arrival-act "context facts" — each returns a bare phrase (no leading space,
-// no trailing punctuation) so they can be woven into one prose list sentence
-// ("By then <a>, <b>, and <c>.") or dropped entirely by returning "".
-function lifetimeArrivalAgingPhrase(olderShareAtBirth) {
-  if (!Number.isFinite(olderShareAtBirth)) return "";
-  const stage = currentAgingStage(olderShareAtBirth);
-  // Below the aging-society threshold, no aging note is added to the copy.
-  if (!stage) return "";
-  const article = stage.label.startsWith("a") ? "an" : "a";
-  return `it had officially become ${article} ${stage.label}`;
+// When the country's population had already peaked before the person was
+// born (peaks during their life show up in the Present/Horizon acts instead)
+// AND it had already reached an aging stage, both facts share one subject
+// ("it") instead of restating it in two back-to-back clauses ("its
+// population had already peaked... and it had officially become...").
+function lifetimeArrivalPeakAndAgingPhrase(peakYear, birthYear, olderShareAtBirth) {
+  const hasPeak =
+    Number.isFinite(peakYear) &&
+    Number.isFinite(birthYear) &&
+    peakYear < birthYear;
+  const stage = Number.isFinite(olderShareAtBirth)
+    ? currentAgingStage(olderShareAtBirth)
+    : null;
+  if (hasPeak && stage) {
+    const article = stage.label.startsWith("a") ? "an" : "a";
+    return `it had already reached its population peak in ${peakYear} and officially become ${article} ${stage.label}`;
+  }
+  if (hasPeak) return `its population had already peaked in ${peakYear}`;
+  if (stage) {
+    const article = stage.label.startsWith("a") ? "an" : "a";
+    return `it had officially become ${article} ${stage.label}`;
+  }
+  return "";
 }
 
 function lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth) {
@@ -215,20 +228,6 @@ function lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth) {
     return "";
   }
   return `youth dependency was high at ${Number(youthDependencyRatioAtBirth).toFixed(1)} children per 100 working-age adults`;
-}
-
-// When the country's population had already peaked before the person was born,
-// the peak belongs in the Arrival act (peaks during their life show up in the
-// Present/Horizon acts instead). `peakYear` is the country's all-time peak.
-function lifetimeArrivalPeakPhrase(peakYear, birthYear) {
-  if (
-    !Number.isFinite(peakYear) ||
-    !Number.isFinite(birthYear) ||
-    peakYear >= birthYear
-  ) {
-    return "";
-  }
-  return `its population had already peaked in ${peakYear}`;
 }
 
 // Bare, lowercase, unpunctuated clause — the caller weaves this directly into
@@ -242,8 +241,7 @@ export function lifetimeArrivalFactsSentence({
   birthYear,
 }) {
   return joinListProse([
-    lifetimeArrivalPeakPhrase(peakYear, birthYear),
-    lifetimeArrivalAgingPhrase(olderShareAtBirth),
+    lifetimeArrivalPeakAndAgingPhrase(peakYear, birthYear, olderShareAtBirth),
     lifetimeArrivalYouthDependencyPhrase(youthDependencyRatioAtBirth),
   ]);
 }
@@ -312,8 +310,13 @@ export function lifetimeArrivalCopy({
     countryLifeAtBirth != null
       ? formatLifeExpectancy(countryLifeAtBirth)
       : "not available";
+  // No "that same year"/"by then" connector here: the peak phrase (when
+  // present) explicitly names a year before birth, so a connector implying
+  // "at birth" would contradict it. The pluperfect tense ("had already
+  // peaked", "had officially become") already reads as "by the time you were
+  // born" without needing to say so.
   const lifeExpectancySentence = arrivalFactsSentence
-    ? `In ${countryName}, the average life expectancy at birth was ${lifeExpectancyText} — that same year, ${arrivalFactsSentence}.`
+    ? `In ${countryName}, the average life expectancy at birth was ${lifeExpectancyText} — ${arrivalFactsSentence}.`
     : `In ${countryName}, the average life expectancy at birth was ${lifeExpectancyText}.`;
   return joinSentences(
     `When you were born in ${birthYear}, you joined a global population of ${formatPopulation(birthPopulation)} people.`,

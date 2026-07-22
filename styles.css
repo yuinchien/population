@@ -1386,7 +1386,7 @@ body.country-detail #colorMode {
 
 .country-similar-label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: var(--margin);
     color: var(--color-muted);
 }
 

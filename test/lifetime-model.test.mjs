@@ -416,11 +416,11 @@ test("buildLifetimeStoryAct returns DOM-free act copy and stats", () => {
   });
   assert.match(
     arrivalAct.text,
-    /In Testland, the average life expectancy at birth was 80 yrs — that same year,/,
+    /In Testland, the average life expectancy at birth was 80 yrs —/,
   );
   assert.match(
     arrivalAct.text,
-    /that same year, it had officially become an aging society and youth dependency was high at 82\.4 children per 100 working-age adults\./,
+    /it had officially become an aging society and youth dependency was high at 82\.4 children per 100 working-age adults\./,
   );
 });
 
@@ -656,7 +656,7 @@ test("arrival copy names the country population peak when it predates the birth 
   });
   assert.match(
     act.text,
-    /that same year, its population had already peaked in 2010 and it had officially become an aged society\./,
+    /it had already reached its population peak in 2010 and officially become an aged society\./,
   );
 });
 
