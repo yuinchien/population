@@ -1011,6 +1011,7 @@ p.detail-subtitle {
     .country-summary-copy {
         display: block;
         margin: 0;
+        display: none;
     }
 
     .underlined {
@@ -1770,6 +1771,7 @@ select::picker(select) {
 }
 
 .chart-insight {
+    display: none;
     margin-top: 0;
     margin-bottom: var(--margin);
 }
