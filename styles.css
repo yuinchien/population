@@ -1911,6 +1911,7 @@ select::picker(select) {
     gap: calc(var(--margin) / 2);
     padding: calc(var(--margin) / 2) 0;
     border-top: var(--border);
+    overflow-x: scroll;
 }
 
 .search-bar {
@@ -3188,6 +3189,20 @@ body.info-open .menu-shim {
     body.view-lifetime-started .menu-toggle,
     body.detail .menu-toggle {
         display: none;
+    }
+
+    .detail-nav {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 240px;
+        z-index: var(--z-menu);
+        background: var(--color-bg);
+        display: none;
+    }
+    #detailPanel {
+        grid-template-columns: 1fr;
     }
 
     .search-bar {
