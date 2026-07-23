@@ -28,7 +28,6 @@
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --font-serif: "Young Serif", serif;
-    --letterspacing-uppercase: 0.01em;
     --letterspacing-mono: -0.02em;
     --overlay-width: 288px;
 
@@ -143,14 +142,13 @@ canvas.hovering-dot {
     font-size: var(--icon-size);
 }
 
-.flex {
-    flex: 1;
+.monospace {
+    font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
 }
 
-.mono-uppercase {
-    text-transform: uppercase;
-    letter-spacing: var(--letterspacing-uppercase);
-    font-weight: 500;
+.flex {
+    flex: 1;
 }
 
 .glass {
@@ -810,8 +808,6 @@ p.detail-subtitle {
 .detail-nav-section-label {
     font-size: 0.9rem;
     color: var(--color-subtle);
-    /*text-transform: uppercase;*/
-    /*letter-spacing: var(--letterspacing-uppercase);*/
     font-weight: 500;
     margin: 0 var(--margin) 2px var(--margin);
 }
@@ -861,8 +857,6 @@ p.detail-subtitle {
     min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
 }
 
 .detail-rows {
@@ -872,8 +866,6 @@ p.detail-subtitle {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
     padding: 8px 0;
 }
 
@@ -892,15 +884,24 @@ p.detail-subtitle {
        instead squeeze the row down to whatever's currently visible, making
        the rest of its columns unreachable by scrolling. */
     position: relative;
-    padding-right: var(--margin);
+}
+
+#detailPanel {
+    .detail-row {
+        padding-right: var(--margin);
+    }
+    .detail-cell.sortable {
+        padding-left: var(--margin);
+    }
+    .detail-cell.country:not(.sortable) {
+        padding-left: var(--margin);
+    }
 }
 
 .detail-row.header {
     min-height: 28px;
     color: var(--color-muted);
     border-bottom: var(--border);
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
 }
 
 .detail-rows .detail-row {
@@ -916,7 +917,6 @@ p.detail-subtitle {
 .detail-cell.sortable {
     cursor: pointer;
     user-select: none;
-    padding-left: var(--margin);
 }
 
 .detail-cell.sortable:hover {
@@ -944,7 +944,6 @@ p.detail-subtitle {
 .detail-cell.country:not(.sortable) {
     isolation: isolate;
     overflow: hidden;
-    padding-left: var(--margin);
     gap: 12px;
 }
 
@@ -1185,8 +1184,6 @@ p.detail-subtitle {
     font-size: 12px;
     font-weight: 500;
     fill: var(--color-text);
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
     text-anchor: middle;
 }
 
@@ -1412,8 +1409,6 @@ p.detail-subtitle {
     gap: 8px;
     font-weight: 500;
     margin: 12px 0;
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
 }
 
 .sparkline-label {
@@ -2758,8 +2753,6 @@ body.view-lifetime-started #viewMode {
 
 .trend-chart-year-label {
     fill: var(--color-bg);
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
     font-size: 11px;
     font-weight: 700;
     pointer-events: none;
@@ -2775,8 +2768,6 @@ body.view-lifetime-started #viewMode {
 .trend-chart-baseline-label,
 .trend-chart-axis-label {
     font-size: 10px;
-    font-family: var(--font-mono);
-    letter-spacing: var(--letterspacing-mono);
     fill: var(--color-muted);
 }
 

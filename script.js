@@ -1028,7 +1028,7 @@ function renderCountrySummary(summary) {
   // the Population card's "Population" / "115.1M"), so this card's caption
   // reads as one of the set rather than a one-off badge.
   const caption = document.createElement("div");
-  caption.className = "sparkline-caption";
+  caption.className = "sparkline-caption monospace";
   const label = document.createElement("div");
   label.className = "sparkline-label";
   label.textContent = "Summary";

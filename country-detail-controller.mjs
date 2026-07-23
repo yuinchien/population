@@ -207,7 +207,7 @@ export function createCountryDetailController({
     const dot = svgEl("circle", { class: "sparkline-dot", r: 4 });
 
     const titleCaption = document.createElement("div");
-    titleCaption.className = "sparkline-caption";
+    titleCaption.className = "sparkline-caption monospace";
     const card = document.createElement("div");
     card.className = "sparkline-card";
     const label = document.createElement("div");
