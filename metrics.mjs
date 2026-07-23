@@ -146,6 +146,16 @@ export const METRICS = {
     formatRange: formatDependencyRatio,
     referenceValue: 0,
   },
+  olderPopulationShare: {
+    key: "olderPopulationShare",
+    label: "Older population share",
+    detailLabel: "Older population %",
+    defaultDirection: "desc",
+    format: formatDependencyRatio,
+    formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
+    formatRange: formatDependencyRatio,
+    referenceValue: 0,
+  },
 };
 
 export const DETAIL_METRIC_KEYS = [

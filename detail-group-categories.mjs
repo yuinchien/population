@@ -18,7 +18,7 @@ export const AGE_CATEGORIES = [
     key: "superAged",
     label: "Super-aged society",
     color: "var(--color-orange)",
-    sortKey: "oldAgeDependencyRatio",
+    sortKey: "olderPopulationShare",
     sortDirection: "desc",
   },
   {
@@ -26,7 +26,7 @@ export const AGE_CATEGORIES = [
     key: "aged",
     label: "Aged society",
     color: "var(--color-pink)",
-    sortKey: "oldAgeDependencyRatio",
+    sortKey: "olderPopulationShare",
     sortDirection: "desc",
   },
   {
@@ -34,7 +34,7 @@ export const AGE_CATEGORIES = [
     key: "aging",
     label: "Aging society",
     color: "var(--color-purple)",
-    sortKey: "oldAgeDependencyRatio",
+    sortKey: "olderPopulationShare",
     sortDirection: "desc",
   },
   {
@@ -76,9 +76,10 @@ export const YOUNG_DEPENDENCY_THRESHOLD = 0;
 // Age-grouping columns: age-structure metrics instead of the full detail set.
 export const AGE_COLUMN_KEYS = [
   "population",
+  "olderPopulationShare",
+  "youthDependencyRatio",
   "ageDependencyRatio",
   "oldAgeDependencyRatio",
-  "youthDependencyRatio",
   "medianAge",
 ];
 
