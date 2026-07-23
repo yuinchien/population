@@ -29,7 +29,7 @@
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --font-serif: "Young Serif", serif;
     --letterspacing-mono: -0.02em;
-    --overlay-width: 288px;
+    --overlay-width: 300px;
 
     --trend-line-width: 4;
     --dash-size: 8px;
@@ -1830,7 +1830,7 @@ select::picker(select) {
     background: var(--color-scrim-strong);
     overflow-y: auto;
     /* Top padding clears the fixed search bar (left) and button dock (right). */
-    padding: calc(var(--margin)*2 + 40px) var(--margin) var(--margin);
+    padding: calc(var(--margin)*2 + 40px) 0 var(--margin);
 }
 
 @keyframes fadeInUp {
@@ -1854,7 +1854,7 @@ select::picker(select) {
     opacity: 0;
     animation: fadeInUp 0.5s ease-out forwards;
     border-top: var(--border);
-    padding: calc(var(--margin)/2) 0;
+    padding: calc(var(--margin)/2) var(--margin);
 }
 
 .search-country-item {
@@ -1909,7 +1909,7 @@ select::picker(select) {
 .search-category-grid {
     display: flex;
     gap: calc(var(--margin) / 2);
-    padding: calc(var(--margin) / 2) 0;
+    padding: calc(var(--margin) / 2) var(--margin);
     border-top: var(--border);
     overflow-x: scroll;
 }
@@ -3228,6 +3228,10 @@ body.info-open .menu-shim {
     }
     .custom-select {
         min-width: auto;
+    }
+
+    .search-category-grid {
+        padding: var(--margin);
     }
 
     .lifetime-content {
