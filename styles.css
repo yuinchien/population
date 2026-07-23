@@ -723,6 +723,7 @@ body.country-detail #colorMode {
 }
 .info-panel-content {
     padding: var(--margin);
+    border-top: var(--border);
 }
 
 .settings-item-list {
@@ -742,7 +743,6 @@ body.country-detail #colorMode {
     gap: var(--margin);
     height: calc(var(--button-size) + var(--margin)*1 );
     padding: 0 calc(var(--margin) / 2) 0 var(--margin);
-    border-bottom: var(--border);
 }
 
 .detail-title-row {
@@ -1116,7 +1116,7 @@ p.detail-subtitle {
 
 .country-chart-bar {
     stroke: var(--detail-color);
-    stroke-width: var(--chart-stroke-width);
+    stroke-width: calc(var(--chart-stroke-width) / 2);
     opacity: 0.7;
 }
 
@@ -1468,12 +1468,12 @@ p.detail-subtitle {
    --detail-color line/area instead of blending into it. */
 .sparkline-overlay-bar {
     stroke: var(--color-text);
-    stroke-width: var(--chart-stroke-width);
-    opacity: 1;
+    stroke-width: calc(var(--chart-stroke-width) / 2);
+    opacity: .7;
 }
 
 .sparkline-overlay-bar.projected {
-    opacity: 0.4;
+    opacity: 0.3;
 }
 
 .sparkline-overlay-legend {
@@ -2005,7 +2005,7 @@ body.view-search:not(.detail) .timeline {
     h1 {
         font-family: var(--font-serif);
         font-size: 2.4rem;
-        line-height: 1;
+        line-height: 1.2;
         font-weight: 400;
         margin: 0;
     }
@@ -3111,7 +3111,7 @@ body.info-open .menu-shim {
     display: block;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1160px) {
     :root {
         --chart-stroke-width: 1.5;
     }

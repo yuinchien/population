@@ -40,7 +40,7 @@ const SIMILAR_COUNTRY_METRIC_KEYS = [
   "populationGrowth",
   "ageDependencyRatio",
 ];
-const SIMILAR_COUNTRY_LIMIT = 4;
+const SIMILAR_COUNTRY_LIMIT = 6;
 
 function svgEl(tag, attrs = {}) {
   const el = document.createElementNS(SVG_NS, tag);
