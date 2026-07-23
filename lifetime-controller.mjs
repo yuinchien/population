@@ -36,7 +36,9 @@ function createLifetimeStat(value, label) {
   stat.className = "lifetime-stat";
   const valueEl = document.createElement("div");
   valueEl.className = "lifetime-stat-value";
-  valueEl.textContent = value;
+  // innerHTML — formatLifeExpectancy/other METRICS formatters wrap their
+  // unit in <span class="suffix"> (metrics.mjs) for spacing.
+  valueEl.innerHTML = value;
   const labelEl = document.createElement("div");
   labelEl.className = "lifetime-stat-label";
   labelEl.textContent = label;
@@ -96,7 +98,7 @@ function createLifeExpectancyComparison(rows) {
     bar.append(name);
     const value = document.createElement("span");
     value.className = "lifetime-le-value";
-    value.textContent = format(row.value);
+    value.innerHTML = format(row.value);
     item.append(bar, value);
     chart.append(item);
   });

@@ -35,10 +35,10 @@ const CONTENT_WIDTH = CARD_WIDTH - CARD_PADDING * 2;
 // into plain text: one keeps the unit (restoring the space CSS normally
 // adds), the other drops it entirely for a bare number.
 function withPlainSuffix(formatted) {
-  return formatted.replace(/<span[^>]*>/, " ").replace(/<\/span>/, "");
+  return formatted.replace(/<span[^>]*>/g, " ").replace(/<\/span>/g, "");
 }
 function withoutSuffix(formatted) {
-  return formatted.replace(/\s*<span[^>]*>.*<\/span>/, "");
+  return formatted.replace(/\s*<span[^>]*>.*?<\/span>/g, "");
 }
 const COLUMN_WIDTH = (CONTENT_WIDTH - COLUMN_GAP) / 2;
 const LEFT_X = CARD_PADDING;
@@ -96,7 +96,10 @@ function drawTextColumn(ctx, { x, width, label, text, colors }) {
   ctx.fillStyle = colors.text;
   ctx.font = `400 21px ${SANS}`;
   const lineHeight = 31;
-  const lines = wrapText(ctx, text, width);
+  // act.text is prose that can embed formatLifeExpectancy(...) output —
+  // strip its <span class="suffix"> wrapper (metrics.mjs) to plain text
+  // with a space, since canvas can't render HTML.
+  const lines = wrapText(ctx, withPlainSuffix(text), width);
   let y = CONTENT_TOP + 40;
   lines.forEach((line) => {
     ctx.fillText(line, x, y);
