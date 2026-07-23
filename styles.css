@@ -28,7 +28,7 @@
     --font-mono: "DM Mono", ui-monospace, monospace;
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --font-serif: "Young Serif", serif;
-    --letterspacing-mono: -0.02em;
+    --letterspacing-mono: -0.025em;
     --overlay-width: 288px;
 
     --trend-line-width: 4;
@@ -98,7 +98,6 @@ body {
     font-family: var(--font-sans);
     font-size: 15px;
     line-height: 22px;
-    /*letter-spacing: -0.01em;*/
     background: var(--color-bg);
 }
 
@@ -752,7 +751,7 @@ body.country-detail #colorMode {
 
 .detail-panel h2 {
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .detail-panel p {
@@ -890,12 +889,12 @@ p.detail-subtitle {
     .detail-row {
         padding-right: var(--margin);
     }
-    .detail-cell.sortable {
+    .detail-cell.country {
         padding-left: var(--margin);
     }
-    .detail-cell.country:not(.sortable) {
+    /*.detail-cell.country:not(.sortable) {
         padding-left: var(--margin);
-    }
+    }*/
 }
 
 .detail-row.header {
