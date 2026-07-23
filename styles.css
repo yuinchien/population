@@ -352,7 +352,7 @@ button.milestone-nav-btn {
     right: 0;
     top: 0;
     padding: var(--margin);
-    z-index: var(--z-panel);
+    z-index: var(--z-menu);
     transition: opacity 0.2s ease;
     max-height: none;
 }
@@ -1848,12 +1848,14 @@ select::picker(select) {
 
 .search-country-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
     opacity: 0;
     animation: fadeInUp 0.5s ease-out forwards;
+    border-top: var(--border);
+    padding: calc(var(--margin)/2) 0;
 }
 
 .search-country-item {
@@ -1870,9 +1872,6 @@ select::picker(select) {
     font-weight: 500;
     text-align: left;
     cursor: pointer;
-
-      /* Calculate delay based on index variable */
-    /*animation-delay: calc(var(--i) * 22ms);*/
 }
 
 .search-country-item:hover,
@@ -1891,6 +1890,30 @@ select::picker(select) {
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
+.search-category-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: fit-content;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text);
+    font: inherit;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    background: var(--color-surface);
+}
+
+.search-category-grid {
+    display: flex;
+    gap: calc(var(--margin) / 2);
+    padding: calc(var(--margin) / 2) 0;
+    border-top: var(--border);
+}
+
 .search-bar {
     position: fixed;
     top: 0;
@@ -1899,8 +1922,9 @@ select::picker(select) {
     /* Above the search-view scrim and the detail overlay so it stays the way
        back to the list even while a country detail is open on top. */
     z-index: var(--z-panel);
-    width: calc(100vw - var(--margin) - 338px);
+    /*width: calc(100vw - var(--margin) - 338px);*/
     height: var(--button-size);
+    width: 800px;
 }
 
 
@@ -2788,7 +2812,7 @@ svg {
     border: none;
     background: var(--color-surface);
     flex-shrink: 1;
-    max-width: 800px;
+    /*max-width: 800px;*/
 }
 
 /* Collapsed (default): only the summary pill shows. Everything involved in
@@ -3115,7 +3139,10 @@ body.info-open .menu-shim {
     :root {
         --chart-stroke-width: 1.5;
     }
-    #buttonsContainer {
+    .topbar {
+        padding: 0 calc(var(--button-size) * 2 + var(--margin)*2) 0 var(--margin);
+    }
+    #viewMode {
         position: fixed;
         z-index: var(--z-menu);
         top: 0;
@@ -3129,25 +3156,19 @@ body.info-open .menu-shim {
         -webkit-backdrop-filter: blur(16px);
         backdrop-filter: blur(16px);
         display: block;
-    }
-    /*#infoButton {
-        display: none;
-    }*/
-    #viewMode {
-        flex-direction: column;
-        background: none;
+
         .title {
             display: block;
         }
         button {
             justify-content: flex-start;
-            gap: 12px;
+            gap: 10px;
+            padding: 8px 16px 8px 12px;
+            margin-bottom: 4px;
         }
     }
-    .menu-toggle {
-        display: block;
-    }
-    body.menu-open #buttonsContainer {
+
+    body.menu-open #viewMode {
         transform: translateX(0);
         border-left: var(--border);
     }
@@ -3156,6 +3177,23 @@ body.info-open .menu-shim {
         display: block;
         opacity: 1;
     }
+
+    #infoButton {
+        margin-right: calc(var(--button-size) + var(--margin) / 2);
+    }
+
+    .menu-toggle {
+        display: block;
+    }
+
+    body.detail .menu-toggle {
+        display: none;
+    }
+
+    .search-bar {
+        width: calc(100% - var(--button-size) * 2 - var(--margin) * 3);
+    }
+
     .country-detail {
         display: block;
     }
@@ -3169,9 +3207,7 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1;
         --margin: 12px;
     }
-    .search-bar {
-        width: calc(100vw - 80px);
-    }
+
     .paragraph {
         font-size: 1.2rem;
     }

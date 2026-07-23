@@ -94,6 +94,7 @@ export function getAppElements(root = document) {
     searchCountrySuggestions: root.querySelector("#searchCountrySuggestions"),
     searchView: root.querySelector("#searchView"),
     searchCountryGrid: root.querySelector("#searchCountryGrid"),
+    searchCategoryGrid: root.querySelector("#searchCategoryGrid"),
     countrySummary: root.querySelector("#countrySummary"),
     lifetimeView: root.querySelector("#lifetimeView"),
     lifetimeContent: root.querySelector(".lifetime-content"),

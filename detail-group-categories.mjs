@@ -14,6 +14,7 @@ import { currentAgingStage } from "./country-aging-narrative.mjs";
 // here, where descending already puts the most extreme value first.
 export const AGE_CATEGORIES = [
   {
+    mode: "age",
     key: "superAged",
     label: "Super-aged society",
     color: "var(--color-orange)",
@@ -21,6 +22,7 @@ export const AGE_CATEGORIES = [
     sortDirection: "desc",
   },
   {
+    mode: "age",
     key: "aged",
     label: "Aged society",
     color: "var(--color-pink)",
@@ -28,6 +30,7 @@ export const AGE_CATEGORIES = [
     sortDirection: "desc",
   },
   {
+    mode: "age",
     key: "aging",
     label: "Aging society",
     color: "var(--color-purple)",
@@ -35,6 +38,7 @@ export const AGE_CATEGORIES = [
     sortDirection: "desc",
   },
   {
+    mode: "age",
     key: "youngDependency",
     label: "Young dependency",
     color: "var(--color-teal)",
@@ -45,6 +49,7 @@ export const AGE_CATEGORIES = [
 
 export const MIGRATION_CATEGORIES = [
   {
+    mode: "migration",
     key: "inflow",
     label: "Migration inflow",
     color: "var(--color-blue)",
@@ -52,6 +57,7 @@ export const MIGRATION_CATEGORIES = [
     sortDirection: "desc",
   },
   {
+    mode: "migration",
     key: "outflow",
     label: "Migration outflow",
     color: "var(--color-yellow)",

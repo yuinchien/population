@@ -51,20 +51,8 @@
         <link rel="stylesheet" href="./styles.css" />
     </head>
     <body>
-        <button
-            id="menuToggle"
-            class="menu-toggle glass"
-            type="button"
-            aria-label="Toggle menu"
-            aria-expanded="false"
-            title="Menu"
-        >
-            <span class="menu-toggle-icon"></span>
-        </button>
-        <div id="menuShim" class="menu-shim"></div>
 
-        <!--<div id="overlayMain" class="overlay">
-        </div>-->
+        <div id="menuShim" class="menu-shim"></div>
 
         <div id="buttonsContainer" class="hide-for-detail">
             <button
@@ -152,6 +140,17 @@
             </div>
         </div>
 
+        <button
+            id="menuToggle"
+            class="menu-toggle glass"
+            type="button"
+            aria-label="Toggle menu"
+            aria-expanded="false"
+            title="Menu"
+        >
+            <span class="menu-toggle-icon"></span>
+        </button>
+
         <div id="searchBar" class="search-bar" hidden>
             <div
                 id="searchCountryPicker"
@@ -180,6 +179,7 @@
         </div>
 
         <section id="searchView" class="search-view glass" hidden>
+            <div id="searchCategoryGrid" class="search-category-grid"></div>
             <div id="searchCountryGrid" class="search-country-grid no-scrollbar"></div>
         </section>
 
@@ -430,7 +430,7 @@
                     <div id="chartTableRows" class="detail-rows no-scrollbar monospace"></div>
                 </div>
             </div>
-            <div id="chartMetricTabs" class="tab-group tall"></div>
+            <div id="chartMetricTabs" class="tab-group tall no-scrollbar"></div>
 
         </section>
         <section id="infoPanel" class="detail-panel info-panel glass no-scrollbar" hidden>

@@ -5,6 +5,7 @@ import {
   AGE_COLUMN_KEYS,
   MIGRATION_CATEGORIES,
   MIGRATION_COLUMN_KEYS,
+  YOUNG_DEPENDENCY_THRESHOLD,
   matchesAgeCategory,
   matchesMigrationCategory,
 } from "../detail-group-categories.mjs";
@@ -17,6 +18,13 @@ test("AGE_CATEGORIES and MIGRATION_CATEGORIES list the expected keys", () => {
   assert.deepEqual(
     MIGRATION_CATEGORIES.map((category) => category.key),
     ["inflow", "outflow"],
+  );
+});
+
+test("AGE_CATEGORIES and MIGRATION_CATEGORIES each tag their own legend mode", () => {
+  assert.ok(AGE_CATEGORIES.every((category) => category.mode === "age"));
+  assert.ok(
+    MIGRATION_CATEGORIES.every((category) => category.mode === "migration"),
   );
 });
 
@@ -68,11 +76,15 @@ test("matchesAgeCategory classifies by the shared aging-stage thresholds", () =>
 
 test("matchesAgeCategory classifies young dependency above the threshold", () => {
   assert.equal(
-    matchesAgeCategory("youngDependency", { youthDependencyRatio: 61 }),
+    matchesAgeCategory("youngDependency", {
+      youthDependencyRatio: YOUNG_DEPENDENCY_THRESHOLD + 1,
+    }),
     true,
   );
   assert.equal(
-    matchesAgeCategory("youngDependency", { youthDependencyRatio: 60 }),
+    matchesAgeCategory("youngDependency", {
+      youthDependencyRatio: YOUNG_DEPENDENCY_THRESHOLD,
+    }),
     false,
   );
   assert.equal(
@@ -114,7 +126,7 @@ test("AGE_COLUMN_KEYS and MIGRATION_COLUMN_KEYS are curated per grouping", () =>
   ]);
   assert.deepEqual(MIGRATION_COLUMN_KEYS, [
     "population",
-    "populationGrowth",
     "netMigrationRate",
+    "populationGrowth",
   ]);
 });

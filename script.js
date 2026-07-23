@@ -2609,7 +2609,7 @@ function setSearchActive(active) {
   if (active) {
     assertElements(
       elements,
-      ["searchView", "searchBar", "searchCountryGrid", "searchCountryInput"],
+      ["searchView", "searchBar", "searchCategoryGrid", "searchCountryGrid", "searchCountryInput"],
       "search view",
     );
   }
@@ -2626,6 +2626,7 @@ function setSearchActive(active) {
   if (active) {
     tourController.stop();
     searchSelectedIso3 = null;
+    renderCategoryGrid();
     renderSearchCountryGrid();
     renderSearchCountryChip();
     elements.searchCountryInput.value = "";
@@ -2652,6 +2653,23 @@ function setSearchActive(active) {
   syncUrlFromState();
 }
 
+function renderCategoryGrid() {
+  const categories = [...AGE_CATEGORIES, ...MIGRATION_CATEGORIES];
+  let items = categories.map((item, index) => {
+    const button = document.createElement("button");
+    button.className = "search-category-item";
+    button.dataset.mode = item.mode;
+    button.dataset.key = item.key;
+    button.dataset.label = item.label;
+    button.dataset.color = item.color;
+    if (item.sortKey) button.dataset.sortKey = item.sortKey;
+    if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
+    button.textContent = displayGroupLabel(item.label);
+    return button;
+  });
+  elements.searchCategoryGrid.replaceChildren(...items);
+}
+
 function renderSearchCountryGrid() {
   const sortedCountries = [...countriesData].sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -2662,7 +2680,6 @@ function renderSearchCountryGrid() {
       const item = document.createElement("button");
       item.type = "button";
       item.className = "search-country-item";
-      item.style.setProperty('--i', index);
       item.dataset.iso3 = country.iso3;
       const flag = document.createElement("span");
       flag.className = "search-country-item-flag";
@@ -2716,6 +2733,15 @@ function selectSearchCountry(iso3) {
   // rather than to whichever of Globe/Map is underneath.
   detailEntryMode = "search";
   openCountryDetail(country);
+}
+
+// A category tile in the search view's grid opens the same group-detail
+// panel #detailNav's own age/migration items do — same as selectSearchCountry
+// above, detailEntryMode is set first so closing the panel comes back here
+// instead of Globe/Map.
+function selectSearchCategory(mode, key, label, color, sortKey, sortDirection) {
+  detailEntryMode = "search";
+  selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
 }
 
 // Both ways out of a selection — the chip's X and the detail panel's own
@@ -3588,6 +3614,17 @@ async function init() {
       const item = event.target.closest(".search-country-item[data-iso3]");
       if (!item || !elements.searchCountryGrid.contains(item)) return;
       selectSearchCountry(item.dataset.iso3);
+    });
+    elements.searchCategoryGrid?.addEventListener("click", (event) => {
+      const item = event.target.closest(".search-category-item[data-key]");
+      if (!item || !elements.searchCategoryGrid.contains(item)) return;
+      const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
+      if (mode === "region" || mode === "income") {
+        detailEntryMode = "search";
+        selectLegendItem(label, color, mode);
+      } else {
+        selectSearchCategory(mode, key, label, color, sortKey, sortDirection);
+      }
     });
     elements.searchCountryChips.addEventListener("click", (event) => {
       const button = event.target.closest(".chip-remove[data-iso3]");
