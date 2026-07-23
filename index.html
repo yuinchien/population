@@ -433,7 +433,7 @@
             <div id="chartMetricTabs" class="tab-group tall"></div>
 
         </section>
-        <section id="infoPanel" class="detail-panel info-panel glass" hidden>
+        <section id="infoPanel" class="detail-panel info-panel glass no-scrollbar" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">
                     <h2>Settings</h2>
@@ -449,66 +449,69 @@
                 </button>
             </div>
 
-            <p class="settings-item-list">
-                <div class="settings-item">
-                    <div class="title">Color Theme</div>
-                    <div class="button-group button-group-theme">
-                        <button
-                            id="themeToggle"
-                            type="button"
-                            aria-label="Switch to dark theme"
-                            title="Switch theme"
-                            class="active"
-                        >
-                            Dark
-                        </button>
-                        <button
-                            id="themeToggleLight"
-                            type="button"
-                            aria-label="Switch to light theme"
-                            title="Switch theme"
-                        >
-                            Light
-                        </button>
+            <div class="info-panel-content">
+                <div class="settings-item-list">
+                    <div class="settings-item">
+                        <div class="title">Color Theme</div>
+                        <div class="button-group button-group-theme">
+                            <button
+                                id="themeToggle"
+                                type="button"
+                                aria-label="Switch to dark theme"
+                                title="Switch theme"
+                                class="active"
+                            >
+                                Dark
+                            </button>
+                            <button
+                                id="themeToggleLight"
+                                type="button"
+                                aria-label="Switch to light theme"
+                                title="Switch theme"
+                            >
+                                Light
+                            </button>
+                        </div>
                     </div>
+
+                    <div class="settings-item">
+                        <div class="title">UN Projection</div>
+                        <select id="chartProjectionScenario" class="custom-select">
+                            <button>
+                                <div>
+                                    <selectedcontent> </selectedcontent>
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+                                    </svg>
+                                </div>
+                            </button>
+                            <option value="high">High projection</option>
+                            <option value="medium" selected>Medium projection</option>
+                            <option value="low">Low projection</option>
+                        </select>
+                    </div>
+
+                    <p>UN World Population Prospects (2024) data includes high, medium, and low variants based on shifting global fertility rates.</p>
                 </div>
 
-                <div class="settings-item">
-                    <div class="title">UN Projection</div>
-                    <select id="chartProjectionScenario" class="custom-select">
-                        <button>
-                            <div>
-                                <selectedcontent> </selectedcontent>
-                                <svg width="24" height="24" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="m7 10l5 5l5-5z"/>
-                                </svg>
-                            </div>
-                        </button>
-                        <option value="high">High projection</option>
-                        <option value="medium" selected>Medium projection</option>
-                        <option value="low">Low projection</option>
-                    </select>
+                <div class="info-content">
+                    <h2>About</h2>
+                    <p>
+                        World Population is an interactive data visualization tracing global population dynamics from 1950 to 2100. Featuring a fluid design where each particle represents 500,000 people, the application seamlessly transitions across a 3D globe, geographic maps, cluster views, and comparative charts to reveal the core forces shaping human history: growth, migration, aging, and decline.
+                    </p>
+                    <p>
+                        Through the "Your lifetime" journey, users can personalize the experience to track how global demographic shifts unfold over their own lifespan. A unified timeline anchors the experience, allowing users to drill down into country, regional, and income-group metrics to surface critical milestones and long-term demographic transitions.
+                    </p>
+                    <p>
+                        Powered by
+                        <a href="https://population.un.org/wpp/" target="_blank" rel="noopener noreferrer">UN World Population Prospects 2024</a>,
+                        and the
+                        <a href="https://data.worldbank.org/" target="_blank" rel="noopener noreferrer">World Bank</a> data.
+                        This is a collaboration with coding agents—Claude
+                        and ChatGPT. <a href="https://yuinchien.com/p/population" target="_blank">Learn more</a>.
+                    </p>
                 </div>
 
-                <p>UN World Population Prospects (2024) data includes high, medium, and low variants based on shifting global fertility rates.</p>
-            </div>
-
-            <div class="info-content">
-                <h2>About</h2>
-                <p>
-                    World Population is an interactive data visualization tracing global population dynamics from 1950 to 2100. Featuring a fluid design where each particle represents 500,000 people, the application seamlessly transitions across a 3D globe, geographic maps, cluster views, and comparative charts to reveal the core forces shaping human history: growth, migration, aging, and decline.
-                </p>
-                <p>
-                    Through the "Your lifetime" journey, users can personalize the experience to track how global demographic shifts unfold over their own lifespan. A unified timeline anchors the experience, allowing users to drill down into country, regional, and income-group metrics to surface critical milestones and long-term demographic transitions.
-                </p>
-                <p>
-                    Powered by
-                    <a href="https://population.un.org/wpp/" target="_blank" rel="noopener noreferrer">UN World Population Prospects 2024</a>,
-                    and the
-                    <a href="https://data.worldbank.org/" target="_blank" rel="noopener noreferrer">World Bank</a> data.
-                    This is a collaboration with coding agents—Claude
-                    and ChatGPT. <a href="https://yuinchien.com/p/population" target="_blank">Learn more</a>.
-                </p>
             </div>
         </section>
         <section id="detailPanel" class="detail-panel glass" hidden>
