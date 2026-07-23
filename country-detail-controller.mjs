@@ -760,12 +760,15 @@ export function createCountryDetailController({
         const value = series[index];
         const definition = METRICS[key];
         const format = definition.formatPanel ?? definition.format;
-        valueEl.textContent = format(value);
+        valueEl.innerHTML = format(value);
         if (value != null) {
           const overlayValue = overlayValues?.[index];
+          // dataset.tooltip is rendered via textContent (tooltip-controller.mjs),
+          // so format()'s <span class="suffix"> markup must be stripped here —
+          // valueEl.textContent already does that for the first half.
           dot.dataset.tooltip =
             overlayValue != null
-              ? `${valueEl.textContent} (migration ${format(overlayValue)})`
+              ? `${valueEl.textContent} (migration ${format(overlayValue).replace(/<[^>]+>/g, "")})`
               : valueEl.textContent;
           const [dx, dy] = toXY(index, value);
           dotLine.setAttribute("x1", dx);

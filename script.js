@@ -1013,7 +1013,10 @@ const tourController = createTourController({
 function showStatus(text, { instant = false } = {}) {
   const el = elements.status;
   const textNode = document.createElement("div");
-  textNode.textContent = text;
+  // innerHTML, not textContent — the global-figures portion of `text` comes
+  // from METRICS[key].format(), which wraps its unit in <span class="suffix">
+  // (metrics.mjs) for spacing; textContent would print that markup literally.
+  textNode.innerHTML = text;
   el.replaceChildren(textNode);
   if (instant) return;
 
@@ -1036,7 +1039,7 @@ function renderCountrySummary(summary) {
   label.textContent = "Summary";
   const value = document.createElement("div");
   value.className = "sparkline-value";
-  value.textContent = badgeLabel();
+  value.innerHTML = badgeLabel();
   caption.append(label, value);
 
   if (summary.flagUrl) {

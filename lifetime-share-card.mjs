@@ -28,6 +28,18 @@ const SERIF = `"Young Serif", serif`;
 const SANS = `"DM Sans", sans-serif`;
 
 const CONTENT_WIDTH = CARD_WIDTH - CARD_PADDING * 2;
+
+// Canvas text can't render HTML — METRICS formatters wrap their unit in
+// <span class="suffix"> (metrics.mjs) for live-DOM spacing, which
+// ctx.fillText would otherwise draw as literal markup. These turn that back
+// into plain text: one keeps the unit (restoring the space CSS normally
+// adds), the other drops it entirely for a bare number.
+function withPlainSuffix(formatted) {
+  return formatted.replace(/<span[^>]*>/, " ").replace(/<\/span>/, "");
+}
+function withoutSuffix(formatted) {
+  return formatted.replace(/\s*<span[^>]*>.*<\/span>/, "");
+}
 const COLUMN_WIDTH = (CONTENT_WIDTH - COLUMN_GAP) / 2;
 const LEFT_X = CARD_PADDING;
 const RIGHT_X = CARD_PADDING + COLUMN_WIDTH + COLUMN_GAP;
@@ -143,7 +155,11 @@ function drawComparison(ctx, rows, { x, width, top, bottom }, colors) {
     ctx.fillStyle = row.highlight ? colors.yellow : colors.muted;
     ctx.font = `500 14px ${SANS}`;
     ctx.textAlign = "left";
-    ctx.fillText(format(row.value), x + barWidth + 12, rowY + rowHeight / 2 + 1);
+    ctx.fillText(
+      withPlainSuffix(format(row.value)),
+      x + barWidth + 12,
+      rowY + rowHeight / 2 + 1,
+    );
   });
 }
 
@@ -271,7 +287,7 @@ function drawGlobalLifeChart(ctx, chart, { x, width, top, bottom }, colors) {
     ctx.font = `500 16px ${SANS}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(format(marker.value).replace(/\s*yrs$/, ""), px, py - 16);
+    ctx.fillText(withoutSuffix(format(marker.value)), px, py - 16);
     ctx.font = `400 14px ${SANS}`;
     ctx.fillText(String(marker.year), px, top + height + 26);
   });
