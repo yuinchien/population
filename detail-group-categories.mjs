@@ -89,6 +89,7 @@ export const MIGRATION_COLUMN_KEYS = [
   "population",
   "netMigrationRate",
   "populationGrowth",
+  "fertility",
 ];
 
 // Whether a country's current-year older-population-share/youth-dependency
