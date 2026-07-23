@@ -29,7 +29,7 @@
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --font-serif: "Young Serif", serif;
     --letterspacing-mono: -0.02em;
-    --overlay-width: 300px;
+    --overlay-width: 360px;
 
     --trend-line-width: 4;
     --dash-size: 8px;
@@ -152,14 +152,14 @@ canvas.hovering-dot {
 
 .glass {
     background: var(--color-scrim);
-    border-left: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
+    /*border-left: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);*/
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
 }
 
 .paragraph {
     font-family: var(--font-sans);
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     line-height: 1.4;
 }
 
@@ -238,8 +238,8 @@ body.detail .detail-back {
 
 .status-wrapper {
     position: fixed;
-    left: var(--margin);
-    top: calc(var(--margin) + var(--button-size) - 8px);
+    left: calc(var(--margin) / 2);
+    top: calc(var(--button-size) - 8px + var(--margin) / 2);
     z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
@@ -248,6 +248,9 @@ body.detail .detail-back {
        switching away from right-align. */
     width: 420px;
     overflow: initial;
+    padding: calc(var(--margin) / 2) calc(var(--margin) / 4) calc(var(--margin) / 2) calc(var(--margin) / 2);
+    background: color-mix(in srgb, var(--color-bg) 5%, transparent);
+    border-radius: 8px;
 }
 .status-wrapper p {
     margin: 10px 0 0 0;
@@ -326,10 +329,6 @@ button.milestone-nav-btn {
     cursor: not-allowed;
 }
 
-#status {
-    text-shadow: var(--text-shadow-legibility);
-}
-
 .status-fade-in {
     animation: status-fade-in 0.4s ease-out;
 }
@@ -351,11 +350,14 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    padding: var(--margin);
-    z-index: var(--z-menu);
+    /*padding: var(--margin);*/
+    z-index: var(--z-panel-over-menu);
     transition: opacity 0.2s ease;
     max-height: none;
+    overflow: hidden;
+    margin: var(--margin);
 }
+
 
 .icon-button {
     display: flex;
@@ -456,14 +458,6 @@ button.milestone-nav-btn {
     display: none;
 }
 
-#viewMode {
-    background: var(--color-surface);
-    padding: 2px;
-    border-radius: 24px;
-    overflow: hidden;
-    padding: 2px 4px;
-}
-
 .button-group {
     display: flex;
     gap: 2px;
@@ -481,8 +475,8 @@ button {
     gap: 4px;
     align-items: center;
     justify-content: center;
-    padding: 6px;
-    height: var(--button-size);
+    padding: 8px;
+    /*height: var(--button-size);*/
     border: none;
     border-radius: 0;
     color: var(--color-text);
@@ -493,8 +487,14 @@ button {
     line-height: 1;
     transition: all 0.15s ease-out;
 }
+
+#viewMode {
+    background: var(--color-surface);
+    border-radius: 40px;
+}
+
 #viewMode.button-group button {
-    height: auto;
+    /*height: auto;*/
     border-radius: 40px;
 }
 
@@ -688,12 +688,15 @@ body.country-detail #colorMode {
 }
 
 .info-panel {
-    max-width: 460px;
+    width: var(--overlay-width);
     display: block;
     right: 0;
     left: auto;
     grid-template-rows: auto;
     z-index: var(--z-panel-over-menu);
+    background: var(--color-scrim-strong);
+    border-left: var(--border);
+    overflow-y: scroll;
 }
 
 .info-content {
@@ -707,9 +710,6 @@ body.country-detail #colorMode {
     margin-top: var(--margin);
 }
 
-.info-panel {
-    overflow-y: scroll;
-}
 .info-panel p {
     color: var(--color-muted);
     font-family: var(--font-sans);
@@ -1580,7 +1580,7 @@ body.view-chart #calloutLayer {
 .topbar {
     display: flex;
     align-items: flex-start;
-    padding: 0 320px 0 var(--margin);
+    padding: 0 400px 0 var(--margin);
     margin-top: var(--margin);
     gap: calc(var(--margin) / 2);
 }
@@ -2634,11 +2634,11 @@ button.lg .material-symbols-outlined {
 
 
 
-body.view-lifetime-started #viewMode {
+body.view-lifetime-started #buttonsContainer {
     display: none;
 }
 
-#viewMode .title {
+#buttonsContainer .title {
     display: none;
 }
 
@@ -3148,21 +3148,17 @@ body.info-open .menu-shim {
     .topbar {
         padding: 0 calc(var(--button-size) * 2 + var(--margin)*2) 0 var(--margin);
     }
-    #viewMode {
-        position: fixed;
-        z-index: var(--z-menu);
-        top: 0;
+    #buttonsContainer {
         bottom: 0;
-        right: 0;
         width: var(--overlay-width);
         padding: var(--margin);
         transform: translateX(120%);
-        box-shadow: 8px 0 24px rgba(0, 0, 0, 0.15);
         background: var(--color-scrim-strong);
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
-        display: block;
-
+        flex-direction: column-reverse;
+        margin: 0;
+        justify-content: flex-end;
+        align-items: flex-start;
+        gap: 0;
         .title {
             display: block;
         }
@@ -3171,10 +3167,24 @@ body.info-open .menu-shim {
             gap: 10px;
             padding: 8px 16px 8px 12px;
             margin-bottom: 4px;
+            width: 100%;
         }
     }
 
-    body.menu-open #viewMode {
+    #viewMode {
+        flex-direction: column;
+        width: 100%;
+        border-bottom: var(--border);
+        border-radius: 0;
+        padding-bottom: calc(var(--margin) / 2);
+        margin-bottom: calc(var(--margin) / 2);
+        background: none;
+    }
+    #infoButton {
+        background: none;
+    }
+
+    body.menu-open #buttonsContainer {
         transform: translateX(0);
         border-left: var(--border);
     }
@@ -3182,10 +3192,6 @@ body.info-open .menu-shim {
     body.menu-open .menu-shim {
         display: block;
         opacity: 1;
-    }
-
-    #infoButton {
-        margin-right: calc(var(--button-size) + var(--margin) / 2);
     }
 
     .menu-toggle {
