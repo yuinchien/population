@@ -117,6 +117,17 @@
                 </button>
                 <button
                     type="button"
+                    data-mode="map"
+                    aria-label="Map view"
+                    title="Map"
+                >
+                    <span class="material-symbols-outlined">
+                        map
+                    </span>
+                    <span class="title">Map</span>
+                </button>
+                <button
+                    type="button"
                     data-mode="globe"
                     class="active"
                     aria-label="Globe view"
@@ -126,17 +137,6 @@
                     globe
                     </span>
                     <span class="title">Globe</span>
-                </button>
-                <button
-                    type="button"
-                    data-mode="map"
-                    aria-label="Map view"
-                    title="Map"
-                >
-                    <span class="material-symbols-outlined">
-                        map
-                    </span>
-                    <span class="title">Map</span>
                 </button>
             </div>
         </div>
@@ -307,7 +307,7 @@
         <div class="header-title" id="headerTitle">
             World Population.
         </div>
-        <div class="status-wrapper glass">
+        <div class="status-wrapper">
             <p id="status" class="paragraph">Loading population data…</p>
         </div>
 

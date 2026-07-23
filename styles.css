@@ -238,7 +238,7 @@ body.detail .detail-back {
 
 .status-wrapper {
     position: fixed;
-    left: calc(var(--margin) / 2);
+    left: calc(var(--margin));
     top: calc(var(--button-size) - 8px + var(--margin) / 2);
     z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
@@ -248,7 +248,6 @@ body.detail .detail-back {
        switching away from right-align. */
     width: 420px;
     overflow: initial;
-    padding: calc(var(--margin) / 2) calc(var(--margin) / 4) calc(var(--margin) / 2) calc(var(--margin) / 2);
     background: color-mix(in srgb, var(--color-bg) 5%, transparent);
     border-radius: 8px;
 }
@@ -2640,6 +2639,9 @@ body.view-lifetime-started #buttonsContainer {
 
 #buttonsContainer .title {
     display: none;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: var(--font-sans);
 }
 
 @media (max-width: 800px) {
@@ -3172,7 +3174,7 @@ body.info-open .menu-shim {
     }
 
     #viewMode {
-        flex-direction: column;
+        flex-direction: column-reverse;
         width: 100%;
         border-bottom: var(--border);
         border-radius: 0;
@@ -3304,9 +3306,7 @@ body.info-open .menu-shim {
     }
     .status-wrapper {
         width: auto;
-        left: 16px;
-        right: 16px;
-        bottom: 16px;
+        display: none;
     }
     .chart-content {
         padding-left: 0;
