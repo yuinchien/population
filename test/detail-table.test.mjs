@@ -248,13 +248,28 @@ test("buildDetailColumns appends each metric's table unit suffix (%, ‰) but ne
   const format = (key, value) =>
     columns.find((column) => column.key === key).format(value);
 
-  assert.equal(format("ageDependencyRatio", 64.7), "64.7%");
-  assert.equal(format("oldAgeDependencyRatio", 48.6), "48.6%");
-  assert.equal(format("youthDependencyRatio", 16.2), "16.2%");
-  assert.equal(format("netMigrationRate", -0.1), "-0.1‰");
-  // populationGrowth already bakes "%" into its own formatter — no suffix
-  // should be added on top of it.
-  assert.equal(format("populationGrowth", -0.69), "-0.69%");
+  assert.equal(
+    format("ageDependencyRatio", 64.7),
+    '64.7<span class="suffix">%</span>',
+  );
+  assert.equal(
+    format("oldAgeDependencyRatio", 48.6),
+    '48.6<span class="suffix">%</span>',
+  );
+  assert.equal(
+    format("youthDependencyRatio", 16.2),
+    '16.2<span class="suffix">%</span>',
+  );
+  assert.equal(
+    format("netMigrationRate", -0.1),
+    '-0.1<span class="suffix">‰</span>',
+  );
+  // populationGrowth already bakes its own <span class="suffix">%</span>
+  // into formatPercent — no additional suffix should be layered on top.
+  assert.equal(
+    format("populationGrowth", -0.69),
+    '-0.69<span class="suffix">%</span>',
+  );
   // Metrics without a tableSuffix (counts, "yrs", fertility) stay as-is.
   assert.equal(format("population", 1_000), "1,000");
   assert.equal(format("fertility", 1.2), "1.2");

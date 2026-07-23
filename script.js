@@ -3498,6 +3498,12 @@ async function init() {
     );
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
+        // Mirrors elements.menuShim's own close (mobile's hamburger sidebar
+        // wraps #buttonsContainer via body.menu-open, styles.css) — picking
+        // a view should always close it, not leave it hanging over the view
+        // that just opened.
+        document.body.classList.remove("menu-open");
+        elements.menuToggle.setAttribute("aria-expanded", "false");
         const mode = btn.dataset.mode;
         if (mode === "search") {
           setchartPanelActive(false);

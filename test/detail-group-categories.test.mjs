@@ -202,5 +202,6 @@ test("AGE_COLUMN_KEYS and MIGRATION_COLUMN_KEYS are curated per grouping", () =>
     "population",
     "netMigrationRate",
     "populationGrowth",
+    "fertility",
   ]);
 });

@@ -262,7 +262,12 @@ function createGlobalLifeExpectancyChart(change) {
     value.setAttribute("x", x);
     value.setAttribute("y", y - 18);
     value.setAttribute("text-anchor", marker.anchor);
-    value.textContent = format(marker.value).replace(/\s*yrs$/, "");
+    // SVG <text> can't render nested HTML — strip format()'s
+    // <span class="suffix"> wrapper (metrics.mjs) down to a bare number.
+    value.textContent = format(marker.value).replace(
+      /\s*<span[^>]*>.*?<\/span>/,
+      "",
+    );
 
     svg.append(guide, dot, value);
   });

@@ -3232,6 +3232,7 @@ body.info-open .menu-shim {
     :root {
         --chart-stroke-width: 1;
         --margin: 12px;
+        --overlay-width: 80%;
     }
 
     .paragraph {

@@ -161,7 +161,7 @@ test("buildDetailStatus highlights older income-group age profiles", () => {
 
   // assert.equal(status.caption, 2050);
   assert.match(status.text, /^High-income has the oldest age profile/);
-  assert.match(status.text, /Borduria is highest at 49\.0 yrs/);
+  assert.match(status.text, /Borduria is highest at 49\.0<span class="suffix">yrs<\/span>/);
 });
 
 test("buildDetailStatus highlights regional growth when growth dominates", () => {
@@ -200,7 +200,7 @@ test("buildDetailStatus highlights regional growth when growth dominates", () =>
 
   // assert.equal(status.caption, 2026);
   assert.match(status.text, /^South Asia still leans toward growth/);
-  assert.match(status.text, /Deltora has the fastest rate at 1\.20%/);
+  assert.match(status.text, /Deltora has the fastest rate at 1\.20<span class="suffix">%<\/span>/);
 });
 
 test("displayGroupLabel removes income suffixes and shortens long MENA labels", () => {
@@ -227,7 +227,10 @@ test("METRICS centralizes shared metric order, labels, and formatters", () => {
   assert.equal(METRICS.populationGrowth.detailLabel, "Growth rate");
   assert.equal(METRICS.population.formatPanel(10_234_567_890), "10.23B");
   assert.equal(METRICS.fertility.formatPanel(1.987), "2.0 births/woman");
-  assert.equal(METRICS.lifeExpectancy.format(80.123), "80.1 yrs");
+  assert.equal(
+    METRICS.lifeExpectancy.format(80.123),
+    '80.1<span class="suffix">yrs</span>',
+  );
   assert.equal(METRICS.ageDependencyRatio.detailLabel, "Dependency ratio");
   assert.equal(METRICS.netMigrationRate.detailLabel, "Migration rate");
 });
