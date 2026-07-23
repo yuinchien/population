@@ -20,6 +20,33 @@ test("AGE_CATEGORIES and MIGRATION_CATEGORIES list the expected keys", () => {
   );
 });
 
+test("AGE_CATEGORIES and MIGRATION_CATEGORIES each name the metric their table should default-sort by", () => {
+  assert.deepEqual(
+    AGE_CATEGORIES.map((category) => category.sortKey),
+    [
+      "oldAgeDependencyRatio",
+      "oldAgeDependencyRatio",
+      "oldAgeDependencyRatio",
+      "youthDependencyRatio",
+    ],
+  );
+  assert.deepEqual(
+    MIGRATION_CATEGORIES.map((category) => category.sortKey),
+    ["netMigrationRate", "netMigrationRate"],
+  );
+});
+
+test("Migration outflow sorts ascending (most negative first); everything else sorts descending", () => {
+  assert.deepEqual(
+    AGE_CATEGORIES.map((category) => category.sortDirection),
+    ["desc", "desc", "desc", "desc"],
+  );
+  assert.deepEqual(
+    MIGRATION_CATEGORIES.map((category) => category.sortDirection),
+    ["desc", "asc"],
+  );
+});
+
 test("matchesAgeCategory classifies by the shared aging-stage thresholds", () => {
   assert.equal(
     matchesAgeCategory("superAged", { olderPopulationShare: 21 }),

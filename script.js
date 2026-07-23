@@ -1305,6 +1305,8 @@ function renderDetailNav() {
           button.dataset.key = item.key;
           button.dataset.label = item.label;
           button.dataset.color = item.color;
+          if (item.sortKey) button.dataset.sortKey = item.sortKey;
+          if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
           button.classList.toggle(
             "active",
             selectedLegend?.mode === mode && selectedLegend?.key === item.key,
@@ -1621,6 +1623,8 @@ function applyUrlStateFromLocation(search) {
           category.key,
           category.label,
           category.color,
+          category.sortKey,
+          category.sortDirection,
         );
       }
     }
@@ -1629,7 +1633,7 @@ function applyUrlStateFromLocation(search) {
 
 function selectLegendItem(label, color, mode = colorMode) {
   if (selectedLegend?.mode === mode && selectedLegend?.key === label) {
-    closeDetailPanel();
+    // closeDetailPanel();
     return;
   }
   tourController.stop();
@@ -1642,14 +1646,22 @@ function selectLegendItem(label, color, mode = colorMode) {
 // Selects an age/migration cohort from the detail panel's own nav — unlike
 // selectLegendItem (region/income, shared with the outer #legend sidebar),
 // this never touches the outer legend, since "age"/"migration" aren't modes
-// it knows how to render.
-function selectDetailGroup(mode, key, label, color) {
+// it knows how to render. `sortKey`/`sortDirection`, when given, are the
+// metric and direction that actually explain the category (e.g. descending
+// oldAgeDependencyRatio for "Aged society", or ascending netMigrationRate
+// for "Migration outflow" so the strongest — most negative — outflows sort
+// first), so the table opens sorted by the number that matters instead of
+// always falling back to population.
+function selectDetailGroup(mode, key, label, color, sortKey, sortDirection) {
   if (selectedLegend?.mode === mode && selectedLegend?.key === key) {
-    closeDetailPanel();
+    // closeDetailPanel();
     return;
   }
   tourController.stop();
   selectedLegend = { mode, key, label, color };
+  if (sortKey) {
+    detailSort = { key: sortKey, direction: sortDirection ?? "desc" };
+  }
   renderDetailPanel();
   syncUrlFromState();
 }
@@ -3419,11 +3431,11 @@ async function init() {
     elements.detailNav?.addEventListener("click", (event) => {
       const item = event.target.closest(".detail-nav-item[data-key]");
       if (!item || !elements.detailNav.contains(item)) return;
-      const { mode, key, label, color } = item.dataset;
+      const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
       if (mode === "region" || mode === "income") {
         selectLegendItem(label, color, mode);
       } else {
-        selectDetailGroup(mode, key, label, color);
+        selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
       }
     });
 

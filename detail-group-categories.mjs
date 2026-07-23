@@ -4,16 +4,62 @@ import { currentAgingStage } from "./country-aging-narrative.mjs";
 // computed from a country's current-year metrics rather than a static field
 // like region/income. `key` is what a legend must match against (via
 // matchesAgeCategory/matchesMigrationCategory below); `label` is nav text.
+// `sortKey`/`sortDirection` are the metric and direction each category's
+// table should default-sort by when selected (see selectDetailGroup in
+// script.js) — the metric that actually explains why a country landed in
+// that category, rather than always falling back to population. Direction
+// is explicit per category rather than read off the metric's own
+// defaultDirection: "outflow" needs ascending (most-negative first) to rank
+// the *strongest* outflows on top, the opposite of every other category
+// here, where descending already puts the most extreme value first.
 export const AGE_CATEGORIES = [
-  { key: "superAged", label: "Super-aged society", color: "var(--color-orange)" },
-  { key: "aged", label: "Aged society", color: "var(--color-pink)" },
-  { key: "aging", label: "Aging society", color: "var(--color-purple)" },
-  { key: "youngDependency", label: "Young dependency", color: "var(--color-teal)" },
+  {
+    key: "superAged",
+    label: "Super-aged society",
+    color: "var(--color-orange)",
+    sortKey: "oldAgeDependencyRatio",
+    sortDirection: "desc",
+  },
+  {
+    key: "aged",
+    label: "Aged society",
+    color: "var(--color-pink)",
+    sortKey: "oldAgeDependencyRatio",
+    sortDirection: "desc",
+  },
+  {
+    key: "aging",
+    label: "Aging society",
+    color: "var(--color-purple)",
+    sortKey: "oldAgeDependencyRatio",
+    sortDirection: "desc",
+  },
+  {
+    key: "youngDependency",
+    label: "Young dependency",
+    color: "var(--color-teal)",
+    sortKey: "youthDependencyRatio",
+    sortDirection: "desc",
+  },
 ];
 
 export const MIGRATION_CATEGORIES = [
-  { key: "inflow", label: "Migration inflow", color: "var(--color-blue)" },
-  { key: "outflow", label: "Migration outflow", color: "var(--color-yellow)" },
+  {
+    key: "inflow",
+    label: "Migration inflow",
+    color: "var(--color-blue)",
+    sortKey: "netMigrationRate",
+    sortDirection: "desc",
+  },
+  {
+    key: "outflow",
+    label: "Migration outflow",
+    color: "var(--color-yellow)",
+    sortKey: "netMigrationRate",
+    // Ascending — outflow rates are negative, so the most negative (the
+    // strongest outflow) sorts first, instead of desc's "closest to zero".
+    sortDirection: "asc",
+  },
 ];
 
 // A youth-dependency ratio above this many children per 100 working-age

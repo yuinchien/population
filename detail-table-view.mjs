@@ -1,4 +1,8 @@
 import { buildDetailRows, sortDetailCountries } from "./detail-table.mjs";
+import {
+  flagIconUrl,
+  preloadFlagIcons,
+} from "./data-loader.mjs";
 
 export function createDetailCell(text, className = "", options = {}) {
   const cell = document.createElement("div");
@@ -8,6 +12,17 @@ export function createDetailCell(text, className = "", options = {}) {
     bar.className = "detail-ratio-bar";
     bar.style.width = `${Math.min(1, Math.max(0, options.ratio)) * 100}%`;
     cell.append(bar);
+  }
+  // Only real countries (an iso3 the flag-icons set actually has) get a
+  // flag — header cells and aggregated group/region rows never pass
+  // flagIso3, so they're unaffected.
+  const flagUrl = options.flagIso3 ? flagIconUrl(options.flagIso3) : null;
+  if (flagUrl) {
+    const flag = document.createElement("span");
+    flag.className = "detail-cell-flag";
+    flag.style.backgroundImage = `url(${flagUrl})`;
+    flag.setAttribute("aria-hidden", "true");
+    cell.append(flag);
   }
   const inner = document.createElement("span");
   inner.className = "detail-name";
@@ -29,7 +44,7 @@ function ratioValueForBar(columns, barMetric, barValue) {
 // which metrics they happen to be.
 function gridTemplateColumnsFor(columnCount) {
   const metricColumnCount = Math.max(0, columnCount - 1);
-  return `minmax(200px, 1fr) repeat(${metricColumnCount}, minmax(190px, 0.8fr))`;
+  return `minmax(240px, 1fr) repeat(${metricColumnCount}, minmax(180px, 0.8fr))`;
 }
 
 // Shared by the group-detail table and the chart table: builds sortable
@@ -77,8 +92,25 @@ export function renderSortableTable({
     if (!cell || !headerEl.contains(cell)) return;
     onSort(cell.dataset.sortKey);
   };
+  // The header row has no vertical content of its own to scroll, so a plain
+  // (non-shift) mouse wheel over it is otherwise wasted — repurposed here to
+  // pan the table horizontally, since that's the one gesture an ordinary
+  // vertical-only wheel can't already reach (rows still take priority for
+  // vertical scrolling; a real horizontal swipe/shift+wheel over the rows
+  // already chains up to the table natively without any of this).
+  headerEl.onwheel = (event) => {
+    if (event.deltaX !== 0 || event.deltaY === 0) return;
+    const table = headerEl.closest(".detail-table");
+    if (!table) return;
+    event.preventDefault();
+    table.scrollLeft += event.deltaY;
+  };
 
   const sorted = sortDetailCountries(countries, columns, sort);
+  // detailRow.country isn't always a real country (the chart table can show
+  // aggregated region/income rows too) — flagIconUrl already no-ops on a
+  // missing/invalid iso3, so this is safe either way.
+  preloadFlagIcons(sorted.map((country) => country.iso3).filter(Boolean));
   const ratioValue =
     barMode === "none" ? undefined : ratioValueForBar(columns, barMetric, barValue);
   const rows = buildDetailRows(sorted, columns, { ratioValue }).map(
@@ -98,6 +130,7 @@ export function renderSortableTable({
               barMode === "country-cell" && cell.key === "name"
                 ? detailRow.ratio
                 : null,
+            flagIso3: cell.key === "name" ? detailRow.country?.iso3 : null,
           }),
         ),
       );

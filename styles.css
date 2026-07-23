@@ -29,6 +29,7 @@
     --font-sans: "DM Sans", ui-sans-serif, sans-serif;
     --font-serif: "Young Serif", serif;
     --letterspacing-uppercase: 0.01em;
+    --letterspacing-mono: -0.02em;
     --overlay-width: 288px;
 
     --trend-line-width: 4;
@@ -736,8 +737,8 @@ body.country-detail #colorMode {
     align-items: center;
     justify-content: space-between;
     gap: var(--margin);
-    height: calc(var(--button-size) + var(--margin)*2 );
-    padding: 0 var(--margin);
+    height: calc(var(--button-size) + var(--margin)*1 );
+    padding: 0 calc(var(--margin) / 2) 0 var(--margin);
 }
 
 .detail-title-row {
@@ -807,10 +808,10 @@ p.detail-subtitle {
 }
 
 .detail-nav-section-label {
-    font-size: 0.7rem;
+    font-size: 0.9rem;
     color: var(--color-subtle);
-    text-transform: uppercase;
-    letter-spacing: var(--letterspacing-uppercase);
+    /*text-transform: uppercase;*/
+    /*letter-spacing: var(--letterspacing-uppercase);*/
     font-weight: 500;
     margin: 0 var(--margin) 2px var(--margin);
 }
@@ -823,19 +824,34 @@ p.detail-subtitle {
     color: var(--color-text);
     cursor: pointer;
     padding: 5px var(--margin);
+    position: relative;
+}
+.detail-nav-item:before {
+    position: absolute;
+    width: 2px;
+    background: var(--color-text);
+    content: "";
+    left: 0;
+    top: 0;
+    bottom: 0;
+    opacity: 0;
 }
 
 .detail-nav-item:hover {
+    /*opacity: .5;*/
     background: color-mix(in srgb, var(--color-text) 10%, transparent);
-    color: var(--color-text);
+    /*color: var(--color-text);*/
+    /*border-left: 4px solid var(--color-text);*/
 }
 
 /* Reuses --detail-color rather than each item's own swatch color — the
    panel already sets --detail-color to whichever group is selected, so this
    automatically stays correct without the nav needing its own copy of it. */
-.detail-nav-item.active {
-    color: var(--color-text);
-    background: color-mix(in srgb, var(--detail-color) 50%, transparent);
+.detail-nav-item.active:before {
+    opacity: 1;
+    /*color: var(--color-text);*/
+    /*border-left: 4px solid var(--color-text);*/
+    /*background: color-mix(in srgb, var(--detail-color) 50%, transparent);*/
 }
 
 .detail-table {
@@ -846,6 +862,7 @@ p.detail-subtitle {
     overflow-x: auto;
     overflow-y: hidden;
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
 }
 
 .detail-rows {
@@ -856,6 +873,8 @@ p.detail-subtitle {
     overflow-y: auto;
     overflow-x: hidden;
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
+    padding: 8px 0;
 }
 
 .detail-row {
@@ -873,6 +892,7 @@ p.detail-subtitle {
        instead squeeze the row down to whatever's currently visible, making
        the rest of its columns unreachable by scrolling. */
     position: relative;
+    padding-right: var(--margin);
 }
 
 .detail-row.header {
@@ -880,6 +900,7 @@ p.detail-subtitle {
     color: var(--color-muted);
     border-bottom: var(--border);
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
 }
 
 .detail-rows .detail-row {
@@ -889,7 +910,7 @@ p.detail-subtitle {
 .detail-rows .detail-row:hover {
     /*outline: 1px solid color-mix(in srgb, var(--detail-color) 45%, transparent);*/
     /*outline-offset: -1px;*/
-    background-color: color-mix(in srgb, var(--detail-color) 15%, transparent);;
+    background-color: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 .detail-cell.sortable {
@@ -923,10 +944,20 @@ p.detail-subtitle {
 .detail-cell.country:not(.sortable) {
     isolation: isolate;
     overflow: hidden;
-}
-#detailPanel .detail-cell.country:not(.sortable) .detail-name,
-#chartPanel .detail-cell.country:not(.sortable) .detail-name {
     padding-left: var(--margin);
+    gap: 12px;
+}
+
+.detail-cell-flag {
+    flex: none;
+    width: 20px;
+    height: 15px;
+    background-size: cover;
+    background-position: center;
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    position: relative;
+    z-index: 1;
 }
 #chartPanel .detail-cell.country:not(.sortable):before {
     content: "";
@@ -951,6 +982,7 @@ p.detail-subtitle {
     );
     z-index: 0;
     pointer-events: none;
+    display: none;
 }
 
 
@@ -1031,7 +1063,6 @@ p.detail-subtitle {
     button {
         cursor: pointer;
         position: relative;
-        /*font-family: var(--font-mono);*/
         font-weight: 500;
         font-size: 1rem;
         border: none;
@@ -1074,6 +1105,7 @@ p.detail-subtitle {
     grid-template-columns: 1fr 1fr 1fr;
     align-content: start;
     gap: 0 var(--margin);
+    padding: 0 var(--margin);
 }
 
 .detail-table-container {
@@ -1081,8 +1113,6 @@ p.detail-subtitle {
     grid-template-columns: 1fr 3fr;
     gap: 12px;
 }
-
-
 
 .country-chart {
     display: block;
@@ -1123,7 +1153,6 @@ p.detail-subtitle {
     font-size: 10px;
     font-weight: 500;
     fill: var(--color-muted);
-    /*font-family: var(--font-mono);*/
 }
 .country-chart-peak-label {
     background: var(--detail-color);
@@ -1157,6 +1186,7 @@ p.detail-subtitle {
     font-weight: 500;
     fill: var(--color-text);
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
     text-anchor: middle;
 }
 
@@ -1321,7 +1351,6 @@ p.detail-subtitle {
 .pyramid-age-label {
     position: absolute;
     color: var(--color-subtle);
-    /*font-family: var(--font-mono);*/
     font-size: 10px;
     line-height: 1;
     transform: translateY(-50%);
@@ -1384,6 +1413,7 @@ p.detail-subtitle {
     font-weight: 500;
     margin: 12px 0;
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
 }
 
 .sparkline-label {
@@ -1422,7 +1452,6 @@ p.detail-subtitle {
 
 .sparkline-baseline-label {
     font-size: 10px;
-    /*font-family: var(--font-mono);*/
     fill: var(--color-muted);
 }
 
@@ -2730,6 +2759,7 @@ body.view-lifetime-started #viewMode {
 .trend-chart-year-label {
     fill: var(--color-bg);
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
     font-size: 11px;
     font-weight: 700;
     pointer-events: none;
@@ -2746,6 +2776,7 @@ body.view-lifetime-started #viewMode {
 .trend-chart-axis-label {
     font-size: 10px;
     font-family: var(--font-mono);
+    letter-spacing: var(--letterspacing-mono);
     fill: var(--color-muted);
 }
 
