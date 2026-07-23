@@ -20,7 +20,7 @@ export function createDetailCell(text, className = "", options = {}) {
   }
   const inner = document.createElement("span");
   inner.className = "detail-name";
-  inner.textContent = text;
+  inner.innerHTML = text;
   cell.append(inner);
   return cell;
 }

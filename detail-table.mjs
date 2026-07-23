@@ -43,7 +43,7 @@ export function buildDetailColumns({
         format: (value) => {
           const formatted = definition.format(value);
           return definition.tableSuffix && formatted !== "N/A"
-            ? `${formatted}${definition.tableSuffix}`
+            ? `${formatted}<span class="suffix">${definition.tableSuffix}</span>`
             : formatted;
         },
       };

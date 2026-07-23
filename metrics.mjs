@@ -1,6 +1,6 @@
 export function formatYears(value) {
   if (value == null) return "N/A";
-  return `${Number(value).toFixed(1)} yrs`;
+  return `${Number(value).toFixed(1)}<span class="suffix">yrs</span>`;
 }
 
 export function formatPopulation(value) {
@@ -10,12 +10,12 @@ export function formatPopulation(value) {
 
 export function formatPercent(value) {
   if (value == null) return "N/A";
-  return `${Number(value).toFixed(2)}%`;
+  return `${Number(value).toFixed(2)}<span class="suffix">%</span>`;
 }
 
 export function formatFertility(value) {
   if (value == null) return "N/A";
-  return Number(value).toFixed(1);
+  return `${Number(value).toFixed(1)}`;
 }
 
 export function formatDependencyRatio(value) {
