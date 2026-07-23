@@ -713,7 +713,7 @@ export function createCountryDetailController({
       getColorMode() === "income"
         ? selectedCountry._incomeLabel
         : displayGroupLabel(selectedCountry.region);
-    elements.detailSubtitle.textContent = `${groupLabel} · ${year}`;
+    elements.countrySubtitle.textContent = `${groupLabel} · ${year}`;
 
     const {
       populations,
@@ -790,20 +790,19 @@ export function createCountryDetailController({
     selectedCountry = country;
     const year = yearAtCurrentIndex();
 
-    elements.detailPanel.style.setProperty(
+    elements.countryPanel.style.setProperty(
       "--detail-color",
       `#${colorFor(country).getHexString()}`,
     );
-    elements.detailTitle.textContent = country.name;
+    elements.countryTitle.textContent = country.name;
     preloadFlagIcons([country.iso3]);
-    elements.detailFlag.style.backgroundImage =
+    elements.countryFlag.style.backgroundImage =
       `url(${flagIconUrl(country.iso3)})`;
-    elements.detailFlag.hidden = false;
+    elements.countryFlag.hidden = false;
 
-    elements.detailHeader.hidden = true;
-    elements.detailRows.hidden = true;
     elements.countryDetail.hidden = false;
-    elements.detailPanel.hidden = false;
+    elements.countryPanel.hidden = false;
+    elements.detailPanel.hidden = true;
     updateStatusPanel(year);
     buildCharts(country, { animate });
     buildPyramid(country);

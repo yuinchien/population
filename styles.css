@@ -750,9 +750,10 @@ body.country-detail #colorMode {
     color: var(--color-muted);
 }
 
-/* Same line, same size as the title next to it — the ID is needed to
-   out-rank ".detail-panel p"'s margin-top above. */
-#detailSubtitle {
+/* Same line, same size as the title next to it — the element+class
+   selector is needed to out-rank ".detail-panel p"'s margin-top above
+   (same specificity, so it relies on coming later in the cascade too). */
+p.detail-subtitle {
     margin-top: 0;
     font-size: 1.1rem;
 }

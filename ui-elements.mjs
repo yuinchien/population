@@ -1,4 +1,18 @@
+import { createDetailPanelHeader } from "./detail-panel-header.mjs";
+
 export function getAppElements(root = document) {
+  // The group-detail panel and the country-detail panel are visually
+  // identical headers but must never share ids — built fresh here instead
+  // of hardcoded twice in index.html. See detail-panel-header.mjs.
+  const detailPanel = root.querySelector("#detailPanel");
+  const countryPanel = root.querySelector("#countryPanel");
+  const detailPanelHeader = detailPanel
+    ? createDetailPanelHeader(detailPanel)
+    : {};
+  const countryPanelHeader = countryPanel
+    ? createDetailPanelHeader(countryPanel)
+    : {};
+
   return {
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
@@ -26,14 +40,18 @@ export function getAppElements(root = document) {
     viewMode: root.querySelector("#viewMode"),
     buttonsContainer: root.querySelector("#buttonsContainer"),
     calloutLayer: root.querySelector("#calloutLayer"),
-    detailPanel: root.querySelector("#detailPanel"),
-    detailFlag: root.querySelector("#detailFlag"),
-    detailTitle: root.querySelector("#detailTitle"),
-    detailSubtitle: root.querySelector("#detailSubtitle"),
+    detailPanel,
+    detailFlag: detailPanelHeader.flag,
+    detailTitle: detailPanelHeader.title,
+    detailSubtitle: detailPanelHeader.subtitle,
+    detailClose: detailPanelHeader.closeButton,
     detailHeader: root.querySelector("#detailHeader"),
     detailRows: root.querySelector("#detailRows"),
-    detailClose: root.querySelector("#detailClose"),
-    // detailBack: root.querySelector("#detailBack"),
+    countryPanel,
+    countryFlag: countryPanelHeader.flag,
+    countryTitle: countryPanelHeader.title,
+    countrySubtitle: countryPanelHeader.subtitle,
+    countryClose: countryPanelHeader.closeButton,
     countryDetail: root.querySelector("#countryDetail"),
     countryChart: root.querySelector("#countryChart"),
     countryChartValue: root.querySelector("#countryChartValue"),

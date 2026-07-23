@@ -120,6 +120,11 @@ assertElements(
     "detailHeader",
     "detailRows",
     "detailClose",
+    "countryPanel",
+    "countryFlag",
+    "countryTitle",
+    "countrySubtitle",
+    "countryClose",
     "countryDetail",
     "chartPanel",
     "clusterView",
@@ -820,7 +825,7 @@ function buildGlobalPopulationStatus(year) {
 // computed here as before.
 function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > historicalCutoffYear;
-  if (selectedCountry && !elements.detailPanel.hidden) {
+  if (selectedCountry && !elements.countryPanel.hidden) {
     updateMilestoneNav(null);
     const migrationNarrative = buildCountryDemographicNarrative({
       country: selectedCountry,
@@ -863,18 +868,6 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   }
   if (selectedLegend && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
-    // renderDetailStatus(
-    //   buildDetailStatus({
-    //     year,
-    //     countries: groupCountries ?? selectedCountries(),
-    //     allCountries: countriesData,
-    //     currentYearIndex,
-    //     isProjected,
-    //     legend: selectedLegend,
-    //     metricFor,
-    //     populationFor: activePopulationAt,
-    //   }),
-    // );
     return;
   }
 
@@ -1038,11 +1031,11 @@ function renderCountrySummary(summary) {
   caption.append(label, value);
 
   if (summary.flagUrl) {
-    elements.detailFlag.style.backgroundImage = `url(${summary.flagUrl})`;
-    elements.detailFlag.hidden = false;
+    elements.countryFlag.style.backgroundImage = `url(${summary.flagUrl})`;
+    elements.countryFlag.hidden = false;
   } else {
-    elements.detailFlag.hidden = true;
-    elements.detailFlag.style.backgroundImage = "";
+    elements.countryFlag.hidden = true;
+    elements.countryFlag.style.backgroundImage = "";
   }
 
   const copy = document.createElement("div");
@@ -1333,22 +1326,19 @@ function setDetailSort(key) {
   renderDetailPanel();
 }
 
-// Keeps other UI in sync with the detail panel's visibility. Switching view
-// mode while the panel is open would rebuild the active dot set out from
-// under the panel's population-ratio bars and callout anchors mid-read, so
-// the toggle is disabled whenever the panel is visible; the body class lets
+// Keeps other UI in sync with the detail panels' visibility. Switching view
+// mode while either panel is open would rebuild the active dot set out from
+// under its population-ratio bars and callout anchors mid-read, so the
+// toggle is disabled whenever one is visible; the body class lets
 // stylesheets target "detail panel open" state generally (layout, canvas
-// dimming, etc.) without every consumer re-deriving it from #detailPanel.
+// dimming, etc.) without every consumer re-deriving it from the panels.
 function updateViewModeAvailability() {
-  const isOpen = !elements.detailPanel.hidden;
+  const isOpen = !elements.detailPanel.hidden || !elements.countryPanel.hidden;
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
     btn.disabled = isOpen;
   });
   document.body.classList.toggle("detail", isOpen);
-  document.body.classList.toggle(
-    "country-detail",
-    isOpen && !elements.countryDetail.hidden,
-  );
+  document.body.classList.toggle("country-detail", !elements.countryPanel.hidden);
   // The mobile hamburger menu and the detail panel are both glass overlays
   // that can stack on small screens — leaving the menu open behind the
   // panel would show through its translucent background.
@@ -1360,8 +1350,8 @@ function updateViewModeAvailability() {
 
 function renderDetailPanel() {
   // A country drill-down (from a row click or a dot click) takes over the
-  // panel; re-running this on the next year change would otherwise stomp
-  // it back to the group table underneath.
+  // country panel; re-running this on the next year change would otherwise
+  // stomp it back to the group table.
   if (!selectedLegend || selectedCountry || currentYearIndex < 0) return;
 
   const columns = detailColumns();
@@ -1371,10 +1361,6 @@ function renderDetailPanel() {
     "--detail-color",
     selectedLegend.color,
   );
-  // A region/income group has no single flag — clear whatever country flag a
-  // previous country-detail visit left showing in this shared header.
-  elements.detailFlag.hidden = true;
-  elements.detailFlag.style.backgroundImage = "";
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
 
@@ -1389,9 +1375,7 @@ function renderDetailPanel() {
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
-  elements.countryDetail.hidden = true;
-  elements.detailHeader.hidden = false;
-  elements.detailRows.hidden = false;
+  elements.countryPanel.hidden = true;
   elements.detailPanel.hidden = false;
   updateViewModeAvailability();
   updateStatusPanel(year, { groupCountries: countries });
@@ -1402,6 +1386,7 @@ function closeDetailPanel() {
   selectedLegend = null;
   selectedCountry = null;
   elements.detailPanel.hidden = true;
+  elements.countryPanel.hidden = true;
   updateViewModeAvailability();
   renderLegend();
   // Match chart-view close behavior: the underlying global status was
@@ -1451,7 +1436,7 @@ function closeInfoPanel() {
   elements.infoPanel.hidden = true;
   elements.infoButton.setAttribute("aria-expanded", "false");
   document.body.classList.remove("info-open");
-  if (elements.detailPanel.hidden) {
+  if (elements.detailPanel.hidden && elements.countryPanel.hidden) {
     document.body.classList.remove("detail");
   }
 }
@@ -2530,7 +2515,7 @@ function setSearchActive(active) {
       detailEntryMode = null;
       countryDetailController.reset();
       selectedCountry = null;
-      elements.detailPanel.hidden = true;
+      elements.countryPanel.hidden = true;
       updateViewModeAvailability();
       renderLegend();
       if (currentYearIndex >= 0) {
@@ -2882,8 +2867,8 @@ function applyTheme(theme, { persist = true } = {}) {
   if (currentYearIndex >= 0) {
     calloutController.rebuild(yearsData[currentYearIndex]);
   }
-  if (selectedCountry && !elements.detailPanel.hidden) {
-    elements.detailPanel.style.setProperty(
+  if (selectedCountry && !elements.countryPanel.hidden) {
+    elements.countryPanel.style.setProperty(
       "--detail-color",
       `#${colorFor(selectedCountry).getHexString()}`,
     );
@@ -3512,6 +3497,7 @@ async function init() {
     });
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
+    elements.countryClose.addEventListener("click", closeCountryDetail);
     elements.infoButton.addEventListener("click", openInfoPanel);
     elements.infoClose.addEventListener("click", closeInfoPanel);
     // elements.detailBack.addEventListener("click", () => {
@@ -3665,11 +3651,11 @@ function clearCanvasHover() {
 
 function updateTooltip(event) {
   if (!pointsMesh || !activeTotal) return;
-  // The detail panel (group table or country chart) sits above the canvas
-  // and blocks real clicks/hover from reaching it — but the raycast here
+  // The detail panels (group table or country detail) sit above the canvas
+  // and block real clicks/hover from reaching it — but the raycast here
   // runs off whatever pointer position was last seen, so without this check
-  // a tooltip from before the panel opened keeps reappearing underneath it.
-  if (!elements.detailPanel.hidden) {
+  // a tooltip from before a panel opened keeps reappearing underneath it.
+  if (!elements.detailPanel.hidden || !elements.countryPanel.hidden) {
     clearCanvasHover();
     return;
   }
