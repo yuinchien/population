@@ -9,6 +9,10 @@ export function buildDetailColumns({
   metricFor,
   metricKeys = DETAIL_METRIC_KEYS,
   populationFor = (country) => country.populations[currentYearIndex],
+  // Overrides the Population column's header for curated groupings whose
+  // "population" is a subgroup headcount (e.g. "Older population"), not the
+  // country total the label otherwise implies.
+  populationLabel,
 }) {
   return [
     {
@@ -23,14 +27,25 @@ export function buildDetailColumns({
       const definition = METRICS[key];
       return {
         key,
-        label: definition.detailLabel,
+        label:
+          key === "population"
+            ? (populationLabel ?? definition.detailLabel)
+            : definition.detailLabel,
         className: "number",
         defaultDirection: definition.defaultDirection,
         value:
           key === "population"
             ? populationFor
             : (country) => metricFor(country, key),
-        format: definition.format,
+        // Appends the metric's unit suffix (%, ‰) to the table cell only —
+        // formatPanel/narrative text spell the unit out in words instead
+        // ("per 100", "per 1,000"), so this stays local to the table.
+        format: (value) => {
+          const formatted = definition.format(value);
+          return definition.tableSuffix && formatted !== "N/A"
+            ? `${formatted}${definition.tableSuffix}`
+            : formatted;
+        },
       };
     }),
   ];

@@ -117,3 +117,53 @@ export function matchesMigrationCategory(categoryKey, { netMigrationRate }) {
     ? netMigrationRate > 0
     : netMigrationRate < 0;
 }
+
+// The curated tables' Population column reads as "how many people this row
+// actually contributes to the category", not the country's total headcount
+// — e.g. Super-aged society shows the 65+ headcount, not the whole country.
+// Derived entirely from metrics already loaded in bulk (no per-country
+// age-structure fetch): youth/old-age dependency ratios are both defined
+// against the working-age population, and ageDependencyRatio is exactly
+// their sum, so workingAgePop = population / (1 + ageDependencyRatio/100)
+// and pop-in-band = workingAgePop * ratio/100.
+export function subgroupPopulationFor(legend, metrics) {
+  const {
+    population,
+    olderPopulationShare,
+    youthDependencyRatio,
+    ageDependencyRatio,
+    netMigrationRate,
+  } = metrics;
+  if (!Number.isFinite(population)) return null;
+  if (legend?.mode === "age") {
+    if (legend.key === "youngDependency") {
+      if (
+        !Number.isFinite(youthDependencyRatio) ||
+        !Number.isFinite(ageDependencyRatio)
+      ) {
+        return null;
+      }
+      return (population * youthDependencyRatio) / (100 + ageDependencyRatio);
+    }
+    if (!Number.isFinite(olderPopulationShare)) return null;
+    return (population * olderPopulationShare) / 100;
+  }
+  if (legend?.mode === "migration") {
+    if (!Number.isFinite(netMigrationRate)) return null;
+    return (population * netMigrationRate) / 1000;
+  }
+  return population;
+}
+
+// Header text for the Population column above — must name the subgroup
+// subgroupPopulationFor actually computed, not just say "Population" as if
+// it were the country's total.
+export function subgroupPopulationLabelFor(legend) {
+  if (legend?.mode === "age") {
+    return legend.key === "youngDependency"
+      ? "Young population"
+      : "Older population";
+  }
+  if (legend?.mode === "migration") return "Net migration";
+  return "Population";
+}

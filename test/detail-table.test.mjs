@@ -242,6 +242,27 @@ test("buildDetailRows can compute ratios from hidden population values", () => {
   assert.equal(rows[1].ratio, 0.25);
 });
 
+test("buildDetailColumns appends each metric's table unit suffix (%, ‰) but never to N/A", () => {
+  const metricFor = (testCountry, key) => testCountry.metrics[key]?.[0];
+  const columns = buildDetailColumns({ currentYearIndex: 0, metricFor });
+  const format = (key, value) =>
+    columns.find((column) => column.key === key).format(value);
+
+  assert.equal(format("ageDependencyRatio", 64.7), "64.7%");
+  assert.equal(format("oldAgeDependencyRatio", 48.6), "48.6%");
+  assert.equal(format("youthDependencyRatio", 16.2), "16.2%");
+  assert.equal(format("netMigrationRate", -0.1), "-0.1‰");
+  // populationGrowth already bakes "%" into its own formatter — no suffix
+  // should be added on top of it.
+  assert.equal(format("populationGrowth", -0.69), "-0.69%");
+  // Metrics without a tableSuffix (counts, "yrs", fertility) stay as-is.
+  assert.equal(format("population", 1_000), "1,000");
+  assert.equal(format("fertility", 1.2), "1.2");
+  // Missing values must not gain a stray suffix on top of "N/A".
+  assert.equal(format("ageDependencyRatio", null), "N/A");
+  assert.equal(format("netMigrationRate", null), "N/A");
+});
+
 function country(name, incomeLabel, region, metrics) {
   return {
     name,

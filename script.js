@@ -20,6 +20,8 @@ import {
   AGE_COLUMN_KEYS,
   MIGRATION_CATEGORIES,
   MIGRATION_COLUMN_KEYS,
+  subgroupPopulationFor,
+  subgroupPopulationLabelFor,
 } from "./detail-group-categories.mjs";
 import {
   buildDetailColumns,
@@ -1351,11 +1353,30 @@ function detailColumns() {
       : selectedLegend?.mode === "migration"
         ? MIGRATION_COLUMN_KEYS
         : undefined;
+  // Age/migration curated tables show the subgroup's own population (e.g.
+  // Super-aged society's 65+ headcount) rather than each country's total —
+  // region/income keep the plain country total.
+  const populationFor =
+    selectedLegend?.mode === "age" || selectedLegend?.mode === "migration"
+      ? (country) =>
+          subgroupPopulationFor(selectedLegend, {
+            population: activePopulationAt(country),
+            olderPopulationShare: metricFor(country, "olderPopulationShare"),
+            youthDependencyRatio: metricFor(country, "youthDependencyRatio"),
+            ageDependencyRatio: metricFor(country, "ageDependencyRatio"),
+            netMigrationRate: metricFor(country, "netMigrationRate"),
+          })
+      : activePopulationAt;
+  const populationLabel =
+    selectedLegend?.mode === "age" || selectedLegend?.mode === "migration"
+      ? subgroupPopulationLabelFor(selectedLegend)
+      : undefined;
   return buildDetailColumns({
     currentYearIndex,
     metricFor,
     metricKeys,
-    populationFor: activePopulationAt,
+    populationFor,
+    populationLabel,
   });
 }
 

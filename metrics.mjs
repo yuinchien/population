@@ -111,6 +111,10 @@ export const METRICS = {
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
     formatRange: formatDependencyRatio,
+    // Dependency ratios are expressed per 100 working-age adults, so their
+    // value is a percentage on that base — the detail table appends this
+    // to the formatted value (see buildDetailColumns, detail-table.mjs).
+    tableSuffix: "%",
     referenceValue: 0,
   },
   netMigrationRate: {
@@ -121,6 +125,8 @@ export const METRICS = {
     format: formatMigrationRate,
     formatPanel: (value) => `${formatMigrationRate(value)} per 1,000`,
     formatRange: formatMigrationRate,
+    // Per 1,000, not per 100 — per-mille (‰), not percent.
+    tableSuffix: "‰",
     // Net-zero migration (inflow exactly offsetting outflow) is the natural
     // threshold — charts for this metric plot deviation from it so a shift
     // between net immigration and net emigration stands out.
@@ -134,6 +140,7 @@ export const METRICS = {
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
     formatRange: formatDependencyRatio,
+    tableSuffix: "%",
     referenceValue: 0,
   },
   oldAgeDependencyRatio: {
@@ -144,16 +151,19 @@ export const METRICS = {
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
     formatRange: formatDependencyRatio,
+    tableSuffix: "%",
     referenceValue: 0,
   },
   olderPopulationShare: {
     key: "olderPopulationShare",
     label: "Older population share",
-    detailLabel: "Older population %",
+    // No trailing "%" here — the value itself now carries it (tableSuffix).
+    detailLabel: "Older share",
     defaultDirection: "desc",
     format: formatDependencyRatio,
     formatPanel: (value) => `${formatDependencyRatio(value)} per 100`,
     formatRange: formatDependencyRatio,
+    tableSuffix: "%",
     referenceValue: 0,
   },
 };

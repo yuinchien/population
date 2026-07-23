@@ -8,6 +8,7 @@ import {
   YOUNG_DEPENDENCY_THRESHOLD,
   matchesAgeCategory,
   matchesMigrationCategory,
+  subgroupPopulationFor,
 } from "../detail-group-categories.mjs";
 
 test("AGE_CATEGORIES and MIGRATION_CATEGORIES list the expected keys", () => {
@@ -32,9 +33,9 @@ test("AGE_CATEGORIES and MIGRATION_CATEGORIES each name the metric their table s
   assert.deepEqual(
     AGE_CATEGORIES.map((category) => category.sortKey),
     [
-      "oldAgeDependencyRatio",
-      "oldAgeDependencyRatio",
-      "oldAgeDependencyRatio",
+      "olderPopulationShare",
+      "olderPopulationShare",
+      "olderPopulationShare",
       "youthDependencyRatio",
     ],
   );
@@ -116,12 +117,85 @@ test("matchesMigrationCategory splits on the sign of net migration rate", () => 
   );
 });
 
+test("subgroupPopulationFor returns the 65+ headcount for super-aged/aged/aging", () => {
+  const metrics = { population: 1_000_000, olderPopulationShare: 21 };
+  assert.equal(
+    subgroupPopulationFor({ mode: "age", key: "superAged" }, metrics),
+    210_000,
+  );
+  assert.equal(
+    subgroupPopulationFor({ mode: "age", key: "aged" }, metrics),
+    210_000,
+  );
+  assert.equal(
+    subgroupPopulationFor({ mode: "age", key: "aging" }, metrics),
+    210_000,
+  );
+});
+
+test("subgroupPopulationFor derives the under-15 headcount for young dependency from youth/age dependency ratios", () => {
+  // workingAgePop = population / (1 + ageDependencyRatio/100); under15 =
+  // workingAgePop * youthDependencyRatio/100. USA-like figures: pop 1M,
+  // youthDependencyRatio 42.178, ageDependencyRatio 54.482.
+  const value = subgroupPopulationFor(
+    { mode: "age", key: "youngDependency" },
+    {
+      population: 1_000_000,
+      youthDependencyRatio: 42.178,
+      ageDependencyRatio: 54.482,
+    },
+  );
+  assert.ok(Math.abs(value - 273_028.57) < 1);
+});
+
+test("subgroupPopulationFor returns null when the metric it needs is missing", () => {
+  assert.equal(
+    subgroupPopulationFor(
+      { mode: "age", key: "superAged" },
+      { population: 1_000_000, olderPopulationShare: null },
+    ),
+    null,
+  );
+  assert.equal(
+    subgroupPopulationFor(
+      { mode: "age", key: "youngDependency" },
+      { population: 1_000_000, youthDependencyRatio: null, ageDependencyRatio: 50 },
+    ),
+    null,
+  );
+  assert.equal(
+    subgroupPopulationFor(
+      { mode: "migration", key: "inflow" },
+      { population: 1_000_000, netMigrationRate: null },
+    ),
+    null,
+  );
+});
+
+test("subgroupPopulationFor scales population by the net migration rate per 1,000", () => {
+  assert.equal(
+    subgroupPopulationFor(
+      { mode: "migration", key: "inflow" },
+      { population: 1_000_000, netMigrationRate: 2.5 },
+    ),
+    2_500,
+  );
+  assert.equal(
+    subgroupPopulationFor(
+      { mode: "migration", key: "outflow" },
+      { population: 1_000_000, netMigrationRate: -3.7 },
+    ),
+    -3_700,
+  );
+});
+
 test("AGE_COLUMN_KEYS and MIGRATION_COLUMN_KEYS are curated per grouping", () => {
   assert.deepEqual(AGE_COLUMN_KEYS, [
     "population",
+    "olderPopulationShare",
+    "youthDependencyRatio",
     "ageDependencyRatio",
     "oldAgeDependencyRatio",
-    "youthDependencyRatio",
     "medianAge",
   ]);
   assert.deepEqual(MIGRATION_COLUMN_KEYS, [
