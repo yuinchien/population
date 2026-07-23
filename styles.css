@@ -473,10 +473,10 @@ button.milestone-nav-btn {
 
 button {
     flex-shrink: 0;
-    /*font-size: 1.1rem;*/
-    /*font-family: var(--font-sans);*/
+    text-transform: none;
     font-weight: 600;
 }
+
 
 .button-group button {
     display: flex;
@@ -676,8 +676,17 @@ body.country-detail #colorMode {
     grid-template-rows: auto 1fr;
     grid-template-columns: minmax(0, 1fr);
     gap: 0;
-    padding: 0 var(--margin) var(--margin) var(--margin);
+    padding: 0;
     overflow: hidden;
+}
+
+/* #detailNav is a full-height left sidebar, not confined to the space below
+   the header the way .detail-panel-main's own header is — so this panel
+   specifically overrides the base .detail-panel row/column template to be
+   two side-by-side columns instead of a stacked header-then-body. */
+#detailPanel {
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 1fr;
 }
 
 .info-panel {
@@ -728,6 +737,7 @@ body.country-detail #colorMode {
     justify-content: space-between;
     gap: var(--margin);
     height: calc(var(--button-size) + var(--margin)*2 );
+    padding: 0 var(--margin);
 }
 
 .detail-title-row {
@@ -771,10 +781,12 @@ p.detail-subtitle {
     cursor: pointer;
 }
 
-.detail-panel-body {
+/* The right column: header stacked above .detail-table, exactly like the
+   base .detail-panel row template — just scoped to this column instead of
+   the whole (now two-column) panel. */
+.detail-panel-main {
     display: grid;
-    grid-template-columns: 200px 1fr;
-    gap: var(--margin);
+    grid-template-rows: auto 1fr;
     min-height: 0;
     min-width: 0;
 }
@@ -785,7 +797,8 @@ p.detail-subtitle {
     gap: var(--margin);
     min-height: 0;
     overflow-y: auto;
-    padding-right: 4px;
+    padding: var(--margin) 0;
+    border-right: var(--border);
 }
 
 .detail-nav-section {
@@ -799,7 +812,7 @@ p.detail-subtitle {
     text-transform: uppercase;
     letter-spacing: var(--letterspacing-uppercase);
     font-weight: 500;
-    margin-bottom: 4px;
+    margin: 0 var(--margin) 2px var(--margin);
 }
 
 .detail-nav-item {
@@ -809,19 +822,20 @@ p.detail-subtitle {
     text-align: left;
     color: var(--color-text);
     cursor: pointer;
-    padding: 3px 0;
+    padding: 5px var(--margin);
 }
 
 .detail-nav-item:hover {
+    background: color-mix(in srgb, var(--color-text) 10%, transparent);
     color: var(--color-text);
-    text-decoration: underline;
 }
 
 /* Reuses --detail-color rather than each item's own swatch color — the
    panel already sets --detail-color to whichever group is selected, so this
    automatically stays correct without the nav needing its own copy of it. */
 .detail-nav-item.active {
-    color: var(--detail-color);
+    color: var(--color-text);
+    background: color-mix(in srgb, var(--detail-color) 50%, transparent);
 }
 
 .detail-table {
@@ -881,6 +895,7 @@ p.detail-subtitle {
 .detail-cell.sortable {
     cursor: pointer;
     user-select: none;
+    padding-left: var(--margin);
 }
 
 .detail-cell.sortable:hover {
@@ -911,7 +926,7 @@ p.detail-subtitle {
 }
 #detailPanel .detail-cell.country:not(.sortable) .detail-name,
 #chartPanel .detail-cell.country:not(.sortable) .detail-name {
-    padding-left: 8px;
+    padding-left: var(--margin);
 }
 #chartPanel .detail-cell.country:not(.sortable):before {
     content: "";

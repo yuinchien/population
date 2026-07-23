@@ -6,8 +6,12 @@ export function getAppElements(root = document) {
   // of hardcoded twice in index.html. See detail-panel-header.mjs.
   const detailPanel = root.querySelector("#detailPanel");
   const countryPanel = root.querySelector("#countryPanel");
-  const detailPanelHeader = detailPanel
-    ? createDetailPanelHeader(detailPanel)
+  // detailPanel's header lives in its right-column wrapper (alongside
+  // .detail-table), not the panel itself — #detailNav is the left column
+  // and spans the panel's full height, not just the space below the header.
+  const detailPanelMain = detailPanel?.querySelector(".detail-panel-main");
+  const detailPanelHeader = detailPanelMain
+    ? createDetailPanelHeader(detailPanelMain)
     : {};
   const countryPanelHeader = countryPanel
     ? createDetailPanelHeader(countryPanel)
