@@ -65,7 +65,7 @@ export const MIGRATION_CATEGORIES = [
 // A youth-dependency ratio above this many children per 100 working-age
 // adults counts as "Young dependency" — the one age category that isn't one
 // of the shared AGING_STAGES thresholds.
-export const YOUNG_DEPENDENCY_THRESHOLD = 60;
+export const YOUNG_DEPENDENCY_THRESHOLD = 0;
 
 // Age-grouping columns: age-structure metrics instead of the full detail set.
 export const AGE_COLUMN_KEYS = [
@@ -80,8 +80,8 @@ export const AGE_COLUMN_KEYS = [
 // detail set.
 export const MIGRATION_COLUMN_KEYS = [
   "population",
-  "populationGrowth",
   "netMigrationRate",
+  "populationGrowth",
 ];
 
 // Whether a country's current-year older-population-share/youth-dependency

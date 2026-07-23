@@ -1636,6 +1636,9 @@ function selectLegendItem(label, color, mode = colorMode) {
     // closeDetailPanel();
     return;
   }
+
+  detailSort = { key: 'population', direction: "desc" };
+
   tourController.stop();
   selectedLegend = { mode, key: label, label, color };
   renderLegend(mode);
