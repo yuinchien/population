@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   buildDetailColumns,
   buildDetailRows,
+  countryMatchesLegend,
   filterDetailCountries,
   selectDetailCountries,
 } from "../detail-table.mjs";
@@ -29,6 +30,7 @@ test("filterDetailCountries filters by region or income legend", () => {
   assert.deepEqual(
     filterDetailCountries(countries, {
       mode: "region",
+      key: "Europe",
       label: "Europe",
     }).map((entry) => entry.name),
     ["Borduria", "Aland"],
@@ -37,9 +39,81 @@ test("filterDetailCountries filters by region or income legend", () => {
   assert.deepEqual(
     filterDetailCountries(countries, {
       mode: "income",
+      key: "Middle-income countries",
       label: "Middle-income countries",
     }).map((entry) => entry.name),
     ["Calistan"],
+  );
+});
+
+test("countryMatchesLegend classifies by age category using current-year metrics", () => {
+  const metricFor = (testCountry, key) => testCountry.metrics[key]?.[0];
+  const superAged = country("SuperAgedLand", "High-income countries", "Europe", {
+    populations: [1],
+    olderPopulationShare: [25],
+  });
+  const aging = country("AgingLand", "High-income countries", "Europe", {
+    populations: [1],
+    olderPopulationShare: [10],
+  });
+  const notAging = country("YoungLand", "High-income countries", "Europe", {
+    populations: [1],
+    olderPopulationShare: [3],
+  });
+  const youngDependency = country("DependencyLand", "High-income countries", "Europe", {
+    populations: [1],
+    olderPopulationShare: [3],
+    youthDependencyRatio: [75],
+  });
+
+  assert.equal(
+    countryMatchesLegend(superAged, { mode: "age", key: "superAged" }, metricFor),
+    true,
+  );
+  assert.equal(
+    countryMatchesLegend(aging, { mode: "age", key: "superAged" }, metricFor),
+    false,
+  );
+  assert.equal(
+    countryMatchesLegend(aging, { mode: "age", key: "aging" }, metricFor),
+    true,
+  );
+  assert.equal(
+    countryMatchesLegend(notAging, { mode: "age", key: "aging" }, metricFor),
+    false,
+  );
+  assert.equal(
+    countryMatchesLegend(
+      youngDependency,
+      { mode: "age", key: "youngDependency" },
+      metricFor,
+    ),
+    true,
+  );
+});
+
+test("countryMatchesLegend classifies by migration category using current-year metrics", () => {
+  const metricFor = (testCountry, key) => testCountry.metrics[key]?.[0];
+  const inflow = country("InflowLand", "High-income countries", "Europe", {
+    populations: [1],
+    netMigrationRate: [3.2],
+  });
+  const outflow = country("OutflowLand", "High-income countries", "Europe", {
+    populations: [1],
+    netMigrationRate: [-1.4],
+  });
+
+  assert.equal(
+    countryMatchesLegend(inflow, { mode: "migration", key: "inflow" }, metricFor),
+    true,
+  );
+  assert.equal(
+    countryMatchesLegend(outflow, { mode: "migration", key: "inflow" }, metricFor),
+    false,
+  );
+  assert.equal(
+    countryMatchesLegend(outflow, { mode: "migration", key: "outflow" }, metricFor),
+    true,
   );
 });
 
@@ -50,7 +124,7 @@ test("selectDetailCountries sorts values without mutating the source list", () =
   });
   const selected = selectDetailCountries({
     countries,
-    legend: { mode: "region", label: "Europe" },
+    legend: { mode: "region", key: "Europe", label: "Europe" },
     columns,
     sort: { key: "population", direction: "desc" },
   });
@@ -72,7 +146,7 @@ test("selectDetailCountries puts missing metric values last", () => {
   });
   const selected = selectDetailCountries({
     countries,
-    legend: { mode: "region", label: "Europe" },
+    legend: { mode: "region", key: "Europe", label: "Europe" },
     columns,
     sort: { key: "populationGrowth", direction: "desc" },
   });

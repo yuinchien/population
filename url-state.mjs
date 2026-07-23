@@ -63,7 +63,8 @@ export function parseUrlState(search, { years = [], countryCodes = [] } = {}) {
   } else if (view === "group") {
     const groupMode = params.get("groupMode");
     const group = params.get("group");
-    if (group && (groupMode === "region" || groupMode === "income")) {
+    const validGroupModes = ["region", "income", "age", "migration"];
+    if (group && validGroupModes.includes(groupMode)) {
       state.view = "group";
       state.groupMode = groupMode;
       state.group = group;

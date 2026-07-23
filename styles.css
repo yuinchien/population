@@ -771,6 +771,59 @@ p.detail-subtitle {
     cursor: pointer;
 }
 
+.detail-panel-body {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--margin);
+    min-height: 0;
+    min-width: 0;
+}
+
+.detail-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--margin);
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.detail-nav-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-nav-section-label {
+    font-size: 0.7rem;
+    color: var(--color-subtle);
+    text-transform: uppercase;
+    letter-spacing: var(--letterspacing-uppercase);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.detail-nav-item {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    text-align: left;
+    color: var(--color-text);
+    cursor: pointer;
+    padding: 3px 0;
+}
+
+.detail-nav-item:hover {
+    color: var(--color-text);
+    text-decoration: underline;
+}
+
+/* Reuses --detail-color rather than each item's own swatch color — the
+   panel already sets --detail-color to whichever group is selected, so this
+   automatically stays correct without the nav needing its own copy of it. */
+.detail-nav-item.active {
+    color: var(--detail-color);
+}
+
 .detail-table {
     display: grid;
     grid-template-rows: auto 1fr;

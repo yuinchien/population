@@ -45,6 +45,7 @@ export function getAppElements(root = document) {
     detailTitle: detailPanelHeader.title,
     detailSubtitle: detailPanelHeader.subtitle,
     detailClose: detailPanelHeader.closeButton,
+    detailNav: root.querySelector("#detailNav"),
     detailHeader: root.querySelector("#detailHeader"),
     detailRows: root.querySelector("#detailRows"),
     countryPanel,

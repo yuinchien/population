@@ -16,6 +16,12 @@ import {
   formatCount,
 } from "./metrics.mjs";
 import {
+  AGE_CATEGORIES,
+  AGE_COLUMN_KEYS,
+  MIGRATION_CATEGORIES,
+  MIGRATION_COLUMN_KEYS,
+} from "./detail-group-categories.mjs";
+import {
   buildDetailColumns,
   selectDetailCountries,
 } from "./detail-table.mjs";
@@ -117,6 +123,7 @@ assertElements(
     "detailFlag",
     "detailTitle",
     "detailSubtitle",
+    "detailNav",
     "detailHeader",
     "detailRows",
     "detailClose",
@@ -1250,6 +1257,67 @@ function renderLegend(modeOverride = null) {
   );
 }
 
+// The detail panel's own left-column nav — unlike the outer #legend
+// sidebar (which shows only one of region/income, picked via #colorMode),
+// this lists all four groupings side by side so a reader can jump straight
+// from e.g. "Aged society" to "Europe & Central Asia" without leaving the
+// panel. Re-rendered on every renderDetailPanel() call so its "active" item
+// stays in sync with whichever group is currently shown.
+function renderDetailNav() {
+  if (!elements.detailNav) return;
+  const sections = [
+    { label: "Age", mode: "age", items: AGE_CATEGORIES },
+    { label: "Migration", mode: "migration", items: MIGRATION_CATEGORIES },
+    {
+      label: "Region",
+      mode: "region",
+      items: legendEntriesFor("region").map(([label, color]) => ({
+        key: label,
+        label,
+        color,
+      })),
+    },
+    {
+      label: "Income group",
+      mode: "income",
+      items: legendEntriesFor("income").map(([label, color]) => ({
+        key: label,
+        label,
+        color,
+      })),
+    },
+  ];
+
+  elements.detailNav.replaceChildren(
+    ...sections.map(({ label: sectionLabel, mode, items }) => {
+      const section = document.createElement("div");
+      section.className = "detail-nav-section";
+      const heading = document.createElement("div");
+      heading.className = "detail-nav-section-label";
+      heading.textContent = sectionLabel;
+      section.append(
+        heading,
+        ...items.map((item) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "detail-nav-item";
+          button.dataset.mode = mode;
+          button.dataset.key = item.key;
+          button.dataset.label = item.label;
+          button.dataset.color = item.color;
+          button.classList.toggle(
+            "active",
+            selectedLegend?.mode === mode && selectedLegend?.key === item.key,
+          );
+          button.textContent = displayGroupLabel(item.label);
+          return button;
+        }),
+      );
+      return section;
+    }),
+  );
+}
+
 function metricFor(country, key) {
   return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
     currentYearIndex
@@ -1263,6 +1331,7 @@ function selectedCountries() {
     legend: selectedLegend,
     columns: detailColumns(),
     sort: detailSort,
+    metricFor,
   });
 }
 
@@ -1270,10 +1339,20 @@ function selectedCountries() {
 // to read its own sort value (used both for sorting and for the population
 // ratio bar) and how to format it for display. Header cells are generated
 // from this list too, so clicking one always lines up with the right column.
+// Age/migration groupings get their own curated metric set instead of the
+// full region/income column list, since most of those columns wouldn't be
+// relevant to (e.g.) a "Migration inflow" cohort.
 function detailColumns() {
+  const metricKeys =
+    selectedLegend?.mode === "age"
+      ? AGE_COLUMN_KEYS
+      : selectedLegend?.mode === "migration"
+        ? MIGRATION_COLUMN_KEYS
+        : undefined;
   return buildDetailColumns({
     currentYearIndex,
     metricFor,
+    metricKeys,
     populationFor: activePopulationAt,
   });
 }
@@ -1363,6 +1442,7 @@ function renderDetailPanel() {
   );
   elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
+  renderDetailNav();
 
   renderSortableTable({
     headerEl: elements.detailHeader,
@@ -1477,7 +1557,7 @@ function urlStateFromApp() {
   } else if (selectedCountry) {
     Object.assign(state, { view: "country", country: selectedCountry.iso3 });
   } else if (selectedLegend) {
-    Object.assign(state, { view: "group", groupMode: selectedLegend.mode, group: selectedLegend.label });
+    Object.assign(state, { view: "group", groupMode: selectedLegend.mode, group: selectedLegend.key });
   }
   if (currentYearIndex >= 0) state.year = yearsData[currentYearIndex];
   return state;
@@ -1525,22 +1605,51 @@ function applyUrlStateFromLocation(search) {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
   } else if (state.view === "group") {
+    if (state.groupMode === "region" || state.groupMode === "income") {
       if (state.groupMode !== colorMode) setColorMode(state.groupMode);
       const entry = legendEntriesFor(state.groupMode).find(
         ([label]) => label === state.group,
       );
       if (entry) selectLegendItem(entry[0], entry[1]);
+    } else {
+      const categories =
+        state.groupMode === "age" ? AGE_CATEGORIES : MIGRATION_CATEGORIES;
+      const category = categories.find((c) => c.key === state.group);
+      if (category) {
+        selectDetailGroup(
+          state.groupMode,
+          category.key,
+          category.label,
+          category.color,
+        );
+      }
+    }
   }
 }
 
 function selectLegendItem(label, color, mode = colorMode) {
-  if (selectedLegend?.mode === mode && selectedLegend?.label === label) {
+  if (selectedLegend?.mode === mode && selectedLegend?.key === label) {
     closeDetailPanel();
     return;
   }
   tourController.stop();
-  selectedLegend = { mode, label, color };
+  selectedLegend = { mode, key: label, label, color };
   renderLegend(mode);
+  renderDetailPanel();
+  syncUrlFromState();
+}
+
+// Selects an age/migration cohort from the detail panel's own nav — unlike
+// selectLegendItem (region/income, shared with the outer #legend sidebar),
+// this never touches the outer legend, since "age"/"migration" aren't modes
+// it knows how to render.
+function selectDetailGroup(mode, key, label, color) {
+  if (selectedLegend?.mode === mode && selectedLegend?.key === key) {
+    closeDetailPanel();
+    return;
+  }
+  tourController.stop();
+  selectedLegend = { mode, key, label, color };
   renderDetailPanel();
   syncUrlFromState();
 }
@@ -2912,7 +3021,7 @@ function setColorMode(mode) {
     // the user keep exploring, not boot them back to the globe — land on
     // that mode's first legend entry instead of closing the panel.
     const [label, color] = legendEntriesFor(mode)[0];
-    selectedLegend = { mode, label, color };
+    selectedLegend = { mode, key: label, label, color };
   } else {
     selectedLegend = null;
     elements.detailPanel.hidden = true;
@@ -3306,6 +3415,16 @@ async function init() {
         item.dataset.color,
         item.dataset.mode,
       );
+    });
+    elements.detailNav?.addEventListener("click", (event) => {
+      const item = event.target.closest(".detail-nav-item[data-key]");
+      if (!item || !elements.detailNav.contains(item)) return;
+      const { mode, key, label, color } = item.dataset;
+      if (mode === "region" || mode === "income") {
+        selectLegendItem(label, color, mode);
+      } else {
+        selectDetailGroup(mode, key, label, color);
+      }
     });
 
     elements.viewMode.hidden = false;

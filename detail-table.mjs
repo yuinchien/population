@@ -1,4 +1,8 @@
 import { DETAIL_METRIC_KEYS, METRICS } from "./metrics.mjs";
+import {
+  matchesAgeCategory,
+  matchesMigrationCategory,
+} from "./detail-group-categories.mjs";
 
 export function buildDetailColumns({
   currentYearIndex,
@@ -32,15 +36,31 @@ export function buildDetailColumns({
   ];
 }
 
-export function countryMatchesLegend(country, legend) {
+// `metricFor(country, key)` is only consulted for the "age"/"migration"
+// modes — region/income match a static field, so existing callers that
+// never select those groupings can omit it.
+export function countryMatchesLegend(country, legend, metricFor) {
   if (!legend) return false;
-  return legend.mode === "income"
-    ? country._incomeLabel === legend.label
-    : country.region?.trim() === legend.label;
+  if (legend.mode === "income") return country._incomeLabel === legend.key;
+  if (legend.mode === "region") return country.region?.trim() === legend.key;
+  if (legend.mode === "age") {
+    return matchesAgeCategory(legend.key, {
+      olderPopulationShare: metricFor(country, "olderPopulationShare"),
+      youthDependencyRatio: metricFor(country, "youthDependencyRatio"),
+    });
+  }
+  if (legend.mode === "migration") {
+    return matchesMigrationCategory(legend.key, {
+      netMigrationRate: metricFor(country, "netMigrationRate"),
+    });
+  }
+  return false;
 }
 
-export function filterDetailCountries(countries, legend) {
-  return countries.filter((country) => countryMatchesLegend(country, legend));
+export function filterDetailCountries(countries, legend, metricFor) {
+  return countries.filter((country) =>
+    countryMatchesLegend(country, legend, metricFor),
+  );
 }
 
 export function sortDetailCountries(countries, columns, sort) {
@@ -65,9 +85,15 @@ export function sortDetailCountries(countries, columns, sort) {
   });
 }
 
-export function selectDetailCountries({ countries, legend, columns, sort }) {
+export function selectDetailCountries({
+  countries,
+  legend,
+  columns,
+  sort,
+  metricFor,
+}) {
   return sortDetailCountries(
-    filterDetailCountries(countries, legend),
+    filterDetailCountries(countries, legend, metricFor),
     columns,
     sort,
   );

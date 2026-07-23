@@ -92,6 +92,49 @@ test("lifetime view drops an out-of-range birth year and unknown country", () =>
   assert.deepEqual(state, { view: "lifetime", year: 2024 });
 });
 
+test("URL state round-trips a region/income group view", () => {
+  const query = serializeUrlState({
+    view: "group",
+    groupMode: "region",
+    group: "Europe & Central Asia",
+    year: 2050,
+  });
+  assert.deepEqual(parseUrlState(query, { years: [2050] }), {
+    view: "group",
+    groupMode: "region",
+    group: "Europe & Central Asia",
+    year: 2050,
+  });
+});
+
+test("URL state round-trips an age or migration group view", () => {
+  const ageQuery = serializeUrlState({
+    view: "group",
+    groupMode: "age",
+    group: "superAged",
+    year: 2050,
+  });
+  assert.deepEqual(parseUrlState(ageQuery, { years: [2050] }), {
+    view: "group",
+    groupMode: "age",
+    group: "superAged",
+    year: 2050,
+  });
+
+  const migrationQuery = serializeUrlState({
+    view: "group",
+    groupMode: "migration",
+    group: "outflow",
+    year: 2050,
+  });
+  assert.deepEqual(parseUrlState(migrationQuery, { years: [2050] }), {
+    view: "group",
+    groupMode: "migration",
+    group: "outflow",
+    year: 2050,
+  });
+});
+
 test("URL parsing rejects unknown years and countries", () => {
   assert.deepEqual(
     parseUrlState("?view=country&country=XXX&year=1900", {
