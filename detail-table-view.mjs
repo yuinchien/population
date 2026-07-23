@@ -7,12 +7,6 @@ import {
 export function createDetailCell(text, className = "", options = {}) {
   const cell = document.createElement("div");
   cell.className = `detail-cell ${className}`.trim();
-  if (options.ratio != null) {
-    const bar = document.createElement("span");
-    bar.className = "detail-ratio-bar";
-    bar.style.width = `${Math.min(1, Math.max(0, options.ratio)) * 100}%`;
-    cell.append(bar);
-  }
   // Only real countries (an iso3 the flag-icons set actually has) get a
   // flag — header cells and aggregated group/region rows never pass
   // flagIso3, so they're unaffected.
