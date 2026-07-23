@@ -145,7 +145,12 @@ export function createTrendChartController({
         y: (Number(y) + 3).toFixed(1),
         "text-anchor": "end",
       });
-      label.textContent = value === 0 ? "0" : tickFormat(value);
+      // SVG <text> can't render nested HTML — strip format()'s
+      // <span class="suffix"> wrapper (metrics.mjs) down to plain text.
+      label.textContent =
+        value === 0
+          ? "0"
+          : tickFormat(value).replace(/<span[^>]*>(.*?)<\/span>/, "$1");
       children.push(label);
     }
 
