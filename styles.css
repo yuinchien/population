@@ -239,7 +239,7 @@ body.detail .detail-back {
 .status-wrapper {
     position: fixed;
     left: calc(var(--margin));
-    top: calc(var(--button-size) - 8px + var(--margin) / 2);
+    top: calc(var(--button-size) - 8px + var(--margin) );
     z-index: var(--z-status);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
