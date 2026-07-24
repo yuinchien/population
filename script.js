@@ -2471,6 +2471,17 @@ const clusterController = createClusterController({
   },
 });
 
+// Shared by every setXActive(active) toggle below (and the initial
+// bind-events setup) — #viewMode stays visible while a full-screen overlay
+// (Search/Chart/Cluster) is open rather than being hidden behind it, so its
+// "active" highlight has to track that overlay's own mode string instead of
+// just the underlying Globe/Map viewMode.
+function syncViewModeButtons(activeMode) {
+  elements.viewMode.querySelectorAll("button").forEach((btn) =>
+    btn.classList.toggle("active", btn.dataset.mode === activeMode),
+  );
+}
+
 function setClusterActive(active) {
   if (active === clusterActive) return;
   if (active) {
@@ -2479,12 +2490,7 @@ function setClusterActive(active) {
   clusterActive = active;
   elements.clusterView.hidden = !active;
   document.body.classList.toggle("view-cluster", active);
-  elements.viewMode.querySelectorAll("button").forEach((btn) =>
-    btn.classList.toggle(
-      "active",
-      btn.dataset.mode === (active ? "cluster" : viewMode),
-    ),
-  );
+  syncViewModeButtons(active ? "cluster" : viewMode);
   if (active) {
     tourController.stop();
     updateColorModeControls(clusterController.getColorMode());
@@ -2573,12 +2579,7 @@ function setSearchActive(active) {
   elements.searchView.hidden = !active;
   elements.searchBar.hidden = !active;
   document.body.classList.toggle("view-search", active);
-  elements.viewMode.querySelectorAll("button").forEach((btn) =>
-    btn.classList.toggle(
-      "active",
-      btn.dataset.mode === (active ? "search" : viewMode),
-    ),
-  );
+  syncViewModeButtons(active ? "search" : viewMode);
   if (active) {
     tourController.stop();
     searchSelectedIso3 = null;
@@ -2884,17 +2885,7 @@ function setchartPanelActive(active) {
   chartPanelActive = active;
   elements.chartPanel.hidden = !active;
   document.body.classList.toggle("view-chart", active);
-  // #viewMode now stays visible while chart view is open rather than being
-  // hidden behind it, so its active state needs to track "chart" here too —
-  // setViewMode() only ever toggles between "globe"/"map", and would
-  // otherwise leave "chart" stuck highlighted (or nothing highlighted)
-  // after this panel opens or closes.
-  elements.viewMode.querySelectorAll("button").forEach((btn) =>
-    btn.classList.toggle(
-      "active",
-      btn.dataset.mode === (active ? "chart" : viewMode),
-    ),
-  );
+  syncViewModeButtons(active ? "chart" : viewMode);
   if (active) {
     tourController.stop();
     renderTrendChart({ animate: true });
@@ -3335,6 +3326,7 @@ async function init() {
         detailEntryMode = "lifetime";
         setLifetimeActive(false, { preserveStory: true });
         openCountryDetail(country);
+
       },
     });
     const initialUrlState = parseUrlState(initialSearch, {
@@ -3427,9 +3419,18 @@ async function init() {
     });
 
     elements.viewMode.hidden = false;
-    elements.viewMode.querySelectorAll("button").forEach((btn) =>
-      btn.classList.toggle("active", btn.dataset.mode === viewMode),
-    );
+    syncViewModeButtons(viewMode);
+    // One setter per full-screen overlay mode — picking any of them turns
+    // off the other three (mutual exclusion) and turns this one on. A
+    // lookup table instead of a branch per mode means adding a future
+    // overlay only means adding one entry here, not another hand-written
+    // "turn off every sibling" block that's easy to under-update.
+    const SPECIAL_VIEW_MODE_SETTERS = {
+      search: setSearchActive,
+      chart: setchartPanelActive,
+      cluster: setClusterActive,
+      lifetime: setLifetimeActive,
+    };
     elements.viewMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
         // Mirrors elements.menuShim's own close (mobile's hamburger sidebar
@@ -3439,39 +3440,15 @@ async function init() {
         document.body.classList.remove("menu-open");
         elements.menuToggle.setAttribute("aria-expanded", "false");
         const mode = btn.dataset.mode;
-        if (mode === "search") {
-          setchartPanelActive(false);
-          setClusterActive(false);
-          setLifetimeActive(false);
-          setSearchActive(true);
-          return;
+        const setter = SPECIAL_VIEW_MODE_SETTERS[mode];
+        Object.entries(SPECIAL_VIEW_MODE_SETTERS).forEach(([key, setActive]) => {
+          if (key !== mode) setActive(false);
+        });
+        if (setter) {
+          setter(true);
+        } else {
+          setViewMode(mode);
         }
-        if (mode === "chart") {
-          setSearchActive(false);
-          setClusterActive(false);
-          setLifetimeActive(false);
-          setchartPanelActive(true);
-          return;
-        }
-        if (mode === "cluster") {
-          setSearchActive(false);
-          setchartPanelActive(false);
-          setLifetimeActive(false);
-          setClusterActive(true);
-          return;
-        }
-        if (mode === "lifetime") {
-          setSearchActive(false);
-          setchartPanelActive(false);
-          setClusterActive(false);
-          setLifetimeActive(true);
-          return;
-        }
-        setSearchActive(false);
-        setchartPanelActive(false);
-        setClusterActive(false);
-        setLifetimeActive(false);
-        setViewMode(mode);
       });
     });
 

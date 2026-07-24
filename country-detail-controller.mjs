@@ -118,7 +118,14 @@ export function createCountryDetailController({
     const match = getCountries().find(
       (country) => country.iso3 === item.dataset.iso3,
     );
-    if (match) onOpenCountry(match);
+    if (!match) return;
+    onOpenCountry(match);
+    // The similar-trajectory list sits near the bottom of #countryDetail's
+    // own scroll (.country-detail, styles.css) — swapping to the new
+    // country re-renders in place rather than reopening the panel, so
+    // without this the header/chart above update out of view and the user
+    // stays scrolled down to where the list happened to be.
+    elements.countryDetail.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   function sparklineTooltipTarget(event) {

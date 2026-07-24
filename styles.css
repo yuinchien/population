@@ -1880,6 +1880,11 @@ select::picker(select) {
   }
 }
 
+.search-category-grid,
+.search-country-grid {
+    opacity: 0;
+    animation: fadeInUp 0.5s ease-out forwards;
+}
 
 .search-country-grid {
     display: grid;
@@ -1887,8 +1892,6 @@ select::picker(select) {
     gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
-    opacity: 0;
-    animation: fadeInUp 0.5s ease-out forwards;
     border-top: var(--border);
     padding: calc(var(--margin)/2) var(--margin);
 }
