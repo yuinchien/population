@@ -490,10 +490,11 @@ button {
 #viewMode {
     background: var(--color-surface);
     border-radius: 40px;
+    padding: 2px;
 }
 
 #viewMode.button-group button {
-    /*height: auto;*/
+    padding: 6px;
     border-radius: 40px;
 }
 
@@ -3193,6 +3194,7 @@ body.info-open .menu-shim {
         .title {
             display: block;
         }
+        #viewMode button,
         button {
             justify-content: flex-start;
             gap: 10px;
@@ -3205,6 +3207,7 @@ body.info-open .menu-shim {
     #viewMode {
         flex-direction: column-reverse;
         width: 100%;
+        padding: 0;
         border-bottom: var(--border);
         border-radius: 0;
         padding-bottom: calc(var(--margin) / 2);
