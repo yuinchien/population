@@ -766,7 +766,7 @@ body.country-detail #colorMode {
 /* Same line, same size as the title next to it — the element+class
    selector is needed to out-rank ".detail-panel p"'s margin-top above
    (same specificity, so it relies on coming later in the cascade too). */
-p.detail-subtitle {
+.detail-subtitle {
     margin-top: 0;
     font-size: 1.1rem;
 }
@@ -3072,6 +3072,7 @@ body.detail #calloutLayer {
     will-change: transform;
     transform: translate3d(var(--callout-x, 0), var(--callout-y, 0), 0);
     border: var(--border);
+    line-height: 18px;
 }
 
 .peak-callout-label:focus-visible {
@@ -3264,7 +3265,14 @@ body.info-open .menu-shim {
         --margin: 12px;
         --overlay-width: 80%;
     }
-
+    .detail-subtitle {
+        display: none;
+    }
+    .detail-panel h2 {
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+    }
     .paragraph {
         font-size: 1.2rem;
     }
