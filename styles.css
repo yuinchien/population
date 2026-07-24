@@ -1835,6 +1835,7 @@ select::picker(select) {
     stroke: transparent;
     stroke-width: 16px;
     pointer-events: stroke;
+    stroke-linejoin: round;
 }
 
 .cluster-view {

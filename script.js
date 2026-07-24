@@ -1421,6 +1421,11 @@ const CHART_BENCHMARK_LINES = {
     { value: 75, label: "High" },
     { value: 70, label: "Low" },
   ],
+  olderPopulationShare: [
+    { value: 20, label: "Super-aged" },
+    { value: 14, label: "Aged" },
+    { value: 7, label: "Aging" },
+  ]
 };
 
 function setDetailSort(key) {

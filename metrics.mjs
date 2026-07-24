@@ -198,6 +198,9 @@ export const CHART_METRIC_KEYS = [
   "fertility",
   "lifeExpectancy",
   "ageDependencyRatio",
+  "youthDependencyRatio",
+  "oldAgeDependencyRatio",
+  "olderPopulationShare",
 ];
 
 export const CHART_RADAR_KEY = "radar";
