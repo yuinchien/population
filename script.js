@@ -1260,14 +1260,7 @@ function renderLegend(modeOverride = null) {
   );
 }
 
-// The detail panel's own left-column nav — unlike the outer #legend
-// sidebar (which shows only one of region/income, picked via #colorMode),
-// this lists all four groupings side by side so a reader can jump straight
-// from e.g. "Aged society" to "Europe & Central Asia" without leaving the
-// panel. Re-rendered on every renderDetailPanel() call so its "active" item
-// stays in sync with whichever group is currently shown.
-function renderDetailNav() {
-  if (!elements.detailNav) return;
+function getDetailNav() {
   const sections = [
     { label: "Age", mode: "age", items: AGE_CATEGORIES },
     { label: "Migration", mode: "migration", items: MIGRATION_CATEGORIES },
@@ -1291,36 +1284,48 @@ function renderDetailNav() {
     },
   ];
 
-  elements.detailNav.replaceChildren(
-    ...sections.map(({ label: sectionLabel, mode, items }) => {
-      const section = document.createElement("div");
-      section.className = "detail-nav-section";
-      const heading = document.createElement("div");
-      heading.className = "detail-nav-section-label";
-      heading.textContent = sectionLabel;
-      section.append(
-        heading,
-        ...items.map((item) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "detail-nav-item";
-          button.dataset.mode = mode;
-          button.dataset.key = item.key;
-          button.dataset.label = item.label;
-          button.dataset.color = item.color;
-          if (item.sortKey) button.dataset.sortKey = item.sortKey;
-          if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
-          button.classList.toggle(
-            "active",
-            selectedLegend?.mode === mode && selectedLegend?.key === item.key,
-          );
-          button.textContent = displayGroupLabel(item.label);
-          return button;
-        }),
-      );
-      return section;
-    }),
-  );
+  const result =
+    sections.map(({ label: sectionLabel, mode, items }) => {
+    const section = document.createElement("div");
+    section.className = "detail-nav-section";
+    const heading = document.createElement("div");
+    heading.className = "detail-nav-section-label";
+    heading.textContent = sectionLabel;
+    section.append(
+      heading,
+      ...items.map((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "detail-nav-item";
+        button.dataset.mode = mode;
+        button.dataset.key = item.key;
+        button.dataset.label = item.label;
+        button.dataset.color = item.color;
+        if (item.sortKey) button.dataset.sortKey = item.sortKey;
+        if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
+        button.classList.toggle(
+          "active",
+          selectedLegend?.mode === mode && selectedLegend?.key === item.key,
+        );
+        button.textContent = displayGroupLabel(item.label);
+        return button;
+      }),
+    );
+    return section;
+  });
+
+  return result;
+}
+
+// The detail panel's own left-column nav — unlike the outer #legend
+// sidebar (which shows only one of region/income, picked via #colorMode),
+// this lists all four groupings side by side so a reader can jump straight
+// from e.g. "Aged society" to "Europe & Central Asia" without leaving the
+// panel. Re-rendered on every renderDetailPanel() call so its "active" item
+// stays in sync with whichever group is currently shown.
+function renderDetailNav() {
+  if (!elements.detailNav) return;
+  elements.detailNav.replaceChildren(...getDetailNav());
 }
 
 function metricFor(country, key) {
@@ -2605,19 +2610,20 @@ function setSearchActive(active) {
 }
 
 function renderCategoryGrid() {
-  const categories = [...AGE_CATEGORIES, ...MIGRATION_CATEGORIES];
-  let items = categories.map((item, index) => {
-    const button = document.createElement("button");
-    button.className = "search-category-item";
-    button.dataset.mode = item.mode;
-    button.dataset.key = item.key;
-    button.dataset.label = item.label;
-    button.dataset.color = item.color;
-    if (item.sortKey) button.dataset.sortKey = item.sortKey;
-    if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
-    button.textContent = displayGroupLabel(item.label);
-    return button;
-  });
+  // const categories = [...AGE_CATEGORIES, ...MIGRATION_CATEGORIES];
+  // let items = categories.map((item, index) => {
+  //   const button = document.createElement("button");
+  //   button.className = "search-category-item";
+  //   button.dataset.mode = item.mode;
+  //   button.dataset.key = item.key;
+  //   button.dataset.label = item.label;
+  //   button.dataset.color = item.color;
+  //   if (item.sortKey) button.dataset.sortKey = item.sortKey;
+  //   if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
+  //   button.textContent = displayGroupLabel(item.label);
+  //   return button;
+  // });
+  const items = getDetailNav();
   elements.searchCategoryGrid.replaceChildren(...items);
 }
 
@@ -3567,7 +3573,7 @@ async function init() {
       selectSearchCountry(item.dataset.iso3);
     });
     elements.searchCategoryGrid?.addEventListener("click", (event) => {
-      const item = event.target.closest(".search-category-item[data-key]");
+      const item = event.target.closest(".detail-nav-item[data-key]");
       if (!item || !elements.searchCategoryGrid.contains(item)) return;
       const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
       if (mode === "region" || mode === "income") {

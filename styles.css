@@ -814,8 +814,13 @@ body.country-detail #colorMode {
     font-size: 0.9rem;
     color: var(--color-subtle);
     font-weight: 500;
+    margin: 0 calc(var(--margin)/2) 2px calc(var(--margin)/2);
+}
+
+.detail-nav .detail-nav-section-label {
     margin: 0 var(--margin) 2px var(--margin);
 }
+
 
 .detail-nav-item {
     border: 0;
@@ -824,9 +829,13 @@ body.country-detail #colorMode {
     text-align: left;
     color: var(--color-text);
     cursor: pointer;
-    padding: 5px var(--margin);
+    padding: 5px calc(var(--margin) / 2);
     position: relative;
 }
+.detail-nav .detail-nav-item {
+    padding: 5px var(--margin);
+}
+
 .detail-nav-item:before {
     position: absolute;
     width: 2px;
@@ -838,7 +847,8 @@ body.country-detail #colorMode {
     opacity: 0;
 }
 
-.detail-nav-item:hover {
+.detail-nav-item:hover,
+.detail-nav-item.active {
     /*opacity: .5;*/
     background: color-mix(in srgb, var(--color-text) 10%, transparent);
     /*color: var(--color-text);*/
@@ -850,9 +860,6 @@ body.country-detail #colorMode {
    automatically stays correct without the nav needing its own copy of it. */
 .detail-nav-item.active:before {
     opacity: 1;
-    /*color: var(--color-text);*/
-    /*border-left: 4px solid var(--color-text);*/
-    /*background: color-mix(in srgb, var(--detail-color) 50%, transparent);*/
 }
 
 .detail-table {
@@ -1876,7 +1883,7 @@ select::picker(select) {
 
 .search-country-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 2px 24px;
     max-width: 1600px;
     margin: 0 auto;
@@ -1891,9 +1898,9 @@ select::picker(select) {
     align-items: center;
     gap: 12px;
     width: 100%;
-    padding: 9px 12px;
+    padding: 8px;
     border: none;
-    border-radius: 8px;
+    border-radius: 16px;
     background: transparent;
     color: var(--color-text);
     font: inherit;
@@ -1910,9 +1917,9 @@ select::picker(select) {
 
 .search-country-item-flag {
     flex: none;
-    width: 26px;
-    height: 26px;
-    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
     background-size: cover;
     background-position: center;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
@@ -1937,10 +1944,14 @@ select::picker(select) {
 
 .search-category-grid {
     display: flex;
-    gap: calc(var(--margin) / 2);
+    gap: var(--margin);
     padding: calc(var(--margin) / 2) var(--margin);
     border-top: var(--border);
     overflow-x: scroll;
+
+    .detail-nav-section {
+        flex: 1;
+    }
 }
 
 .search-bar {
@@ -1953,7 +1964,7 @@ select::picker(select) {
     z-index: var(--z-panel);
     /*width: calc(100vw - var(--margin) - 338px);*/
     height: var(--button-size);
-    width: 800px;
+    width: calc(50% - var(--margin));
 }
 
 
@@ -3251,7 +3262,7 @@ body.info-open .menu-shim {
     }
 
     .search-bar {
-        width: calc(100% - var(--button-size) * 2 - var(--margin) * 3);
+        width: calc(100% - var(--button-size) * 1 - var(--margin) * 3);
     }
 
     .country-detail {
@@ -3282,6 +3293,7 @@ body.info-open .menu-shim {
 
     .search-category-grid {
         padding: var(--margin);
+        flex-direction: column;
     }
 
     .lifetime-content {
