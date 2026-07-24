@@ -159,16 +159,9 @@ canvas.hovering-dot {
 
 .paragraph {
     font-family: var(--font-sans);
-    font-size: 1.2rem;
-    line-height: 1.4;
+    font-size: 1.1rem;
+    line-height: 1.5;
 }
-
-
-
-/*body.view-cluster #overlayMain {
-    z-index: var(--z-panel);
-    pointer-events: auto;
-}*/
 
 .footer {
     flex: 1;
@@ -549,7 +542,7 @@ body.country-detail #colorMode {
     font: inherit;
     text-align: left;
     cursor: pointer;
-    padding: 4px 0;
+    padding: 3px 0;
 }
 
 .legend-item:hover,
@@ -953,7 +946,7 @@ body.country-detail #colorMode {
 .detail-cell.country:not(.sortable) {
     isolation: isolate;
     overflow: hidden;
-    gap: 12px;
+    gap: 10px;
 }
 
 .detail-cell-flag {
@@ -3282,9 +3275,6 @@ body.info-open .menu-shim {
         text-overflow: ellipsis;
         white-space: nowrap;
         overflow: hidden;
-    }
-    .paragraph {
-        font-size: 1.2rem;
     }
     .custom-select {
         min-width: auto;
