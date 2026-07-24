@@ -236,25 +236,6 @@ body.detail .detail-back {
     opacity: 0;
 }
 
-.status-wrapper {
-    position: fixed;
-    left: calc(var(--margin));
-    top: calc(var(--button-size) - 8px + var(--margin) );
-    z-index: var(--z-status);
-    /* A fixed width (not max-width) keeps the box's left edge stable as the
-       typewriter effect grows the text — with only `right` anchoring it,
-       a shrink-to-fit box would still creep leftward as content grows even
-       though the text itself is left-aligned, which defeats the point of
-       switching away from right-align. */
-    width: 420px;
-    overflow: initial;
-    background: color-mix(in srgb, var(--color-bg) 5%, transparent);
-    border-radius: 8px;
-}
-.status-wrapper p {
-    margin: 10px 0 0 0;
-}
-
 .milestone-nav {
     margin-top: 12px;
     margin-bottom: 4px;
@@ -328,8 +309,34 @@ button.milestone-nav-btn {
     cursor: not-allowed;
 }
 
+.status-wrapper {
+    position: fixed;
+    /*left: calc(var(--margin));*/
+    /*top: calc(var(--button-size) - 8px + var(--margin) );*/
+    z-index: var(--z-status);
+    /* A fixed width (not max-width) keeps the box's left edge stable as the
+       typewriter effect grows the text — with only `right` anchoring it,
+       a shrink-to-fit box would still creep leftward as content grows even
+       though the text itself is left-aligned, which defeats the point of
+       switching away from right-align. */
+    overflow: initial;
+    background: color-mix(in srgb, var(--color-bg) 5%, transparent);
+    border-radius: 8px;
+
+    top: 0;
+    bottom: 0;
+    left: 0;
+    padding: 66px var(--margin) var(--margin) var(--margin);
+    width: 336px;
+}
+
 .status-fade-in {
     animation: status-fade-in 0.4s ease-out;
+}
+
+#status {
+    border-top: var(--border);
+    padding: 12px 0;
 }
 
 @keyframes status-fade-in {
