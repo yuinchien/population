@@ -1,5 +1,5 @@
 import { resolveCssColor } from "./theme-colors.mjs";
-import { METRICS } from "./metrics.mjs";
+import { METRICS, stripFormatSuffix } from "./metrics.mjs";
 
 // Renders a section of the Lifetime story to a downloadable PNG.
 //
@@ -31,14 +31,11 @@ const CONTENT_WIDTH = CARD_WIDTH - CARD_PADDING * 2;
 
 // Canvas text can't render HTML — METRICS formatters wrap their unit in
 // <span class="suffix"> (metrics.mjs) for live-DOM spacing, which
-// ctx.fillText would otherwise draw as literal markup. These turn that back
-// into plain text: one keeps the unit (restoring the space CSS normally
-// adds), the other drops it entirely for a bare number.
+// ctx.fillText would otherwise draw as literal markup. stripFormatSuffix
+// (metrics.mjs) handles dropping the unit entirely; this one instead keeps
+// it, restoring the space CSS normally provides via that span.
 function withPlainSuffix(formatted) {
   return formatted.replace(/<span[^>]*>/g, " ").replace(/<\/span>/g, "");
-}
-function withoutSuffix(formatted) {
-  return formatted.replace(/\s*<span[^>]*>.*?<\/span>/g, "");
 }
 const COLUMN_WIDTH = (CONTENT_WIDTH - COLUMN_GAP) / 2;
 const LEFT_X = CARD_PADDING;
@@ -290,7 +287,11 @@ function drawGlobalLifeChart(ctx, chart, { x, width, top, bottom }, colors) {
     ctx.font = `500 16px ${SANS}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText(withoutSuffix(format(marker.value)), px, py - 16);
+    ctx.fillText(
+      stripFormatSuffix(format(marker.value), { keepUnit: false }),
+      px,
+      py - 16,
+    );
     ctx.font = `400 14px ${SANS}`;
     ctx.fillText(String(marker.year), px, top + height + 26);
   });

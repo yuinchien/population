@@ -4,7 +4,6 @@ import { createCountryFillGeometries } from "./country-fill-geometry.mjs";
 import { createCalloutController } from "./callout-controller.mjs";
 import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 import {
-  buildDetailStatus,
   displayGroupLabel,
   prioritizedMilestoneYears,
 } from "./status-insights.mjs";

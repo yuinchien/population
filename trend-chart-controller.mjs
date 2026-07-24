@@ -6,6 +6,7 @@ import {
 } from "./chart-math.mjs";
 import { runChartAnimation } from "./chart-animation.mjs";
 import { TREND_CHART_PADDING } from "./trend-chart.mjs";
+import { stripFormatSuffix } from "./metrics.mjs";
 
 const LINE_GROW_MS = 500;
 const Y_TICK_COUNT = 2;
@@ -145,12 +146,10 @@ export function createTrendChartController({
         y: (Number(y) + 3).toFixed(1),
         "text-anchor": "end",
       });
-      // SVG <text> can't render nested HTML — strip format()'s
-      // <span class="suffix"> wrapper (metrics.mjs) down to plain text.
+      // SVG <text> can't render nested HTML — strip format()'s suffix
+      // markup (metrics.mjs) down to plain text.
       label.textContent =
-        value === 0
-          ? "0"
-          : tickFormat(value).replace(/<span[^>]*>(.*?)<\/span>/, "$1");
+        value === 0 ? "0" : stripFormatSuffix(tickFormat(value));
       children.push(label);
     }
 

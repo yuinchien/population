@@ -13,7 +13,7 @@ import {
   createLifetimeAggregateCache,
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
-import { METRICS } from "./metrics.mjs";
+import { METRICS, stripFormatSuffix } from "./metrics.mjs";
 import {
   downloadBlob,
   renderLifetimeShareCard,
@@ -262,12 +262,11 @@ function createGlobalLifeExpectancyChart(change) {
     value.setAttribute("x", x);
     value.setAttribute("y", y - 18);
     value.setAttribute("text-anchor", marker.anchor);
-    // SVG <text> can't render nested HTML — strip format()'s
-    // <span class="suffix"> wrapper (metrics.mjs) down to a bare number.
-    value.textContent = format(marker.value).replace(
-      /\s*<span[^>]*>.*?<\/span>/,
-      "",
-    );
+    // SVG <text> can't render nested HTML — strip format()'s suffix markup
+    // (metrics.mjs) down to a bare number.
+    value.textContent = stripFormatSuffix(format(marker.value), {
+      keepUnit: false,
+    });
 
     svg.append(guide, dot, value);
   });
@@ -368,7 +367,7 @@ function createStorySection(act, index, country, projectionScenario) {
 
   const copy = document.createElement("p");
   copy.className = "lifetime-act-copy";
-  copy.textContent = act.text;
+  copy.innerHTML = act.text;
 
   const group = document.createElement("div");
   group.className = "lifetime-section-text";

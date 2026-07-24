@@ -28,6 +28,20 @@ export function formatMigrationRate(value) {
   return Number(value).toFixed(1);
 }
 
+// formatYears/formatPercent (and buildDetailColumns' tableSuffix wrapping,
+// detail-table.mjs) embed a <span class="suffix"> for live-DOM spacing —
+// renderers that can't parse HTML (SVG <text>, Canvas fillText, a
+// textContent-based tooltip) need it stripped back to plain text first.
+// `keepUnit: false` drops the unit entirely (e.g. a compact chart-marker
+// label); the default keeps it immediately adjacent to the value, matching
+// how %/‰ already attach with no space — a caller plotting a word-based
+// unit ("yrs") that wants a space inserts one itself.
+export function stripFormatSuffix(formatted, { keepUnit = true } = {}) {
+  return keepUnit
+    ? formatted.replace(/<span[^>]*>(.*?)<\/span>/g, "$1")
+    : formatted.replace(/\s*<span[^>]*>.*?<\/span>/g, "");
+}
+
 export function formatCount(value, options = {}) {
   const {
     billionsDecimals = 2,

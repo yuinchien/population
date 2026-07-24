@@ -2,6 +2,7 @@ import { displayGroupLabel } from "./status-insights.mjs";
 import {
   COUNTRY_SPARKLINE_METRIC_KEYS,
   METRICS,
+  stripFormatSuffix,
 } from "./metrics.mjs";
 import {
   computePeakYear,
@@ -763,12 +764,12 @@ export function createCountryDetailController({
         valueEl.innerHTML = format(value);
         if (value != null) {
           const overlayValue = overlayValues?.[index];
-          // dataset.tooltip is rendered via textContent (tooltip-controller.mjs),
-          // so format()'s <span class="suffix"> markup must be stripped here —
-          // valueEl.textContent already does that for the first half.
+          // dataset.tooltip is rendered via textContent (tooltip-controller.mjs)
+          // — valueEl.textContent already strips format()'s suffix markup for
+          // the first half, stripFormatSuffix does the same for the second.
           dot.dataset.tooltip =
             overlayValue != null
-              ? `${valueEl.textContent} (migration ${format(overlayValue).replace(/<[^>]+>/g, "")})`
+              ? `${valueEl.textContent} (migration ${stripFormatSuffix(format(overlayValue))})`
               : valueEl.textContent;
           const [dx, dy] = toXY(index, value);
           dotLine.setAttribute("x1", dx);
