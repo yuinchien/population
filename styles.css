@@ -1792,7 +1792,7 @@ select::picker(select) {
 /* Keep the supporting table compact so the time series remains the primary
    visual and receives most of the horizontal space. */
 .chart-view .detail-table {
-    flex: 0 0 clamp(280px, 32vw, 440px);
+    flex: 0 0 clamp(240px, 24vw, 360px);
     min-height: 0;
     grid-template-rows: auto auto 1fr;
 }

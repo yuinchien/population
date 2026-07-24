@@ -77,7 +77,7 @@ export function getAppElements(root = document) {
     chartCountryPickerSummaryFlags: root.querySelector(
       "#chartCountryPickerSummaryFlags",
     ),
-    // chartCountryPickerCancel: root.querySelector("#chartCountryPickerCancel"),
+    chartCountryPickerCancel: root.querySelector("#chartCountryPickerCancel"),
     chartProjectionScenario: root.querySelector("#chartProjectionScenario"),
     chartCountryChips: root.querySelector("#chartCountryChips"),
     chartCountrySearch: root.querySelector("#chartCountrySearch"),

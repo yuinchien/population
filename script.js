@@ -3544,9 +3544,9 @@ async function init() {
     elements.chartCountryPickerSummary.addEventListener("click", () =>
       setChartCountryPickerExpanded(true),
     );
-    // elements.chartCountryPickerCancel.addEventListener("click", () =>
-    //   setChartCountryPickerExpanded(false),
-    // );
+    elements.chartCountryPickerCancel.addEventListener("click", () =>
+      setChartCountryPickerExpanded(false),
+    );
     document.addEventListener("click", (event) => {
       // composedPath(), not contains(event.target) — selecting a suggestion
       // removes that button from the DOM (hideChartCountrySuggestions()'s
