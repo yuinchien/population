@@ -849,12 +849,12 @@ body.country-detail #colorMode {
 
 .detail-nav-item:hover,
 .detail-nav-item.active {
-    /*opacity: .5;*/
     background: color-mix(in srgb, var(--color-text) 10%, transparent);
-    /*color: var(--color-text);*/
-    /*border-left: 4px solid var(--color-text);*/
 }
 
+.search-view .detail-nav-item:hover {
+    border-radius: 8px;
+}
 /* Reuses --detail-color rather than each item's own swatch color — the
    panel already sets --detail-color to whichever group is selected, so this
    automatically stays correct without the nav needing its own copy of it. */
@@ -1893,7 +1893,7 @@ select::picker(select) {
     max-width: 1600px;
     margin: 0 auto;
     border-top: var(--border);
-    padding: calc(var(--margin)/2) var(--margin);
+    padding: calc(var(--margin)/1) var(--margin);
 }
 
 .search-country-item {
@@ -1948,7 +1948,7 @@ select::picker(select) {
 .search-category-grid {
     display: flex;
     gap: var(--margin);
-    padding: calc(var(--margin) / 2) var(--margin);
+    padding: calc(var(--margin) / 1) var(--margin);
     border-top: var(--border);
     overflow-x: scroll;
 
