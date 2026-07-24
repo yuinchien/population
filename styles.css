@@ -1577,12 +1577,35 @@ body.view-chart #calloutLayer {
 }
 
 
-.topbar {
+.controls {
     display: flex;
+    flex-direction: column;
     align-items: flex-start;
-    padding: 0 400px 0 var(--margin);
-    margin-top: var(--margin);
     gap: calc(var(--margin) / 2);
+    margin-bottom: calc(var(--margin) / 2);
+    /* .controls is a grid item of .chart-view .detail-table's single
+       implicit column (clamp(280px, 32vw, 440px), see .chart-view
+       .detail-table below) — a grid item's default min-width: auto lets its
+       content's own max-content size (all the country chips laid out end to
+       end) force that column wider than the visible table, which
+       .detail-table's own overflow-x: auto (there for the *data rows*' many
+       metric columns) then silently scrolled this row sideways along with
+       them instead of letting it wrap. min-width: 0 opts this item out of
+       that — it can now shrink to the column's real width, so
+       #chartCountryPicker's own flex-wrap actually gets a chance to wrap.
+       max-width: 100% is the same cap, belt-and-suspenders against .chip-input's own flex-basis. */
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Stretch + min-width: 0 so the chip row actually wraps within .controls'
+   width (flex-wrap: wrap, from the shared .chip-input rule) instead of
+   growing past it — .controls' own align-items: flex-start otherwise sizes
+   every child to its own content width, which for a chip list means "as
+   wide as all the chips laid out on one line". */
+#chartCountryPicker {
+    align-self: stretch;
+    min-width: 0;
 }
 
 .custom-select {
@@ -1754,13 +1777,16 @@ select::picker(select) {
     padding-right: calc(var(--margin) *2 );
 }
 .chart-card {
-    flex: 3;
+    flex: 1;
     min-height: 0;
     min-width: 0;
     display: flex;
-    padding: var(--margin);
+    gap: var(--margin);
+    padding: 80px var(--margin) var(--margin) var(--margin);
     flex-direction: row-reverse;
 }
+
+
 
 /* Keep the supporting table compact so the time series remains the primary
    visual and receives most of the horizontal space. */
@@ -3141,7 +3167,9 @@ body.info-open .menu-shim {
 
 .suffix {
     padding-left: 4px;
-    /*opacity: .4;*/
+}
+#chartMetricTabs {
+    width: 100%;
 }
 
 @media (max-width: 1160px) {
@@ -3149,9 +3177,6 @@ body.info-open .menu-shim {
         --chart-stroke-width: 1.5;
     }
 
-    .topbar {
-        padding: 0 calc(var(--button-size) * 2 + var(--margin)*2) 0 var(--margin);
-    }
     #buttonsContainer {
         bottom: 0;
         width: var(--overlay-width);
@@ -3265,14 +3290,10 @@ body.info-open .menu-shim {
         }
     }
     /* Pinned at the bottom of .chart-view (its last flex child, after
-       .chart-card takes all the remaining space) — scrolls horizontally
-       instead of wrapping, since wrapping to multiple rows on a narrow
-       screen would eat into the chart/table space above it. */
+       .chart-card takes all the remaining space) — a dropdown needs no
+       extra layout here beyond staying out of that flex-grow. */
     #chartMetricTabs {
-        display: flex;
         flex: none;
-        flex-wrap: nowrap;
-        overflow-x: auto;
     }
     .chart-card {
         /*padding: 0;*/

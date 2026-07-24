@@ -190,6 +190,98 @@
             </div>
         </section>
 
+
+        <section id="chartPanel" class="chart-view" hidden>
+
+            <div class="chart-card">
+                <div class="trend-chart-plot">
+                    <svg
+                        id="trendChart"
+                        class="trend-chart"
+                        preserveAspectRatio="none"
+                    ></svg>
+                    <svg
+                        id="radarChart"
+                        class="trend-chart radar-chart"
+                        preserveAspectRatio="none"
+                        hidden
+                    ></svg>
+                </div>
+                <div id="chartTable" class="detail-table">
+
+                    <div class="controls">
+                        <select id="chartMetricTabs" class="custom-select">
+                            <button>
+                                <div>
+                                    <selectedcontent> </selectedcontent>
+                                    <svg width="24" height="24" viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="m7 10l5 5l5-5z"/>
+                                    </svg>
+                                </div>
+                            </button>
+                        </select>
+
+                        <div id="chartCountryPicker" class="chip-input expanded">
+                            <button
+                                id="chartCountryPickerSummary"
+                                class="chip-input-summary"
+                                type="button"
+                                aria-label="Edit country list"
+                            >
+                                <span
+                                    id="chartCountryPickerSummaryFlags"
+                                    class="chip-input-summary-flags"
+                                ></span>
+                                <span class="material-symbols-outlined" aria-hidden="true"
+                                    >add</span
+                                >
+                            </button>
+                            <div id="chartCountryChips" class="chip-input-chips"></div>
+                            <input
+                                id="chartCountrySearch"
+                                class="chip-input-field"
+                                type="text"
+                                autocomplete="off"
+                                placeholder="Add country"
+                            />
+                            <!--<button
+                                id="chartCountryPickerCancel"
+                                class="chip-input-cancel"
+                                type="button"
+                                aria-label="Done editing countries"
+                            >
+                                <span class="material-symbols-outlined" aria-hidden="true"
+                                    >close</span
+                                >
+                            </button>-->
+                            <div
+                                id="chartCountrySuggestions"
+                                class="chip-suggestions no-scrollbar"
+                                hidden
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div class="detail-summary chart-insight">
+                        <div
+                            id="chartInsightCaption"
+                            class="badge"
+                        ></div>
+                        <p
+                            id="chartInsightText"
+                            class="country-summary-copy paragraph"
+                        ></p>
+                    </div>
+                    <div
+                        id="chartTableHeader"
+                        class="detail-row header monospace"
+                    ></div>
+                    <div id="chartTableRows" class="detail-rows no-scrollbar monospace"></div>
+                </div>
+            </div>
+
+        </section>
+
         <section id="lifetimeView" class="lifetime-view" hidden>
             <button
                 id="lifetimeClose"
@@ -341,99 +433,6 @@
             ></div>
         </div>
 
-        <section id="chartPanel" class="chart-view" hidden>
-            <div class="topbar">
-                <select id="selectChartContent" class="custom-select">
-                    <button>
-                        <div>
-                            <selectedcontent> </selectedcontent>
-                            <svg width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="m7 10l5 5l5-5z"/>
-                            </svg>
-                        </div>
-                    </button>
-                    <option value="country" selected="">Country</option>
-                    <option value="region">Region</option>
-                    <option value="income-group">Income group</option>
-                </select>
-
-                <div id="chartCountryPicker" class="chip-input">
-                    <button
-                        id="chartCountryPickerSummary"
-                        class="chip-input-summary"
-                        type="button"
-                        aria-label="Edit country list"
-                    >
-                        <span
-                            id="chartCountryPickerSummaryFlags"
-                            class="chip-input-summary-flags"
-                        ></span>
-                        <span class="material-symbols-outlined" aria-hidden="true"
-                            >add</span
-                        >
-                    </button>
-                    <div id="chartCountryChips" class="chip-input-chips"></div>
-                    <input
-                        id="chartCountrySearch"
-                        class="chip-input-field"
-                        type="text"
-                        autocomplete="off"
-                        placeholder="Add country"
-                    />
-                    <button
-                        id="chartCountryPickerCancel"
-                        class="chip-input-cancel"
-                        type="button"
-                        aria-label="Done editing countries"
-                    >
-                        <span class="material-symbols-outlined" aria-hidden="true"
-                            >close</span
-                        >
-                    </button>
-                    <div
-                        id="chartCountrySuggestions"
-                        class="chip-suggestions no-scrollbar"
-                        hidden
-                    ></div>
-                </div>
-
-            </div>
-
-            <div class="chart-card">
-                <div class="trend-chart-plot">
-                    <svg
-                        id="trendChart"
-                        class="trend-chart"
-                        preserveAspectRatio="none"
-                    ></svg>
-                    <svg
-                        id="radarChart"
-                        class="trend-chart radar-chart"
-                        preserveAspectRatio="none"
-                        hidden
-                    ></svg>
-                </div>
-                <div id="chartTable" class="detail-table">
-                    <div class="detail-summary chart-insight">
-                        <div
-                            id="chartInsightCaption"
-                            class="badge"
-                        ></div>
-                        <p
-                            id="chartInsightText"
-                            class="country-summary-copy paragraph"
-                        ></p>
-                    </div>
-                    <div
-                        id="chartTableHeader"
-                        class="detail-row header monospace"
-                    ></div>
-                    <div id="chartTableRows" class="detail-rows no-scrollbar monospace"></div>
-                </div>
-            </div>
-            <div id="chartMetricTabs" class="tab-group tall no-scrollbar"></div>
-
-        </section>
         <section id="infoPanel" class="detail-panel info-panel no-scrollbar" hidden>
             <div class="detail-panel-header">
                 <div class="detail-title-row">

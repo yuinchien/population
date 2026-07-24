@@ -159,11 +159,10 @@ const CHART_VIEW_ELEMENT_KEYS = [
   "radarChart",
   "chartInsightCaption",
   "chartInsightText",
-  "selectChartContent",
   "chartCountryPicker",
   "chartCountryPickerSummary",
   "chartCountryPickerSummaryFlags",
-  "chartCountryPickerCancel",
+  // "chartCountryPickerCancel",
   "chartProjectionScenario",
   "chartCountryChips",
   "chartCountrySearch",
@@ -419,8 +418,8 @@ let selectedCountry = null;
 // group detail drill-down stepped aside to open, so closeDetailPanel() can
 // restore it instead of always landing back on whichever of Globe/Map
 // viewMode already is. Set right before that mode gets closed (see
-// openCountryDetail, openChartGroupDetail, and the cluster controller's
-// onCountryClick callback below), and consumed/cleared once
+// openCountryDetail and the cluster controller's onCountryClick callback
+// below), and consumed/cleared once
 // closeDetailPanel() fully exits back to the top level.
 let detailEntryMode = null;
 let detailSort = { key: "population", direction: "desc" };
@@ -1868,82 +1867,17 @@ function chartColorFor(iso3) {
   return CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
 }
 
-// Category aggregate for Region/Income mode: population sums across the
-// group's countries (matching how the app reports group/global totals
-// everywhere else), other metrics use a simple unweighted mean (matching
-// computeMetricStats() in status-insights.mjs's own group-vs-rest
-// comparisons, rather than introducing a second, population-weighted
-// convention just for this chart).
-function groupMetricSeries(members, key) {
-  const isPopulation = key === "population";
-  return yearsData.map((_, i) => {
-    const values = members
-      .map((country) => chartSeriesFor(country, key)[i])
-      .filter((value) => value != null);
-    if (!values.length) return null;
-    const sum = values.reduce((total, value) => total + value, 0);
-    return isPopulation ? sum : sum / values.length;
-  });
-}
-
-// .detail-panel and .chart-view are both full-screen overlays — same
-// reasoning as openCountryDetail() stepping the chart aside first (and
-// same detailEntryMode bookkeeping, so closing back out restores Chart).
-// Also switches colorMode to match so the globe/map's own Region/Income
-// legend (which selectLegendItem() reads via the ambient colorMode, not a
-// parameter) opens the right group instead of misreading this label under
-// whatever mode the globe happened to be left in.
-function openChartGroupDetail(legendMode, label, color) {
-  detailEntryMode = "chart";
-  setchartPanelActive(false);
-  if (legendMode !== colorMode) setColorMode(legendMode);
-  selectLegendItem(label, color);
-}
-
-// Country mode plots one line per hand-picked country; Region/Income modes
-// plot one aggregated line per category instead, with no picking needed
-// since that list is small and fixed. Both funnel through this same item
-// shape so renderTrendChart/renderChartTable/renderChartInsight don't need
-// to know or care which one is active.
+// Chart mode is always by-country (hand-picked via chartCountryPicker) —
+// this used to also support aggregated Region/Income lines via a mode
+// select, removed since Country covered the actual use.
 function chartItems() {
-  const mode = elements.selectChartContent.value;
-  if (mode === "country") {
-    return chartCountryList().map((country) => ({
-      name: country.name,
-      label: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
-      color: chartColorFor(country.iso3),
-      series: (key) => chartSeriesFor(country, key),
-      onClick: () => openCountryDetail(country),
-    }));
-  }
-  const legendMode = mode === "income-group" ? "income" : "region";
-  // groupMetricSeries() aggregates across every member country for every
-  // year — cheap once, but .series(key) gets called many times per render
-  // (sort comparisons, ratio-bar sizing, each row's own cell) for the same
-  // (group, key) pair. Cached per chartItems() call rather than at module
-  // scope: it only needs to survive one render pass, not outlive it.
-  const seriesCache = new Map();
-  return legendEntriesFor(legendMode).map(([label, color]) => {
-    const members = countriesData.filter((country) =>
-      legendMode === "income"
-        ? country._incomeLabel === label
-        : country.region?.trim() === label,
-    );
-    const name = displayGroupLabel(label);
-    return {
-      name,
-      label: name,
-      color,
-      series: (key) => {
-        const cacheKey = `${label}:${key}`;
-        if (!seriesCache.has(cacheKey)) {
-          seriesCache.set(cacheKey, groupMetricSeries(members, key));
-        }
-        return seriesCache.get(cacheKey);
-      },
-      onClick: () => openChartGroupDetail(legendMode, label, color),
-    };
-  });
+  return chartCountryList().map((country) => ({
+    name: country.name,
+    label: convertAlpha3ToAlpha2(country.iso3) ?? country.iso3,
+    color: chartColorFor(country.iso3),
+    series: (key) => chartSeriesFor(country, key),
+    onClick: () => openCountryDetail(country),
+  }));
 }
 
 // Resolves any valid CSS <color> value (var(), color-mix(), etc.) to the
@@ -2097,19 +2031,6 @@ function setChartCountryPickerExpanded(expanded) {
   }
 }
 
-// Region/Income group modes plot aggregate trend lines per category rather
-// than per hand-picked country, so the country picker (chip list + search)
-// only makes sense — and only shows — in Country mode. chartItems() (used
-// by renderTrendChart/renderChartTable) already reads the select's current
-// value directly, so switching modes just needs a plain re-render.
-function updateChartContentMode() {
-  const isCountryMode = elements.selectChartContent.value === "country";
-  elements.chartCountryPicker.hidden = !isCountryMode;
-  if (!isCountryMode) setChartCountryPickerExpanded(false);
-  renderTrendChart({ animate: true });
-  renderChartTable();
-}
-
 function selectChartCountrySuggestion(iso3) {
   addChartCountry(iso3);
   elements.chartCountrySearch.value = "";
@@ -2180,9 +2101,7 @@ function setChartMetric(key) {
     return;
   }
   chartMetricKey = key;
-  elements.chartMetricTabs.querySelectorAll("button").forEach((btn) => {
-    btn.classList.toggle("active", btn.dataset.key === key);
-  });
+  elements.chartMetricTabs.value = key;
   // updateProjectionScenarioVisibility();
   renderTrendChart();
   renderChartTable();
@@ -2195,19 +2114,23 @@ function setChartMetric(key) {
 // }
 
 function renderChartMetricTabs() {
+  // The customizable-select trigger <button> (index.html) has to stay the
+  // first child — replaceChildren would otherwise drop it along with the
+  // stale <option>s it's clearing out.
+  const triggerButton = elements.chartMetricTabs.querySelector("button");
   elements.chartMetricTabs.replaceChildren(
+    triggerButton,
     // The radar tab (see renderRadarChart/CHART_RADAR_KEY) is implemented
     // but temporarily withheld from this list pending a visual pass —
     // switch this back to [...CHART_METRIC_KEYS, CHART_RADAR_KEY] once
     // it's ready.
     ...CHART_METRIC_KEYS.map((key) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.dataset.key = key;
-      btn.textContent =
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent =
         key === CHART_RADAR_KEY ? "Radar chart" : METRICS[key].label;
-      btn.classList.toggle("active", key === chartMetricKey);
-      return btn;
+      option.selected = key === chartMetricKey;
+      return option;
     }),
   );
 }
@@ -2935,6 +2858,7 @@ function renderChartTable() {
     onRowClick: (item) => item.onClick(),
     colorFor: (item) => item.color,
     barMode: "none",
+    compact: true,
   });
 }
 
@@ -3552,11 +3476,8 @@ async function init() {
     });
     renderChartMetricTabs();
     renderChartCountryChips();
-    updateChartContentMode();
-    elements.chartMetricTabs.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-key]");
-      if (!button || !elements.chartMetricTabs.contains(button)) return;
-      setChartMetric(button.dataset.key);
+    elements.chartMetricTabs.addEventListener("change", () => {
+      setChartMetric(elements.chartMetricTabs.value);
     });
     elements.chartCountryChips.addEventListener("click", (event) => {
       const button = event.target.closest(".chip-remove[data-iso3]");
@@ -3570,10 +3491,6 @@ async function init() {
       }
       selectChartCountrySuggestion(button.dataset.iso3);
     });
-    elements.selectChartContent.addEventListener(
-      "change",
-      updateChartContentMode,
-    );
     elements.chartCountrySearch.addEventListener(
       "input",
       renderChartCountrySuggestions,
@@ -3623,9 +3540,9 @@ async function init() {
     elements.chartCountryPickerSummary.addEventListener("click", () =>
       setChartCountryPickerExpanded(true),
     );
-    elements.chartCountryPickerCancel.addEventListener("click", () =>
-      setChartCountryPickerExpanded(false),
-    );
+    // elements.chartCountryPickerCancel.addEventListener("click", () =>
+    //   setChartCountryPickerExpanded(false),
+    // );
     document.addEventListener("click", (event) => {
       // composedPath(), not contains(event.target) — selecting a suggestion
       // removes that button from the DOM (hideChartCountrySuggestions()'s

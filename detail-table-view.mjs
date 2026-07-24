@@ -36,9 +36,19 @@ function ratioValueForBar(columns, barMetric, barValue) {
 // count/selection — a single metric, a hand-picked subset, or the full
 // list — since it's derived from how many columns there are, not from
 // which metrics they happen to be.
-function gridTemplateColumnsFor(columnCount) {
+//
+// `compact` shrinks those per-column minimums for the chart table, which
+// lives in .chart-view .detail-table's narrow clamp(280px, 32vw, 440px)
+// sidebar column rather than the group-detail panel's full-width table —
+// the normal 240px/180px minimums alone exceed that column's own minimum
+// width even at just 2 columns (Country + one metric), forcing the whole
+// column (including the country-picker chips above it, which share the
+// same CSS Grid track) into perpetual horizontal overflow.
+function gridTemplateColumnsFor(columnCount, { compact = false } = {}) {
   const metricColumnCount = Math.max(0, columnCount - 1);
-  return `minmax(240px, 1fr) repeat(${metricColumnCount}, minmax(180px, 0.8fr))`;
+  const nameMin = compact ? "120px" : "240px";
+  const metricMin = compact ? "90px" : "180px";
+  return `minmax(${nameMin}, 1fr) repeat(${metricColumnCount}, minmax(${metricMin}, 0.8fr))`;
 }
 
 // Shared by the group-detail table and the chart table: builds sortable
@@ -61,8 +71,11 @@ export function renderSortableTable({
   barMode = "country-cell",
   barMetric = "population",
   barValue,
+  compact = false,
 }) {
-  const gridTemplateColumns = gridTemplateColumnsFor(columns.length);
+  const gridTemplateColumns = gridTemplateColumnsFor(columns.length, {
+    compact,
+  });
   headerEl.style.gridTemplateColumns = gridTemplateColumns;
   headerEl.replaceChildren(
     ...columns.map((column) => {
