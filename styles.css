@@ -1236,25 +1236,36 @@ body.country-detail #colorMode {
 
 
 
-.pyramid-bar {
+/* One per age band, sized to the male+female total — positioned against
+   .country-pyramid exactly like .pyramid-bar used to be. Its two children
+   (.pyramid-bar) no longer position independently against that same
+   grandparent: male is height-from-bottom, female is bottom-from-top with
+   no explicit height of its own, so its edge is always wherever male's top
+   edge is, computed in the same layout pass instead of as two separately
+   rounded/transitioned percentages of the pyramid view. That's what used to
+   leave a hairline gap between them mid-scrub. */
+.pyramid-band {
     position: absolute;
-
-    border-radius: 1px;
-    /* Columns change top/height as the year scrubs; the transition animates
-       that morph. */
     transition: left 0.25s ease, top 0.25s ease, width 0.25s ease,
         height 0.25s ease;
 }
 
+.pyramid-bar {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    transition: height 0.25s ease, bottom 0.25s ease;
+}
+
 .pyramid-bar.male {
+    bottom: 0;
     /*opacity: 0.7;*/
     border: 1px solid var(--detail-color);
 }
 
 .pyramid-bar.female {
+    top: 0;
     background: var(--detail-color);
-    /*opacity: .9;*/
-    /*border-radius: 20px;*/
 }
 
 /* 65+ bands get a fixed warm accent (same across every country) so the

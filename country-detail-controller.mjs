@@ -63,6 +63,31 @@ function setPyramidBarStyle(el, rect) {
   el.style.height = `${(rect.height / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
 }
 
+// The .pyramid-band wrapper's own rect: the union of its male/female
+// children, in the same COUNTRY_PYRAMID_VIEW pixel space setPyramidBarStyle
+// expects.
+function pyramidBandRectFor(bar) {
+  return {
+    x: bar.male.x,
+    y: bar.female.y,
+    width: bar.male.width,
+    height: bar.male.height + bar.female.height,
+  };
+}
+
+// Splits a .pyramid-band between its male/female children with a single
+// shared percentage rather than two independently computed ones: male gets
+// an explicit height from the bottom, female gets top:0 (in CSS) plus this
+// same percentage as its `bottom`, so its edge is defined as "wherever
+// male's top edge is" instead of its own separately rounded height — no
+// seam for the two to drift apart from during the scrub transition.
+function setPyramidSplitStyle(maleEl, femaleEl, maleRect, femaleRect) {
+  const total = maleRect.height + femaleRect.height;
+  const malePercent = total > 0 ? (maleRect.height / total) * 100 : 0;
+  maleEl.style.height = `${malePercent}%`;
+  femaleEl.style.bottom = `${malePercent}%`;
+}
+
 function pyramidGeometryFor(shares, ageGroups, maxShare) {
   return buildPyramidGeometry({
     ...shares,
@@ -695,9 +720,9 @@ export function createCountryDetailController({
     updatePyramidStage(selectedCountry, year);
     const geo = pyramidGeometryFor(shares, layout.ageGroups, layout.maxShare);
     geo.bars.forEach((bar, i) => {
-      const { maleBar, femaleBar } = layout.bars[i];
-      setPyramidBarStyle(maleBar, bar.male);
-      setPyramidBarStyle(femaleBar, bar.female);
+      const { bandEl, maleBar, femaleBar } = layout.bars[i];
+      setPyramidBarStyle(bandEl, pyramidBandRectFor(bar));
+      setPyramidSplitStyle(maleBar, femaleBar, bar.male, bar.female);
     });
   }
 
@@ -723,11 +748,13 @@ export function createCountryDetailController({
     const children = [];
     const bars = geo.bars.map((bar) => {
       const cls = `pyramid-bar${bar.isOld ? " is-old" : ""}`;
+      const bandEl = divEl("pyramid-band");
       const maleBar = divEl(`${cls} male`);
       const femaleBar = divEl(`${cls} female`);
-      setPyramidBarStyle(maleBar, bar.male);
-      setPyramidBarStyle(femaleBar, bar.female);
-      children.push(maleBar, femaleBar);
+      bandEl.append(maleBar, femaleBar);
+      setPyramidBarStyle(bandEl, pyramidBandRectFor(bar));
+      setPyramidSplitStyle(maleBar, femaleBar, bar.male, bar.female);
+      children.push(bandEl);
       if (ageBandStart(bar.label) % COUNTRY_PYRAMID_AGE_LABEL_STEP === 0) {
         const label = divEl("pyramid-age-label", ageBandStart(bar.label));
         label.style.left =
@@ -736,7 +763,7 @@ export function createCountryDetailController({
           `${(bar.ageLabel.y / COUNTRY_PYRAMID_VIEW.height) * 100}%`;
         children.push(label);
       }
-      return { maleBar, femaleBar };
+      return { bandEl, maleBar, femaleBar };
     });
 
     pyramid.replaceChildren(...children);
