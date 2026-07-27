@@ -153,15 +153,8 @@ canvas.hovering-dot {
 
 .glass {
     background: var(--color-scrim);
-    /*border-left: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);*/
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
-}
-
-.paragraph {
-    /*font-family: var(--font-sans);*/
-    /*font-size: 1.1rem;
-    line-height: 1.5;*/
 }
 
 .footer {
@@ -1274,31 +1267,37 @@ body.country-detail #colorMode {
     border: 1px solid var(--color-text);
 }
 
-/* Info icon in the card header; hovering/focusing it reveals a tooltip with
-   the male/female legend and the aging-society thresholds. */
-.pyramid-info {
+/* Info icon in a card header; hovering/focusing it reveals a tooltip.
+   Shared by #countryPyramidCard's legend/thresholds tooltip (hardcoded
+   markup, index.html) and any sparkline card built in JS that wants one
+   (currently just Fertility rate — see buildSparklineInfo(),
+   country-detail-controller.mjs). */
+.sparkline-info {
     position: relative;
     margin-left: auto;
     display: inline-flex;
     align-items: center;
 }
-.pyramid-info-icon {
+.sparkline-info-icon {
     font-size: 18px;
     color: var(--color-subtle);
     cursor: help;
 }
-.pyramid-info:hover .pyramid-info-icon,
-.pyramid-info:focus-within .pyramid-info-icon {
+.sparkline-info:hover .sparkline-info-icon,
+.sparkline-info:focus-within .sparkline-info-icon {
     color: var(--color-text);
 }
-.pyramid-info-tooltip {
+.sparkline-info-tooltip {
     position: absolute;
+    font-size: 0.9rem;
+    line-height: 1.4;
     top: calc(100% + 6px);
     right: 0;
     z-index: var(--z-tooltip);
     width: 240px;
     padding: 12px;
     border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--color-text) 12%, transparent);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1307,10 +1306,15 @@ body.country-detail #colorMode {
     transition: opacity 0.12s ease;
     pointer-events: none;
 }
-.pyramid-info:hover .pyramid-info-tooltip,
-.pyramid-info:focus-within .pyramid-info-tooltip {
+.sparkline-info:hover .sparkline-info-tooltip,
+.sparkline-info:focus-within .sparkline-info-tooltip {
     opacity: 1;
     visibility: visible;
+}
+.sparkline-info-tooltip p {
+    margin: 0;
+    color: var(--color-muted);
+    font-weight: 400;
 }
 
 .pyramid-sex-legend {

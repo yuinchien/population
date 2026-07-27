@@ -205,6 +205,29 @@ export function createCountryDetailController({
     );
   }
 
+  // Same .sparkline-info hover/focus-visible icon + tooltip that
+  // #countryPyramidCard's own legend/thresholds tooltip uses (hardcoded
+  // markup, index.html) — built here in JS instead since this one needs to
+  // vary per metric.
+  function buildSparklineInfo({ label, text }) {
+    const wrap = document.createElement("div");
+    wrap.className = "sparkline-info";
+    const icon = document.createElement("span");
+    icon.className = "material-symbols-outlined sparkline-info-icon";
+    icon.tabIndex = 0;
+    icon.setAttribute("role", "button");
+    icon.setAttribute("aria-label", label);
+    icon.textContent = "info";
+    const tooltip = document.createElement("div");
+    tooltip.className = "sparkline-info-tooltip glass";
+    tooltip.setAttribute("role", "tooltip");
+    const p = document.createElement("p");
+    p.textContent = text;
+    tooltip.append(p);
+    wrap.append(icon, tooltip);
+    return wrap;
+  }
+
   function buildSparklineCard(key) {
     const definition = METRICS[key];
     const svg = svgEl("svg", {
@@ -224,6 +247,16 @@ export function createCountryDetailController({
     const value = document.createElement("div");
     value.className = "sparkline-value";
     titleCaption.append(label, value);
+    // Only fertility has a benchmark worth explaining inline — the other
+    // sparkline cards' labels are already self-explanatory.
+    if (key === "fertility") {
+      titleCaption.append(
+        buildSparklineInfo({
+          label: `About the ${definition.referenceValue} replacement rate`,
+          text: `The ${definition.referenceValue} replacement fertility rate is the average number of children per woman needed for a generation to replace itself without migration.`,
+        }),
+      );
+    }
     card.append(titleCaption, svg);
 
     return { card, svg, dotLine, dot, valueEl: value };
