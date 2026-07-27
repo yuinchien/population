@@ -1099,7 +1099,7 @@ body.country-detail #colorMode {
 
 .country-chart-bar {
     stroke: var(--detail-color);
-    stroke-width: calc(var(--chart-stroke-width) / 2);
+    stroke-width: calc(var(--chart-stroke-width) / 1.2);
     opacity: 0.7;
 }
 
