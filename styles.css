@@ -30,6 +30,7 @@
     --font-serif: "Young Serif", serif;
     --letterspacing-mono: -0.02em;
     --overlay-width: 360px;
+    --sidebar-width: 288px;
 
     --trend-line-width: 4;
     --dash-size: 8px;
@@ -158,9 +159,9 @@ canvas.hovering-dot {
 }
 
 .paragraph {
-    font-family: var(--font-sans);
-    font-size: 1.1rem;
-    line-height: 1.5;
+    /*font-family: var(--font-sans);*/
+    /*font-size: 1.1rem;
+    line-height: 1.5;*/
 }
 
 .footer {
@@ -320,7 +321,7 @@ button.milestone-nav-btn {
     bottom: 0;
     left: 0;
     padding: 66px var(--margin) var(--margin) var(--margin);
-    width: 336px;
+    width: var(--sidebar-width);
 }
 
 .status-fade-in {
@@ -542,7 +543,7 @@ body.country-detail #colorMode {
     font: inherit;
     text-align: left;
     cursor: pointer;
-    padding: 3px 0;
+    padding: 2px 0;
 }
 
 .legend-item:hover,
@@ -1052,7 +1053,7 @@ body.country-detail #colorMode {
         border: none;
         background: none;
         height: var(--button-size);
-        padding: 0 12px;
+        padding: 0 20px;
         opacity: .5;
         &.active {
             opacity: 1;
@@ -3081,6 +3082,7 @@ body.detail #calloutLayer {
     flex-direction: column;
     padding: var(--margin);
     z-index: var(--z-panel);
+    width: var(--sidebar-width);
 }
 
 .menu-toggle {
