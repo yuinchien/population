@@ -2303,8 +2303,8 @@ function renderRadarChart() {
   }
 
   // A compact year scrubber along the top edge — the only way to change
-  // year while this tab is active, since #timelineContainer stays hidden
-  // for the whole chart view and every polygon's shape (unlike the trend
+  // year while this tab is active, since .timeline stays hidden for the
+  // whole chart view and every polygon's shape (unlike the trend
   // chart's lines) is itself year-dependent. Mirrors renderTrendChart's own
   // marker: cheap live-drag preview that only moves the pill and
   // live-updates the table, committing the actual polygons through

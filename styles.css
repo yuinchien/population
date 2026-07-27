@@ -1079,13 +1079,6 @@ body.country-detail #colorMode {
         }
     }
 
-    &.tall button {
-        height: 56px;
-        padding: 0 var(--margin);
-        &.active:after {
-            height: 2px;
-        }
-    }
 }
 
 #countrySummary,
@@ -1634,10 +1627,6 @@ body.view-chart #calloutLayer {
     display: none;
   }
 
-  &:open::picker-icon {
-    rotate: 180deg;
-  }
-
   /* set the off stage styles */
   &:not(:open)::picker(select) {
     opacity: 0;
@@ -1676,11 +1665,18 @@ body.view-chart #calloutLayer {
         text-overflow: ellipsis;
         transform: translateY(1px);
     }
+    svg {
+        transition: all .2s ease;
+    }
+  }
+
+  &:open > button svg {
+      rotate: 180deg;
   }
 
   min-height: 32px;
   min-width: 180px;
-  padding: 8px 4px 8px 12px;
+  padding: 8px 8px 8px 12px;
   border: none;
   border-radius: 8px;
   color: var(--color-text);
@@ -2858,7 +2854,6 @@ svg {
     border: none;
     background: var(--color-surface);
     flex-shrink: 1;
-    /*max-width: 800px;*/
 }
 
 /* Collapsed (default): only the summary pill shows. Everything involved in
