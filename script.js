@@ -156,8 +156,6 @@ const CHART_VIEW_ELEMENT_KEYS = [
   "chartMetricTabs",
   "trendChart",
   "radarChart",
-  "chartInsightCaption",
-  "chartInsightText",
   "chartCountryPicker",
   "chartCountryPickerSummary",
   "chartCountryPickerSummaryFlags",
@@ -2810,22 +2808,6 @@ function setChartTableSort(key) {
   renderChartTable();
 }
 
-// What each metric measures and, where it has one, the key benchmark value
-// called out as a reference line on the chart (see CHART_BENCHMARK_LINES).
-// Static per metric — the table below already covers the selected
-// countries' actual numbers, so this teaches the metric itself instead of
-// repeating them.
-const CHART_METRIC_INSIGHTS = {
-  population: "Population size drives a country's economic scale, infrastructure needs, and geopolitical weight — but the raw number says little without its growth trajectory and age structure alongside it.",
-  populationGrowth: "Population growth rate measures how fast a population is expanding or shrinking each year. 0% is the natural threshold: above it, the population is still growing; below it, it's already shrinking (before accounting for migration).",
-  fertility: "The replacement rate is the average number of children a woman needs to have to keep the population size stable across generations. This benchmark is 2.1 children per woman in developed countries, higher where child mortality is greater.",
-  lifeExpectancy: "Life expectancy summarizes a population's overall health, nutrition, and access to care. The UN's Human Development Index treats 75 years and above as a high-development benchmark, and under 70 years as low.",
-  medianAge: "Median age splits a population exactly in half by age — as many people younger as older. A rising median age signals an aging society with a shrinking future workforce.",
-  ageDependencyRatio: "The age dependency ratio counts children and seniors per 100 working-age adults — how many dependents each worker effectively supports. Above 70 is considered a high dependency burden; below 45 is low.",
-  netMigrationRate: "Net migration rate is the balance of people moving in versus out, per 1,000 residents. 0 is the tipping point: positive means more arrivals than departures, negative means the reverse.",
-  radar: "This radar chart plots five metrics as spokes around a wheel — population growth, fertility, migration, life expectancy, and dependency ratio — so each country or region's overall demographic shape can be compared at a glance.",
-};
-
 function capitalizeFirstLetter(str) {
   if (!str) return ""; // Handle empty strings safely
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -2837,18 +2819,11 @@ function badgeLabel() {
     : `${capitalizeFirstLetter(projectionData.scenario())} Projection`;
 }
 
-function renderChartInsight() {
-  elements.chartInsightCaption.textContent = badgeLabel();
-  elements.chartInsightText.textContent =
-    CHART_METRIC_INSIGHTS[chartMetricKey] ?? "";
-}
-
 // The same sortable table component the group view uses, reduced here to
 // country, population, and the active chart metric.
 function renderChartTable() {
   if (!elements.chartTableRows) return;
   const items = chartItems();
-  renderChartInsight();
   const columns = chartTableColumns();
   if (!columns.some((column) => column.key === chartTableSort.key)) {
     // Used to always fall back to "population" specifically, which stopped
