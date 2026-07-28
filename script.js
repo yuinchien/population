@@ -2663,6 +2663,229 @@ function updateTransition() {
   }
 }
 
+// The following bind*Events() functions each wire up one cohesive area of
+// the UI (year slider, color mode, legend, ...) — split out of init() so
+// that function stays a readable top-to-bottom sequence of named steps
+// instead of one flat run of ~30 addEventListener calls. Each is called
+// exactly once, from init(), in the same order this wiring always ran in.
+
+function bindYearSliderEvents({ minYear, maxYear, defaultYear }) {
+  elements.yearSlider.min = minYear;
+  elements.yearSlider.max = maxYear;
+  elements.yearSlider.step = 1;
+  elements.yearSlider.value = defaultYear;
+  // elements.yearControl.hidden = false;
+  // "input" fires continuously while dragging — kept cheap (thumb/fill
+  // tracking plus the year figure itself, so there's still feedback on
+  // what year you'd land on) so the slider stays responsive. The actual
+  // content update (dot repositioning, status line, metrics, detail
+  // panel, callouts) is real work, so it's deferred to "change", which
+  // only fires once the drag is released (or after a keyboard step),
+  // instead of re-running on every intermediate value.
+  elements.yearSlider.addEventListener("input", () => {
+    updateSliderProgress();
+    updateYearLabels(Number(elements.yearSlider.value));
+    // Cluster particles are cheap to reposition (no dot-buffer rewrite
+    // like the 3D scene needs), so — unlike the globe/map content below —
+    // they get to move live during the drag itself rather than waiting
+    // for "change". The chapter caption rides along too (it's cheap: a
+    // no-op unless the drag actually crossed into a new period) — without
+    // it, dragging from one end of the timeline to the other would show
+    // "The Postwar Boom" the entire time and only jump to the right
+    // chapter once the drag is released, well after the particles
+    // themselves had already moved on.
+    if (appState.clusterActive) {
+      const year = Number(elements.yearSlider.value);
+      clusterController.setYear(year);
+      applyClusterStatus(year);
+    }
+  });
+  elements.yearSlider.addEventListener("change", () => {
+    applyYear(Number(elements.yearSlider.value));
+  });
+  // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
+  // goToYear() itself only dispatches "input"/"change" — using those to
+  // cancel would make the tour immediately cancel its own steps.
+  elements.yearSlider.addEventListener("pointerdown", tourController.stop);
+  elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
+}
+
+function bindColorModeEvents() {
+  elements.colorMode.hidden = false;
+  elements.colorMode.querySelectorAll("button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (appState.clusterActive) {
+        setClusterColorMode(btn.dataset.mode);
+      } else {
+        setColorMode(btn.dataset.mode);
+      }
+    });
+  });
+}
+
+function bindLegendEvents() {
+  elements.legend.addEventListener("click", (event) => {
+    const item = event.target.closest(".legend-item[data-label]");
+    if (!item || !elements.legend.contains(item)) return;
+    // Remembered (see appState.detailEntryMode) so closing the detail panel
+    // back out restores Cluster instead of landing on whichever of
+    // Globe/Map is underneath.
+    if (appState.clusterActive) {
+      appState.detailEntryMode = "cluster";
+      setClusterActive(false);
+    }
+    selectLegendItem(
+      item.dataset.label,
+      item.dataset.color,
+      item.dataset.mode,
+    );
+  });
+}
+
+function bindDetailNavEvents() {
+  elements.detailNav?.addEventListener("click", (event) => {
+    const item = event.target.closest(".detail-nav-item[data-key]");
+    if (!item || !elements.detailNav.contains(item)) return;
+    const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
+    if (mode === "region" || mode === "income") {
+      selectLegendItem(label, color, mode);
+    } else {
+      selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
+    }
+  });
+}
+
+function bindViewRouter() {
+  elements.viewMode.hidden = false;
+  syncViewModeButtons(appState.viewMode);
+  const lifetimeViewLifecycle = {
+    name: "lifetime",
+    isActive: () => lifetimeRequestedActive,
+    activate: (options) => setLifetimeActive(true, options),
+    deactivate: (options) => setLifetimeActive(false, options),
+  };
+  const viewRouter = createViewRouter({
+    lifecycles: [
+      searchViewLifecycle,
+      chartViewLifecycle,
+      clusterViewLifecycle,
+      lifetimeViewLifecycle,
+    ],
+    setBaseView: setViewMode,
+    closeMenu: () => {
+      document.body.classList.remove("menu-open");
+      elements.menuToggle.setAttribute("aria-expanded", "false");
+    },
+  });
+  viewRouter.bind(elements.viewMode);
+}
+
+function bindChartControlsEvents() {
+  assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
+  elements.chartProjectionScenario.value = projectionData.scenario();
+  // updateProjectionScenarioVisibility();
+  elements.chartProjectionScenario.addEventListener("change", () => {
+    const scenario = elements.chartProjectionScenario.value;
+    setProjectionScenario(scenario);
+  });
+  chartController.bindEvents();
+  chartController.renderMetricTabs();
+  chartController.renderCountryChips();
+}
+
+function bindSearchViewEvents() {
+  // Search view: full list + single-select chip search bar.
+  elements.searchCountryGrid.addEventListener("click", (event) => {
+    const item = event.target.closest(".search-country-item[data-iso3]");
+    if (!item || !elements.searchCountryGrid.contains(item)) return;
+    selectSearchCountry(item.dataset.iso3);
+  });
+  elements.searchCategoryGrid?.addEventListener("click", (event) => {
+    const item = event.target.closest(".detail-nav-item[data-key]");
+    if (!item || !elements.searchCategoryGrid.contains(item)) return;
+    const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
+    if (mode === "region" || mode === "income") {
+      appState.detailEntryMode = "search";
+      selectLegendItem(label, color, mode);
+    } else {
+      selectSearchCategory(mode, key, label, color, sortKey, sortDirection);
+    }
+  });
+  elements.searchCountryChips.addEventListener("click", (event) => {
+    const button = event.target.closest(".chip-remove[data-iso3]");
+    if (!button || !elements.searchCountryChips.contains(button)) return;
+    clearSearchCountry();
+  });
+  searchCountryCombobox = createCountryCombobox({
+    input: elements.searchCountryInput,
+    list: elements.searchCountrySuggestions,
+    container: elements.searchCountryPicker,
+    getCandidates: (query) =>
+      query
+        ? matchCountries(query, {
+            countries: countriesData,
+            convertCode: convertAlpha3ToAlpha2,
+            limit: SEARCH_SUGGESTION_LIMIT,
+          })
+        : getRecentCountries(),
+    onSelect: (country) => selectSearchCountry(country.iso3),
+    flagUrl: flagIconUrl,
+    preloadFlags: preloadFlagIcons,
+    renderPrefix: (query) => {
+      if (query) return null;
+      const label = document.createElement("div");
+      label.className = "chip-suggestions-label";
+      label.textContent = "Recently viewed";
+      return label;
+    },
+  });
+}
+
+function bindPanelCloseEvents() {
+  elements.detailClose.addEventListener("click", closeDetailPanel);
+  elements.countryClose.addEventListener("click", closeCountryDetail);
+  elements.infoButton.addEventListener("click", openInfoPanel);
+  elements.infoClose.addEventListener("click", closeInfoPanel);
+  // elements.detailBack.addEventListener("click", () => {
+  //   if (appState.selectedCountry) {
+  //     closeCountryDetail();
+  //   } else {
+  //     closeDetailPanel();
+  //   }
+  // });
+}
+
+function bindMilestoneEvents() {
+  elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
+  elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
+  elements.milestoneTour.addEventListener("click", tourController.toggle);
+  // #exploreMilestones' markup is gone along with the old #milestoneRow —
+  // guarded the same way as its .hidden toggle above, rather than
+  // assuming it won't come back.
+  elements.exploreMilestones?.addEventListener("click", tourController.toggle);
+}
+
+function bindMenuEvents() {
+  elements.menuToggle.addEventListener("click", () => {
+    const isOpen = document.body.classList.toggle("menu-open");
+    elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
+  });
+  elements.menuShim.addEventListener("click", () => {
+    document.body.classList.remove("menu-open");
+    elements.menuToggle.setAttribute("aria-expanded", "false");
+  });
+}
+
+function bindThemeEvents() {
+  updateThemeToggleUI();
+  elements.themeToggle?.addEventListener("click", () => {
+    applyTheme("dark");
+  });
+  elements.themeToggleLight?.addEventListener("click", () => {
+    applyTheme("light");
+  });
+}
+
 async function init() {
   // Captured before anything else runs — applyYear() and friends call
   // syncUrlFromState() as they go, which would otherwise overwrite the
@@ -2710,195 +2933,19 @@ async function init() {
     });
     const defaultYear =
       defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
-    elements.yearSlider.min = minYear;
-    elements.yearSlider.max = maxYear;
-    elements.yearSlider.step = 1;
-    elements.yearSlider.value = defaultYear;
-    // elements.yearControl.hidden = false;
-    // "input" fires continuously while dragging — kept cheap (thumb/fill
-    // tracking plus the year figure itself, so there's still feedback on
-    // what year you'd land on) so the slider stays responsive. The actual
-    // content update (dot repositioning, status line, metrics, detail
-    // panel, callouts) is real work, so it's deferred to "change", which
-    // only fires once the drag is released (or after a keyboard step),
-    // instead of re-running on every intermediate value.
-    elements.yearSlider.addEventListener("input", () => {
-      updateSliderProgress();
-      updateYearLabels(Number(elements.yearSlider.value));
-      // Cluster particles are cheap to reposition (no dot-buffer rewrite
-      // like the 3D scene needs), so — unlike the globe/map content below —
-      // they get to move live during the drag itself rather than waiting
-      // for "change". The chapter caption rides along too (it's cheap: a
-      // no-op unless the drag actually crossed into a new period) — without
-      // it, dragging from one end of the timeline to the other would show
-      // "The Postwar Boom" the entire time and only jump to the right
-      // chapter once the drag is released, well after the particles
-      // themselves had already moved on.
-      if (appState.clusterActive) {
-        const year = Number(elements.yearSlider.value);
-        clusterController.setYear(year);
-        applyClusterStatus(year);
-      }
-    });
-    elements.yearSlider.addEventListener("change", () => {
-      applyYear(Number(elements.yearSlider.value));
-    });
-    // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
-    // goToYear() itself only dispatches "input"/"change" — using those to
-    // cancel would make the tour immediately cancel its own steps.
-    elements.yearSlider.addEventListener("pointerdown", tourController.stop);
-    elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
 
-    elements.colorMode.hidden = false;
-    elements.colorMode.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (appState.clusterActive) {
-          setClusterColorMode(btn.dataset.mode);
-        } else {
-          setColorMode(btn.dataset.mode);
-        }
-      });
-    });
-    elements.legend.addEventListener("click", (event) => {
-      const item = event.target.closest(".legend-item[data-label]");
-      if (!item || !elements.legend.contains(item)) return;
-      // Remembered (see appState.detailEntryMode) so closing the detail panel
-      // back out restores Cluster instead of landing on whichever of
-      // Globe/Map is underneath.
-      if (appState.clusterActive) {
-        appState.detailEntryMode = "cluster";
-        setClusterActive(false);
-      }
-      selectLegendItem(
-        item.dataset.label,
-        item.dataset.color,
-        item.dataset.mode,
-      );
-    });
-    elements.detailNav?.addEventListener("click", (event) => {
-      const item = event.target.closest(".detail-nav-item[data-key]");
-      if (!item || !elements.detailNav.contains(item)) return;
-      const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
-      if (mode === "region" || mode === "income") {
-        selectLegendItem(label, color, mode);
-      } else {
-        selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
-      }
-    });
+    bindYearSliderEvents({ minYear, maxYear, defaultYear });
+    bindColorModeEvents();
+    bindLegendEvents();
+    bindDetailNavEvents();
+    bindViewRouter();
+    bindChartControlsEvents();
+    bindSearchViewEvents();
+    bindPanelCloseEvents();
+    bindMilestoneEvents();
+    bindMenuEvents();
+    bindThemeEvents();
 
-    elements.viewMode.hidden = false;
-    syncViewModeButtons(appState.viewMode);
-    const lifetimeViewLifecycle = {
-      name: "lifetime",
-      isActive: () => lifetimeRequestedActive,
-      activate: (options) => setLifetimeActive(true, options),
-      deactivate: (options) => setLifetimeActive(false, options),
-    };
-    const viewRouter = createViewRouter({
-      lifecycles: [
-        searchViewLifecycle,
-        chartViewLifecycle,
-        clusterViewLifecycle,
-        lifetimeViewLifecycle,
-      ],
-      setBaseView: setViewMode,
-      closeMenu: () => {
-        document.body.classList.remove("menu-open");
-        elements.menuToggle.setAttribute("aria-expanded", "false");
-      },
-    });
-    viewRouter.bind(elements.viewMode);
-
-    assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
-    elements.chartProjectionScenario.value = projectionData.scenario();
-    // updateProjectionScenarioVisibility();
-    elements.chartProjectionScenario.addEventListener("change", () => {
-      const scenario = elements.chartProjectionScenario.value;
-      setProjectionScenario(scenario);
-    });
-    chartController.bindEvents();
-    chartController.renderMetricTabs();
-    chartController.renderCountryChips();
-
-    // Search view: full list + single-select chip search bar.
-    elements.searchCountryGrid.addEventListener("click", (event) => {
-      const item = event.target.closest(".search-country-item[data-iso3]");
-      if (!item || !elements.searchCountryGrid.contains(item)) return;
-      selectSearchCountry(item.dataset.iso3);
-    });
-    elements.searchCategoryGrid?.addEventListener("click", (event) => {
-      const item = event.target.closest(".detail-nav-item[data-key]");
-      if (!item || !elements.searchCategoryGrid.contains(item)) return;
-      const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
-      if (mode === "region" || mode === "income") {
-        appState.detailEntryMode = "search";
-        selectLegendItem(label, color, mode);
-      } else {
-        selectSearchCategory(mode, key, label, color, sortKey, sortDirection);
-      }
-    });
-    elements.searchCountryChips.addEventListener("click", (event) => {
-      const button = event.target.closest(".chip-remove[data-iso3]");
-      if (!button || !elements.searchCountryChips.contains(button)) return;
-      clearSearchCountry();
-    });
-    searchCountryCombobox = createCountryCombobox({
-      input: elements.searchCountryInput,
-      list: elements.searchCountrySuggestions,
-      container: elements.searchCountryPicker,
-      getCandidates: (query) =>
-        query
-          ? matchCountries(query, {
-              countries: countriesData,
-              convertCode: convertAlpha3ToAlpha2,
-              limit: SEARCH_SUGGESTION_LIMIT,
-            })
-          : getRecentCountries(),
-      onSelect: (country) => selectSearchCountry(country.iso3),
-      flagUrl: flagIconUrl,
-      preloadFlags: preloadFlagIcons,
-      renderPrefix: (query) => {
-        if (query) return null;
-        const label = document.createElement("div");
-        label.className = "chip-suggestions-label";
-        label.textContent = "Recently viewed";
-        return label;
-      },
-    });
-
-    elements.detailClose.addEventListener("click", closeDetailPanel);
-    elements.countryClose.addEventListener("click", closeCountryDetail);
-    elements.infoButton.addEventListener("click", openInfoPanel);
-    elements.infoClose.addEventListener("click", closeInfoPanel);
-    // elements.detailBack.addEventListener("click", () => {
-    //   if (appState.selectedCountry) {
-    //     closeCountryDetail();
-    //   } else {
-    //     closeDetailPanel();
-    //   }
-    // });
-    elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
-    elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
-    elements.milestoneTour.addEventListener("click", tourController.toggle);
-    // #exploreMilestones' markup is gone along with the old #milestoneRow —
-    // guarded the same way as its .hidden toggle above, rather than
-    // assuming it won't come back.
-    elements.exploreMilestones?.addEventListener("click", tourController.toggle);
-    elements.menuToggle.addEventListener("click", () => {
-      const isOpen = document.body.classList.toggle("menu-open");
-      elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
-    });
-    elements.menuShim.addEventListener("click", () => {
-      document.body.classList.remove("menu-open");
-      elements.menuToggle.setAttribute("aria-expanded", "false");
-    });
-    updateThemeToggleUI();
-    elements.themeToggle?.addEventListener("click", () => {
-      applyTheme("dark");
-    });
-    elements.themeToggleLight?.addEventListener("click", () => {
-      applyTheme("light");
-    });
     updateSliderProgress();
     applyYear(defaultYear);
     renderLegend();
