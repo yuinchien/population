@@ -155,6 +155,7 @@ canvas.hovering-dot {
 .monospace {
     font-family: var(--font-mono);
     letter-spacing: var(--letterspacing-mono);
+    font-size: 14px;
 }
 
 .flex {
