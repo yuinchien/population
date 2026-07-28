@@ -2,6 +2,9 @@ import * as THREE from "three";
 
 const DEFAULT_SMOOTHING_MS = 90;
 const VIEWPORT_MARGIN = 12;
+// Map labels' constant on-screen gap above their dot — see the comment on
+// computeOutwardPoint's map branch for why this replaced a world-space push.
+const MAP_CALLOUT_LIFT_PX = 18;
 
 export function smoothCalloutPosition(current, target, elapsed, smoothingMs) {
   if (current == null) return target;
@@ -49,7 +52,18 @@ export function createCalloutController({
 
   function computeOutwardPoint(anchor, viewMode) {
     if (viewMode === "map") {
-      return anchor.clone().add(new THREE.Vector3(0, 0, viewConfig.map.calloutExtend));
+      // No push here — pushing a point toward the camera along world Z (like
+      // the globe branch below does, to lift a label off the sphere's
+      // curved surface) relies on the camera looking straight down that
+      // same axis. That was true for the map too back when its camera was
+      // always centered on the map's own origin, but panning breaks it: the
+      // parallax this push creates is proportional to how far the point
+      // sits from the camera's OWN optical axis (controls.target's x/y),
+      // which used to always be (0,0) and now moves with every pan. A flat
+      // map has no curvature to lift off of anyway — the label just needs a
+      // constant on-screen gap above its dot, applied in screen space after
+      // projection instead (see MAP_CALLOUT_LIFT_PX in update()).
+      return anchor.clone();
     }
     return anchor
       .clone()
@@ -136,8 +150,11 @@ export function createCalloutController({
         Math.max((projected.x * 0.5 + 0.5) * width, leftClearance),
         width - VIEWPORT_MARGIN,
       );
+      const rawY =
+        (-projected.y * 0.5 + 0.5) * height -
+        (viewMode === "map" ? MAP_CALLOUT_LIFT_PX : 0);
       const targetY = Math.min(
-        Math.max((-projected.y * 0.5 + 0.5) * height, VIEWPORT_MARGIN + 20),
+        Math.max(rawY, VIEWPORT_MARGIN + 20),
         height - VIEWPORT_MARGIN,
       );
       const elapsed = callout.lastFrameTime == null
