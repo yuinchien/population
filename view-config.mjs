@@ -22,8 +22,12 @@ export const VIEW_CONFIG = {
     height: 200,
     dotSize: 1.2,
     cameraDistance: 360,
-    minDistance: 250,
-    maxDistance: 1200,
+    // Was 250-1200 (only ~1.4x zoom-in from the initial framing) — widened
+    // so zooming in gets close enough to make out a single small country's
+    // dots individually, and zooming out gives more room before hitting the
+    // ceiling.
+    minDistance: 60,
+    maxDistance: 1800,
     calloutExtend: 80,
   },
 };

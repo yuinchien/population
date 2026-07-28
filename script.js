@@ -3045,14 +3045,55 @@ function applySettledViewControls() {
     controls.autoRotateSpeed = VIEW_CONFIG.globe.autoRotateSpeed;
     controls.minDistance = VIEW_CONFIG.globe.minDistance;
     controls.maxDistance = VIEW_CONFIG.globe.maxDistance;
+    // Restores OrbitControls' own defaults (left-drag rotates, one-finger
+    // touch rotates) — needed because map mode below overwrites them on the
+    // same shared `controls` instance, and switching back to globe would
+    // otherwise leave left-drag silently mapped to an action (pan) that
+    // enablePan just turned off, breaking rotate entirely.
+    controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    controls.touches.ONE = THREE.TOUCH.ROTATE;
   } else {
     controls.enableRotate = false;
     controls.enablePan = true;
     controls.autoRotate = false;
     controls.minDistance = VIEW_CONFIG.map.minDistance;
     controls.maxDistance = VIEW_CONFIG.map.maxDistance;
+    // OrbitControls' default left-drag action is ROTATE, gated behind
+    // enableRotate — which is false here, so a plain left-drag hit that
+    // gate and did nothing (pan was only reachable via Ctrl/Shift+drag or
+    // the right mouse button — neither discoverable). Remapping left-drag
+    // (and one-finger touch) straight to PAN is what actually makes
+    // dragging the canvas pan in map mode.
+    controls.mouseButtons.LEFT = THREE.MOUSE.PAN;
+    controls.touches.ONE = THREE.TOUCH.PAN;
   }
+  // Map is the only mode where dragging the canvas pans rather than orbits
+  // or does nothing — the grab cursor is the only hint that's true, since
+  // nothing else about a flat field of dots suggests it's draggable.
+  renderer.domElement.classList.toggle("pannable", viewMode === "map");
 }
+
+// Keeps map pan from wandering the camera off into empty space with no way
+// back short of switching views and back — clamps controls.target (what the
+// map-mode camera, at a fixed offset with rotation disabled, is effectively
+// centered on) to the map's own bounds plus one screen-ish of slack, moving
+// the camera by the same delta so the offset — and therefore zoom — doesn't
+// change underneath the clamp.
+function clampMapPanTarget() {
+  if (viewMode !== "map" || transition) return;
+  const maxX = VIEW_CONFIG.map.width * 0.75;
+  const maxY = VIEW_CONFIG.map.height * 0.75;
+  const clampedX = THREE.MathUtils.clamp(controls.target.x, -maxX, maxX);
+  const clampedY = THREE.MathUtils.clamp(controls.target.y, -maxY, maxY);
+  const dx = clampedX - controls.target.x;
+  const dy = clampedY - controls.target.y;
+  if (dx === 0 && dy === 0) return;
+  controls.target.x = clampedX;
+  controls.target.y = clampedY;
+  camera.position.x += dx;
+  camera.position.y += dy;
+}
+controls.addEventListener("change", clampMapPanTarget);
 
 // URL-selected map mode is initial state, not a user-triggered transition.
 // Configure the camera, controls, material, and dot sizing before the first
@@ -3137,6 +3178,7 @@ function setViewMode(mode) {
   // "snap" rather than the two animating together.
   controls.enabled = false;
   controls.autoRotate = false;
+  renderer.domElement.classList.remove("pannable");
 
   elements.viewMode
     .querySelectorAll("button")

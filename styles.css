@@ -113,6 +113,16 @@ canvas {
     display: block;
 }
 
+/* Map view's only affordance that dragging the canvas pans it — placed
+   before .hovering-dot below so a dot's own pointer cursor still wins when
+   both apply. */
+canvas.pannable {
+    cursor: grab;
+}
+canvas.pannable:active {
+    cursor: grabbing;
+}
+
 canvas.hovering-dot {
     cursor: pointer;
 }
