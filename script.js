@@ -1820,6 +1820,7 @@ const infoOverlay = createOverlayController({
   panel: elements.infoPanel,
   labelledBy: "settingsTitle",
   trigger: elements.infoButton,
+  scrim: elements.menuShim,
   initialFocus: () => elements.infoClose,
   requestClose: closeInfoPanel,
 });

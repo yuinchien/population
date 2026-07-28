@@ -16,12 +16,16 @@ export function nextOverlayFocusIndex(current, shiftKey, count) {
 export function createOverlayController({
   panel,
   trigger = null,
+  scrim = null,
   initialFocus = () => panel.querySelector(FOCUSABLE_SELECTOR),
   labelledBy = null,
   requestClose = null,
   getBackgroundElements = () =>
     [...document.body.children].filter(
-      (element) => element !== panel && !element.contains(panel),
+      (element) =>
+        element !== panel &&
+        element !== scrim &&
+        !element.contains(panel),
     ),
   onVisibilityChange = null,
 }) {
@@ -99,7 +103,12 @@ export function createOverlayController({
     }
   }
 
+  function handleScrimClick() {
+    if (!panel.hidden) requestClose?.();
+  }
+
   document.addEventListener("keydown", handleKeydown);
+  scrim?.addEventListener("click", handleScrimClick);
 
   return {
     open,
@@ -108,6 +117,7 @@ export function createOverlayController({
     destroy() {
       close({ restoreFocus: false });
       document.removeEventListener("keydown", handleKeydown);
+      scrim?.removeEventListener("click", handleScrimClick);
     },
   };
 }
