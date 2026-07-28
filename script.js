@@ -78,6 +78,10 @@ import {
   matchCountries,
 } from "./country-combobox.mjs";
 import { createOverlayController } from "./overlay-controller.mjs";
+import { createChartViewLifecycle } from "./chart-view-lifecycle.mjs";
+import { createSearchViewLifecycle } from "./search-view-lifecycle.mjs";
+import { createClusterViewLifecycle } from "./cluster-view-lifecycle.mjs";
+import { createViewRouter } from "./view-router.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -1836,9 +1840,14 @@ function renderCountryDetail(options = { animate: true }) {
   const country = appState.selectedCountry;
   if (!country || appState.currentYearIndex < 0) return;
   assertElements(elements, COUNTRY_DETAIL_ELEMENT_KEYS, "country detail");
-  countryDetailController.render(country, options);
+  // Both chart builders derive their viewBox from the rendered SVG size.
+  // Make the panel measurable before building them; rendering while hidden
+  // makes clientWidth/clientHeight zero and forces fallback dimensions that
+  // `preserveAspectRatio="none"` then stretches into the responsive layout.
   detailOverlay.close({ restoreFocus: false });
-  countryOverlay.open({ focus: options.animate !== false });
+  countryOverlay.open({ focus: false });
+  countryDetailController.render(country, options);
+  if (options.animate !== false) countryOverlay.open();
   updateViewModeAvailability();
 }
 
@@ -2410,24 +2419,23 @@ function syncViewModeButtons(activeMode) {
   );
 }
 
-function setClusterActive(active) {
-  if (active === appState.clusterActive) return;
-  if (active) {
-    assertElements(elements, ["clusterView", "clusterCanvas"], "cluster view");
-  }
-  appState.clusterActive = active;
-  elements.clusterView.hidden = !active;
-  document.body.classList.toggle("view-cluster", active);
-  syncViewModeButtons(active ? "cluster" : appState.viewMode);
-  if (active) {
-    tourController.stop();
+const clusterViewLifecycle = createClusterViewLifecycle({
+  state: appState,
+  view: elements.clusterView,
+  assertReady: () =>
+    assertElements(elements, ["clusterView", "clusterCanvas"], "cluster view"),
+  syncModeButtons: syncViewModeButtons,
+  underlyingMode: () => appState.viewMode,
+  stopTour: () => tourController.stop(),
+  enter: () => {
     updateColorModeControls(clusterController.getColorMode());
     renderLegend();
     clusterController.activate(appState.currentYearIndex);
     if (appState.currentYearIndex >= 0) {
       applyClusterStatus(yearsData[appState.currentYearIndex]);
     }
-  } else {
+  },
+  exit: () => {
     clusterController.deactivate();
     updateColorModeControls(appState.colorMode);
     renderLegend();
@@ -2441,8 +2449,12 @@ function setClusterActive(active) {
       // again.
       applyYear(yearsData[appState.currentYearIndex], { instant: true });
     }
-  }
-  syncUrlFromState();
+  },
+  syncUrl: syncUrlFromState,
+});
+
+function setClusterActive(active) {
+  clusterViewLifecycle.setActive(active);
 }
 
 function setLifetimeActive(active, options) {
@@ -2500,29 +2512,28 @@ function getRecentCountries() {
 // back to the bare list.
 const SEARCH_SUGGESTION_LIMIT = 8;
 
-function setSearchActive(active) {
-  if (active === appState.searchActive) return;
-  if (active) {
+const searchViewLifecycle = createSearchViewLifecycle({
+  state: appState,
+  view: elements.searchView,
+  bar: elements.searchBar,
+  assertReady: () =>
     assertElements(
       elements,
       ["searchView", "searchBar", "searchCategoryGrid", "searchCountryGrid", "searchCountryInput"],
       "search view",
-    );
-  }
-  appState.searchActive = active;
-  elements.searchView.hidden = !active;
-  elements.searchBar.hidden = !active;
-  document.body.classList.toggle("view-search", active);
-  syncViewModeButtons(active ? "search" : appState.viewMode);
-  if (active) {
-    tourController.stop();
+    ),
+  syncModeButtons: syncViewModeButtons,
+  underlyingMode: () => appState.viewMode,
+  stopTour: () => tourController.stop(),
+  prepare: () => {
     appState.searchSelectedIso3 = null;
     renderCategoryGrid();
     renderSearchCountryGrid();
     renderSearchCountryChip();
     elements.searchCountryInput.value = "";
     searchCountryCombobox?.hide();
-  } else {
+  },
+  teardown: () => {
     // Leaving search entirely tears down any open detail this view opened,
     // without routing through closeDetailPanel() (whose "search" restore
     // would just reactivate this view). appState.detailEntryMode is cleared first for
@@ -2540,8 +2551,12 @@ function setSearchActive(active) {
     }
     appState.searchSelectedIso3 = null;
     renderSearchCountryChip();
-  }
-  syncUrlFromState();
+  },
+  syncUrl: syncUrlFromState,
+});
+
+function setSearchActive(active) {
+  searchViewLifecycle.setActive(active);
 }
 
 function renderCategoryGrid() {
@@ -2702,27 +2717,27 @@ function renderChartTable() {
 // toggle's selection state — opening it never touches which of those two
 // is "active", so whichever was selected before is still the one shown
 // (and still marked active) once the overlay closes.
-function setchartPanelActive(active) {
-  if (active === appState.chartPanelActive) return;
-  if (active) {
-    assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart view");
-  }
-  appState.chartPanelActive = active;
-  elements.chartPanel.hidden = !active;
-  document.body.classList.toggle("view-chart", active);
-  syncViewModeButtons(active ? "chart" : appState.viewMode);
-  if (active) {
-    tourController.stop();
+const chartViewLifecycle = createChartViewLifecycle({
+  state: appState,
+  panel: elements.chartPanel,
+  assertReady: () =>
+    assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart view"),
+  syncModeButtons: syncViewModeButtons,
+  underlyingMode: () => appState.viewMode,
+  stopTour: () => tourController.stop(),
+  render: () => {
     renderTrendChart({ animate: true });
     renderChartTable();
-  } else {
+  },
+  closeCountryPicker: () => {
     // Always reopens collapsed, regardless of how it was left — an editor
     // left expanded from last time isn't state worth remembering the way
     // the selected countries themselves are.
     setChartCountryPickerExpanded(false);
-  }
-  if (!active && appState.currentYearIndex >= 0) {
-    trendChartController.cancelAnimation();
+  },
+  cancelAnimation: () => trendChartController.cancelAnimation(),
+  catchUpScene: () => {
+    if (appState.currentYearIndex < 0) return;
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had
     // before) — catch it up now that it's visible again. instant: true
@@ -2730,8 +2745,12 @@ function setchartPanelActive(active) {
     // this year's own text (via renderChartTable) the whole time, so
     // retyping it from scratch on close would just be redundant animation.
     applyYear(yearsData[appState.currentYearIndex], { instant: true });
-  }
-  syncUrlFromState();
+  },
+  syncUrl: syncUrlFromState,
+});
+
+function setchartPanelActive(active) {
+  chartViewLifecycle.setActive(active);
 }
 
 const THEME_STORAGE_KEY = "theme"; // must match the inline <head> script in index.html
@@ -3298,37 +3317,26 @@ async function init() {
 
     elements.viewMode.hidden = false;
     syncViewModeButtons(appState.viewMode);
-    // One setter per full-screen overlay mode — picking any of them turns
-    // off the other three (mutual exclusion) and turns this one on. A
-    // lookup table instead of a branch per mode means adding a future
-    // overlay only means adding one entry here, not another hand-written
-    // "turn off every sibling" block that's easy to under-update.
-    const SPECIAL_VIEW_MODE_SETTERS = {
-      search: setSearchActive,
-      chart: setchartPanelActive,
-      cluster: setClusterActive,
-      lifetime: setLifetimeActive,
+    const lifetimeViewLifecycle = {
+      name: "lifetime",
+      isActive: () => lifetimeController.isActive(),
+      activate: (options) => lifetimeController.setActive(true, options),
+      deactivate: (options) => lifetimeController.setActive(false, options),
     };
-    elements.viewMode.querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        // Mirrors elements.menuShim's own close (mobile's hamburger sidebar
-        // wraps #buttonsContainer via body.menu-open, styles.css) — picking
-        // a view should always close it, not leave it hanging over the view
-        // that just opened.
+    const viewRouter = createViewRouter({
+      lifecycles: [
+        searchViewLifecycle,
+        chartViewLifecycle,
+        clusterViewLifecycle,
+        lifetimeViewLifecycle,
+      ],
+      setBaseView: setViewMode,
+      closeMenu: () => {
         document.body.classList.remove("menu-open");
         elements.menuToggle.setAttribute("aria-expanded", "false");
-        const mode = btn.dataset.mode;
-        const setter = SPECIAL_VIEW_MODE_SETTERS[mode];
-        Object.entries(SPECIAL_VIEW_MODE_SETTERS).forEach(([key, setActive]) => {
-          if (key !== mode) setActive(false);
-        });
-        if (setter) {
-          setter(true);
-        } else {
-          setViewMode(mode);
-        }
-      });
+      },
     });
+    viewRouter.bind(elements.viewMode);
 
     lifetimeController.bindEvents();
 
