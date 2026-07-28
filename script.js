@@ -1521,6 +1521,11 @@ function renderDetailPanel() {
   // country panel; re-running this on the next year change would otherwise
   // stomp it back to the group table.
   if (!appState.selectedLegend || appState.selectedCountry || appState.currentYearIndex < 0) return;
+  // Group tables use demographic columns that are no longer part of the
+  // initial Globe payload. Opening a group is their first-use boundary;
+  // ensureCountryDemographics() memoizes the request and re-renders this
+  // panel when it resolves.
+  if (!countryDemographicMetrics) ensureCountryDemographics();
 
   const columns = detailColumns();
   const countries = selectedCountries();
