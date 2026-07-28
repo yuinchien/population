@@ -11,6 +11,59 @@ export function smoothCalloutPosition(current, target, elapsed, smoothingMs) {
   return current + (target - current) * blend;
 }
 
+// Keeps pointer and keyboard focus as independent interaction sources. A label
+// can own both at once after it is clicked, and a focused label can remain
+// active while the pointer briefly highlights another one.
+export function createCalloutInteractionState({
+  onActivate = () => {},
+  onDeactivate = () => {},
+} = {}) {
+  const countries = new Map();
+  let activeCountry = null;
+  let sequence = 0;
+
+  function sync() {
+    let nextCountry = null;
+    let latestSequence = -1;
+    countries.forEach(({ sources, activatedAt }, country) => {
+      if (sources.size && activatedAt > latestSequence) {
+        nextCountry = country;
+        latestSequence = activatedAt;
+      }
+    });
+    if (nextCountry === activeCountry) return;
+    if (activeCountry) onDeactivate(activeCountry);
+    activeCountry = nextCountry;
+    if (activeCountry) onActivate(activeCountry);
+  }
+
+  function activate(country, source) {
+    const entry = countries.get(country) ?? {
+      sources: new Set(),
+      activatedAt: 0,
+    };
+    entry.sources.add(source);
+    entry.activatedAt = ++sequence;
+    countries.set(country, entry);
+    sync();
+  }
+
+  function deactivate(country, source) {
+    const entry = countries.get(country);
+    if (!entry) return;
+    entry.sources.delete(source);
+    if (!entry.sources.size) countries.delete(country);
+    sync();
+  }
+
+  function clear() {
+    countries.clear();
+    sync();
+  }
+
+  return { activate, deactivate, clear };
+}
+
 export function createCalloutController({
   camera,
   layer,
@@ -35,6 +88,10 @@ export function createCalloutController({
   const cameraDirection = new THREE.Vector3();
   const facingDirection = new THREE.Vector3();
   const projectedPoint = new THREE.Vector3();
+  const interactions = createCalloutInteractionState({
+    onActivate: onHoverCountry,
+    onDeactivate: onLeaveCountry,
+  });
 
   function computeAnchor(country, viewMode) {
     const source = viewMode === "map" ? country._xyzMap : country._xyzGlobe;
@@ -77,8 +134,8 @@ export function createCalloutController({
   }
 
   function clear() {
-    callouts.forEach(({ country, labelEl }) => {
-      if (labelEl.matches(":hover")) onLeaveCountry(country);
+    interactions.clear();
+    callouts.forEach(({ labelEl }) => {
       labelEl.remove();
     });
     callouts.length = 0;
@@ -106,8 +163,18 @@ export function createCalloutController({
         labelEl.style.setProperty("--color-callout", `#${color.getHexString()}`);
         labelEl.style.setProperty("--color-callout-text", getTextColor(color));
         labelEl.addEventListener("click", () => onOpenCountry(country));
-        labelEl.addEventListener("pointerenter", () => onHoverCountry(country));
-        labelEl.addEventListener("pointerleave", () => onLeaveCountry(country));
+        labelEl.addEventListener("pointerenter", () =>
+          interactions.activate(country, "pointer"),
+        );
+        labelEl.addEventListener("pointerleave", () =>
+          interactions.deactivate(country, "pointer"),
+        );
+        labelEl.addEventListener("focus", () =>
+          interactions.activate(country, "focus"),
+        );
+        labelEl.addEventListener("blur", () =>
+          interactions.deactivate(country, "focus"),
+        );
         layer.append(labelEl);
 
         callouts.push({
