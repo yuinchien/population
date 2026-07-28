@@ -168,15 +168,6 @@ canvas.hovering-dot {
     backdrop-filter: blur(16px);
 }
 
-.footer {
-    flex: 1;
-    display: flex;
-    align-items: flex-end;
-    padding-bottom: 12px;
-    color: var(--color-muted);
-    opacity: 0.5;
-}
-
 .hide-for-detail {
     overflow: hidden;
     max-height: 300px;
@@ -192,24 +183,6 @@ body.detail .hide-for-detail {
     opacity: 0;
     pointer-events: none;
     max-height: 0;
-}
-
-.detail-back {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    color: var(--color-text);
-    background: transparent;
-    cursor: pointer;
-    margin-left: -8px;
-}
-
-body.detail .detail-back {
-    display: flex;
 }
 
 .header-title {
@@ -228,30 +201,10 @@ body.detail .detail-back {
 
 
 
-.title-year {
-    color: var(--color-muted);
-    font-weight: 400;
-    opacity: 0;
-}
-
 .milestone-nav {
     margin-top: 12px;
     margin-bottom: 4px;
     font-family: inherit;
-}
-
-.explore-milestones-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 18px;
-    background: transparent;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    border: var(--border);
 }
 
 /* Doubles as the plain divider line the row used to have via border-top:
@@ -273,18 +226,6 @@ body.detail .detail-back {
     height: 100%;
     width: 0%;
     background: var(--color-text);
-}
-
-.milestone-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-.milestone-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
 }
 
 button.milestone-nav-btn {
@@ -451,15 +392,6 @@ button.milestone-nav-btn {
     font-weight: 700;
     text-align: center;
     white-space: nowrap;
-}
-
-.year-hover-value {
-    color: var(--color-muted);
-    font-weight: 500;
-    pointer-events: none;
-    background: var(--color-bg);
-    padding: 0 4px;
-    display: none;
 }
 
 .button-group {
@@ -1090,12 +1022,6 @@ body.country-detail #colorMode {
     padding: 0 var(--margin);
 }
 
-.detail-table-container {
-    display: grid;
-    grid-template-columns: 1fr 3fr;
-    gap: 12px;
-}
-
 .country-chart {
     display: block;
     width: 100%;
@@ -1111,10 +1037,11 @@ body.country-detail #colorMode {
 .country-chart-bar {
     stroke: var(--detail-color);
     stroke-width: var(--chart-stroke-width);
+    opacity: 0.7;
 }
 
 .country-chart-bar.projected {
-    opacity: 0.5;
+    opacity: 0.4;
 }
 
 .country-chart-peak-line {
@@ -1129,8 +1056,7 @@ body.country-detail #colorMode {
     stroke-width: 1;
 }
 
-.country-chart-peak-label,
-.country-chart-axis-label {
+.country-chart-peak-label {
     font-size: 10px;
     font-weight: 500;
     fill: var(--color-muted);
@@ -1145,10 +1071,6 @@ body.country-detail #colorMode {
     display: none;
 }
 
-.country-chart-axis-label.muted {
-    fill: var(--color-subtle);
-}
-
 .country-chart-marker-line {
     stroke: var(--color-text);
     stroke-width: var(--chart-stroke-width);
@@ -1161,8 +1083,7 @@ body.country-detail #colorMode {
 }
 
 .country-chart-marker-label,
-.country-chart-marker-year-label,
-.country-chart-peak-value-label {
+.country-chart-marker-year-label {
     font-size: 12px;
     font-weight: 500;
     fill: var(--color-text);
@@ -1197,23 +1118,6 @@ body.country-detail #colorMode {
 
 #countryPyramidCard[hidden] {
     display: none;
-}
-
-.country-pyramid-card {
-    flex: none;
-}
-
-.country-pyramid-header {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    margin-bottom: 4px;
-}
-
-.country-pyramid-label,
-.country-pyramid-year {
-    color: var(--color-muted);
-    font-weight: 500;
 }
 
 .country-pyramid {
@@ -1570,11 +1474,6 @@ body.country-detail #colorMode {
     text-overflow: ellipsis;
 }
 
-.country-similar-reason {
-    color: var(--color-muted);
-    font-size: 11px;
-}
-
 /* opacity/max-height rather than display:none — matches .hide-for-detail's
    technique, needed since these elements animate open/closed rather than
    just toggling instantly. */
@@ -1785,16 +1684,6 @@ select::picker(select) {
     }
 }
 
-.chart-content {
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    margin: 0 auto;
-    padding-left: calc(var(--margin) *2 );
-    padding-right: calc(var(--margin) *2 );
-}
 .chart-card {
     flex: 1;
     min-height: 0;
@@ -2840,16 +2729,6 @@ svg {
     fill: var(--color-muted);
 }
 
-.chart-country-picker-label {
-    flex: none;
-    display: block;
-    margin: 16px 0 6px;
-    padding-top: 16px;
-    border-top: var(--border);
-    color: var(--color-muted);
-    font-size: 12px;
-}
-
 .chip-input {
     position: relative;
     flex: 1;
@@ -3357,11 +3236,6 @@ body.info-open .menu-shim {
         width: auto;
         display: none;
     }
-    .chart-content {
-        padding-left: 0;
-        padding-right: 0;
-    }
-
     .legend-wrapper {
         display: none;
     }
