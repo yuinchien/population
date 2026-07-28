@@ -27,6 +27,8 @@ export function createCalloutController({
   formatPopulation,
   getTextColor,
   onOpenCountry,
+  onHoverCountry = () => {},
+  onLeaveCountry = () => {},
   getViewport = () => ({ width: window.innerWidth, height: window.innerHeight }),
   smoothingMs = DEFAULT_SMOOTHING_MS,
 }) {
@@ -78,7 +80,8 @@ export function createCalloutController({
   }
 
   function clear() {
-    callouts.forEach(({ labelEl }) => {
+    callouts.forEach(({ country, labelEl }) => {
+      if (labelEl.matches(":hover")) onLeaveCountry(country);
       labelEl.remove();
     });
     callouts.length = 0;
@@ -106,6 +109,8 @@ export function createCalloutController({
         labelEl.style.setProperty("--color-callout", `#${color.getHexString()}`);
         labelEl.style.setProperty("--color-callout-text", getTextColor(color));
         labelEl.addEventListener("click", () => onOpenCountry(country));
+        labelEl.addEventListener("pointerenter", () => onHoverCountry(country));
+        labelEl.addEventListener("pointerleave", () => onLeaveCountry(country));
         layer.append(labelEl);
 
         callouts.push({

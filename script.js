@@ -198,6 +198,8 @@ const calloutController = createCalloutController({
   getTextColor: (color) =>
     foregroundForColor(`#${color.getHexString()}`),
   onOpenCountry: openCountryDetail,
+  onHoverCountry: showCalloutCountryHover,
+  onLeaveCountry: clearCalloutCountryHover,
 });
 scene.add(calloutController.group);
 
@@ -712,6 +714,21 @@ function showHoverCountryFill(country) {
     });
     hoverFillCache.delete(oldestKey);
   }
+}
+
+// Callout labels sit above the WebGL canvas, so entering one does not send a
+// pointerleave to the canvas. Stop its throttled raycast explicitly while the
+// label owns hover; otherwise the last canvas position can immediately replace
+// (or clear) the callout country's fill on the next tooltip update.
+function showCalloutCountryHover(country) {
+  lastPointerEvent = null;
+  elements.tooltip.hidden = true;
+  renderer.domElement.classList.remove("hovering-dot");
+  showHoverCountryFill(country);
+}
+
+function clearCalloutCountryHover() {
+  clearHoverCountryFill();
 }
 
 const formatter = new Intl.ListFormat("en", {
