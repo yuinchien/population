@@ -72,6 +72,7 @@ import {
   showTooltipContent,
   showTooltipLine,
 } from "./tooltip-controller.mjs";
+import { createInitialAppState } from "./app-state.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -189,7 +190,7 @@ const calloutController = createCalloutController({
   viewConfig: VIEW_CONFIG,
   leftClearance: CALLOUT_LEFT_CLEARANCE,
   getCountries: () => countriesData,
-  getViewMode: () => viewMode,
+  getViewMode: () => appState.viewMode,
   isTransitioning: () => !!transition,
   getColor: colorFor,
   getPeakYear: activePeakYear,
@@ -209,10 +210,10 @@ let hoverCountry = null;
 // Rebuilding a large country's fill — especially the globe tessellation
 // pass — on every single re-hover gets expensive fast, and jittering the
 // mouse across a dense dot cluster's edge re-triggers it repeatedly for
-// geometry that hasn't changed. Cache built meshes per iso3+viewMode (the
+// geometry that hasn't changed. Cache built meshes per iso3+appState.viewMode (the
 // two projections aren't interchangeable) and only dispose on eviction,
 // not on every hover-out.
-const hoverFillCache = new Map(); // `${iso3}:${viewMode}` -> THREE.Mesh[]
+const hoverFillCache = new Map(); // `${iso3}:${appState.viewMode}` -> THREE.Mesh[]
 const HOVER_FILL_CACHE_LIMIT = 12;
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -388,8 +389,6 @@ let activeTotal = 0;
 let hasUnclassifiedIncome = false;
 let countriesData = [];
 let yearsData = [];
-let currentYearIndex = -1;
-let historicalCutoffYear = Infinity;
 const projectionData = createProjectionScenarioData();
 let countryDemographicMetrics = null;
 let countryTrajectory = null;
@@ -404,48 +403,10 @@ let countryAgeStructure = null;
 let countryBorders = null;
 // Set synchronously in <head> (before this module even loads) so first
 // paint never flashes the wrong theme — this just picks it up.
-let currentTheme = document.documentElement.dataset.theme || "dark";
-let colorMode = "region";
-let viewMode = "globe";
-let selectedLegend = null;
-// A single country "drill-down" view, entered either straight from a dot
-// click or from a row inside the group table above — selectedLegend is left
-// untouched in the latter case so the back button can restore that exact
-// table (same group, same sort) instead of just closing everything.
-let selectedCountry = null;
-// "chart" | "cluster" | null — which full-screen mode (if any) a country or
-// group detail drill-down stepped aside to open, so closeDetailPanel() can
-// restore it instead of always landing back on whichever of Globe/Map
-// viewMode already is. Set right before that mode gets closed (see
-// openCountryDetail and the cluster controller's onCountryClick callback
-// below), and consumed/cleared once
-// closeDetailPanel() fully exits back to the top level.
-let detailEntryMode = null;
-let detailSort = { key: "population", direction: "desc" };
-let chartPanelActive = false;
-let clusterActive = false;
-// Caches which CLUSTER_STATUS_PERIODS chapter #status last showed, so
-// scrubbing within the same ~30-40 year period doesn't retrigger
-// showStatus()'s fade-in every single year — only an actual chapter change
-// does. Reset to null on deactivate so reactivating always shows fresh.
-let clusterStatusPeriod = null;
-// Search view: a full country list plus a single-select chip search bar.
-// searchSelectedIso3 is the one picked country (whose detail is open), or
-// null when showing the bare list.
-let searchActive = false;
-let searchSelectedIso3 = null;
+const appState = createInitialAppState({
+  theme: document.documentElement.dataset.theme || "dark",
+});
 let lifetimeController = null;
-let chartMetricKey = "ageDependencyRatio";
-// Insertion-order array (not a Set) so a country keeps the same line color
-// for as long as it stays selected, even as others are toggled around it.
-let selectedChartCountries = ["USA", "JPN", "IND", "DEU", "NGA"];
-// Whether the picker shows the "Country list N" summary pill or the full
-// chip/search editor — collapsed by default so the topbar stays one line
-// regardless of how many countries are selected.
-let chartCountryPickerExpanded = false;
-// Separate from detailSort (the group table's own sort) so switching one
-// doesn't surprise the other the next time it's opened.
-let chartTableSort = { key: "population", direction: "desc" };
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -455,7 +416,7 @@ function activePopulationSeries(country) {
   return projectionData.populationSeries(country);
 }
 
-function activePopulationAt(country, index = currentYearIndex) {
+function activePopulationAt(country, index = appState.currentYearIndex) {
   return projectionData.populationAt(country, index);
 }
 
@@ -474,7 +435,6 @@ function activeGlobalMetricsMap() {
 function activeGlobalTrendMilestones() {
   return projectionData.globalTrendMilestones();
 }
-let isProjectedYear = false;
 const timer = new THREE.Timer();
 timer.connect(document);
 
@@ -491,7 +451,7 @@ function easeOutCubic(t) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-function colorFor(country, mode = colorMode) {
+function colorFor(country, mode = appState.colorMode) {
   return mode === "income" ? country._incomeColor : country._regionColor;
 }
 
@@ -621,7 +581,7 @@ function setDotSize(size) {
 }
 
 function positionsFor(country) {
-  return viewMode === "map" ? country._xyzMap : country._xyzGlobe;
+  return appState.viewMode === "map" ? country._xyzMap : country._xyzGlobe;
 }
 
 // Nudges the fill just outside the globe surface/dot pulse range (up to
@@ -668,7 +628,7 @@ function showHoverCountryFill(country) {
   const rings = countryBorders?.[country.iso3];
   if (!rings) return;
 
-  const cacheKey = `${country.iso3}:${viewMode}`;
+  const cacheKey = `${country.iso3}:${appState.viewMode}`;
   const cached = hoverFillCache.get(cacheKey);
   if (cached) {
     cached.forEach((mesh) => hoverCountryGroup.add(mesh));
@@ -681,9 +641,9 @@ function showHoverCountryFill(country) {
   const meshes = [];
   const geometries = createCountryFillGeometries({
     rings,
-    viewMode,
+    viewMode: appState.viewMode,
     projectPoint: (lon, lat) =>
-      viewMode === "map"
+      appState.viewMode === "map"
         ? latLonToMapVector3(lat, lon).setZ(HOVER_FILL_MAP_Z)
         : latLonToVector3(lat, lon, HOVER_FILL_GLOBE_RADIUS),
   });
@@ -749,8 +709,8 @@ function getPeakCountryName(peakCountries) {
 // Picks a phrasing for the peak-year status line based on how many countries
 // peak in the given year. Country names live in the detail rows below the
 // status, so the copy stays focused on the year and count.
-// isProjected distinguishes an observed peak (year <= historicalCutoffYear)
-// from a modeled one (year > historicalCutoffYear) — without it, a
+// isProjected distinguishes an observed peak (year <= appState.historicalCutoffYear)
+// from a modeled one (year > appState.historicalCutoffYear) — without it, a
 // projected-year copy like "France's population peaks in 2061" reads as a
 // stated fact rather than the UN Medium-variant projection it actually is.
 function buildPeakStatus(year, peakCountries, isProjected) {
@@ -826,7 +786,7 @@ function buildPeakStatus(year, peakCountries, isProjected) {
 // or country, so these figures themselves would otherwise never appear on
 // the main (no country/group selected) view.
 function buildGlobalPopulationStatus(year) {
-  const isProjected = year > historicalCutoffYear;
+  const isProjected = year > appState.historicalCutoffYear;
   const metrics = activeGlobalMetricsForYear(year);
   const population = metrics?.population;
   if (population == null) return "";
@@ -851,30 +811,30 @@ function buildGlobalPopulationStatus(year) {
 // a second time on every year change; other callers just omit it and it's
 // computed here as before.
 function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
-  const isProjected = year > historicalCutoffYear;
-  if (selectedCountry && !elements.countryPanel.hidden) {
+  const isProjected = year > appState.historicalCutoffYear;
+  if (appState.selectedCountry && !elements.countryPanel.hidden) {
     updateMilestoneNav(null);
     const migrationNarrative = buildCountryDemographicNarrative({
-      country: selectedCountry,
+      country: appState.selectedCountry,
       years: yearsData,
-      currentYearIndex,
-      historicalCutoffYear,
+      currentYearIndex: appState.currentYearIndex,
+      historicalCutoffYear: appState.historicalCutoffYear,
       seriesFor: (key) =>
         key === "population"
-          ? activePopulationSeries(selectedCountry)
-          : countryDemographicMetrics?.countries?.[selectedCountry.iso3]?.[
+          ? activePopulationSeries(appState.selectedCountry)
+          : countryDemographicMetrics?.countries?.[appState.selectedCountry.iso3]?.[
               key
             ] ?? [],
     });
     // The aging milestone (formerly its own card) now closes the summary; the
     // migration sentence, when present, precedes it.
     const agingInsight = buildAgingMilestoneInsight({
-      country: selectedCountry,
+      country: appState.selectedCountry,
       years: yearsData,
-      currentYearIndex,
-      historicalCutoffYear,
+      currentYearIndex: appState.currentYearIndex,
+      historicalCutoffYear: appState.historicalCutoffYear,
       olderPopulationShare:
-        countryDemographicMetrics?.countries?.[selectedCountry.iso3]
+        countryDemographicMetrics?.countries?.[appState.selectedCountry.iso3]
           ?.olderPopulationShare,
     });
     const demographicNarrative = [migrationNarrative, agingInsight?.text]
@@ -882,18 +842,18 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
       .join(" ");
     renderCountrySummary(
       buildCountrySummary({
-        country: selectedCountry,
+        country: appState.selectedCountry,
         year,
         years: yearsData,
-        historicalCutoffYear,
+        historicalCutoffYear: appState.historicalCutoffYear,
         formatPopulation: formatPeakPopulation,
-        populationSeries: activePopulationSeries(selectedCountry),
+        populationSeries: activePopulationSeries(appState.selectedCountry),
         demographicNarrative,
       }),
     );
     return;
   }
-  if (selectedLegend && !elements.detailPanel.hidden) {
+  if (appState.selectedLegend && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
     return;
   }
@@ -963,7 +923,7 @@ function updateMilestoneNav(year) {
 
 // Mirrors selectYearFromClientY()'s slider-driven navigation, so jumping to
 // a milestone year keeps the slider/timeline/thumb in sync rather than
-// mutating currentYearIndex directly and leaving those controls stale.
+// mutating appState.currentYearIndex directly and leaving those controls stale.
 function goToYear(year) {
   elements.yearSlider.value = year;
   elements.yearSlider.dispatchEvent(new Event("input", { bubbles: true }));
@@ -974,7 +934,7 @@ function stepMilestone(delta) {
   tourController.stop();
   const { prev, next } = adjacentMilestoneYears(
     sortedMilestoneYears(),
-    yearsData[currentYearIndex],
+    yearsData[appState.currentYearIndex],
   );
   const target = delta < 0 ? prev : next;
   if (target == null) return;
@@ -1016,7 +976,7 @@ function animateTourProgress(durationMs) {
 
 const tourController = createTourController({
   getMilestoneYears: sortedMilestoneYears,
-  getCurrentYear: () => yearsData[currentYearIndex],
+  getCurrentYear: () => yearsData[appState.currentYearIndex],
   goToYear,
   onPlayingChange: setTourButtonState,
   onProgressReset: resetTourProgress,
@@ -1048,12 +1008,12 @@ function showStatus(text, { instant = false } = {}) {
 // figure like Globe/Map's own status text, since there's no single number
 // that sums up "which of the five archetypes is this year's picture."
 // Only calls showStatus() on an actual chapter change (see
-// clusterStatusPeriod above) so scrubbing within one chapter doesn't
+// appState.clusterStatusPeriod above) so scrubbing within one chapter doesn't
 // retrigger its fade every year.
 function applyClusterStatus(year, options) {
   const period = clusterStatusForYear(year);
-  if (period === clusterStatusPeriod) return;
-  clusterStatusPeriod = period;
+  if (period === appState.clusterStatusPeriod) return;
+  appState.clusterStatusPeriod = period;
   showStatus(`${period.title}. ${period.text}`, options);
 }
 
@@ -1100,8 +1060,8 @@ function renderCountrySummary(summary) {
 function applyYear(year, { instant = false } = {}) {
   const yearIndex = yearsData.indexOf(year);
   if (yearIndex === -1) return;
-  const isFirstCall = currentYearIndex === -1;
-  currentYearIndex = yearIndex;
+  const isFirstCall = appState.currentYearIndex === -1;
+  appState.currentYearIndex = yearIndex;
 
   // The 3D scene is fully hidden behind the chart overlay while it's open,
   // so repositioning every dot on each year change here would be pure
@@ -1109,7 +1069,7 @@ function applyYear(year, { instant = false } = {}) {
   // marker) cheap by touching only what's actually visible. Closing the
   // overlay (setchartPanelActive) does one full applyYear() call to catch
   // the 3D scene up to wherever this left it.
-  if (chartPanelActive) {
+  if (appState.chartPanelActive) {
     updateYearLabels(year);
     renderTrendChart();
     renderChartTable();
@@ -1117,11 +1077,11 @@ function applyYear(year, { instant = false } = {}) {
     return;
   }
 
-  // Same reasoning as the chartPanelActive branch above — the 3D scene is
+  // Same reasoning as the appState.chartPanelActive branch above — the 3D scene is
   // hidden behind the cluster overlay, so skip repositioning it and just
   // reclassify/reposition the (already-built) particles instead.
   // setClusterActive(false) does the 3D catch-up when the overlay closes.
-  if (clusterActive) {
+  if (appState.clusterActive) {
     updateYearLabels(year);
     clusterController.setYear(year);
     applyClusterStatus(year, { instant });
@@ -1191,15 +1151,15 @@ function applyYear(year, { instant = false } = {}) {
   pointsMesh.geometry.getAttribute("aFrequency").needsUpdate = true;
   pointsMesh.geometry.getAttribute("aPhase").needsUpdate = true;
 
-  const isProjected = year > historicalCutoffYear;
-  isProjectedYear = isProjected;
+  const isProjected = year > appState.historicalCutoffYear;
+  appState.isProjectedYear = isProjected;
 
   updateYearLabels(year);
   renderDetailPanel();
-  if (selectedCountry) {
+  if (appState.selectedCountry) {
     countryDetailController.updateYear(year);
     updateStatusPanel(year, { instant });
-  } else if (!selectedLegend) {
+  } else if (!appState.selectedLegend) {
     updateStatusPanel(year, { instant });
   }
   calloutController.rebuild(year);
@@ -1270,7 +1230,7 @@ function legendEntriesFor(mode) {
 function renderLegend(modeOverride = null) {
   const mode =
     modeOverride ??
-    (clusterActive ? clusterController.getColorMode() : colorMode);
+    (appState.clusterActive ? clusterController.getColorMode() : appState.colorMode);
   const entries = legendEntriesFor(mode);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
@@ -1282,7 +1242,7 @@ function renderLegend(modeOverride = null) {
       item.dataset.mode = mode;
       item.classList.toggle(
         "active",
-        selectedLegend?.mode === mode && selectedLegend?.label === label,
+        appState.selectedLegend?.mode === mode && appState.selectedLegend?.label === label,
       );
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
@@ -1340,7 +1300,7 @@ function getDetailNav() {
         if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
         button.classList.toggle(
           "active",
-          selectedLegend?.mode === mode && selectedLegend?.key === item.key,
+          appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === item.key,
         );
         button.textContent = displayGroupLabel(item.label);
         return button;
@@ -1353,7 +1313,7 @@ function getDetailNav() {
 }
 
 // The detail panel's own left-column nav — unlike the outer #legend
-// sidebar (which shows only one of region/income, picked via #colorMode),
+// sidebar (which shows only one of region/income, picked via #appState.colorMode),
 // this lists all four groupings side by side so a reader can jump straight
 // from e.g. "Aged society" to "Europe & Central Asia" without leaving the
 // panel. Re-rendered on every renderDetailPanel() call so its "active" item
@@ -1365,17 +1325,17 @@ function renderDetailNav() {
 
 function metricFor(country, key) {
   return countryDemographicMetrics?.countries?.[country.iso3]?.[key]?.[
-    currentYearIndex
+    appState.currentYearIndex
   ];
 }
 
 function selectedCountries() {
-  if (!selectedLegend) return [];
+  if (!appState.selectedLegend) return [];
   return selectDetailCountries({
     countries: countriesData,
-    legend: selectedLegend,
+    legend: appState.selectedLegend,
     columns: detailColumns(),
-    sort: detailSort,
+    sort: appState.detailSort,
     metricFor,
   });
 }
@@ -1389,18 +1349,18 @@ function selectedCountries() {
 // relevant to (e.g.) a "Migration inflow" cohort.
 function detailColumns() {
   const metricKeys =
-    selectedLegend?.mode === "age"
+    appState.selectedLegend?.mode === "age"
       ? AGE_COLUMN_KEYS
-      : selectedLegend?.mode === "migration"
+      : appState.selectedLegend?.mode === "migration"
         ? MIGRATION_COLUMN_KEYS
         : undefined;
   // Age/migration curated tables show the subgroup's own population (e.g.
   // Super-aged society's 65+ headcount) rather than each country's total —
   // region/income keep the plain country total.
   const populationFor =
-    selectedLegend?.mode === "age" || selectedLegend?.mode === "migration"
+    appState.selectedLegend?.mode === "age" || appState.selectedLegend?.mode === "migration"
       ? (country) =>
-          subgroupPopulationFor(selectedLegend, {
+          subgroupPopulationFor(appState.selectedLegend, {
             population: activePopulationAt(country),
             olderPopulationShare: metricFor(country, "olderPopulationShare"),
             youthDependencyRatio: metricFor(country, "youthDependencyRatio"),
@@ -1409,11 +1369,11 @@ function detailColumns() {
           })
       : activePopulationAt;
   const populationLabel =
-    selectedLegend?.mode === "age" || selectedLegend?.mode === "migration"
-      ? subgroupPopulationLabelFor(selectedLegend)
+    appState.selectedLegend?.mode === "age" || appState.selectedLegend?.mode === "migration"
+      ? subgroupPopulationLabelFor(appState.selectedLegend)
       : undefined;
   return buildDetailColumns({
-    currentYearIndex,
+    currentYearIndex: appState.currentYearIndex,
     metricFor,
     metricKeys,
     populationFor,
@@ -1430,18 +1390,18 @@ function chartTableColumns() {
   // most tabs don't need repeated alongside their own. The radar tab plots
   // five metrics at once, so it gets all five columns instead of one.
   const metricKeys =
-    chartMetricKey === CHART_RADAR_KEY
+    appState.chartMetricKey === CHART_RADAR_KEY
       ? RADAR_CHART_METRICS
-      : [chartMetricKey];
+      : [appState.chartMetricKey];
   // metricFor/populationFor read off each item's own .series() rather than
   // the global metricFor()/chartPopulationSeries(), so the same columns
   // work whether rows are real countries (Country mode) or aggregated
   // Region/Income groups (see chartItems()).
   return buildDetailColumns({
-    currentYearIndex,
-    metricFor: (item, key) => item.series(key)[currentYearIndex],
+    currentYearIndex: appState.currentYearIndex,
+    metricFor: (item, key) => item.series(key)[appState.currentYearIndex],
     metricKeys,
-    populationFor: (item) => item.series("population")[currentYearIndex],
+    populationFor: (item) => item.series("population")[appState.currentYearIndex],
   });
 }
 
@@ -1468,9 +1428,9 @@ const CHART_BENCHMARK_LINES = {
 };
 
 function setDetailSort(key) {
-  const next = nextSortState(detailSort, key, detailColumns());
+  const next = nextSortState(appState.detailSort, key, detailColumns());
   if (!next) return;
-  detailSort = next;
+  appState.detailSort = next;
   renderDetailPanel();
 }
 
@@ -1500,16 +1460,16 @@ function renderDetailPanel() {
   // A country drill-down (from a row click or a dot click) takes over the
   // country panel; re-running this on the next year change would otherwise
   // stomp it back to the group table.
-  if (!selectedLegend || selectedCountry || currentYearIndex < 0) return;
+  if (!appState.selectedLegend || appState.selectedCountry || appState.currentYearIndex < 0) return;
 
   const columns = detailColumns();
   const countries = selectedCountries();
-  const year = yearsData[currentYearIndex];
+  const year = yearsData[appState.currentYearIndex];
   elements.detailPanel.style.setProperty(
     "--detail-color",
-    selectedLegend.color,
+    appState.selectedLegend.color,
   );
-  elements.detailTitle.textContent = displayGroupLabel(selectedLegend.label);
+  elements.detailTitle.textContent = displayGroupLabel(appState.selectedLegend.label);
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
   renderDetailNav();
 
@@ -1517,7 +1477,7 @@ function renderDetailPanel() {
     headerEl: elements.detailHeader,
     rowsEl: elements.detailRows,
     columns,
-    sort: detailSort,
+    sort: appState.detailSort,
     countries,
     barMode: "country-cell",
     barMetric: "population",
@@ -1532,8 +1492,8 @@ function renderDetailPanel() {
 
 function closeDetailPanel() {
   countryDetailController.reset();
-  selectedLegend = null;
-  selectedCountry = null;
+  appState.selectedLegend = null;
+  appState.selectedCountry = null;
   elements.detailPanel.hidden = true;
   elements.countryPanel.hidden = true;
   updateViewModeAvailability();
@@ -1541,8 +1501,8 @@ function closeDetailPanel() {
   // Match chart-view close behavior: the underlying global status was
   // already established before opening the detail overlay, so restore it
   // immediately instead of replaying the typewriter animation.
-  if (currentYearIndex >= 0) {
-    updateStatusPanel(yearsData[currentYearIndex], { instant: true });
+  if (appState.currentYearIndex >= 0) {
+    updateStatusPanel(yearsData[appState.currentYearIndex], { instant: true });
   }
   // If this country/group detail was opened from inside Chart or Cluster
   // (a table row click, or a cluster-particle click), restore that mode
@@ -1552,15 +1512,15 @@ function closeDetailPanel() {
   // left to return to) funnel through on their way fully out. Each of the
   // set*Active(true) calls below does its own syncUrlFromState(), so the
   // plain call at the end only runs when there's nothing to restore.
-  const restoreMode = detailEntryMode;
-  detailEntryMode = null;
+  const restoreMode = appState.detailEntryMode;
+  appState.detailEntryMode = null;
   if (restoreMode === "chart") {
     setchartPanelActive(true);
   } else if (restoreMode === "cluster") {
     setClusterActive(true);
   } else if (restoreMode === "search") {
     // Back to the bare list: drop the chip but stay in search view.
-    searchSelectedIso3 = null;
+    appState.searchSelectedIso3 = null;
     renderSearchCountryChip();
     syncUrlFromState();
   } else if (restoreMode === "lifetime") {
@@ -1595,8 +1555,8 @@ function closeInfoPanel() {
 // one level up the navigation stack.
 function closeCountryDetail() {
   countryDetailController.reset();
-  selectedCountry = null;
-  if (selectedLegend) {
+  appState.selectedCountry = null;
+  if (appState.selectedLegend) {
     renderDetailPanel();
   } else {
     closeDetailPanel();
@@ -1611,24 +1571,24 @@ function closeCountryDetail() {
 // country/group detail, or the chart view with its metric and selected
 // countries — instead of always landing back on the plain globe.
 function urlStateFromApp() {
-  const state = { mode: viewMode, projection: projectionData.scenario() };
-  if (chartPanelActive) {
-    Object.assign(state, { view: "chart", metric: chartMetricKey, countries: selectedChartCountries });
-  } else if (clusterActive) {
+  const state = { mode: appState.viewMode, projection: projectionData.scenario() };
+  if (appState.chartPanelActive) {
+    Object.assign(state, { view: "chart", metric: appState.chartMetricKey, countries: appState.selectedChartCountries });
+  } else if (appState.clusterActive) {
     Object.assign(state, { view: "cluster" });
-  } else if (searchActive) {
+  } else if (appState.searchActive) {
     Object.assign(state, {
       view: "search",
-      ...(searchSelectedIso3 ? { country: searchSelectedIso3 } : {}),
+      ...(appState.searchSelectedIso3 ? { country: appState.searchSelectedIso3 } : {}),
     });
   } else if (lifetimeController?.isActive()) {
     lifetimeController.applyToUrlState(state);
-  } else if (selectedCountry) {
-    Object.assign(state, { view: "country", country: selectedCountry.iso3 });
-  } else if (selectedLegend) {
-    Object.assign(state, { view: "group", groupMode: selectedLegend.mode, group: selectedLegend.key });
+  } else if (appState.selectedCountry) {
+    Object.assign(state, { view: "country", country: appState.selectedCountry.iso3 });
+  } else if (appState.selectedLegend) {
+    Object.assign(state, { view: "group", groupMode: appState.selectedLegend.mode, group: appState.selectedLegend.key });
   }
-  if (currentYearIndex >= 0) state.year = yearsData[currentYearIndex];
+  if (appState.currentYearIndex >= 0) state.year = yearsData[appState.currentYearIndex];
   return state;
 }
 
@@ -1654,7 +1614,7 @@ function applyUrlStateFromLocation(search) {
   if (state.mode === "map") setViewMode("map");
 
   if (state.view === "chart") {
-    if (state.countries.length) selectedChartCountries = state.countries;
+    if (state.countries.length) appState.selectedChartCountries = state.countries;
     // Countries/metric are settled before the panel opens, so its own
     // renderTrendChart({ animate: true }) call is both the first one that
     // reflects the deep-linked state and the only one that's actually
@@ -1675,7 +1635,7 @@ function applyUrlStateFromLocation(search) {
     if (country) openCountryDetail(country);
   } else if (state.view === "group") {
     if (state.groupMode === "region" || state.groupMode === "income") {
-      if (state.groupMode !== colorMode) setColorMode(state.groupMode);
+      if (state.groupMode !== appState.colorMode) setColorMode(state.groupMode);
       const entry = legendEntriesFor(state.groupMode).find(
         ([label]) => label === state.group,
       );
@@ -1698,16 +1658,16 @@ function applyUrlStateFromLocation(search) {
   }
 }
 
-function selectLegendItem(label, color, mode = colorMode) {
-  if (selectedLegend?.mode === mode && selectedLegend?.key === label) {
+function selectLegendItem(label, color, mode = appState.colorMode) {
+  if (appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === label) {
     // closeDetailPanel();
     return;
   }
 
-  detailSort = { key: 'population', direction: "desc" };
+  appState.detailSort = { key: 'population', direction: "desc" };
 
   tourController.stop();
-  selectedLegend = { mode, key: label, label, color };
+  appState.selectedLegend = { mode, key: label, label, color };
   renderLegend(mode);
   renderDetailPanel();
   syncUrlFromState();
@@ -1723,14 +1683,14 @@ function selectLegendItem(label, color, mode = colorMode) {
 // first), so the table opens sorted by the number that matters instead of
 // always falling back to population.
 function selectDetailGroup(mode, key, label, color, sortKey, sortDirection) {
-  if (selectedLegend?.mode === mode && selectedLegend?.key === key) {
+  if (appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === key) {
     // closeDetailPanel();
     return;
   }
   tourController.stop();
-  selectedLegend = { mode, key, label, color };
+  appState.selectedLegend = { mode, key, label, color };
   if (sortKey) {
-    detailSort = { key: sortKey, direction: sortDirection ?? "desc" };
+    appState.detailSort = { key: sortKey, direction: sortDirection ?? "desc" };
   }
   renderDetailPanel();
   syncUrlFromState();
@@ -1755,7 +1715,7 @@ function svgEl(tag, attrs = {}) {
 // A radar/spider snapshot tab, alongside the time-series metric tabs above
 // — not a real entry in METRICS since it plots five metrics against each
 // other at once rather than being one itself. Kept as its own sentinel key
-// so chartMetricKey, the tab list, and the table columns can each
+// so appState.chartMetricKey, the tab list, and the table columns can each
 // special-case it in one place.
 // Clockwise from the top spoke — see renderRadarChart's angleFor.
 // Generous left/right padding: axis labels like "Age dependency ratio" run
@@ -1806,14 +1766,14 @@ function hideClusterArchetypeTooltip() {
 const countryDetailController = createCountryDetailController({
   elements,
   getYears: () => yearsData,
-  getCurrentYearIndex: () => currentYearIndex,
+  getCurrentYearIndex: () => appState.currentYearIndex,
   setCurrentYearIndex: (index) => {
-    currentYearIndex = index;
+    appState.currentYearIndex = index;
   },
-  getHistoricalCutoffYear: () => historicalCutoffYear,
+  getHistoricalCutoffYear: () => appState.historicalCutoffYear,
   getCountries: () => countriesData,
   getPopulationSeries: activePopulationSeries,
-  getColorMode: () => colorMode,
+  getColorMode: () => appState.colorMode,
   getDemographicMetrics: () => countryDemographicMetrics,
   getAgeStructure: () => countryAgeStructure,
   colorFor,
@@ -1831,18 +1791,18 @@ const countryDetailController = createCountryDetailController({
 });
 
 function openCountryDetail(country) {
-  if (!country || currentYearIndex < 0) return;
+  if (!country || appState.currentYearIndex < 0) return;
   // A row click in the chart view's own table drills into the same full
   // country detail panel the group table uses — that panel and the chart
   // overlay are both full-screen, so the chart has to step aside first.
-  // Remembered (see detailEntryMode) so closing back out restores Chart
+  // Remembered (see appState.detailEntryMode) so closing back out restores Chart
   // instead of landing on whichever of Globe/Map is underneath.
-  if (chartPanelActive) {
-    detailEntryMode = "chart";
+  if (appState.chartPanelActive) {
+    appState.detailEntryMode = "chart";
     setchartPanelActive(false);
   }
   tourController.stop();
-  selectedCountry = country;
+  appState.selectedCountry = country;
   elements.tooltip.hidden = true;
   recordRecentCountry(country.iso3);
   renderCountryDetail();
@@ -1850,8 +1810,8 @@ function openCountryDetail(country) {
 }
 
 function renderCountryDetail(options = { animate: true }) {
-  const country = selectedCountry;
-  if (!country || currentYearIndex < 0) return;
+  const country = appState.selectedCountry;
+  if (!country || appState.currentYearIndex < 0) return;
   assertElements(elements, COUNTRY_DETAIL_ELEMENT_KEYS, "country detail");
   countryDetailController.render(country, options);
 }
@@ -1870,18 +1830,18 @@ function setProjectionScenario(scenario, { sync = true } = {}) {
     elements.chartProjectionScenario.value = scenario;
   }
 
-  if (chartPanelActive) {
+  if (appState.chartPanelActive) {
     renderTrendChart();
     renderChartTable();
-  } else if (clusterActive) {
-    clusterController.refreshData(currentYearIndex);
-    if (currentYearIndex >= 0) updateYearLabels(yearsData[currentYearIndex]);
+  } else if (appState.clusterActive) {
+    clusterController.refreshData(appState.currentYearIndex);
+    if (appState.currentYearIndex >= 0) updateYearLabels(yearsData[appState.currentYearIndex]);
   } else if (lifetimeController?.isActive()) {
     lifetimeController.render();
-    if (currentYearIndex >= 0) updateYearLabels(yearsData[currentYearIndex]);
-  } else if (currentYearIndex >= 0) {
-    applyYear(yearsData[currentYearIndex], { instant: true });
-    if (selectedCountry) renderCountryDetail({ animate: false });
+    if (appState.currentYearIndex >= 0) updateYearLabels(yearsData[appState.currentYearIndex]);
+  } else if (appState.currentYearIndex >= 0) {
+    applyYear(yearsData[appState.currentYearIndex], { instant: true });
+    if (appState.selectedCountry) renderCountryDetail({ animate: false });
   }
 
   if (sync) syncUrlFromState();
@@ -1900,13 +1860,13 @@ function chartPopulationSeries(country) {
 }
 
 function chartCountryList() {
-  return selectedChartCountries
+  return appState.selectedChartCountries
     .map((iso3) => countriesData.find((country) => country.iso3 === iso3))
     .filter(Boolean);
 }
 
 function chartColorFor(iso3) {
-  const index = selectedChartCountries.indexOf(iso3);
+  const index = appState.selectedChartCountries.indexOf(iso3);
   if (index === -1) return null;
   return CHART_LINE_COLORS[index % CHART_LINE_COLORS.length];
 }
@@ -1941,8 +1901,8 @@ function resolveComputedColor(cssColorValue) {
 }
 
 function addChartCountry(iso3) {
-  if (selectedChartCountries.includes(iso3)) return;
-  selectedChartCountries.push(iso3);
+  if (appState.selectedChartCountries.includes(iso3)) return;
+  appState.selectedChartCountries.push(iso3);
   renderChartCountryChips();
   renderTrendChart();
   renderChartTable();
@@ -1950,9 +1910,9 @@ function addChartCountry(iso3) {
 }
 
 function removeChartCountry(iso3) {
-  const index = selectedChartCountries.indexOf(iso3);
+  const index = appState.selectedChartCountries.indexOf(iso3);
   if (index === -1) return;
-  selectedChartCountries.splice(index, 1);
+  appState.selectedChartCountries.splice(index, 1);
   renderChartCountryChips();
   renderTrendChart();
   renderChartTable();
@@ -2045,7 +2005,7 @@ function chartCountryMatches(query) {
   const aliasIso2 = CHART_COUNTRY_CODE_ALIASES[q];
   return countriesData
     .filter((country) => {
-      if (selectedChartCountries.includes(country.iso3)) return false;
+      if (appState.selectedChartCountries.includes(country.iso3)) return false;
       const iso2 = convertAlpha3ToAlpha2(country.iso3);
       return (
         country.name.toLowerCase().includes(q) ||
@@ -2064,8 +2024,8 @@ function hideChartCountrySuggestions() {
 }
 
 function setChartCountryPickerExpanded(expanded) {
-  if (expanded === chartCountryPickerExpanded) return;
-  chartCountryPickerExpanded = expanded;
+  if (expanded === appState.chartCountryPickerExpanded) return;
+  appState.chartCountryPickerExpanded = expanded;
   elements.chartCountryPicker.classList.toggle("expanded", expanded);
   if (expanded) {
     elements.chartCountrySearch.focus();
@@ -2141,10 +2101,10 @@ function renderChartCountrySuggestions() {
 }
 
 function setChartMetric(key) {
-  if (key === chartMetricKey || (!METRICS[key] && key !== CHART_RADAR_KEY)) {
+  if (key === appState.chartMetricKey || (!METRICS[key] && key !== CHART_RADAR_KEY)) {
     return;
   }
-  chartMetricKey = key;
+  appState.chartMetricKey = key;
   elements.chartMetricTabs.value = key;
   // updateProjectionScenarioVisibility();
   renderTrendChart();
@@ -2154,7 +2114,7 @@ function setChartMetric(key) {
 
 // function updateProjectionScenarioVisibility() {
 //   elements.chartProjectionScenario.hidden =
-//     chartMetricKey !== "population";
+//     appState.chartMetricKey !== "population";
 // }
 
 function renderChartMetricTabs() {
@@ -2173,7 +2133,7 @@ function renderChartMetricTabs() {
       option.value = key;
       option.textContent =
         key === CHART_RADAR_KEY ? "Radar chart" : METRICS[key].label;
-      option.selected = key === chartMetricKey;
+      option.selected = key === appState.chartMetricKey;
       return option;
     }),
   );
@@ -2233,7 +2193,7 @@ function renderRadarChart() {
     .map((item) => ({
       item,
       values: RADAR_CHART_METRICS.map(
-        (key) => item.series(key)[currentYearIndex],
+        (key) => item.series(key)[appState.currentYearIndex],
       ),
     }))
     // A radar polygon needs all five vertices — one missing metric leaves no
@@ -2345,11 +2305,11 @@ function renderRadarChart() {
   // live-updates the table, committing the actual polygons through
   // goToYear()'s full pipeline at drag end — re-rendering this SVG
   // mid-drag would drop the pointer capture the drag depends on.
-  if (currentYearIndex >= 0 && currentYearIndex < n) {
+  if (appState.currentYearIndex >= 0 && appState.currentYearIndex < n) {
     const scrubberY = 4;
     const pillWidth = 32;
     const pillHeight = 18;
-    const scrubberX = chartXFor(currentYearIndex, n, innerW, pad.left).toFixed(1);
+    const scrubberX = chartXFor(appState.currentYearIndex, n, innerW, pad.left).toFixed(1);
     const scrubberLine = svgEl("line", {
       class: "trend-chart-year-marker",
       x1: scrubberX,
@@ -2371,7 +2331,7 @@ function renderRadarChart() {
       y: scrubberY + 13,
       "text-anchor": "middle",
     });
-    scrubberLabel.textContent = yearsData[currentYearIndex];
+    scrubberLabel.textContent = yearsData[appState.currentYearIndex];
     const DRAG_HIT_HALF_WIDTH = 10;
     const scrubberDragHit = svgEl("rect", {
       class: "trend-chart-year-drag",
@@ -2392,7 +2352,7 @@ function renderRadarChart() {
     let chartTableRenderScheduled = false;
     function previewYear(year) {
       const index = yearsData.indexOf(year);
-      if (index === -1 || index === currentYearIndex) return;
+      if (index === -1 || index === appState.currentYearIndex) return;
       const x = chartXFor(index, n, innerW, pad.left).toFixed(1);
       scrubberLine.setAttribute("x1", x);
       scrubberLine.setAttribute("x2", x);
@@ -2403,7 +2363,7 @@ function renderRadarChart() {
         "x",
         (Number(x) - DRAG_HIT_HALF_WIDTH).toFixed(1),
       );
-      currentYearIndex = index;
+      appState.currentYearIndex = index;
       if (!chartTableRenderScheduled) {
         chartTableRenderScheduled = true;
         requestAnimationFrame(() => {
@@ -2426,7 +2386,7 @@ function renderRadarChart() {
     const endDrag = () => {
       if (!dragging) return;
       dragging = false;
-      goToYear(yearsData[currentYearIndex]);
+      goToYear(yearsData[appState.currentYearIndex]);
     };
     scrubberDragHit.addEventListener("pointerup", endDrag);
     scrubberDragHit.addEventListener("pointercancel", endDrag);
@@ -2444,14 +2404,14 @@ const trendChartController = createTrendChartController({
   metrics: METRICS,
   benchmarkLines: CHART_BENCHMARK_LINES,
   svgEl,
-  getMetricKey: () => chartMetricKey,
+  getMetricKey: () => appState.chartMetricKey,
   getItems: chartItems,
   getYears: () => yearsData,
-  getCurrentYearIndex: () => currentYearIndex,
+  getCurrentYearIndex: () => appState.currentYearIndex,
   setCurrentYearIndex: (index) => {
-    currentYearIndex = index;
+    appState.currentYearIndex = index;
   },
-  getHistoricalCutoffYear: () => historicalCutoffYear,
+  getHistoricalCutoffYear: () => appState.historicalCutoffYear,
   renderRadar: renderRadarChart,
   renderTable: renderChartTable,
   showTooltip: showChartTooltip,
@@ -2497,20 +2457,20 @@ const clusterController = createClusterController({
   showArchetypeTooltip: showClusterArchetypeTooltip,
   hideArchetypeTooltip: hideClusterArchetypeTooltip,
   onCountryClick: (country) => {
-    // Remembered (see detailEntryMode) so closing the detail panel back
+    // Remembered (see appState.detailEntryMode) so closing the detail panel back
     // out restores Cluster instead of landing on whichever of Globe/Map
     // is underneath.
-    detailEntryMode = "cluster";
+    appState.detailEntryMode = "cluster";
     setClusterActive(false);
     openCountryDetail(country);
   },
 });
 
 // Shared by every setXActive(active) toggle below (and the initial
-// bind-events setup) — #viewMode stays visible while a full-screen overlay
+// bind-events setup) — #appState.viewMode stays visible while a full-screen overlay
 // (Search/Chart/Cluster) is open rather than being hidden behind it, so its
 // "active" highlight has to track that overlay's own mode string instead of
-// just the underlying Globe/Map viewMode.
+// just the underlying Globe/Map appState.viewMode.
 function syncViewModeButtons(activeMode) {
   elements.viewMode.querySelectorAll("button").forEach((btn) =>
     btn.classList.toggle("active", btn.dataset.mode === activeMode),
@@ -2518,35 +2478,35 @@ function syncViewModeButtons(activeMode) {
 }
 
 function setClusterActive(active) {
-  if (active === clusterActive) return;
+  if (active === appState.clusterActive) return;
   if (active) {
     assertElements(elements, ["clusterView", "clusterCanvas"], "cluster view");
   }
-  clusterActive = active;
+  appState.clusterActive = active;
   elements.clusterView.hidden = !active;
   document.body.classList.toggle("view-cluster", active);
-  syncViewModeButtons(active ? "cluster" : viewMode);
+  syncViewModeButtons(active ? "cluster" : appState.viewMode);
   if (active) {
     tourController.stop();
     updateColorModeControls(clusterController.getColorMode());
     renderLegend();
-    clusterController.activate(currentYearIndex);
-    if (currentYearIndex >= 0) {
-      applyClusterStatus(yearsData[currentYearIndex]);
+    clusterController.activate(appState.currentYearIndex);
+    if (appState.currentYearIndex >= 0) {
+      applyClusterStatus(yearsData[appState.currentYearIndex]);
     }
   } else {
     clusterController.deactivate();
-    updateColorModeControls(colorMode);
+    updateColorModeControls(appState.colorMode);
     renderLegend();
     // Forces the next applyClusterStatus() call (reactivating, possibly at
     // a different year) to treat it as a fresh chapter instead of a no-op
     // just because it happens to match whatever was cached from this visit.
-    clusterStatusPeriod = null;
-    if (currentYearIndex >= 0) {
+    appState.clusterStatusPeriod = null;
+    if (appState.currentYearIndex >= 0) {
       // Cluster took applyYear()'s cheap fast path (see there) while open,
       // leaving the 3D scene stale — catch it up now that it's visible
       // again.
-      applyYear(yearsData[currentYearIndex], { instant: true });
+      applyYear(yearsData[appState.currentYearIndex], { instant: true });
     }
   }
   syncUrlFromState();
@@ -2609,7 +2569,7 @@ const SEARCH_SUGGESTION_LIMIT = 8;
 let searchSuggestionActiveIndex = -1;
 
 function setSearchActive(active) {
-  if (active === searchActive) return;
+  if (active === appState.searchActive) return;
   if (active) {
     assertElements(
       elements,
@@ -2617,14 +2577,14 @@ function setSearchActive(active) {
       "search view",
     );
   }
-  searchActive = active;
+  appState.searchActive = active;
   elements.searchView.hidden = !active;
   elements.searchBar.hidden = !active;
   document.body.classList.toggle("view-search", active);
-  syncViewModeButtons(active ? "search" : viewMode);
+  syncViewModeButtons(active ? "search" : appState.viewMode);
   if (active) {
     tourController.stop();
-    searchSelectedIso3 = null;
+    appState.searchSelectedIso3 = null;
     renderCategoryGrid();
     renderSearchCountryGrid();
     renderSearchCountryChip();
@@ -2633,20 +2593,20 @@ function setSearchActive(active) {
   } else {
     // Leaving search entirely tears down any open detail this view opened,
     // without routing through closeDetailPanel() (whose "search" restore
-    // would just reactivate this view). detailEntryMode is cleared first for
+    // would just reactivate this view). appState.detailEntryMode is cleared first for
     // the same reason.
-    if (selectedCountry && detailEntryMode === "search") {
-      detailEntryMode = null;
+    if (appState.selectedCountry && appState.detailEntryMode === "search") {
+      appState.detailEntryMode = null;
       countryDetailController.reset();
-      selectedCountry = null;
+      appState.selectedCountry = null;
       elements.countryPanel.hidden = true;
       updateViewModeAvailability();
       renderLegend();
-      if (currentYearIndex >= 0) {
-        updateStatusPanel(yearsData[currentYearIndex], { instant: true });
+      if (appState.currentYearIndex >= 0) {
+        updateStatusPanel(yearsData[appState.currentYearIndex], { instant: true });
       }
     }
-    searchSelectedIso3 = null;
+    appState.searchSelectedIso3 = null;
     renderSearchCountryChip();
   }
   syncUrlFromState();
@@ -2694,8 +2654,8 @@ function renderSearchCountryGrid() {
 
 function renderSearchCountryChip() {
   const country =
-    searchSelectedIso3 &&
-    countriesData.find((c) => c.iso3 === searchSelectedIso3);
+    appState.searchSelectedIso3 &&
+    countriesData.find((c) => c.iso3 === appState.searchSelectedIso3);
   elements.searchCountryPicker.classList.toggle("has-selection", !!country);
   if (!country) {
     elements.searchCountryChips.replaceChildren();
@@ -2725,22 +2685,22 @@ function renderSearchCountryChip() {
 function selectSearchCountry(iso3) {
   const country = countriesData.find((c) => c.iso3 === iso3);
   if (!country) return;
-  searchSelectedIso3 = iso3;
+  appState.searchSelectedIso3 = iso3;
   renderSearchCountryChip();
   elements.searchCountryInput.value = "";
   hideSearchSuggestions();
   // Remembered so closeDetailPanel() returns here (see its "search" branch)
   // rather than to whichever of Globe/Map is underneath.
-  detailEntryMode = "search";
+  appState.detailEntryMode = "search";
   openCountryDetail(country);
 }
 
 // A category tile in the search view's grid opens the same group-detail
 // panel #detailNav's own age/migration items do — same as selectSearchCountry
-// above, detailEntryMode is set first so closing the panel comes back here
+// above, appState.detailEntryMode is set first so closing the panel comes back here
 // instead of Globe/Map.
 function selectSearchCategory(mode, key, label, color, sortKey, sortDirection) {
-  detailEntryMode = "search";
+  appState.detailEntryMode = "search";
   selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
 }
 
@@ -2748,10 +2708,10 @@ function selectSearchCategory(mode, key, label, color, sortKey, sortDirection) {
 // close button — funnel through closeDetailPanel()'s "search" restore, which
 // clears the chip and re-shows the list.
 function clearSearchCountry() {
-  if (selectedCountry && detailEntryMode === "search") {
+  if (appState.selectedCountry && appState.detailEntryMode === "search") {
     closeDetailPanel();
   } else {
-    searchSelectedIso3 = null;
+    appState.searchSelectedIso3 = null;
     renderSearchCountryChip();
     syncUrlFromState();
   }
@@ -2846,9 +2806,9 @@ function moveSearchSuggestionActiveIndex(delta) {
 }
 
 function setChartTableSort(key) {
-  const next = nextSortState(chartTableSort, key, chartTableColumns());
+  const next = nextSortState(appState.chartTableSort, key, chartTableColumns());
   if (!next) return;
-  chartTableSort = next;
+  appState.chartTableSort = next;
   renderChartTable();
 }
 
@@ -2858,7 +2818,7 @@ function capitalizeFirstLetter(str) {
 }
 
 function badgeLabel() {
-  return yearsData[currentYearIndex] < historicalCutoffYear
+  return yearsData[appState.currentYearIndex] < appState.historicalCutoffYear
     ? `Historical`
     : `${capitalizeFirstLetter(projectionData.scenario())} Projection`;
 }
@@ -2869,20 +2829,20 @@ function renderChartTable() {
   if (!elements.chartTableRows) return;
   const items = chartItems();
   const columns = chartTableColumns();
-  if (!columns.some((column) => column.key === chartTableSort.key)) {
+  if (!columns.some((column) => column.key === appState.chartTableSort.key)) {
     // Used to always fall back to "population" specifically, which stopped
     // being a safe assumption once the table dropped its always-present
     // Population column — falls back to whichever metric column is
     // actually here instead (the "name" one is never a useful sort
     // default, so it's excluded).
     const fallback = columns.find((column) => column.key !== "name");
-    chartTableSort = { key: fallback.key, direction: fallback.defaultDirection };
+    appState.chartTableSort = { key: fallback.key, direction: fallback.defaultDirection };
   }
   renderSortableTable({
     headerEl: elements.chartTableHeader,
     rowsEl: elements.chartTableRows,
     columns,
-    sort: chartTableSort,
+    sort: appState.chartTableSort,
     countries: items,
     onSort: setChartTableSort,
     onRowClick: (item) => item.onClick(),
@@ -2897,14 +2857,14 @@ function renderChartTable() {
 // is "active", so whichever was selected before is still the one shown
 // (and still marked active) once the overlay closes.
 function setchartPanelActive(active) {
-  if (active === chartPanelActive) return;
+  if (active === appState.chartPanelActive) return;
   if (active) {
     assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart view");
   }
-  chartPanelActive = active;
+  appState.chartPanelActive = active;
   elements.chartPanel.hidden = !active;
   document.body.classList.toggle("view-chart", active);
-  syncViewModeButtons(active ? "chart" : viewMode);
+  syncViewModeButtons(active ? "chart" : appState.viewMode);
   if (active) {
     tourController.stop();
     renderTrendChart({ animate: true });
@@ -2915,7 +2875,7 @@ function setchartPanelActive(active) {
     // the selected countries themselves are.
     setChartCountryPickerExpanded(false);
   }
-  if (!active && currentYearIndex >= 0) {
+  if (!active && appState.currentYearIndex >= 0) {
     trendChartController.cancelAnimation();
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had
@@ -2923,7 +2883,7 @@ function setchartPanelActive(active) {
     // skips #status's typewriter replay here — chart view already showed
     // this year's own text (via renderChartTable) the whole time, so
     // retyping it from scratch on close would just be redundant animation.
-    applyYear(yearsData[currentYearIndex], { instant: true });
+    applyYear(yearsData[appState.currentYearIndex], { instant: true });
   }
   syncUrlFromState();
 }
@@ -2931,7 +2891,7 @@ function setchartPanelActive(active) {
 const THEME_STORAGE_KEY = "theme"; // must match the inline <head> script in index.html
 
 function updateThemeToggleUI() {
-  const isLight = currentTheme === "light";
+  const isLight = appState.currentTheme === "light";
   elements.themeToggle?.setAttribute(
     "aria-pressed",
     String(!isLight),
@@ -2968,8 +2928,8 @@ function updateThemeToggleUI() {
 // open would otherwise leave stale-theme text frozen on screen.
 // Those are exactly what this re-derives and pushes out again.
 function applyTheme(theme, { persist = true } = {}) {
-  if (theme === currentTheme) return;
-  currentTheme = theme;
+  if (theme === appState.currentTheme) return;
+  appState.currentTheme = theme;
   document.documentElement.dataset.theme = theme;
   if (persist) localStorage.setItem(THEME_STORAGE_KEY, theme);
   updateThemeToggleUI();
@@ -2982,13 +2942,13 @@ function applyTheme(theme, { persist = true } = {}) {
   clearHoverCountryFill();
   clearHoverFillCache();
   recolor();
-  if (currentYearIndex >= 0) {
-    calloutController.rebuild(yearsData[currentYearIndex]);
+  if (appState.currentYearIndex >= 0) {
+    calloutController.rebuild(yearsData[appState.currentYearIndex]);
   }
-  if (selectedCountry && !elements.countryPanel.hidden) {
+  if (appState.selectedCountry && !elements.countryPanel.hidden) {
     elements.countryPanel.style.setProperty(
       "--detail-color",
-      `#${colorFor(selectedCountry).getHexString()}`,
+      `#${colorFor(appState.selectedCountry).getHexString()}`,
     );
   }
   if (clusterController.isActive()) clusterController.redraw();
@@ -3020,9 +2980,9 @@ function setClusterColorMode(mode) {
 }
 
 function setColorMode(mode) {
-  if (mode === colorMode) return;
-  const keepDetailOpen = selectedLegend && !elements.detailPanel.hidden;
-  colorMode = mode;
+  if (mode === appState.colorMode) return;
+  const keepDetailOpen = appState.selectedLegend && !elements.detailPanel.hidden;
+  appState.colorMode = mode;
   updateColorModeControls(mode);
 
   if (keepDetailOpen) {
@@ -3030,15 +2990,15 @@ function setColorMode(mode) {
     // the user keep exploring, not boot them back to the globe — land on
     // that mode's first legend entry instead of closing the panel.
     const [label, color] = legendEntriesFor(mode)[0];
-    selectedLegend = { mode, key: label, label, color };
+    appState.selectedLegend = { mode, key: label, label, color };
   } else {
-    selectedLegend = null;
+    appState.selectedLegend = null;
     elements.detailPanel.hidden = true;
     updateViewModeAvailability();
   }
   recolor();
   if (keepDetailOpen) renderDetailPanel();
-  calloutController.rebuild(yearsData[currentYearIndex]);
+  calloutController.rebuild(yearsData[appState.currentYearIndex]);
   syncUrlFromState();
 }
 
@@ -3082,7 +3042,7 @@ function setMorphEndpoints(fromArr, toArr) {
 
 function applySettledViewControls() {
   controls.enabled = true;
-  if (viewMode === "globe") {
+  if (appState.viewMode === "globe") {
     controls.enableRotate = true;
     controls.enablePan = false;
     controls.autoRotate = true;
@@ -3114,7 +3074,7 @@ function applySettledViewControls() {
   // Map is the only mode where dragging the canvas pans rather than orbits
   // or does nothing — the grab cursor is the only hint that's true, since
   // nothing else about a flat field of dots suggests it's draggable.
-  renderer.domElement.classList.toggle("pannable", viewMode === "map");
+  renderer.domElement.classList.toggle("pannable", appState.viewMode === "map");
 }
 
 // Keeps map pan from wandering the camera off into empty space with no way
@@ -3124,7 +3084,7 @@ function applySettledViewControls() {
 // the camera by the same delta so the offset — and therefore zoom — doesn't
 // change underneath the clamp.
 function clampMapPanTarget() {
-  if (viewMode !== "map" || transition) return;
+  if (appState.viewMode !== "map" || transition) return;
   const maxX = VIEW_CONFIG.map.width * 0.75;
   const maxY = VIEW_CONFIG.map.height * 0.75;
   const clampedX = THREE.MathUtils.clamp(controls.target.x, -maxX, maxX);
@@ -3144,7 +3104,7 @@ controls.addEventListener("change", clampMapPanTarget);
 // population layout is written so the globe never flashes or scrambles in.
 function initializeViewMode(mode) {
   if (mode !== "map") return;
-  viewMode = "map";
+  appState.viewMode = "map";
   camera.position.set(0, 0, VIEW_CONFIG.map.cameraDistance);
   controls.target.set(0, 0, 0);
   setDotSize(VIEW_CONFIG.map.dotSize);
@@ -3170,15 +3130,15 @@ function settleViewTransition() {
 }
 
 function setViewMode(mode) {
-  if (mode === viewMode || !activeTotal) return;
+  if (mode === appState.viewMode || !activeTotal) return;
 
   const fromPositions = basePositions.slice(0, activeTotal * 3);
   const scramblePositions = computeScramblePositions(activeTotal);
   const toPositions = computeTargetPositions(mode);
-  viewMode = mode;
+  appState.viewMode = mode;
   // Anchors are computed from the globe/map basis, so a mode toggle needs
   // its own rebuild even though the selected year hasn't changed.
-  calloutController.rebuild(yearsData[currentYearIndex]);
+  calloutController.rebuild(yearsData[appState.currentYearIndex]);
 
   const fromTarget = controls.target.clone();
   const toTarget = new THREE.Vector3(0, 0, 0);
@@ -3315,15 +3275,15 @@ async function init() {
     appData.countryDemographicMetricsPromise.then((data) => {
       if (!data) return;
       countryDemographicMetrics = data;
-      if (chartPanelActive) {
+      if (appState.chartPanelActive) {
         renderTrendChart();
         renderChartTable();
       }
-      if (clusterActive) clusterController.render(currentYearIndex);
+      if (appState.clusterActive) clusterController.render(appState.currentYearIndex);
       if (lifetimeController?.isActive()) lifetimeController.render();
-      if (selectedCountry) {
+      if (appState.selectedCountry) {
         renderCountryDetail();
-      } else if (selectedLegend) {
+      } else if (appState.selectedLegend) {
         renderDetailPanel();
       }
     });
@@ -3338,7 +3298,7 @@ async function init() {
     appData.countryAgeStructurePromise.then((data) => {
       if (!data) return;
       countryAgeStructure = data;
-      if (selectedCountry) renderCountryDetail();
+      if (appState.selectedCountry) renderCountryDetail();
     });
 
     // Same deferred treatment — only used to draw a border under the
@@ -3349,12 +3309,12 @@ async function init() {
     });
     countriesData = appData.countries;
     yearsData = appData.years;
-    preloadFlagIcons(selectedChartCountries);
-    historicalCutoffYear = appData.historicalCutoffYear;
+    preloadFlagIcons(appState.selectedChartCountries);
+    appState.historicalCutoffYear = appData.historicalCutoffYear;
     projectionData.configure({
       countries: countriesData,
       years: yearsData,
-      historicalCutoffYear,
+      historicalCutoffYear: appState.historicalCutoffYear,
       globalMetricsByYear: appData.globalMetricsByYear,
       globalTrendMilestones: appData.globalTrendMilestones,
       highMetricsByYear: appData.highMetricsByYear,
@@ -3373,22 +3333,22 @@ async function init() {
       getProjectionScenario: () => projectionData.scenario(),
       getCountryDemographicMetrics: () => countryDemographicMetrics,
       getCountryAgeStructure: () => countryAgeStructure,
-      getViewMode: () => viewMode,
+      getViewMode: () => appState.viewMode,
       formatPopulation: formatPeakPopulation,
       goToYear,
       syncUrl: syncUrlFromState,
       stopTour: () => tourController.stop(),
       catchUpScene: () => {
-        if (currentYearIndex >= 0) {
-          applyYear(yearsData[currentYearIndex], { instant: true });
+        if (appState.currentYearIndex >= 0) {
+          applyYear(yearsData[appState.currentYearIndex], { instant: true });
         }
       },
       // "Explore <country>'s Dataset" on the Horizon act — jumps out to the
-      // full country-detail view. Remembered (see detailEntryMode) so closing
+      // full country-detail view. Remembered (see appState.detailEntryMode) so closing
       // that panel lands back on this same Horizon section, not the intro
       // form or Globe/Map underneath.
       onOpenCountry: (country) => {
-        detailEntryMode = "lifetime";
+        appState.detailEntryMode = "lifetime";
         setLifetimeActive(false, { preserveStory: true });
         openCountryDetail(country);
 
@@ -3438,7 +3398,7 @@ async function init() {
       // "The Postwar Boom" the entire time and only jump to the right
       // chapter once the drag is released, well after the particles
       // themselves had already moved on.
-      if (clusterActive) {
+      if (appState.clusterActive) {
         const year = Number(elements.yearSlider.value);
         clusterController.setYear(year);
         applyClusterStatus(year);
@@ -3456,7 +3416,7 @@ async function init() {
     elements.colorMode.hidden = false;
     elements.colorMode.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (clusterActive) {
+        if (appState.clusterActive) {
           setClusterColorMode(btn.dataset.mode);
         } else {
           setColorMode(btn.dataset.mode);
@@ -3466,11 +3426,11 @@ async function init() {
     elements.legend.addEventListener("click", (event) => {
       const item = event.target.closest(".legend-item[data-label]");
       if (!item || !elements.legend.contains(item)) return;
-      // Remembered (see detailEntryMode) so closing the detail panel
+      // Remembered (see appState.detailEntryMode) so closing the detail panel
       // back out restores Cluster instead of landing on whichever of
       // Globe/Map is underneath.
-      if (clusterActive) {
-        detailEntryMode = "cluster";
+      if (appState.clusterActive) {
+        appState.detailEntryMode = "cluster";
         setClusterActive(false);
       }
       selectLegendItem(
@@ -3491,7 +3451,7 @@ async function init() {
     });
 
     elements.viewMode.hidden = false;
-    syncViewModeButtons(viewMode);
+    syncViewModeButtons(appState.viewMode);
     // One setter per full-screen overlay mode — picking any of them turns
     // off the other three (mutual exclusion) and turns this one on. A
     // lookup table instead of a branch per mode means adding a future
@@ -3580,10 +3540,10 @@ async function init() {
       } else if (
         event.key === "Backspace" &&
         !elements.chartCountrySearch.value &&
-        selectedChartCountries.length
+        appState.selectedChartCountries.length
       ) {
         removeChartCountry(
-          selectedChartCountries[selectedChartCountries.length - 1],
+          appState.selectedChartCountries[appState.selectedChartCountries.length - 1],
         );
       } else if (event.key === "Escape") {
         // First Escape just dismisses the suggestion list, matching how
@@ -3626,7 +3586,7 @@ async function init() {
       if (!item || !elements.searchCategoryGrid.contains(item)) return;
       const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
       if (mode === "region" || mode === "income") {
-        detailEntryMode = "search";
+        appState.detailEntryMode = "search";
         selectLegendItem(label, color, mode);
       } else {
         selectSearchCategory(mode, key, label, color, sortKey, sortDirection);
@@ -3678,7 +3638,7 @@ async function init() {
     elements.infoButton.addEventListener("click", openInfoPanel);
     elements.infoClose.addEventListener("click", closeInfoPanel);
     // elements.detailBack.addEventListener("click", () => {
-    //   if (selectedCountry) {
+    //   if (appState.selectedCountry) {
     //     closeCountryDetail();
     //   } else {
     //     closeDetailPanel();
@@ -3752,7 +3712,7 @@ function updateDotUniforms(elapsedTime) {
   if (!pointsMesh) return;
   const u = pointsMesh.material.uniforms;
   u.uTime.value = elapsedTime;
-  u.uIsMap.value = viewMode === "map" && !isScrambledPhase ? 1 : 0;
+  u.uIsMap.value = appState.viewMode === "map" && !isScrambledPhase ? 1 : 0;
 
   const pulseT = Math.min(
     1,
@@ -3929,10 +3889,10 @@ function createDebouncedResizeHandler(callback, delay = 120) {
 // Panel/canvas subviews each own their own debounce. Sharing one timer meant
 // whichever branch ran last during resize could cancel the others.
 const resizeCountryDetail = createDebouncedResizeHandler(() => {
-  // Re-checked rather than trusting the `selectedCountry` value at resize
+  // Re-checked rather than trusting the `appState.selectedCountry` value at resize
   // event time: the panel can close during the debounce window.
-  if (!selectedCountry) return;
-  countryDetailController.resize(selectedCountry);
+  if (!appState.selectedCountry) return;
+  countryDetailController.resize(appState.selectedCountry);
 });
 const resizeTrendChart = createDebouncedResizeHandler(renderTrendChart);
 const resizeCluster = createDebouncedResizeHandler(clusterController.resize);
@@ -3941,20 +3901,20 @@ window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-  if (currentYearIndex >= 0) {
-    updateYearLabels(yearsData[currentYearIndex]);
+  if (appState.currentYearIndex >= 0) {
+    updateYearLabels(yearsData[appState.currentYearIndex]);
   }
   if (pointsMesh) {
     pointsMesh.material.uniforms.uScale.value =
       renderer.domElement.height * 0.5;
   }
-  if (selectedCountry) {
+  if (appState.selectedCountry) {
     resizeCountryDetail();
   }
-  if (chartPanelActive) {
+  if (appState.chartPanelActive) {
     resizeTrendChart();
   }
-  if (clusterActive) {
+  if (appState.clusterActive) {
     resizeCluster();
   }
 });
