@@ -71,6 +71,7 @@ import { createChartViewLifecycle } from "./chart-view-lifecycle.mjs";
 import { createSearchViewLifecycle } from "./search-view-lifecycle.mjs";
 import { createClusterViewLifecycle } from "./cluster-view-lifecycle.mjs";
 import { createViewRouter } from "./view-router.mjs";
+import { createCountryBorderHitTester } from "./country-border-hit-test.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -227,6 +228,12 @@ controls.enablePan = false;
 const raycaster = new THREE.Raycaster();
 raycaster.params.Points = { threshold: VIEW_CONFIG.globe.dotSize * 1.5 };
 const pointer = new THREE.Vector2(Infinity, Infinity);
+const hoverGlobe = new THREE.Sphere(
+  new THREE.Vector3(0, 0, 0),
+  GLOBE_RADIUS,
+);
+const hoverMapPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+const hoverSurfacePoint = new THREE.Vector3();
 // Latest pointermove event, consumed by animate()'s throttled tooltip
 // hit-test rather than raycasting on every single mousemove.
 let lastPointerEvent = null;
@@ -400,6 +407,7 @@ let countryAgeStructure = null;
 // before then just doesn't draw a fill for that hover, same tradeoff as the
 // demographic-metrics deferred load.
 let countryBorders = null;
+let countryBorderHitTester = null;
 let createCountryFillGeometries = null;
 let countryFillGeometryModulePromise = null;
 let loadCountryDemographicMetrics = async () => null;
@@ -460,6 +468,9 @@ async function ensureCountryAgeStructure() {
 async function ensureCountryBorders() {
   if (countryBorders) return countryBorders;
   countryBorders = await loadCountryBorders();
+  if (countryBorders) {
+    countryBorderHitTester = createCountryBorderHitTester(countryBorders);
+  }
   return countryBorders;
 }
 
@@ -3073,6 +3084,7 @@ renderer.domElement.addEventListener("pointermove", (event) => {
   pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
   lastPointerEvent = event;
+  if (!countryBorderHitTester) ensureCountryBorders();
 });
 renderer.domElement.addEventListener("pointerleave", () => {
   pointer.set(Infinity, Infinity);
@@ -3086,10 +3098,45 @@ renderer.domElement.addEventListener("pointerleave", () => {
 let canvasPointerDownPos = null;
 const CANVAS_CLICK_MAX_DRAG_PX = 6;
 
-// Shared by the click handler and the hover tooltip below — both just need
-// "which country dot, if any, sits under the current pointer position."
+function geographicPointAtPointer() {
+  if (appState.viewMode === "map") {
+    const point = raycaster.ray.intersectPlane(
+      hoverMapPlane,
+      hoverSurfacePoint,
+    );
+    if (!point) return null;
+    const lon = (point.x / (VIEW_CONFIG.map.width / 2)) * 180;
+    const lat = (point.y / (VIEW_CONFIG.map.height / 2)) * 90;
+    if (Math.abs(lon) > 180 || Math.abs(lat) > 90) return null;
+    return { lon, lat };
+  }
+
+  const point = raycaster.ray.intersectSphere(hoverGlobe, hoverSurfacePoint);
+  if (!point) return null;
+  const lat = THREE.MathUtils.radToDeg(
+    Math.asin(point.y / GLOBE_RADIUS),
+  );
+  const lon = THREE.MathUtils.radToDeg(Math.atan2(-point.z, point.x));
+  return { lon, lat };
+}
+
+// Shared by click and hover. Once border data is available, ownership comes
+// from the geographic polygon under the pointer, not from whichever sparse
+// population dot happens to be closest. Particle raycasting remains only as
+// a first-hover fallback while the lazy border payload loads.
 function hitCountryAtPointer() {
   raycaster.setFromCamera(pointer, camera);
+  if (countryBorderHitTester) {
+    const geographicPoint = geographicPointAtPointer();
+    if (!geographicPoint) return null;
+    const iso3 = countryBorderHitTester.countryAt(
+      geographicPoint.lon,
+      geographicPoint.lat,
+    );
+    return iso3
+      ? countriesData.find((country) => country.iso3 === iso3) ?? null
+      : null;
+  }
   const hits = raycaster.intersectObject(pointsMesh);
   return hits.length ? dotCountry[hits[0].index] : null;
 }
