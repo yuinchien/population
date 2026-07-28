@@ -872,14 +872,11 @@ export function createCountryDetailController({
     elements.countryFlag.hidden = false;
 
     elements.countryDetail.hidden = false;
-    elements.countryPanel.hidden = false;
-    elements.detailPanel.hidden = true;
     updateStatusPanel(year);
     buildCharts(country, { animate });
     buildPyramid(country);
     updateYear(year);
     renderSimilarCountries(country);
-    updateViewModeAvailability();
   }
 
   function reset() {

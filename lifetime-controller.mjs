@@ -3,6 +3,10 @@ import {
   flagIconUrl,
   preloadFlagIcons,
 } from "./data-loader.mjs";
+import {
+  createCountryCombobox,
+  matchCountries,
+} from "./country-combobox.mjs";
 import { trackEvent } from "./analytics.mjs";
 import {
   runChartAnimation,
@@ -435,7 +439,7 @@ export function createLifetimeController({
   let birthYear = null;
   let countryIso = null;
   let actIndex = -1;
-  let suggestionActiveIndex = -1;
+  let countryCombobox = null;
   let titleBeforeLifetime = "";
   let viewModeHiddenBeforeStory = false;
   let scrollFrame = null;
@@ -566,83 +570,13 @@ export function createLifetimeController({
     return actIndex >= 0;
   }
 
-  function countryMatches(query) {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return countries()
-      .filter((country) => {
-        const iso2 = convertAlpha3ToAlpha2(country.iso3);
-        return (
-          country.name.toLowerCase().includes(q) ||
-          (iso2 && iso2.toLowerCase().includes(q))
-        );
-      })
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .slice(0, LIFETIME_COUNTRY_SUGGESTION_LIMIT);
-  }
-
-  function hideCountrySuggestions() {
-    elements.lifetimeCountrySuggestions.hidden = true;
-    elements.lifetimeCountrySuggestions.replaceChildren();
-    suggestionActiveIndex = -1;
-  }
-
-  function renderCountrySuggestions() {
-    const query = elements.lifetimeCountry.value.trim();
-    if (!query) {
-      hideCountrySuggestions();
-      return;
-    }
-    const matches = countryMatches(query);
-    preloadFlagIcons(matches.map((country) => country.iso3));
-    suggestionActiveIndex = -1;
-    elements.lifetimeCountrySuggestions.hidden = false;
-    if (!matches.length) {
-      const empty = document.createElement("div");
-      empty.className = "chip-suggestions-empty";
-      empty.textContent = "No matching countries";
-      elements.lifetimeCountrySuggestions.replaceChildren(empty);
-      return;
-    }
-    elements.lifetimeCountrySuggestions.replaceChildren(
-      ...matches.map((country) => {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "chip-suggestion";
-        item.dataset.iso3 = country.iso3;
-        const flag = document.createElement("span");
-        flag.className = "chip-suggestion-flag";
-        flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-        const label = document.createElement("span");
-        label.textContent = country.name;
-        item.append(flag, label);
-        return item;
-      }),
-    );
-  }
-
-  function moveSuggestionActive(delta) {
-    const items = elements.lifetimeCountrySuggestions.querySelectorAll(
-      ".chip-suggestion",
-    );
-    if (!items.length) return;
-    suggestionActiveIndex = Math.min(
-      items.length - 1,
-      Math.max(0, suggestionActiveIndex + delta),
-    );
-    items.forEach((item, i) =>
-      item.classList.toggle("highlighted", i === suggestionActiveIndex),
-    );
-    items[suggestionActiveIndex].scrollIntoView({ block: "nearest" });
-  }
-
   function selectCountry(iso3) {
     const country = countries().find((item) => item.iso3 === iso3);
     if (!country) return;
     countryIso = iso3;
     preloadFlagIcons([country.iso3]);
     elements.lifetimeCountry.value = country.name;
-    hideCountrySuggestions();
+    countryCombobox?.hide();
     render();
     syncUrl();
   }
@@ -934,59 +868,41 @@ export function createLifetimeController({
       event.preventDefault();
       begin();
     });
-    elements.lifetimeCountry?.addEventListener("input", () => {
-      if (!elements.lifetimeCountry.value.trim() && countryIso) {
-        countryIso = null;
-        actIndex = -1;
-        render();
-        syncUrl();
-      }
-      renderCountrySuggestions();
-    });
-    elements.lifetimeCountry?.addEventListener("focus", () => {
-      elements.lifetimeCountry.select();
-      renderCountrySuggestions();
+    countryCombobox = createCountryCombobox({
+      input: elements.lifetimeCountry,
+      list: elements.lifetimeCountrySuggestions,
+      getCandidates: (query) =>
+        matchCountries(query, {
+          countries: countries(),
+          convertCode: convertAlpha3ToAlpha2,
+          limit: LIFETIME_COUNTRY_SUGGESTION_LIMIT,
+          aliases: {},
+        }),
+      onSelect: (country) => selectCountry(country.iso3),
+      flagUrl: flagIconUrl,
+      preloadFlags: preloadFlagIcons,
+      onInput: (value) => {
+        if (!value.trim() && countryIso) {
+          countryIso = null;
+          actIndex = -1;
+          render();
+          syncUrl();
+        }
+      },
+      onFocus: () => elements.lifetimeCountry.select(),
+      onEnterWithoutSelection: (event) => {
+        if (elements.lifetimeButtonBegin.disabled) return;
+        event.preventDefault();
+        begin();
+      },
+      blurDismissMs: LIFETIME_COUNTRY_BLUR_DISMISS_MS,
+      closeOnOutsideClick: false,
     });
     elements.lifetimeCountry?.addEventListener("blur", () => {
       setTimeout(() => {
-        hideCountrySuggestions();
         const country = selectedCountry();
         elements.lifetimeCountry.value = country ? country.name : "";
       }, LIFETIME_COUNTRY_BLUR_DISMISS_MS);
-    });
-    elements.lifetimeCountry?.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        moveSuggestionActive(1);
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
-        moveSuggestionActive(-1);
-      } else if (event.key === "Enter") {
-        const items = elements.lifetimeCountrySuggestions.querySelectorAll(
-          ".chip-suggestion",
-        );
-        if (items.length) {
-          event.preventDefault();
-          const index = suggestionActiveIndex >= 0 ? suggestionActiveIndex : 0;
-          selectCountry(items[index].dataset.iso3);
-          return;
-        }
-        // No suggestions open (e.g. a country is already picked) — Enter
-        // begins the story, same as clicking Begin, once it's ready.
-        if (!elements.lifetimeButtonBegin.disabled) {
-          event.preventDefault();
-          begin();
-        }
-      } else if (event.key === "Escape") {
-        hideCountrySuggestions();
-      }
-    });
-    elements.lifetimeCountrySuggestions?.addEventListener("click", (event) => {
-      const button = event.target.closest(".chip-suggestion[data-iso3]");
-      if (!button || !elements.lifetimeCountrySuggestions.contains(button)) {
-        return;
-      }
-      selectCountry(button.dataset.iso3);
     });
   }
 

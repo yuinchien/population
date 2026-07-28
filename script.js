@@ -73,6 +73,11 @@ import {
   showTooltipLine,
 } from "./tooltip-controller.mjs";
 import { createInitialAppState } from "./app-state.mjs";
+import {
+  createCountryCombobox,
+  matchCountries,
+} from "./country-combobox.mjs";
+import { createOverlayController } from "./overlay-controller.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -1484,8 +1489,8 @@ function renderDetailPanel() {
     onSort: setDetailSort,
     onRowClick: openCountryDetail,
   });
-  elements.countryPanel.hidden = true;
-  elements.detailPanel.hidden = false;
+  countryOverlay.close({ restoreFocus: false });
+  detailOverlay.open({ focus: false });
   updateViewModeAvailability();
   updateStatusPanel(year, { groupCountries: countries });
 }
@@ -1494,8 +1499,8 @@ function closeDetailPanel() {
   countryDetailController.reset();
   appState.selectedLegend = null;
   appState.selectedCountry = null;
-  elements.detailPanel.hidden = true;
-  elements.countryPanel.hidden = true;
+  detailOverlay.close();
+  countryOverlay.close();
   updateViewModeAvailability();
   renderLegend();
   // Match chart-view close behavior: the underlying global status was
@@ -1534,16 +1539,14 @@ function closeDetailPanel() {
 }
 
 function openInfoPanel() {
-  elements.infoPanel.hidden = false;
-  elements.infoButton.setAttribute("aria-expanded", "true");
+  infoOverlay.open();
   document.body.classList.add("detail", "info-open");
   document.body.classList.remove("menu-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
 }
 
 function closeInfoPanel() {
-  elements.infoPanel.hidden = true;
-  elements.infoButton.setAttribute("aria-expanded", "false");
+  infoOverlay.close();
   document.body.classList.remove("info-open");
   if (elements.detailPanel.hidden && elements.countryPanel.hidden) {
     document.body.classList.remove("detail");
@@ -1763,6 +1766,26 @@ function hideClusterArchetypeTooltip() {
   hideTooltipElement(elements.clusterArchetypeTooltip);
 }
 
+const detailOverlay = createOverlayController({
+  panel: elements.detailPanel,
+  labelledBy: elements.detailTitle.id,
+  initialFocus: () => elements.detailClose,
+  requestClose: closeDetailPanel,
+});
+const countryOverlay = createOverlayController({
+  panel: elements.countryPanel,
+  labelledBy: elements.countryTitle.id,
+  initialFocus: () => elements.countryClose,
+  requestClose: closeCountryDetail,
+});
+const infoOverlay = createOverlayController({
+  panel: elements.infoPanel,
+  labelledBy: "settingsTitle",
+  trigger: elements.infoButton,
+  initialFocus: () => elements.infoClose,
+  requestClose: closeInfoPanel,
+});
+
 const countryDetailController = createCountryDetailController({
   elements,
   getYears: () => yearsData,
@@ -1814,6 +1837,9 @@ function renderCountryDetail(options = { animate: true }) {
   if (!country || appState.currentYearIndex < 0) return;
   assertElements(elements, COUNTRY_DETAIL_ELEMENT_KEYS, "country detail");
   countryDetailController.render(country, options);
+  detailOverlay.close({ restoreFocus: false });
+  countryOverlay.open({ focus: options.animate !== false });
+  updateViewModeAvailability();
 }
 
 function setProjectionScenario(scenario, { sync = true } = {}) {
@@ -1985,43 +2011,8 @@ function renderChartCountryChips() {
 }
 
 const CHART_COUNTRY_SUGGESTION_LIMIT = 8;
-
-// Which suggestion Up/Down arrow keys have moved to, -1 meaning none yet
-// (Enter then falls back to the top match, as it always has). Reset
-// whenever the list itself changes, since a stale index from the previous
-// keystroke's results wouldn't line up with the new ones.
-let chartSuggestionActiveIndex = -1;
-
-// Common informal abbreviations people search by that don't match the
-// official ISO 3166-1 alpha-2 code — "UK" for the United Kingdom, whose
-// actual code is "GB", is the everyday example.
-const CHART_COUNTRY_CODE_ALIASES = {
-  uk: "GB",
-};
-
-function chartCountryMatches(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const aliasIso2 = CHART_COUNTRY_CODE_ALIASES[q];
-  return countriesData
-    .filter((country) => {
-      if (appState.selectedChartCountries.includes(country.iso3)) return false;
-      const iso2 = convertAlpha3ToAlpha2(country.iso3);
-      return (
-        country.name.toLowerCase().includes(q) ||
-        (iso2 && iso2.toLowerCase().includes(q)) ||
-        (aliasIso2 && iso2 === aliasIso2)
-      );
-    })
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .slice(0, CHART_COUNTRY_SUGGESTION_LIMIT);
-}
-
-function hideChartCountrySuggestions() {
-  elements.chartCountrySuggestions.hidden = true;
-  elements.chartCountrySuggestions.replaceChildren();
-  chartSuggestionActiveIndex = -1;
-}
+let chartCountryCombobox;
+let searchCountryCombobox;
 
 function setChartCountryPickerExpanded(expanded) {
   if (expanded === appState.chartCountryPickerExpanded) return;
@@ -2031,73 +2022,15 @@ function setChartCountryPickerExpanded(expanded) {
     elements.chartCountrySearch.focus();
   } else {
     elements.chartCountrySearch.value = "";
-    hideChartCountrySuggestions();
+    chartCountryCombobox?.hide();
   }
 }
 
 function selectChartCountrySuggestion(iso3) {
   addChartCountry(iso3);
   elements.chartCountrySearch.value = "";
-  hideChartCountrySuggestions();
+  chartCountryCombobox?.hide();
   elements.chartCountrySearch.focus();
-}
-
-// Moves the Up/Down-arrow highlight, clamped to the list's bounds (rather
-// than wrapping) — simpler to reason about, and matches most desktop
-// autocomplete widgets. Scrolled into view since the list can scroll while
-// only a few rows show at once.
-function moveChartSuggestionActiveIndex(delta) {
-  const items = elements.chartCountrySuggestions.querySelectorAll(
-    ".chip-suggestion",
-  );
-  if (!items.length) return;
-  chartSuggestionActiveIndex = Math.min(
-    items.length - 1,
-    Math.max(0, chartSuggestionActiveIndex + delta),
-  );
-  items.forEach((item, i) => {
-    item.classList.toggle("highlighted", i === chartSuggestionActiveIndex);
-  });
-  items[chartSuggestionActiveIndex].scrollIntoView({ block: "nearest" });
-}
-
-function renderChartCountrySuggestions() {
-  const query = elements.chartCountrySearch.value.trim();
-  if (!query) {
-    hideChartCountrySuggestions();
-    return;
-  }
-  const matches = chartCountryMatches(query);
-  preloadFlagIcons(matches.map((country) => country.iso3));
-  elements.chartCountrySuggestions.hidden = false;
-  // The list itself just changed (new keystroke), so whatever the arrow
-  // keys had highlighted before no longer lines up with anything.
-  chartSuggestionActiveIndex = -1;
-  if (!matches.length) {
-    const empty = document.createElement("div");
-    empty.className = "chip-suggestions-empty";
-    empty.textContent = "No matching countries";
-    elements.chartCountrySuggestions.replaceChildren(empty);
-    return;
-  }
-  elements.chartCountrySuggestions.replaceChildren(
-    ...matches.map((country) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "chip-suggestion";
-      item.dataset.iso3 = country.iso3;
-
-      const flag = document.createElement("span");
-      flag.className = "chip-suggestion-flag";
-      flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-
-      const label = document.createElement("span");
-      label.textContent = country.name;
-
-      item.append(flag, label);
-      return item;
-    }),
-  );
 }
 
 function setChartMetric(key) {
@@ -2566,7 +2499,6 @@ function getRecentCountries() {
 // (see the body.view-search.detail CSS override) so the chip's X is the way
 // back to the bare list.
 const SEARCH_SUGGESTION_LIMIT = 8;
-let searchSuggestionActiveIndex = -1;
 
 function setSearchActive(active) {
   if (active === appState.searchActive) return;
@@ -2589,7 +2521,7 @@ function setSearchActive(active) {
     renderSearchCountryGrid();
     renderSearchCountryChip();
     elements.searchCountryInput.value = "";
-    hideSearchSuggestions();
+    searchCountryCombobox?.hide();
   } else {
     // Leaving search entirely tears down any open detail this view opened,
     // without routing through closeDetailPanel() (whose "search" restore
@@ -2599,7 +2531,7 @@ function setSearchActive(active) {
       appState.detailEntryMode = null;
       countryDetailController.reset();
       appState.selectedCountry = null;
-      elements.countryPanel.hidden = true;
+      countryOverlay.close({ restoreFocus: false });
       updateViewModeAvailability();
       renderLegend();
       if (appState.currentYearIndex >= 0) {
@@ -2688,7 +2620,7 @@ function selectSearchCountry(iso3) {
   appState.searchSelectedIso3 = iso3;
   renderSearchCountryChip();
   elements.searchCountryInput.value = "";
-  hideSearchSuggestions();
+  searchCountryCombobox?.hide();
   // Remembered so closeDetailPanel() returns here (see its "search" branch)
   // rather than to whichever of Globe/Map is underneath.
   appState.detailEntryMode = "search";
@@ -2718,92 +2650,6 @@ function clearSearchCountry() {
   elements.searchCountryInput?.focus();
 }
 
-function searchCountryMatches(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const aliasIso2 = CHART_COUNTRY_CODE_ALIASES[q];
-  return countriesData
-    .filter((country) => {
-      const iso2 = convertAlpha3ToAlpha2(country.iso3);
-      return (
-        country.name.toLowerCase().includes(q) ||
-        (iso2 && iso2.toLowerCase().includes(q)) ||
-        (aliasIso2 && iso2 === aliasIso2)
-      );
-    })
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .slice(0, SEARCH_SUGGESTION_LIMIT);
-}
-
-function hideSearchSuggestions() {
-  elements.searchCountrySuggestions.hidden = true;
-  elements.searchCountrySuggestions.replaceChildren();
-  searchSuggestionActiveIndex = -1;
-}
-
-function buildSearchSuggestionItem(country) {
-  const item = document.createElement("button");
-  item.type = "button";
-  item.className = "chip-suggestion";
-  item.dataset.iso3 = country.iso3;
-  const flag = document.createElement("span");
-  flag.className = "chip-suggestion-flag";
-  flag.style.backgroundImage = `url(${flagIconUrl(country.iso3)})`;
-  const label = document.createElement("span");
-  label.textContent = country.name;
-  item.append(flag, label);
-  return item;
-}
-
-// What the suggestion dropdown currently shows: search results once the user
-// has typed something, otherwise recently-viewed countries (if any) — used
-// both to render the dropdown and to resolve Enter/arrow-key selection, so
-// the two stay in sync no matter which list is showing.
-function searchSuggestionCandidates() {
-  const query = elements.searchCountryInput.value.trim();
-  return query ? searchCountryMatches(query) : getRecentCountries();
-}
-
-function renderSearchSuggestions() {
-  const query = elements.searchCountryInput.value.trim();
-  const candidates = searchSuggestionCandidates();
-  if (!query && !candidates.length) {
-    hideSearchSuggestions();
-    return;
-  }
-  preloadFlagIcons(candidates.map((country) => country.iso3));
-  elements.searchCountrySuggestions.hidden = false;
-  searchSuggestionActiveIndex = -1;
-  if (!candidates.length) {
-    const empty = document.createElement("div");
-    empty.className = "chip-suggestions-empty";
-    empty.textContent = "No matching countries";
-    elements.searchCountrySuggestions.replaceChildren(empty);
-    return;
-  }
-  const children = candidates.map(buildSearchSuggestionItem);
-  if (!query) {
-    const label = document.createElement("div");
-    label.className = "chip-suggestions-label";
-    label.textContent = "Recently viewed";
-    children.unshift(label);
-  }
-  elements.searchCountrySuggestions.replaceChildren(...children);
-}
-
-function moveSearchSuggestionActiveIndex(delta) {
-  const items =
-    elements.searchCountrySuggestions.querySelectorAll(".chip-suggestion");
-  if (!items.length) return;
-  searchSuggestionActiveIndex = Math.min(
-    items.length - 1,
-    Math.max(0, searchSuggestionActiveIndex + delta),
-  );
-  items.forEach((item, i) => {
-    item.classList.toggle("highlighted", i === searchSuggestionActiveIndex);
-  });
-  items[searchSuggestionActiveIndex].scrollIntoView({ block: "nearest" });
-}
 
 function setChartTableSort(key) {
   const next = nextSortState(appState.chartTableSort, key, chartTableColumns());
@@ -2993,7 +2839,7 @@ function setColorMode(mode) {
     appState.selectedLegend = { mode, key: label, label, color };
   } else {
     appState.selectedLegend = null;
-    elements.detailPanel.hidden = true;
+    detailOverlay.close({ restoreFocus: false });
     updateViewModeAvailability();
   }
   recolor();
@@ -3503,58 +3349,29 @@ async function init() {
       if (!button || !elements.chartCountryChips.contains(button)) return;
       removeChartCountry(button.dataset.iso3);
     });
-    elements.chartCountrySuggestions.addEventListener("click", (event) => {
-      const button = event.target.closest(".chip-suggestion[data-iso3]");
-      if (!button || !elements.chartCountrySuggestions.contains(button)) {
-        return;
-      }
-      selectChartCountrySuggestion(button.dataset.iso3);
-    });
-    elements.chartCountrySearch.addEventListener(
-      "input",
-      renderChartCountrySuggestions,
-    );
-    elements.chartCountrySearch.addEventListener(
-      "focus",
-      renderChartCountrySuggestions,
-    );
-    elements.chartCountrySearch.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown") {
-        if (elements.chartCountrySuggestions.hidden) return;
-        event.preventDefault();
-        moveChartSuggestionActiveIndex(1);
-      } else if (event.key === "ArrowUp") {
-        if (elements.chartCountrySuggestions.hidden) return;
-        event.preventDefault();
-        moveChartSuggestionActiveIndex(-1);
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        // Arrow keys pick a specific suggestion; without that, Enter falls
-        // back to the top match, same as before arrow navigation existed.
-        const matches = chartCountryMatches(elements.chartCountrySearch.value);
-        const match =
-          chartSuggestionActiveIndex >= 0
-            ? matches[chartSuggestionActiveIndex]
-            : matches[0];
-        if (match) selectChartCountrySuggestion(match.iso3);
-      } else if (
-        event.key === "Backspace" &&
-        !elements.chartCountrySearch.value &&
-        appState.selectedChartCountries.length
-      ) {
+    chartCountryCombobox = createCountryCombobox({
+      input: elements.chartCountrySearch,
+      list: elements.chartCountrySuggestions,
+      container: elements.chartCountryPicker,
+      getCandidates: (query) =>
+        matchCountries(query, {
+          countries: countriesData,
+          convertCode: convertAlpha3ToAlpha2,
+          exclude: appState.selectedChartCountries,
+          limit: CHART_COUNTRY_SUGGESTION_LIMIT,
+        }),
+      onSelect: (country) => selectChartCountrySuggestion(country.iso3),
+      flagUrl: flagIconUrl,
+      preloadFlags: preloadFlagIcons,
+      onEmptyBackspace: () => {
+        if (!appState.selectedChartCountries.length) return;
         removeChartCountry(
           appState.selectedChartCountries[appState.selectedChartCountries.length - 1],
         );
-      } else if (event.key === "Escape") {
-        // First Escape just dismisses the suggestion list, matching how
-        // the rest of the app's autocomplete-style inputs behave; a second
-        // one (nothing left to dismiss) collapses the picker itself.
-        if (!elements.chartCountrySuggestions.hidden) {
-          hideChartCountrySuggestions();
-        } else {
-          setChartCountryPickerExpanded(false);
-        }
-      }
+      },
+      onEscape: ({ wasOpen }) => {
+        if (!wasOpen) setChartCountryPickerExpanded(false);
+      },
     });
     elements.chartCountryPickerSummary.addEventListener("click", () =>
       setChartCountryPickerExpanded(true),
@@ -3563,14 +3380,7 @@ async function init() {
       setChartCountryPickerExpanded(false),
     );
     document.addEventListener("click", (event) => {
-      // composedPath(), not contains(event.target) — selecting a suggestion
-      // removes that button from the DOM (hideChartCountrySuggestions()'s
-      // replaceChildren()) before this bubble-phase listener runs, which
-      // detaches event.target and makes any contains() check on it false
-      // even though the click genuinely originated inside the picker.
-      // composedPath() is fixed at dispatch time, so it stays accurate.
       if (!event.composedPath().includes(elements.chartCountryPicker)) {
-        hideChartCountrySuggestions();
         setChartCountryPickerExpanded(false);
       }
     });
@@ -3597,40 +3407,28 @@ async function init() {
       if (!button || !elements.searchCountryChips.contains(button)) return;
       clearSearchCountry();
     });
-    elements.searchCountrySuggestions.addEventListener("click", (event) => {
-      const button = event.target.closest(".chip-suggestion[data-iso3]");
-      if (!button || !elements.searchCountrySuggestions.contains(button)) return;
-      selectSearchCountry(button.dataset.iso3);
-    });
-    elements.searchCountryInput.addEventListener("input", renderSearchSuggestions);
-    // Shows recently-viewed countries before any input — see
-    // searchSuggestionCandidates()'s empty-query branch.
-    elements.searchCountryInput.addEventListener("focus", renderSearchSuggestions);
-    elements.searchCountryInput.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown") {
-        if (elements.searchCountrySuggestions.hidden) return;
-        event.preventDefault();
-        moveSearchSuggestionActiveIndex(1);
-      } else if (event.key === "ArrowUp") {
-        if (elements.searchCountrySuggestions.hidden) return;
-        event.preventDefault();
-        moveSearchSuggestionActiveIndex(-1);
-      } else if (event.key === "Enter") {
-        event.preventDefault();
-        const candidates = searchSuggestionCandidates();
-        const match =
-          searchSuggestionActiveIndex >= 0
-            ? candidates[searchSuggestionActiveIndex]
-            : candidates[0];
-        if (match) selectSearchCountry(match.iso3);
-      } else if (event.key === "Escape") {
-        hideSearchSuggestions();
-      }
-    });
-    document.addEventListener("click", (event) => {
-      if (!event.composedPath().includes(elements.searchCountryPicker)) {
-        hideSearchSuggestions();
-      }
+    searchCountryCombobox = createCountryCombobox({
+      input: elements.searchCountryInput,
+      list: elements.searchCountrySuggestions,
+      container: elements.searchCountryPicker,
+      getCandidates: (query) =>
+        query
+          ? matchCountries(query, {
+              countries: countriesData,
+              convertCode: convertAlpha3ToAlpha2,
+              limit: SEARCH_SUGGESTION_LIMIT,
+            })
+          : getRecentCountries(),
+      onSelect: (country) => selectSearchCountry(country.iso3),
+      flagUrl: flagIconUrl,
+      preloadFlags: preloadFlagIcons,
+      renderPrefix: (query) => {
+        if (query) return null;
+        const label = document.createElement("div");
+        label.className = "chip-suggestions-label";
+        label.textContent = "Recently viewed";
+        return label;
+      },
     });
 
     elements.detailClose.addEventListener("click", closeDetailPanel);
