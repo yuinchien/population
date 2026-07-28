@@ -61,7 +61,7 @@ import {
 } from "./chart-math.mjs";
 import { createClusterController } from "./cluster-controller.mjs";
 import { createTrendChartController } from "./trend-chart-controller.mjs";
-import { CLUSTER_ARCHETYPES } from "./cluster-config.mjs";
+import { CLUSTER_ARCHETYPES, clusterStatusForYear } from "./cluster-config.mjs";
 import {
   createProjectionScenarioData,
   isProjectionScenario,
@@ -424,6 +424,11 @@ let detailEntryMode = null;
 let detailSort = { key: "population", direction: "desc" };
 let chartPanelActive = false;
 let clusterActive = false;
+// Caches which CLUSTER_STATUS_PERIODS chapter #status last showed, so
+// scrubbing within the same ~30-40 year period doesn't retrigger
+// showStatus()'s fade-in every single year — only an actual chapter change
+// does. Reset to null on deactivate so reactivating always shows fresh.
+let clusterStatusPeriod = null;
 // Search view: a full country list plus a single-select chip search bar.
 // searchSelectedIso3 is the one picked country (whose detail is open), or
 // null when showing the bare list.
@@ -1038,6 +1043,20 @@ function showStatus(text, { instant = false } = {}) {
   el.classList.add("status-fade-in");
 }
 
+// Cluster's own #status narration — a handful of ~30-40 year chapters
+// (CLUSTER_STATUS_PERIODS, cluster-config.mjs) rather than a per-year
+// figure like Globe/Map's own status text, since there's no single number
+// that sums up "which of the five archetypes is this year's picture."
+// Only calls showStatus() on an actual chapter change (see
+// clusterStatusPeriod above) so scrubbing within one chapter doesn't
+// retrigger its fade every year.
+function applyClusterStatus(year, options) {
+  const period = clusterStatusForYear(year);
+  if (period === clusterStatusPeriod) return;
+  clusterStatusPeriod = period;
+  showStatus(`${period.title}. ${period.text}`, options);
+}
+
 
 
 function renderCountrySummary(summary) {
@@ -1105,6 +1124,7 @@ function applyYear(year, { instant = false } = {}) {
   if (clusterActive) {
     updateYearLabels(year);
     clusterController.setYear(year);
+    applyClusterStatus(year, { instant });
     syncUrlFromState();
     return;
   }
@@ -2511,10 +2531,17 @@ function setClusterActive(active) {
     updateColorModeControls(clusterController.getColorMode());
     renderLegend();
     clusterController.activate(currentYearIndex);
+    if (currentYearIndex >= 0) {
+      applyClusterStatus(yearsData[currentYearIndex]);
+    }
   } else {
     clusterController.deactivate();
     updateColorModeControls(colorMode);
     renderLegend();
+    // Forces the next applyClusterStatus() call (reactivating, possibly at
+    // a different year) to treat it as a fresh chapter instead of a no-op
+    // just because it happens to match whatever was cached from this visit.
+    clusterStatusPeriod = null;
     if (currentYearIndex >= 0) {
       // Cluster took applyYear()'s cheap fast path (see there) while open,
       // leaving the 3D scene stale — catch it up now that it's visible
@@ -3401,9 +3428,16 @@ async function init() {
       // Cluster particles are cheap to reposition (no dot-buffer rewrite
       // like the 3D scene needs), so — unlike the globe/map content below —
       // they get to move live during the drag itself rather than waiting
-      // for "change".
+      // for "change". The chapter caption rides along too (it's cheap: a
+      // no-op unless the drag actually crossed into a new period) — without
+      // it, dragging from one end of the timeline to the other would show
+      // "The Postwar Boom" the entire time and only jump to the right
+      // chapter once the drag is released, well after the particles
+      // themselves had already moved on.
       if (clusterActive) {
-        clusterController.setYear(Number(elements.yearSlider.value));
+        const year = Number(elements.yearSlider.value);
+        clusterController.setYear(year);
+        applyClusterStatus(year);
       }
     });
     elements.yearSlider.addEventListener("change", () => {

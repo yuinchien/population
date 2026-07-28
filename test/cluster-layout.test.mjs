@@ -11,7 +11,9 @@ import {
 import {
   CLUSTER_ARCHETYPES,
   CLUSTER_PHASES,
+  CLUSTER_STATUS_PERIODS,
   clusterPhaseForYear,
+  clusterStatusForYear,
 } from "../cluster-config.mjs";
 
 test("clusterNodeAtPoint selects the topmost overlapping particle", () => {
@@ -119,4 +121,37 @@ test("Silver Decline summary names its defining demographic forces", () => {
     /high old age dependency/i,
   );
   assert.match(CLUSTER_ARCHETYPES.silverDecline.summary, /low migration/i);
+});
+
+test("CLUSTER_STATUS_PERIODS covers 1950-2100 with no gaps or overlaps", () => {
+  assert.equal(CLUSTER_STATUS_PERIODS[0].years[0], 1950);
+  assert.equal(
+    CLUSTER_STATUS_PERIODS.at(-1).years[1],
+    2100,
+  );
+  for (let i = 1; i < CLUSTER_STATUS_PERIODS.length; i++) {
+    assert.equal(
+      CLUSTER_STATUS_PERIODS[i].years[0],
+      CLUSTER_STATUS_PERIODS[i - 1].years[1] + 1,
+    );
+  }
+});
+
+test("every cluster status period has a title and non-empty text", () => {
+  CLUSTER_STATUS_PERIODS.forEach((period) => {
+    assert.ok(period.title?.length);
+    assert.ok(period.text?.length);
+  });
+});
+
+test("clusterStatusForYear picks the period containing the year, clamping outside 1950-2100", () => {
+  assert.equal(clusterStatusForYear(1950), CLUSTER_STATUS_PERIODS[0]);
+  assert.equal(clusterStatusForYear(1989), CLUSTER_STATUS_PERIODS[0]);
+  assert.equal(clusterStatusForYear(1990), CLUSTER_STATUS_PERIODS[1]);
+  assert.equal(clusterStatusForYear(2023), CLUSTER_STATUS_PERIODS[1]);
+  assert.equal(clusterStatusForYear(2024), CLUSTER_STATUS_PERIODS[2]);
+  assert.equal(clusterStatusForYear(2060), CLUSTER_STATUS_PERIODS[2]);
+  assert.equal(clusterStatusForYear(2061), CLUSTER_STATUS_PERIODS[3]);
+  assert.equal(clusterStatusForYear(2100), CLUSTER_STATUS_PERIODS[3]);
+  assert.equal(clusterStatusForYear(NaN), CLUSTER_STATUS_PERIODS[0]);
 });

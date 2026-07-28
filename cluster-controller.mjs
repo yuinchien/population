@@ -30,7 +30,7 @@ const AXES = {
   population: "population",
   lifeExpectancy: "lifeExpectancy",
 };
-const RADIUS_OPTIONS = { minRadius: 5, maxRadius: 144 };
+const RADIUS_OPTIONS = { minRadius: 3, maxRadius: 148 };
 const LABEL_HEIGHT = 24;
 const LABEL_PADDING_X = 4;
 const LABEL_PARTICLE_GAP = 12;

@@ -311,7 +311,7 @@ button.milestone-nav-btn {
     position: fixed;
     /*left: calc(var(--margin));*/
     /*top: calc(var(--button-size) - 8px + var(--margin) );*/
-    z-index: var(--z-status);
+    z-index: var(--z-title);
     /* A fixed width (not max-width) keeps the box's left edge stable as the
        typewriter effect grows the text — with only `right` anchoring it,
        a shrink-to-fit box would still creep leftward as content grows even
