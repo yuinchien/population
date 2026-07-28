@@ -19,13 +19,13 @@ export const CLUSTER_ARCHETYPES = {
   },
   bufferedGrowth: {
     label: "Migrant Momentum",
-    anchor: { x: 0.55, y: 0.86 },
+    anchor: { x: 0.55, y: 0.8 },
     summary:
       "Wealthy nations with below-replacement fertility lean on immigration to keep growing. Births alone would barely hold the population steady—newcomers have become the real engine of growth.",
   },
   silverDecline: {
     label: "Silver Decline",
-    anchor: { x: 0.79, y: 0.5 },
+    anchor: { x: 0.8, y: 0.5 },
     summary:
       "Aging societies face high old age dependency and sustained population loss. Deaths outnumber births, while low migration leaves too little inflow to offset natural decline.",
   },

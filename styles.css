@@ -274,7 +274,7 @@ button.milestone-nav-btn {
 }
 
 #status {
-    border-top: var(--border);
+    border-top: 1px solid var(--color-subtle);
     padding: 12px 0;
 }
 

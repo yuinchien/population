@@ -1081,7 +1081,49 @@ function applyClusterStatus(year, options) {
   showStatus(`${period.title}. ${period.text}`, options);
 }
 
+// Cluster's own take on #milestoneTour's play button: rather than hopping
+// between milestone years (the global tour's job), it sweeps through every
+// year from 1950 to 2100 once and stops — a single pass through the full
+// archetype narrative rather than a looping story. Reuses goToYear() so
+// each step still runs through the slider's normal input/change pipeline
+// (cluster particles, #status chapter caption, URL sync all update exactly
+// as they would from a manual drag) and setTourButtonState() so the same
+// play/pause icon serves both playback modes.
+let clusterPlaybackTimer = null;
+// 150 year-steps at 90ms lands the full sweep around 13.5s — quick enough
+// to hold attention, slow enough that each archetype phase is still
+// readable as it passes rather than a blur.
+const CLUSTER_PLAYBACK_STEP_MS = 90;
 
+function isClusterPlaying() {
+  return clusterPlaybackTimer !== null;
+}
+
+function stopClusterPlayback() {
+  if (clusterPlaybackTimer === null) return;
+  clearTimeout(clusterPlaybackTimer);
+  clusterPlaybackTimer = null;
+  setTourButtonState(false);
+}
+
+function playClusterTimelineOnce() {
+  if (isClusterPlaying()) {
+    stopClusterPlayback();
+    return;
+  }
+  setTourButtonState(true);
+  goToYear(yearsData[0]);
+  const step = () => {
+    const nextIndex = appState.currentYearIndex + 1;
+    if (nextIndex >= yearsData.length) {
+      stopClusterPlayback();
+      return;
+    }
+    goToYear(yearsData[nextIndex]);
+    clusterPlaybackTimer = setTimeout(step, CLUSTER_PLAYBACK_STEP_MS);
+  };
+  clusterPlaybackTimer = setTimeout(step, CLUSTER_PLAYBACK_STEP_MS);
+}
 
 function renderCountrySummary(summary) {
   elements.countrySummary.hidden = false;
@@ -1962,6 +2004,7 @@ const clusterViewLifecycle = createClusterViewLifecycle({
     }
   },
   exit: () => {
+    stopClusterPlayback();
     clusterController.deactivate();
     updateColorModeControls(appState.colorMode);
     renderLegend();
@@ -2705,8 +2748,12 @@ function bindYearSliderEvents({ minYear, maxYear, defaultYear }) {
   });
   // "pointerdown" (not "input"/"change") is the tour's cue to stop, since
   // goToYear() itself only dispatches "input"/"change" — using those to
-  // cancel would make the tour immediately cancel its own steps.
-  elements.yearSlider.addEventListener("pointerdown", tourController.stop);
+  // cancel would make the tour immediately cancel its own steps. Same
+  // reasoning covers the cluster sweep, which drives the slider the same way.
+  elements.yearSlider.addEventListener("pointerdown", () => {
+    tourController.stop();
+    stopClusterPlayback();
+  });
   elements.yearSlider.addEventListener("pointermove", updateYearHoverLabel);
 }
 
@@ -2858,7 +2905,15 @@ function bindPanelCloseEvents() {
 function bindMilestoneEvents() {
   elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
   elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
-  elements.milestoneTour.addEventListener("click", tourController.toggle);
+  // Cluster repurposes this same button for its own once-through 1950-2100
+  // sweep instead of the milestone-hopping tour — see playClusterTimelineOnce.
+  elements.milestoneTour.addEventListener("click", () => {
+    if (appState.clusterActive) {
+      playClusterTimelineOnce();
+    } else {
+      tourController.toggle();
+    }
+  });
   // #exploreMilestones' markup is gone along with the old #milestoneRow —
   // guarded the same way as its .hidden toggle above, rather than
   // assuming it won't come back.
