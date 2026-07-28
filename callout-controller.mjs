@@ -1,6 +1,5 @@
 import * as THREE from "three";
 
-const DEFAULT_SMOOTHING_MS = 90;
 const VIEWPORT_MARGIN = 12;
 // Map labels' constant on-screen gap above their dot — see the comment on
 // computeOutwardPoint's map branch for why this replaced a world-space push.
@@ -30,7 +29,6 @@ export function createCalloutController({
   onHoverCountry = () => {},
   onLeaveCountry = () => {},
   getViewport = () => ({ width: window.innerWidth, height: window.innerHeight }),
-  smoothingMs = DEFAULT_SMOOTHING_MS,
 }) {
   const group = new THREE.Group();
   const callouts = [];
@@ -76,7 +74,6 @@ export function createCalloutController({
   function resetPosition(callout) {
     callout.screenX = null;
     callout.screenY = null;
-    callout.lastFrameTime = null;
   }
 
   function clear() {
@@ -120,12 +117,11 @@ export function createCalloutController({
           labelEl,
           screenX: null,
           screenY: null,
-          lastFrameTime: null,
         });
       });
   }
 
-  function update(timestamp) {
+  function update() {
     if (!callouts.length) return;
     cameraDirection.copy(camera.position).normalize();
     const viewMode = getViewMode();
@@ -162,22 +158,15 @@ export function createCalloutController({
         Math.max(rawY, VIEWPORT_MARGIN + 20),
         height - VIEWPORT_MARGIN,
       );
-      const elapsed = callout.lastFrameTime == null
-        ? 0
-        : timestamp - callout.lastFrameTime;
-      callout.screenX = smoothCalloutPosition(
-        callout.screenX,
-        targetX,
-        elapsed,
-        smoothingMs,
-      );
-      callout.screenY = smoothCalloutPosition(
-        callout.screenY,
-        targetY,
-        elapsed,
-        smoothingMs,
-      );
-      callout.lastFrameTime = timestamp;
+      // Tracks its dot 1:1 every frame rather than easing toward it — a
+      // rebuild (year/mode change) already starts screenX/screenY at null,
+      // which snaps immediately regardless, so smoothing here only ever
+      // applied to a *moving* target: continuous camera motion (pan, zoom,
+      // globe auto-rotate). That's exactly when a lag behind the actual dot
+      // is most visible and least wanted, so there's no case left where
+      // easing helps.
+      callout.screenX = targetX;
+      callout.screenY = targetY;
       labelEl.style.setProperty("--callout-x", `${callout.screenX}px`);
       labelEl.style.setProperty("--callout-y", `${callout.screenY}px`);
     });

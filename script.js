@@ -3876,7 +3876,7 @@ function animate(timestamp) {
     lastTooltipUpdate = timestamp;
     updateTooltip(lastPointerEvent);
   }
-  calloutController.update(timestamp);
+  calloutController.update();
   renderer.render(scene, camera);
 }
 
