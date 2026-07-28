@@ -25,8 +25,8 @@ export function createDetailCell(text, className = "", options = {}) {
   return cell;
 }
 
-function ratioValueForBar(columns, barMetric, barValue) {
-  if (barValue) return barValue;
+export function ratioValueForBar(columns, barMetric, barValue) {
+  if (barValue != null) return barValue;
   const metricColumn = columns.find((column) => column.key === barMetric);
   return metricColumn?.value;
 }

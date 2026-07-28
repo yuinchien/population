@@ -302,6 +302,24 @@ async function fetchJson(url, fetchImpl) {
   return response.json();
 }
 
+// Optional datasets enrich secondary views but must never take down the core
+// globe/map experience. Attach the rejection handler at request creation time
+// so a failed optional request is handled even if a required request rejects
+// before loadPopulationData() can return its promises to the caller.
+export function loadOptionalJson({
+  name,
+  url,
+  fetchImpl,
+  onError = (datasetName, error) => {
+    console.warn(`Could not load optional dataset "${datasetName}":`, error);
+  },
+}) {
+  return fetchJson(url, fetchImpl).catch((error) => {
+    onError(name, error);
+    return null;
+  });
+}
+
 // data/population-global.json holds one series per indicator, each an
 // array of {year, value} rows; index by year so applyYear() can look up
 // all five in O(1) as the slider moves. "variants" (High/Low UN scenarios)
@@ -353,6 +371,7 @@ export function computePeakYear(populations, years) {
 export async function loadPopulationData({
   urls = DATA_URLS,
   fetchImpl = fetch,
+  onOptionalDataError,
 } = {}) {
   // country-demographic-metrics.json is the single biggest payload here
   // (bigger than the other three combined) but nothing on first paint reads
@@ -361,26 +380,37 @@ export async function loadPopulationData({
   // deliberately left out of the Promise.all below so the initial globe/map
   // render isn't blocked waiting on it; callers get it back as its own
   // promise and can pick it up once it resolves.
-  const countryDemographicMetricsPromise = fetchJson(
-    urls.countryDemographics,
+  const countryDemographicMetricsPromise = loadOptionalJson({
+    name: "country demographics",
+    url: urls.countryDemographics,
     fetchImpl,
-  );
+    onError: onOptionalDataError,
+  });
 
-  const countryTrajectoryPromise = fetchJson(
-    urls.countryTrajectory,
+  const countryTrajectoryPromise = loadOptionalJson({
+    name: "country trajectories",
+    url: urls.countryTrajectory,
     fetchImpl,
-  );
+    onError: onOptionalDataError,
+  });
 
   // Same deferred treatment — the population pyramid only reads it once a
   // country detail panel is open, so it's fired off but kept out of the
   // first-paint Promise.all.
-  const countryAgeStructurePromise = fetchJson(
-    urls.countryAgeStructure,
+  const countryAgeStructurePromise = loadOptionalJson({
+    name: "country age structure",
+    url: urls.countryAgeStructure,
     fetchImpl,
-  );
+    onError: onOptionalDataError,
+  });
   // Same deferred treatment — only needed once something's actually
   // hovered, never for first paint.
-  const countryBordersPromise = fetchJson(urls.countryBorders, fetchImpl);
+  const countryBordersPromise = loadOptionalJson({
+    name: "country borders",
+    url: urls.countryBorders,
+    fetchImpl,
+    onError: onOptionalDataError,
+  });
 
   const [dotsData, globalData, incomeGroups] = await Promise.all([
     fetchJson(urls.dots, fetchImpl),

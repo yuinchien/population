@@ -5,6 +5,7 @@ import {
   buildVariantIndex,
   convertAlpha3ToAlpha2,
   computePeakYear,
+  loadOptionalJson,
   loadPopulationData,
 } from "../data-loader.mjs";
 
@@ -46,12 +47,70 @@ test("buildVariantIndex indexes a projection variant by year", () => {
   assert.deepEqual(index.get(2050), { population: 9, fertility: 1.8 });
 });
 
+test("loadOptionalJson reports failures and resolves to null", async () => {
+  const failures = [];
+  const result = await loadOptionalJson({
+    name: "country borders",
+    url: "/borders",
+    fetchImpl: async () => ({ ok: false, status: 503 }),
+    onError: (name, error) => failures.push({ name, message: error.message }),
+  });
+
+  assert.equal(result, null);
+  assert.deepEqual(failures, [
+    {
+      name: "country borders",
+      message: "/borders: HTTP 503",
+    },
+  ]);
+});
+
+test("optional failures are handled even when required loading fails first", async () => {
+  const failures = [];
+  const urls = {
+    dots: "/dots",
+    globalMetrics: "/global",
+    incomeGroups: "/income",
+    countryDemographics: "/country-demographics",
+    countryTrajectory: "/country-trajectory",
+    countryAgeStructure: "/country-age-structure",
+    countryBorders: "/country-borders",
+  };
+
+  await assert.rejects(
+    loadPopulationData({
+      urls,
+      fetchImpl: async (url) => ({
+        ok: false,
+        status: url === urls.dots ? 500 : 503,
+      }),
+      onOptionalDataError: (name, error) =>
+        failures.push({ name, message: error.message }),
+    }),
+    /\/dots: HTTP 500/,
+  );
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.deepEqual(
+    failures.map(({ name }) => name).sort(),
+    [
+      "country age structure",
+      "country borders",
+      "country demographics",
+      "country trajectories",
+    ],
+  );
+});
+
 test("loadPopulationData fetches and prepares app data", async () => {
   const urls = {
     dots: "/dots",
     globalMetrics: "/global",
     incomeGroups: "/income",
     countryDemographics: "/country-demographics",
+    countryTrajectory: "/country-trajectory",
+    countryAgeStructure: "/country-age-structure",
+    countryBorders: "/country-borders",
   };
   const responses = {
     [urls.dots]: {
@@ -75,6 +134,9 @@ test("loadPopulationData fetches and prepares app data", async () => {
     },
     [urls.incomeGroups]: { incomeCodes: {}, countryIncomeCodes: {} },
     [urls.countryDemographics]: { countries: {} },
+    [urls.countryTrajectory]: { countries: {} },
+    [urls.countryAgeStructure]: { countries: {} },
+    [urls.countryBorders]: {},
   };
 
   const data = await loadPopulationData({
@@ -92,4 +154,8 @@ test("loadPopulationData fetches and prepares app data", async () => {
   assert.equal(data.highMetricsByYear.get(2002).population, 3);
   assert.equal(data.lowMetricsByYear.get(2002).population, 1);
   assert.match(data.globalTrendMilestones.get(2001).text, /^Peak Humanity\./);
+  assert.deepEqual(await data.countryDemographicMetricsPromise, { countries: {} });
+  assert.deepEqual(await data.countryTrajectoryPromise, { countries: {} });
+  assert.deepEqual(await data.countryAgeStructurePromise, { countries: {} });
+  assert.deepEqual(await data.countryBordersPromise, {});
 });

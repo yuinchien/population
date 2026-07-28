@@ -3313,6 +3313,7 @@ async function init() {
     // in the background instead of blocking the initial render, and
     // refreshes whatever's already on screen once it lands.
     appData.countryDemographicMetricsPromise.then((data) => {
+      if (!data) return;
       countryDemographicMetrics = data;
       if (chartPanelActive) {
         renderTrendChart();
@@ -3327,6 +3328,7 @@ async function init() {
       }
     });
     appData.countryTrajectoryPromise.then((data) => {
+      if (!data) return;
       countryTrajectory = data;
       if (lifetimeController?.isActive()) lifetimeController.render();
     });
@@ -3334,6 +3336,7 @@ async function init() {
     // pyramid reads it, so it lands in the background and refreshes an
     // already-open country once it arrives.
     appData.countryAgeStructurePromise.then((data) => {
+      if (!data) return;
       countryAgeStructure = data;
       if (selectedCountry) renderCountryDetail();
     });
@@ -3341,6 +3344,7 @@ async function init() {
     // Same deferred treatment — only used to draw a border under the
     // pointer on hover, never needed before then.
     appData.countryBordersPromise.then((data) => {
+      if (!data) return;
       countryBorders = data;
     });
     countriesData = appData.countries;

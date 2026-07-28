@@ -5,8 +5,9 @@ import { resolve } from "path";
 // matches the "./"-relative asset/fetch paths already used throughout the
 // app, which exist for the same reason.
 export default defineConfig({
-  // publicDir: 'public',
-  base: "/population/",
+  // Keep generated asset URLs relative so the same artifact works at a
+  // GitHub Pages project path, a custom-domain root, or a local subdirectory.
+  base: "./",
   server: {
     hmr: false,
   },
