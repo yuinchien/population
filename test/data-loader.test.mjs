@@ -65,7 +65,7 @@ test("loadOptionalJson reports failures and resolves to null", async () => {
   ]);
 });
 
-test("optional failures are handled even when required loading fails first", async () => {
+test("optional resources are not requested when required loading fails", async () => {
   const failures = [];
   const urls = {
     dots: "/dots",
@@ -89,20 +89,11 @@ test("optional failures are handled even when required loading fails first", asy
     }),
     /\/dots: HTTP 500/,
   );
-  await new Promise((resolve) => setImmediate(resolve));
-
-  assert.deepEqual(
-    failures.map(({ name }) => name).sort(),
-    [
-      "country age structure",
-      "country borders",
-      "country demographics",
-      "country trajectories",
-    ],
-  );
+  assert.deepEqual(failures, []);
 });
 
 test("loadPopulationData fetches and prepares app data", async () => {
+  const requested = [];
   const urls = {
     dots: "/dots",
     globalMetrics: "/global",
@@ -141,10 +132,13 @@ test("loadPopulationData fetches and prepares app data", async () => {
 
   const data = await loadPopulationData({
     urls,
-    fetchImpl: async (url) => ({
-      ok: true,
-      json: async () => responses[url],
-    }),
+    fetchImpl: async (url) => {
+      requested.push(url);
+      return {
+        ok: true,
+        json: async () => responses[url],
+      };
+    },
   });
 
   assert.equal(data.countries[0].peakYear, 2001);
@@ -154,8 +148,18 @@ test("loadPopulationData fetches and prepares app data", async () => {
   assert.equal(data.highMetricsByYear.get(2002).population, 3);
   assert.equal(data.lowMetricsByYear.get(2002).population, 1);
   assert.match(data.globalTrendMilestones.get(2001).text, /^Peak Humanity\./);
-  assert.deepEqual(await data.countryDemographicMetricsPromise, { countries: {} });
-  assert.deepEqual(await data.countryTrajectoryPromise, { countries: {} });
-  assert.deepEqual(await data.countryAgeStructurePromise, { countries: {} });
-  assert.deepEqual(await data.countryBordersPromise, {});
+  assert.deepEqual(requested.sort(), [
+    urls.dots,
+    urls.globalMetrics,
+    urls.incomeGroups,
+  ].sort());
+  assert.deepEqual(await data.loadCountryDemographicMetrics(), { countries: {} });
+  assert.deepEqual(await data.loadCountryDemographicMetrics(), { countries: {} });
+  assert.deepEqual(await data.loadCountryTrajectory(), { countries: {} });
+  assert.deepEqual(await data.loadCountryAgeStructure(), { countries: {} });
+  assert.deepEqual(await data.loadCountryBorders(), {});
+  assert.equal(
+    requested.filter((url) => url === urls.countryDemographics).length,
+    1,
+  );
 });

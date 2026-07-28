@@ -368,26 +368,30 @@ export function computePeakYear(populations, years) {
   return years[maxIndex];
 }
 
+export function createLazyJsonLoader(options) {
+  let promise;
+  return () => {
+    promise ??= loadOptionalJson(options);
+    return promise;
+  };
+}
+
 export async function loadPopulationData({
   urls = DATA_URLS,
   fetchImpl = fetch,
   onOptionalDataError,
 } = {}) {
-  // country-demographic-metrics.json is the single biggest payload here
-  // (bigger than the other three combined) but nothing on first paint reads
-  // it — only a country/group detail view or a chart tab that needs one of
-  // its metrics does. Fired off immediately so it's not sitting idle, but
-  // deliberately left out of the Promise.all below so the initial globe/map
-  // render isn't blocked waiting on it; callers get it back as its own
-  // promise and can pick it up once it resolves.
-  const countryDemographicMetricsPromise = loadOptionalJson({
+  // Optional feature data is memoized but not requested until its first
+  // consumer opens. This keeps the initial globe/map request set limited to
+  // the three resources it actually needs.
+  const loadCountryDemographicMetrics = createLazyJsonLoader({
     name: "country demographics",
     url: urls.countryDemographics,
     fetchImpl,
     onError: onOptionalDataError,
   });
 
-  const countryTrajectoryPromise = loadOptionalJson({
+  const loadCountryTrajectory = createLazyJsonLoader({
     name: "country trajectories",
     url: urls.countryTrajectory,
     fetchImpl,
@@ -397,7 +401,7 @@ export async function loadPopulationData({
   // Same deferred treatment — the population pyramid only reads it once a
   // country detail panel is open, so it's fired off but kept out of the
   // first-paint Promise.all.
-  const countryAgeStructurePromise = loadOptionalJson({
+  const loadCountryAgeStructure = createLazyJsonLoader({
     name: "country age structure",
     url: urls.countryAgeStructure,
     fetchImpl,
@@ -405,7 +409,7 @@ export async function loadPopulationData({
   });
   // Same deferred treatment — only needed once something's actually
   // hovered, never for first paint.
-  const countryBordersPromise = loadOptionalJson({
+  const loadCountryBorders = createLazyJsonLoader({
     name: "country borders",
     url: urls.countryBorders,
     fetchImpl,
@@ -442,10 +446,10 @@ export async function loadPopulationData({
     countries,
     years,
     incomeGroups,
-    countryDemographicMetricsPromise,
-    countryTrajectoryPromise,
-    countryAgeStructurePromise,
-    countryBordersPromise,
+    loadCountryDemographicMetrics,
+    loadCountryTrajectory,
+    loadCountryAgeStructure,
+    loadCountryBorders,
     historicalCutoffYear,
     globalMetricsByYear,
     globalTrendMilestones,

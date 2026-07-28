@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { createCountryFillGeometries } from "./country-fill-geometry.mjs";
 import { createCalloutController } from "./callout-controller.mjs";
 import { foregroundForColor, resolveCssColor } from "./theme-colors.mjs";
 import {
@@ -50,7 +49,6 @@ import {
   buildAgingMilestoneInsight,
   buildCountryDemographicNarrative,
 } from "./country-aging-narrative.mjs";
-import { createLifetimeController } from "./lifetime-controller.mjs";
 import { parseUrlState, serializeUrlState } from "./url-state.mjs";
 import {
   adjacentMilestoneYears,
@@ -410,12 +408,20 @@ let countryAgeStructure = null;
 // before then just doesn't draw a fill for that hover, same tradeoff as the
 // demographic-metrics deferred load.
 let countryBorders = null;
+let createCountryFillGeometries = null;
+let countryFillGeometryModulePromise = null;
+let loadCountryDemographicMetrics = async () => null;
+let loadCountryTrajectory = async () => null;
+let loadCountryAgeStructure = async () => null;
+let loadCountryBorders = async () => null;
 // Set synchronously in <head> (before this module even loads) so first
 // paint never flashes the wrong theme — this just picks it up.
 const appState = createInitialAppState({
   theme: document.documentElement.dataset.theme || "dark",
 });
 let lifetimeController = null;
+let lifetimeControllerPromise = null;
+let lifetimeRequestedActive = false;
 let dotLocalIndex = null;
 let transition = null;
 let isScrambledPhase = false;
@@ -423,6 +429,53 @@ let isHoldPhase = false;
 
 function activePopulationSeries(country) {
   return projectionData.populationSeries(country);
+}
+
+async function ensureCountryDemographics() {
+  if (countryDemographicMetrics) return countryDemographicMetrics;
+  const data = await loadCountryDemographicMetrics();
+  if (!data) return null;
+  countryDemographicMetrics = data;
+  if (appState.chartPanelActive) {
+    renderTrendChart();
+    renderChartTable();
+  }
+  if (appState.clusterActive) clusterController.render(appState.currentYearIndex);
+  if (lifetimeController?.isActive()) lifetimeController.render();
+  if (appState.selectedCountry) renderCountryDetail({ animate: false });
+  else if (appState.selectedLegend) renderDetailPanel();
+  return data;
+}
+
+async function ensureCountryTrajectory() {
+  if (countryTrajectory) return countryTrajectory;
+  countryTrajectory = await loadCountryTrajectory();
+  if (countryTrajectory && lifetimeController?.isActive()) {
+    lifetimeController.render();
+  }
+  return countryTrajectory;
+}
+
+async function ensureCountryAgeStructure() {
+  if (countryAgeStructure) return countryAgeStructure;
+  countryAgeStructure = await loadCountryAgeStructure();
+  if (countryAgeStructure && appState.selectedCountry) {
+    renderCountryDetail({ animate: false });
+  }
+  return countryAgeStructure;
+}
+
+async function ensureCountryBorders() {
+  if (countryBorders) return countryBorders;
+  countryBorders = await loadCountryBorders();
+  return countryBorders;
+}
+
+async function ensureCountryFillGeometryModule() {
+  countryFillGeometryModulePromise ??= import("./country-fill-geometry.mjs");
+  const module = await countryFillGeometryModulePromise;
+  createCountryFillGeometries = module.createCountryFillGeometries;
+  return createCountryFillGeometries;
 }
 
 function activePopulationAt(country, index = appState.currentYearIndex) {
@@ -635,7 +688,17 @@ function showHoverCountryFill(country) {
   clearHoverCountryFill();
   hoverCountry = country;
   const rings = countryBorders?.[country.iso3];
-  if (!rings) return;
+  if (!rings || !createCountryFillGeometries) {
+    Promise.all([
+      ensureCountryBorders(),
+      ensureCountryFillGeometryModule(),
+    ]).then(() => {
+      if (hoverCountry !== country) return;
+      hoverCountry = null;
+      showHoverCountryFill(country);
+    });
+    return;
+  }
 
   const cacheKey = `${country.iso3}:${appState.viewMode}`;
   const cached = hoverFillCache.get(cacheKey);
@@ -1635,8 +1698,15 @@ function applyUrlStateFromLocation(search) {
     setSearchActive(true);
     if (state.country) selectSearchCountry(state.country);
   } else if (state.view === "lifetime") {
-    lifetimeController.applyUrlState(state);
-    setLifetimeActive(true);
+    lifetimeRequestedActive = true;
+    ensureCountryDemographics();
+    ensureCountryTrajectory();
+    ensureCountryAgeStructure();
+    ensureLifetimeController().then((controller) => {
+      if (!lifetimeRequestedActive) return;
+      controller.applyUrlState(state);
+      controller.setActive(true);
+    });
   } else if (state.view === "country") {
     const country = countriesData.find((c) => c.iso3 === state.country);
     if (country) openCountryDetail(country);
@@ -1819,6 +1889,8 @@ const countryDetailController = createCountryDetailController({
 
 function openCountryDetail(country) {
   if (!country || appState.currentYearIndex < 0) return;
+  ensureCountryDemographics();
+  ensureCountryAgeStructure();
   // A row click in the chart view's own table drills into the same full
   // country detail panel the group table uses — that panel and the chart
   // overlay are both full-screen, so the chart has to step aside first.
@@ -2428,6 +2500,7 @@ const clusterViewLifecycle = createClusterViewLifecycle({
   underlyingMode: () => appState.viewMode,
   stopTour: () => tourController.stop(),
   enter: () => {
+    ensureCountryDemographics();
     updateColorModeControls(clusterController.getColorMode());
     renderLegend();
     clusterController.activate(appState.currentYearIndex);
@@ -2458,7 +2531,54 @@ function setClusterActive(active) {
 }
 
 function setLifetimeActive(active, options) {
+  lifetimeRequestedActive = active;
+  if (active) {
+    ensureCountryDemographics();
+    ensureCountryTrajectory();
+    ensureCountryAgeStructure();
+    return ensureLifetimeController().then((controller) => {
+      if (lifetimeRequestedActive) controller.setActive(true, options);
+    });
+  }
   lifetimeController?.setActive(active, options);
+}
+
+async function ensureLifetimeController() {
+  if (lifetimeController) return lifetimeController;
+  lifetimeControllerPromise ??= import("./lifetime-controller.mjs").then(
+    ({ createLifetimeController }) => {
+      lifetimeController = createLifetimeController({
+        elements,
+        getCountryTrajectory: () => countryTrajectory,
+        getCountries: () => countriesData,
+        getYears: () => yearsData,
+        getGlobalMetricsByYear: activeGlobalMetricsMap,
+        getPopulationSeries: activePopulationSeries,
+        getProjectionScenario: () => projectionData.scenario(),
+        getCountryDemographicMetrics: () => countryDemographicMetrics,
+        getCountryAgeStructure: () => countryAgeStructure,
+        getViewMode: () => appState.viewMode,
+        formatPopulation: formatPeakPopulation,
+        goToYear,
+        syncUrl: syncUrlFromState,
+        stopTour: () => tourController.stop(),
+        catchUpScene: () => {
+          if (appState.currentYearIndex >= 0) {
+            applyYear(yearsData[appState.currentYearIndex], { instant: true });
+          }
+        },
+        onOpenCountry: (country) => {
+          appState.detailEntryMode = "lifetime";
+          setLifetimeActive(false, { preserveStory: true });
+          openCountryDetail(country);
+        },
+      });
+      lifetimeController.bindEvents();
+      lifetimeController.setBirthYearMax();
+      return lifetimeController;
+    },
+  );
+  return lifetimeControllerPromise;
 }
 
 // --- Recently viewed countries ---------------------------------------------
@@ -2726,6 +2846,7 @@ const chartViewLifecycle = createChartViewLifecycle({
   underlyingMode: () => appState.viewMode,
   stopTour: () => tourController.stop(),
   render: () => {
+    ensureCountryDemographics();
     renderTrendChart({ animate: true });
     renderChartTable();
   },
@@ -3133,45 +3254,10 @@ async function init() {
   try {
 
     const appData = await loadPopulationData();
-    // The biggest single data file and not needed for first paint (only a
-    // country/group detail view or certain chart tabs read it) — resolves
-    // in the background instead of blocking the initial render, and
-    // refreshes whatever's already on screen once it lands.
-    appData.countryDemographicMetricsPromise.then((data) => {
-      if (!data) return;
-      countryDemographicMetrics = data;
-      if (appState.chartPanelActive) {
-        renderTrendChart();
-        renderChartTable();
-      }
-      if (appState.clusterActive) clusterController.render(appState.currentYearIndex);
-      if (lifetimeController?.isActive()) lifetimeController.render();
-      if (appState.selectedCountry) {
-        renderCountryDetail();
-      } else if (appState.selectedLegend) {
-        renderDetailPanel();
-      }
-    });
-    appData.countryTrajectoryPromise.then((data) => {
-      if (!data) return;
-      countryTrajectory = data;
-      if (lifetimeController?.isActive()) lifetimeController.render();
-    });
-    // Same deferred treatment — only the country detail panel's population
-    // pyramid reads it, so it lands in the background and refreshes an
-    // already-open country once it arrives.
-    appData.countryAgeStructurePromise.then((data) => {
-      if (!data) return;
-      countryAgeStructure = data;
-      if (appState.selectedCountry) renderCountryDetail();
-    });
-
-    // Same deferred treatment — only used to draw a border under the
-    // pointer on hover, never needed before then.
-    appData.countryBordersPromise.then((data) => {
-      if (!data) return;
-      countryBorders = data;
-    });
+    loadCountryDemographicMetrics = appData.loadCountryDemographicMetrics;
+    loadCountryTrajectory = appData.loadCountryTrajectory;
+    loadCountryAgeStructure = appData.loadCountryAgeStructure;
+    loadCountryBorders = appData.loadCountryBorders;
     countriesData = appData.countries;
     yearsData = appData.years;
     preloadFlagIcons(appState.selectedChartCountries);
@@ -3188,37 +3274,6 @@ async function init() {
 
 
     setupScene(countriesData, appData.incomeGroups);
-    lifetimeController = createLifetimeController({
-      elements,
-      getCountryTrajectory: () => countryTrajectory,
-      getCountries: () => countriesData,
-      getYears: () => yearsData,
-      getGlobalMetricsByYear: activeGlobalMetricsMap,
-      getPopulationSeries: activePopulationSeries,
-      getProjectionScenario: () => projectionData.scenario(),
-      getCountryDemographicMetrics: () => countryDemographicMetrics,
-      getCountryAgeStructure: () => countryAgeStructure,
-      getViewMode: () => appState.viewMode,
-      formatPopulation: formatPeakPopulation,
-      goToYear,
-      syncUrl: syncUrlFromState,
-      stopTour: () => tourController.stop(),
-      catchUpScene: () => {
-        if (appState.currentYearIndex >= 0) {
-          applyYear(yearsData[appState.currentYearIndex], { instant: true });
-        }
-      },
-      // "Explore <country>'s Dataset" on the Horizon act — jumps out to the
-      // full country-detail view. Remembered (see appState.detailEntryMode) so closing
-      // that panel lands back on this same Horizon section, not the intro
-      // form or Globe/Map underneath.
-      onOpenCountry: (country) => {
-        appState.detailEntryMode = "lifetime";
-        setLifetimeActive(false, { preserveStory: true });
-        openCountryDetail(country);
-
-      },
-    });
     const initialUrlState = parseUrlState(initialSearch, {
       years: yearsData,
       countryCodes: countriesData.map((country) => country.iso3),
@@ -3242,7 +3297,6 @@ async function init() {
     elements.yearSlider.max = maxYear;
     elements.yearSlider.step = 1;
     elements.yearSlider.value = defaultYear;
-    lifetimeController.setBirthYearMax();
     // elements.yearControl.hidden = false;
     // "input" fires continuously while dragging — kept cheap (thumb/fill
     // tracking plus the year figure itself, so there's still feedback on
@@ -3319,9 +3373,9 @@ async function init() {
     syncViewModeButtons(appState.viewMode);
     const lifetimeViewLifecycle = {
       name: "lifetime",
-      isActive: () => lifetimeController.isActive(),
-      activate: (options) => lifetimeController.setActive(true, options),
-      deactivate: (options) => lifetimeController.setActive(false, options),
+      isActive: () => lifetimeRequestedActive,
+      activate: (options) => setLifetimeActive(true, options),
+      deactivate: (options) => setLifetimeActive(false, options),
     };
     const viewRouter = createViewRouter({
       lifecycles: [
@@ -3337,8 +3391,6 @@ async function init() {
       },
     });
     viewRouter.bind(elements.viewMode);
-
-    lifetimeController.bindEvents();
 
     assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart controls");
     elements.chartProjectionScenario.value = projectionData.scenario();
