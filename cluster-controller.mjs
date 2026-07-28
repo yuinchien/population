@@ -41,13 +41,6 @@ const CLUSTER_BOUNDARY_GAP = 16;
 // intermediate positions to the user.
 const INITIAL_SETTLE_TICKS = 20;
 const ENTRANCE_DURATION_MS = 900;
-// Canvas fillText renders uppercase archetype titles (GROWTH, SILVER
-// DECLINE, ...) with the letters butted right up against each other —
-// noticeably tighter than the same font/weight would ever read as body
-// text, since there's no CSS letter-spacing equivalent by default. Applied
-// wherever this text is measured (updateLabelRects) or drawn (drawLabels)
-// so the two stay in sync.
-const TITLE_LETTER_SPACING = ".8px";
 
 function percentile(sortedValues, fraction) {
   if (!sortedValues.length) return null;
@@ -169,7 +162,6 @@ export function createClusterController({
     if (!context || !anchors) return;
     context.save();
     context.font = ensureTitleFont();
-    context.letterSpacing = TITLE_LETTER_SPACING;
     labelRects = [...activeKeys].map((archetype) => {
       const anchor = anchors[archetype];
       const label = CLUSTER_ARCHETYPES[archetype].label;
@@ -451,7 +443,6 @@ export function createClusterController({
     if (visibleRadius < 9) return;
     context.fillStyle = resolveCssColor(foregroundForColor(fill));
     context.font = ensureParticleFont();
-    context.letterSpacing = TITLE_LETTER_SPACING;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.save();
@@ -464,7 +455,6 @@ export function createClusterController({
   function drawLabels() {
     context.save();
     context.font = ensureTitleFont();
-    context.letterSpacing = TITLE_LETTER_SPACING;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineWidth = 1;
