@@ -657,6 +657,23 @@ export function createCountryDetailController({
       }));
     }
 
+    buildSparklines(country, { animate, cutoffIndex });
+  }
+
+  // Demographic metrics are loaded lazily and can arrive while the main
+  // population chart is still performing its entry animation. Keep this
+  // renderer separate from buildCharts() so enriching the lower cards does
+  // not rebuild that chart and cancel its in-flight animation.
+  function buildSparklines(
+    country,
+    {
+      animate = false,
+      cutoffIndex = Math.max(
+        0,
+        getYears().indexOf(getHistoricalCutoffYear()),
+      ),
+    } = {},
+  ) {
     elements.countrySparklines.replaceChildren();
     if (elements.countryPyramidCard) {
       elements.countrySparklines.append(elements.countryPyramidCard);
@@ -879,6 +896,20 @@ export function createCountryDetailController({
     renderSimilarCountries(country);
   }
 
+  function refreshDemographics() {
+    if (!selectedCountry || getCurrentYearIndex() < 0) return;
+    const year = yearAtCurrentIndex();
+    buildSparklines(selectedCountry);
+    updateYear(year);
+    renderSimilarCountries(selectedCountry);
+    updateStatusPanel(year);
+  }
+
+  function refreshAgeStructure() {
+    if (!selectedCountry || getCurrentYearIndex() < 0) return;
+    buildPyramid(selectedCountry);
+  }
+
   function reset() {
     cancelChartAnimations(animationHandles);
     selectedCountry = null;
@@ -896,6 +927,8 @@ export function createCountryDetailController({
 
   return {
     render,
+    refreshAgeStructure,
+    refreshDemographics,
     reset,
     resize,
     updateYear,

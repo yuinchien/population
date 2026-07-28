@@ -442,7 +442,7 @@ async function ensureCountryDemographics() {
   }
   if (appState.clusterActive) clusterController.render(appState.currentYearIndex);
   if (lifetimeController?.isActive()) lifetimeController.render();
-  if (appState.selectedCountry) renderCountryDetail({ animate: false });
+  if (appState.selectedCountry) countryDetailController.refreshDemographics();
   else if (appState.selectedLegend) renderDetailPanel();
   return data;
 }
@@ -460,7 +460,7 @@ async function ensureCountryAgeStructure() {
   if (countryAgeStructure) return countryAgeStructure;
   countryAgeStructure = await loadCountryAgeStructure();
   if (countryAgeStructure && appState.selectedCountry) {
-    renderCountryDetail({ animate: false });
+    countryDetailController.refreshAgeStructure();
   }
   return countryAgeStructure;
 }

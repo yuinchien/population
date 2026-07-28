@@ -3067,6 +3067,13 @@ body.info-open .menu-shim {
     display: block;
 }
 
+/* Settings is modal. Keep the persistent year controls from showing through
+   its scrim, especially in Search where `body.detail` temporarily restores
+   the otherwise-hidden timeline. */
+body.info-open .timeline {
+    display: none;
+}
+
 .suffix {
     padding-left: 4px;
 }
