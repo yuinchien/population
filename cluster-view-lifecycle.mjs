@@ -3,7 +3,7 @@ import { createViewLifecycle } from "./view-lifecycle.mjs";
 export function createClusterViewLifecycle({
   state,
   view,
-  body = document.body,
+  updateUiState,
   assertReady,
   syncModeButtons,
   underlyingMode,
@@ -21,7 +21,7 @@ export function createClusterViewLifecycle({
     },
     setVisible: (active) => {
       view.hidden = !active;
-      body.classList.toggle("view-cluster", active);
+      updateUiState({ clusterActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "cluster" : underlyingMode()),

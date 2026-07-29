@@ -3,7 +3,7 @@ import { createViewLifecycle } from "./view-lifecycle.mjs";
 export function createChartViewLifecycle({
   state,
   panel,
-  body = document.body,
+  updateUiState,
   assertReady,
   syncModeButtons,
   underlyingMode,
@@ -23,7 +23,7 @@ export function createChartViewLifecycle({
     },
     setVisible: (active) => {
       panel.hidden = !active;
-      body.classList.toggle("view-chart", active);
+      updateUiState({ chartActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "chart" : underlyingMode()),

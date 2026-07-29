@@ -434,6 +434,7 @@ export function createLifetimeController({
   stopTour,
   catchUpScene,
   onOpenCountry,
+  updateUiState,
 }) {
   let active = false;
   let birthYear = null;
@@ -727,7 +728,7 @@ export function createLifetimeController({
   function render() {
     if (!elements.lifetimeView || elements.lifetimeView.hidden) return;
     elements.lifetimeView.classList.toggle("is-started", started());
-    document.body.classList.toggle("view-lifetime-started", started());
+    updateUiState({ lifetimeStarted: started() });
     if (elements.headerTitle) {
       elements.headerTitle.textContent = started()
         ? lifetimeStartedTitle()
@@ -920,11 +921,10 @@ export function createLifetimeController({
     }
     active = nextActive;
     elements.lifetimeView.hidden = !nextActive;
-    document.body.classList.toggle("view-lifetime", nextActive);
-    document.body.classList.toggle(
-      "view-lifetime-started",
-      nextActive && started(),
-    );
+    updateUiState({
+      lifetimeActive: nextActive,
+      lifetimeStarted: nextActive && started(),
+    });
     elements.viewMode.querySelectorAll("button").forEach((btn) =>
       btn.classList.toggle(
         "active",
@@ -951,7 +951,7 @@ export function createLifetimeController({
     } else {
       resetStory();
       elements.lifetimeView.classList.remove("is-started");
-      document.body.classList.remove("view-lifetime-started");
+      updateUiState({ lifetimeStarted: false });
       elements.lifetimeForm.hidden = false;
       elements.lifetimeButtonBegin.hidden = false;
       elements.lifetimeStory.hidden = true;

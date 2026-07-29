@@ -1,0 +1,71 @@
+const BODY_CLASS_FOR_STATE = {
+  chartActive: "view-chart",
+  clusterActive: "view-cluster",
+  searchActive: "view-search",
+  lifetimeActive: "view-lifetime",
+  lifetimeStarted: "view-lifetime-started",
+  countryDetailOpen: "country-detail",
+  infoOpen: "info-open",
+  menuOpen: "menu-open",
+};
+
+export function bodyClassState(state) {
+  const classes = Object.fromEntries(
+    Object.entries(BODY_CLASS_FOR_STATE).map(([key, className]) => [
+      className,
+      Boolean(state[key]),
+    ]),
+  );
+  classes.detail = Boolean(
+    state.groupDetailOpen ||
+    state.countryDetailOpen ||
+    state.infoOpen,
+  );
+  return classes;
+}
+
+export function createUiStateRenderer({
+  body = document.body,
+  initialState = {},
+} = {}) {
+  const state = {
+    chartActive: false,
+    clusterActive: false,
+    searchActive: false,
+    lifetimeActive: false,
+    lifetimeStarted: false,
+    groupDetailOpen: false,
+    countryDetailOpen: false,
+    infoOpen: false,
+    menuOpen: false,
+    ...initialState,
+  };
+
+  function render() {
+    const classes = bodyClassState(state);
+    Object.entries(classes).forEach(([className, active]) => {
+      body.classList.toggle(className, active);
+    });
+  }
+
+  function update(patch) {
+    Object.assign(state, patch);
+    // Modal/detail surfaces always close the navigation menu behind them.
+    if (
+      state.groupDetailOpen ||
+      state.countryDetailOpen ||
+      state.infoOpen
+    ) {
+      state.menuOpen = false;
+    }
+    render();
+    return { ...state };
+  }
+
+  render();
+  return {
+    getState: () => ({ ...state }),
+    render,
+    update,
+  };
+}

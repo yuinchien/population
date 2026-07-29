@@ -4,7 +4,7 @@ export function createSearchViewLifecycle({
   state,
   view,
   bar,
-  body = document.body,
+  updateUiState,
   assertReady,
   syncModeButtons,
   underlyingMode,
@@ -23,7 +23,7 @@ export function createSearchViewLifecycle({
     setVisible: (active) => {
       view.hidden = !active;
       bar.hidden = !active;
-      body.classList.toggle("view-search", active);
+      updateUiState({ searchActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "search" : underlyingMode()),

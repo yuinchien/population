@@ -72,6 +72,7 @@ import { createSearchViewLifecycle } from "./search-view-lifecycle.mjs";
 import { createClusterViewLifecycle } from "./cluster-view-lifecycle.mjs";
 import { createViewRouter } from "./view-router.mjs";
 import { createCountryBorderHitTester } from "./country-border-hit-test.mjs";
+import { createUiStateRenderer } from "./ui-state-renderer.mjs";
 
 const GLOBE_RADIUS = VIEW_CONFIG.globe.radius;
 // A view-mode switch runs through three phases instead of a direct morph:
@@ -419,6 +420,8 @@ let loadCountryBorders = async () => null;
 const appState = createInitialAppState({
   theme: document.documentElement.dataset.theme || "dark",
 });
+const uiStateRenderer = createUiStateRenderer();
+const updateUiState = (patch) => uiStateRenderer.update(patch);
 let lifetimeController = null;
 let lifetimeControllerPromise = null;
 let lifetimeRequestedActive = false;
@@ -1512,17 +1515,14 @@ function setDetailSort(key) {
 // stylesheets target "detail panel open" state generally (layout, canvas
 // dimming, etc.) without every consumer re-deriving it from the panels.
 function updateViewModeAvailability() {
-  const isOpen = !elements.detailPanel.hidden || !elements.countryPanel.hidden;
+  const groupDetailOpen = !elements.detailPanel.hidden;
+  const countryDetailOpen = !elements.countryPanel.hidden;
+  const isOpen = groupDetailOpen || countryDetailOpen;
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
     btn.disabled = isOpen;
   });
-  document.body.classList.toggle("detail", isOpen);
-  document.body.classList.toggle("country-detail", !elements.countryPanel.hidden);
-  // The mobile hamburger menu and the detail panel are both glass overlays
-  // that can stack on small screens — leaving the menu open behind the
-  // panel would show through its translucent background.
-  if (isOpen) {
-    document.body.classList.remove("menu-open");
+  const nextUiState = updateUiState({ groupDetailOpen, countryDetailOpen });
+  if (!nextUiState.menuOpen) {
     elements.menuToggle.setAttribute("aria-expanded", "false");
   }
 }
@@ -1611,17 +1611,13 @@ function closeDetailPanel() {
 
 function openInfoPanel() {
   infoOverlay.open();
-  document.body.classList.add("detail", "info-open");
-  document.body.classList.remove("menu-open");
+  updateUiState({ infoOpen: true });
   elements.menuToggle.setAttribute("aria-expanded", "false");
 }
 
 function closeInfoPanel() {
   infoOverlay.close();
-  document.body.classList.remove("info-open");
-  if (elements.detailPanel.hidden && elements.countryPanel.hidden) {
-    document.body.classList.remove("detail");
-  }
+  updateUiState({ infoOpen: false });
 }
 
 // Returns to the group table this country was opened from (if any),
@@ -2006,6 +2002,7 @@ function syncViewModeButtons(activeMode) {
 const clusterViewLifecycle = createClusterViewLifecycle({
   state: appState,
   view: elements.clusterView,
+  updateUiState,
   assertReady: () =>
     assertElements(elements, ["clusterView", "clusterCanvas"], "cluster view"),
   syncModeButtons: syncViewModeButtons,
@@ -2080,6 +2077,7 @@ async function ensureLifetimeController() {
             applyYear(yearsData[appState.currentYearIndex], { instant: true });
           }
         },
+        updateUiState,
         onOpenCountry: (country) => {
           appState.detailEntryMode = "lifetime";
           setLifetimeActive(false, { preserveStory: true });
@@ -2149,6 +2147,7 @@ const searchViewLifecycle = createSearchViewLifecycle({
   state: appState,
   view: elements.searchView,
   bar: elements.searchBar,
+  updateUiState,
   assertReady: () =>
     assertElements(
       elements,
@@ -2317,6 +2316,7 @@ function badgeLabel() {
 const chartViewLifecycle = createChartViewLifecycle({
   state: appState,
   panel: elements.chartPanel,
+  updateUiState,
   assertReady: () =>
     assertElements(elements, CHART_VIEW_ELEMENT_KEYS, "chart view"),
   syncModeButtons: syncViewModeButtons,
@@ -2837,7 +2837,7 @@ function bindViewRouter() {
     ],
     setBaseView: setViewMode,
     closeMenu: () => {
-      document.body.classList.remove("menu-open");
+      updateUiState({ menuOpen: false });
       elements.menuToggle.setAttribute("aria-expanded", "false");
     },
   });
@@ -2939,11 +2939,15 @@ function bindMilestoneEvents() {
 
 function bindMenuEvents() {
   elements.menuToggle.addEventListener("click", () => {
-    const isOpen = document.body.classList.toggle("menu-open");
-    elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
+    const { menuOpen } = uiStateRenderer.getState();
+    const nextState = updateUiState({ menuOpen: !menuOpen });
+    elements.menuToggle.setAttribute(
+      "aria-expanded",
+      String(nextState.menuOpen),
+    );
   });
   elements.menuShim.addEventListener("click", () => {
-    document.body.classList.remove("menu-open");
+    updateUiState({ menuOpen: false });
     elements.menuToggle.setAttribute("aria-expanded", "false");
   });
 }
