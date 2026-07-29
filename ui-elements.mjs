@@ -27,6 +27,8 @@ export function getAppElements(root = document) {
     themeToggleLight: root.querySelector("#themeToggleLight"),
     milestoneTour: root.querySelector("#milestoneTour"),
     milestoneTourIcon: root.querySelector("#milestoneTourIcon"),
+    clusterPlay: root.querySelector("#clusterPlay"),
+    clusterPlayIcon: root.querySelector("#clusterPlayIcon"),
     milestonePrev: root.querySelector("#milestonePrev"),
     milestoneNext: root.querySelector("#milestoneNext"),
     milestoneCaption: root.querySelector("#milestoneCaption"),

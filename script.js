@@ -1030,6 +1030,19 @@ function setTourButtonState(playing) {
   elements.milestoneTour.title = playing ? "Pause tour" : "Play tour";
 }
 
+// #clusterPlay's own play/pause state — a separate button and function from
+// setTourButtonState above (rather than one button branching on
+// appState.clusterActive) so each has a fixed, correct label instead of
+// needing to track which mode is currently driving it.
+function setClusterPlayButtonState(playing) {
+  elements.clusterPlayIcon.textContent = playing ? "pause" : "play_arrow";
+  elements.clusterPlay.setAttribute(
+    "aria-label",
+    playing ? "Pause timeline" : "Play timeline",
+  );
+  elements.clusterPlay.title = playing ? "Pause" : "Play";
+}
+
 // Resets the fill to empty with no transition (a mid-fade snap-back would
 // read as a glitch rather than "tour stopped").
 function resetTourProgress() {
@@ -1095,14 +1108,13 @@ function applyClusterStatus(year, options) {
   showStatus(`${period.title}. ${period.text}`, options);
 }
 
-// Cluster's own take on #milestoneTour's play button: rather than hopping
-// between milestone years (the global tour's job), it sweeps through every
-// year from 1950 to 2100 once and stops — a single pass through the full
+// Cluster's own play button (#clusterPlay): rather than hopping between
+// milestone years (the global tour's job), it sweeps through every year
+// from 1950 to 2100 once and stops — a single pass through the full
 // archetype narrative rather than a looping story. Reuses goToYear() so
 // each step still runs through the slider's normal input/change pipeline
 // (cluster particles, #status chapter caption, URL sync all update exactly
-// as they would from a manual drag) and setTourButtonState() so the same
-// play/pause icon serves both playback modes.
+// as they would from a manual drag).
 let clusterPlaybackTimer = null;
 // 150 year-steps at 90ms lands the full sweep around 13.5s — quick enough
 // to hold attention, slow enough that each archetype phase is still
@@ -1117,7 +1129,7 @@ function stopClusterPlayback() {
   if (clusterPlaybackTimer === null) return;
   clearTimeout(clusterPlaybackTimer);
   clusterPlaybackTimer = null;
-  setTourButtonState(false);
+  setClusterPlayButtonState(false);
 }
 
 function playClusterTimelineOnce() {
@@ -1125,7 +1137,7 @@ function playClusterTimelineOnce() {
     stopClusterPlayback();
     return;
   }
-  setTourButtonState(true);
+  setClusterPlayButtonState(true);
   goToYear(yearsData[0]);
   const step = () => {
     const nextIndex = appState.currentYearIndex + 1;
@@ -2922,15 +2934,11 @@ function bindPanelCloseEvents() {
 function bindMilestoneEvents() {
   elements.milestonePrev.addEventListener("click", () => stepMilestone(-1));
   elements.milestoneNext.addEventListener("click", () => stepMilestone(1));
-  // Cluster repurposes this same button for its own once-through 1950-2100
-  // sweep instead of the milestone-hopping tour — see playClusterTimelineOnce.
-  elements.milestoneTour.addEventListener("click", () => {
-    if (appState.clusterActive) {
-      playClusterTimelineOnce();
-    } else {
-      tourController.toggle();
-    }
-  });
+  elements.milestoneTour.addEventListener("click", tourController.toggle);
+  // Cluster's own once-through 1950-2100 sweep — a separate button
+  // (#clusterPlay, swapped in via CSS for #milestoneTour) rather than this
+  // same button branching on appState.clusterActive.
+  elements.clusterPlay.addEventListener("click", playClusterTimelineOnce);
   // #exploreMilestones' markup is gone along with the old #milestoneRow —
   // guarded the same way as its .hidden toggle above, rather than
   // assuming it won't come back.

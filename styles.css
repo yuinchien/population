@@ -185,6 +185,22 @@ body.detail .hide-for-detail {
     max-height: 0;
 }
 
+/* Inverse of hide-for-cluster above — Cluster's own once-through-timeline
+   play button (#clusterPlay) swaps in for #milestoneTour rather than
+   sharing it, so it's hidden everywhere except Cluster instead of the
+   other way around. */
+.show-for-cluster {
+    opacity: 0;
+    pointer-events: none;
+    max-height: 0;
+}
+
+body.view-cluster .show-for-cluster {
+    opacity: 1;
+    pointer-events: auto;
+    max-height: none;
+}
+
 .header-title {
     position: fixed;
     z-index: var(--z-title);
