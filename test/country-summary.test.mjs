@@ -55,6 +55,22 @@ test("country summary appends the demographic narrative", () => {
   assert.match(summaryText(summary), /became a super-aged society/);
 });
 
+test("demographic narrative percentages are underlined segments", () => {
+  const summary = buildCountrySummary({
+    country: { name: "China", peakYear: 2021, populations: [10, 9] },
+    year: 2047,
+    years: [2021, 2047],
+    historicalCutoffYear: 2023,
+    formatPopulation: String,
+    demographicNarrative:
+      "By 2047, the 65+ share will reach 29.4% of its population.",
+  });
+  const percentSegment = summary.segments.find(
+    (segment) => segment.text === "29.4%",
+  );
+  assert.equal(percentSegment?.className, "underlined");
+});
+
 test("projected country summary avoids repeating projected", () => {
   const summary = buildCountrySummary({
     country: {

@@ -949,38 +949,6 @@ body.country-detail #colorMode {
     white-space: nowrap;
 }
 
-.detail-summary {
-    color: var(--color-text);
-    max-width: 960px;
-    min-width: 0;
-
-    .country-summary-meta {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-    .country-summary-copy {
-        display: block;
-        margin: 0;
-        display: none;
-    }
-
-    .underlined {
-        position: relative;
-        font-weight: 500;
-    }
-
-    .underlined::after {
-        content: "";
-        position: absolute;
-        z-index: -1;
-        left: 0;
-        bottom: 1px;
-        width: 100%;
-        height: 3px;
-        background-color: var(--detail-color);
-    }
-}
 
 #chartInsightCaption {
     display: table;
@@ -1163,6 +1131,30 @@ body.country-detail #colorMode {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+}
+
+#countrySummary .country-summary-copy {
+    display: block;
+    margin: 0;
+}
+
+/* Highlights the key figures (population, peak year, ...) inline within
+   the summary paragraph with a colored bar behind the text, picking up
+   --detail-color from the country panel's own ancestor styling. */
+#countrySummary .underlined {
+    position: relative;
+    font-weight: 500;
+}
+
+#countrySummary .underlined::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    left: 0;
+    bottom: 1px;
+    width: 100%;
+    height: 2px;
+    background-color: var(--detail-color);
 }
 
 
