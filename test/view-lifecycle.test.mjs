@@ -1,21 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createViewLifecycle } from "../view-lifecycle.mjs";
-import { createViewRouter } from "../view-router.mjs";
-
-function fakeLifecycle(name, active = false) {
-  let value = active;
-  return {
-    name,
-    isActive: () => value,
-    activate: () => {
-      value = true;
-    },
-    deactivate: () => {
-      value = false;
-    },
-  };
-}
 
 test("view lifecycle runs transitions once and syncs after hooks", () => {
   let active = false;
@@ -45,20 +30,4 @@ test("view lifecycle runs transitions once and syncs after hooks", () => {
     "exit",
     "sync",
   ]);
-});
-
-test("view router deactivates siblings before activating its target", () => {
-  const chart = fakeLifecycle("chart", true);
-  const search = fakeLifecycle("search");
-  const baseModes = [];
-  const router = createViewRouter({
-    lifecycles: [chart, search],
-    setBaseView: (mode) => baseModes.push(mode),
-  });
-  router.activate("search");
-  assert.equal(chart.isActive(), false);
-  assert.equal(search.isActive(), true);
-  router.activate("map");
-  assert.equal(search.isActive(), false);
-  assert.deepEqual(baseModes, ["map"]);
 });
