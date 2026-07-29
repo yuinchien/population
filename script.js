@@ -2854,6 +2854,16 @@ function bindViewRouter() {
     },
   });
   viewRouter.bind(elements.viewMode);
+  // The title doubles as a "go home" control — closes whatever detail
+  // panel is open (rather than letting it restore its usual entry-mode
+  // overlay) and always lands on Globe specifically, regardless of what
+  // was showing before.
+  elements.headerTitle.addEventListener("click", () => {
+    if (!elements.detailPanel.hidden || !elements.countryPanel.hidden) {
+      closeDetailPanel();
+    }
+    viewRouter.activate("globe");
+  });
 }
 
 function bindChartControlsEvents() {

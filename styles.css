@@ -231,6 +231,7 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     line-height: var(--button-size);
     height: var(--button-size);
     font-weight: 400;
+    cursor: pointer;
     /*text-decoration: underline;*/
 }
 
