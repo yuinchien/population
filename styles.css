@@ -185,20 +185,39 @@ body.detail .hide-for-detail {
     max-height: 0;
 }
 
+/* .milestone-nav-btn instances additionally collapse width when hidden.
+   .timeline is a flex row, and max-height (the generic hide-for-* behavior
+   above) only affects the cross axis there — a hidden button's width
+   stays reserved in the row, showing up as a gap next to whichever
+   sibling button is actually visible. */
+body.view-chart .milestone-nav-btn.hide-for-chart,
+body.view-search .milestone-nav-btn.hide-for-search,
+body.view-lifetime .milestone-nav-btn.hide-for-lifetime,
+body.view-cluster .milestone-nav-btn.hide-for-cluster {
+    width: 0;
+}
+
 /* Inverse of hide-for-cluster above — Cluster's own once-through-timeline
    play button (#clusterPlay) swaps in for #milestoneTour rather than
    sharing it, so it's hidden everywhere except Cluster instead of the
-   other way around. */
-.show-for-cluster {
+   other way around. width follows the same collapse as the
+   .milestone-nav-btn rule above, since #clusterPlay is one too.
+   Selector is .milestone-nav-btn.show-for-cluster (not .show-for-cluster
+   alone) so its specificity actually beats button.milestone-nav-btn's own
+   width: var(--button-size) below — a single class was losing that fight
+   and leaving the width uncollapsed. */
+.milestone-nav-btn.show-for-cluster {
     opacity: 0;
     pointer-events: none;
     max-height: 0;
+    width: 0;
 }
 
-body.view-cluster .show-for-cluster {
+body.view-cluster .milestone-nav-btn.show-for-cluster {
     opacity: 1;
     pointer-events: auto;
     max-height: none;
+    width: var(--button-size);
 }
 
 .header-title {
