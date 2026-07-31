@@ -626,7 +626,6 @@ body.country-detail #colorMode {
 .tooltip-summary {
     margin: 0;
     padding: 0;
-    font-family: var(--font-sans);
     font-weight: 400;
     line-height: 1.4;
     font-size: 1.2rem;
@@ -686,7 +685,6 @@ body.country-detail #colorMode {
 
 .info-panel p {
     color: var(--color-muted);
-    font-family: var(--font-sans);
     line-height: 1.5;
     a {
         color: var(--color-yellow);
@@ -2053,7 +2051,6 @@ button.lg .material-symbols-outlined {
     flex-wrap: wrap;
     align-items: center;
     gap: var(--margin);
-    font-family: var(--font-sans);
     font-size: 1.8rem;
 }
 
@@ -2089,8 +2086,6 @@ button.lg .material-symbols-outlined {
     transform: translateX(-50%);
     width: max-content;
     max-width: min(320px, 80vw);
-    /*color: var(--color-orange);*/
-    font-family: var(--font-sans);
     font-size: 0.9rem;
     line-height: 1.2;
     text-align: center;
@@ -2115,7 +2110,6 @@ button.lg .material-symbols-outlined {
     right: auto;
     min-width: 360px;
     max-height: 320px;
-    font-family: var(--font-sans);
     font-size: 1.1rem;
     font-weight: 400;
     text-align: left;
@@ -2212,7 +2206,6 @@ button.lg .material-symbols-outlined {
     border: none;
     background: none;
     color: var(--color-yellow);
-    font-family: var(--font-sans);
     font-size: 1.2rem;
     font-weight: 500;
     text-align: left;
@@ -2232,7 +2225,6 @@ button.lg .material-symbols-outlined {
     width: min(100%, 1080px);
     justify-self: center;
     color: var(--color-yellow);
-    font-family: var(--font-sans);
     font-size: 1.2rem;
     font-weight: 500;
 }
@@ -2367,7 +2359,6 @@ button.lg .material-symbols-outlined {
 .lifetime-global-life-value,
 .lifetime-global-life-year {
     fill: var(--color-yellow);
-    font-family: var(--font-sans);
     font-weight: 500;
 }
 
@@ -2386,7 +2377,6 @@ button.lg .material-symbols-outlined {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-family: var(--font-sans);
     font-weight: 500;
     font-size: 1rem;
 }
@@ -2522,11 +2512,9 @@ button.lg .material-symbols-outlined {
     grid-template-columns: minmax(160px, 1fr) auto;
     align-items: center;
     gap: 16px;
-    /*color: var(--color-background);*/
     background: var(--color-muted);
     border-radius: 999px;
     padding: 8px 16px;
-    font-family: var(--font-sans);
 }
 
 .lifetime-stat:first-child {
@@ -2608,7 +2596,6 @@ body.view-lifetime-started #buttonsContainer {
     display: none;
     font-size: 1rem;
     font-weight: 500;
-    font-family: var(--font-sans);
 }
 
 @media (max-width: 800px) {
