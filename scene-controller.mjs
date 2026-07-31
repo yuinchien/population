@@ -1143,8 +1143,10 @@ export function createSceneController({
     });
   }
 
+  let animFrameId = null;
+
   function animate(timestamp) {
-    requestAnimationFrame(animate);
+    animFrameId = requestAnimationFrame(animate);
     timer.update(timestamp);
     updateTransition();
     controls.update(timer.getDelta());
@@ -1162,6 +1164,45 @@ export function createSceneController({
 
   function start() {
     animate();
+  }
+
+  function stop() {
+    if (animFrameId !== null) {
+      cancelAnimationFrame(animFrameId);
+      animFrameId = null;
+    }
+  }
+
+  function dispose() {
+    stop();
+    calloutController.clear();
+    if (pointsMesh) {
+      scene.remove(pointsMesh);
+      pointsMesh.geometry?.dispose();
+      pointsMesh.material?.dispose();
+      pointsMesh = null;
+    }
+    if (borderLinesGroup) {
+      scene.remove(borderLinesGroup);
+      borderLinesGroup.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+    }
+    if (hoverFillGroup) {
+      scene.remove(hoverFillGroup);
+      hoverFillGroup.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) obj.material.dispose();
+      });
+    }
+    hoverFillCache.forEach((item) => {
+      item.mesh?.geometry?.dispose();
+      item.mesh?.material?.dispose();
+    });
+    hoverFillCache.clear();
+    controls.dispose();
+    renderer.dispose();
   }
 
   function setLoadCountryBorders(fn) {
@@ -1188,6 +1229,8 @@ export function createSceneController({
     hasUnclassifiedIncome: () => hasUnclassifiedIncome,
     resize,
     start,
+    stop,
+    dispose,
     setLoadCountryBorders,
     isReady,
   };

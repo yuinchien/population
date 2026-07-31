@@ -20,13 +20,7 @@ import {
   matchCountries,
 } from "./country-combobox.mjs";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
-
-function svgEl(tag, attrs = {}) {
-  const el = document.createElementNS(SVG_NS, tag);
-  for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value);
-  return el;
-}
+import { svgEl, resolveComputedColor } from "./dom-utils.mjs";
 
 // Clockwise from the top spoke — see renderRadarChart's angleFor.
 // Generous left/right padding: axis labels like "Age dependency ratio" run
@@ -153,21 +147,6 @@ export function createChartController({
   }
 
   // Resolves any valid CSS <color> value (var(), color-mix(), etc.) to the
-  // browser's own computed rgb() — lets foregroundForColor() work with a
-  // color-mix() expression it can't parse directly (theme-colors.mjs only
-  // understands hex/rgb and var() references, not color-mix() syntax), by
-  // letting the real CSS engine do the resolving instead of reimplementing
-  // color-mix's math in JS.
-  function resolveComputedColor(cssColorValue) {
-    const probe = document.createElement("span");
-    probe.style.display = "none";
-    probe.style.color = cssColorValue;
-    document.body.appendChild(probe);
-    const resolved = getComputedStyle(probe).color;
-    probe.remove();
-    return resolved;
-  }
-
   // Keep the comparison table focused on the chart's current question:
   // country and population are always present, followed by the selected
   // metric when it is not population itself.
