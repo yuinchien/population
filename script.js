@@ -67,6 +67,7 @@ import {
   createUiStateRenderer,
 } from "./ui-state-renderer.mjs";
 import { shouldRenderScene } from "./navigation-state.mjs";
+import { renderFormattedText } from "./formatted-text.mjs";
 
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see chart-controller.mjs's
@@ -572,10 +573,7 @@ const tourController = createTourController({
 function showStatus(text, { instant = false } = {}) {
   const el = elements.status;
   const textNode = document.createElement("div");
-  // innerHTML, not textContent — the global-figures portion of `text` comes
-  // from METRICS[key].format(), which wraps its unit in <span class="suffix">
-  // (metrics.mjs) for spacing; textContent would print that markup literally.
-  textNode.innerHTML = text;
+  renderFormattedText(textNode, text);
   el.replaceChildren(textNode);
   if (instant) return;
 
@@ -653,7 +651,7 @@ function renderCountrySummary(summary) {
   label.textContent = "Summary";
   const value = document.createElement("div");
   value.className = "sparkline-value";
-  value.innerHTML = badgeLabel();
+  value.textContent = badgeLabel();
   caption.append(label, value);
 
   if (summary.flagUrl) {

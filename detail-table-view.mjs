@@ -3,6 +3,7 @@ import {
   flagIconUrl,
   preloadFlagIcons,
 } from "./data-loader.mjs";
+import { renderFormattedText } from "./formatted-text.mjs";
 
 export function createDetailCell(text, className = "", options = {}) {
   const cell = document.createElement("div");
@@ -20,7 +21,7 @@ export function createDetailCell(text, className = "", options = {}) {
   }
   const inner = document.createElement("span");
   inner.className = "detail-name";
-  inner.innerHTML = text;
+  renderFormattedText(inner, text);
   cell.append(inner);
   return cell;
 }

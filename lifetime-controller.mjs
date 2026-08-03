@@ -18,6 +18,7 @@ import {
   lifetimePresentYear,
 } from "./lifetime-model.mjs";
 import { METRICS, stripFormatSuffix } from "./metrics.mjs";
+import { renderFormattedText } from "./formatted-text.mjs";
 import {
   downloadBlob,
   renderLifetimeShareCard,
@@ -43,9 +44,7 @@ function createLifetimeStat(value, label) {
   stat.className = "lifetime-stat";
   const valueEl = document.createElement("div");
   valueEl.className = "lifetime-stat-value";
-  // innerHTML — formatLifeExpectancy/other METRICS formatters wrap their
-  // unit in <span class="suffix"> (metrics.mjs) for spacing.
-  valueEl.innerHTML = value;
+  renderFormattedText(valueEl, value);
   const labelEl = document.createElement("div");
   labelEl.className = "lifetime-stat-label";
   labelEl.textContent = label;
@@ -105,7 +104,7 @@ function createLifeExpectancyComparison(rows) {
     bar.append(name);
     const value = document.createElement("span");
     value.className = "lifetime-le-value";
-    value.innerHTML = format(row.value);
+    renderFormattedText(value, format(row.value));
     item.append(bar, value);
     chart.append(item);
   });
@@ -365,7 +364,7 @@ function createStorySection(act, index, country) {
 
   const copy = document.createElement("p");
   copy.className = "lifetime-act-copy";
-  copy.innerHTML = act.text;
+  renderFormattedText(copy, act.text);
 
   const group = document.createElement("div");
   group.className = "lifetime-section-text";

@@ -25,6 +25,7 @@ import {
 import { computeValueRange } from "./chart-math.mjs";
 import { currentAgingStage } from "./country-aging-narrative.mjs";
 import { svgEl } from "./dom-utils.mjs";
+import { renderFormattedText } from "./formatted-text.mjs";
 
 const COUNTRY_CHART_WIDTH = 760;
 const COUNTRY_CHART_HEIGHT = 220;
@@ -837,7 +838,7 @@ export function createCountryDetailController({
         const value = series[index];
         const definition = METRICS[key];
         const format = definition.formatPanel ?? definition.format;
-        valueEl.innerHTML = format(value);
+        renderFormattedText(valueEl, format(value));
         if (value != null) {
           const overlayValue = overlayValues?.[index];
           // dataset.tooltip is rendered via textContent (tooltip-controller.mjs)
