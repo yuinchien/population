@@ -197,7 +197,7 @@ export function createCountryCombobox({
     hide,
     render,
     focus: () => input.focus(),
-    destroy() {
+    dispose() {
       clearTimeout(blurTimer);
       input.removeEventListener("input", handleInput);
       input.removeEventListener("focus", handleFocus);

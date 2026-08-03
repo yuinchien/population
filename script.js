@@ -1535,7 +1535,7 @@ async function ensureLifetimeController() {
         },
         onActiveSectionChange: setProjectionScenarioLabel,
       });
-      lifetimeController.bindEvents();
+      lifetimeController.init();
       lifetimeController.setBirthYearMax();
       return lifetimeController;
     },
@@ -2062,7 +2062,8 @@ function bindChartControlsEvents() {
     const scenario = elements.chartProjectionScenario.value;
     setProjectionScenario(scenario);
   });
-  chartController.bindEvents();
+  chartController.init();
+  clusterController.init();
   chartController.renderMetricTabs();
   chartController.renderCountryChips();
 }
@@ -2216,7 +2217,10 @@ async function init() {
     const defaultYear =
       defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
 
-    sceneController.bindEvents();
+    sceneController.init();
+    detailOverlay.init();
+    countryOverlay.init();
+    infoOverlay.init();
     bindYearSliderEvents({ minYear, maxYear, defaultYear });
     bindColorModeEvents();
     bindLegendEvents();
@@ -2275,5 +2279,23 @@ window.addEventListener("resize", () => {
     resizeCluster();
   }
 });
+
+// One application-owned teardown path mirrors controller initialization.
+// Skip persisted pagehide events so browser back/forward-cache restores keep
+// their live controller graph; a real unload releases listeners, animation
+// frames, simulations, focus traps, and WebGL resources exactly once.
+window.addEventListener("pagehide", (event) => {
+  if (event.persisted) return;
+  tourController.stop();
+  lifetimeController?.dispose();
+  searchCountryCombobox?.dispose();
+  chartController.dispose();
+  clusterController.dispose();
+  countryDetailController.dispose();
+  detailOverlay.dispose();
+  countryOverlay.dispose();
+  infoOverlay.dispose();
+  sceneController.dispose();
+}, { once: true });
 
 init();

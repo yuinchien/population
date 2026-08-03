@@ -919,6 +919,8 @@ export function createCountryDetailController({
   }
 
   return {
+    init: () => true,
+    dispose: reset,
     render,
     refreshAgeStructure,
     refreshDemographics,

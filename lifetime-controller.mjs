@@ -323,7 +323,7 @@ function createGlobalLifeExpectancyChart(change) {
 }
 
 // A CTA out of the personal story into the full country-detail view — clicked
-// via a delegated listener in bindEvents() (this function is pure, so it just
+// via a delegated listener installed by init() (this function is pure, so it just
 // marks the country on the button's dataset rather than closing over a click
 // handler).
 function createExploreCountryLink(country) {
@@ -345,7 +345,7 @@ function createStorySection(act, index, country) {
   section.tabIndex = -1;
 
   // Download-as-image, positioned next to the (fixed, shared) close button —
-  // clicked via a delegated listener in bindEvents(), which resolves the act
+  // clicked via a delegated listener installed by init(), which resolves the act
   // to draw from this section's own data-index at click time.
   const download = document.createElement("button");
   download.type = "button";
@@ -438,6 +438,8 @@ export function createLifetimeController({
   let titleBeforeLifetime = "";
   let viewModeHiddenBeforeStory = false;
   let scrollFrame = null;
+  let countryBlurTimer = null;
+  let eventController = null;
   let scrollLockedUntil = 0;
   let lastWheelAt = 0;
   // Hiding #lifetimeAbout (e.g. [hidden]/display:none while paused for
@@ -794,20 +796,28 @@ export function createLifetimeController({
     }
   }
 
-  function bindEvents() {
-    elements.lifetimeButtonBegin?.addEventListener("click", begin);
-    elements.lifetimeForm?.addEventListener("submit", (event) => {
+  function init() {
+    if (eventController) return false;
+    eventController = new AbortController();
+    const listen = (target, type, handler, options = {}) =>
+      target?.addEventListener(type, handler, {
+        ...options,
+        signal: eventController.signal,
+      });
+    listen(elements.lifetimeButtonBegin, "click", begin);
+    listen(elements.lifetimeForm, "submit", (event) => {
       event.preventDefault();
       begin();
     });
-    elements.lifetimeClose?.addEventListener("click", () => {
+    listen(elements.lifetimeClose, "click", () => {
       if (started()) {
         resetStory();
         return;
       }
       setActive(false);
     });
-    elements.lifetimeAbout?.addEventListener(
+    listen(
+      elements.lifetimeAbout,
       "wheel",
       (event) => {
         if (!started() || Math.abs(event.deltaY) < 4) return;
@@ -826,7 +836,7 @@ export function createLifetimeController({
       },
       { passive: false },
     );
-    elements.lifetimeAbout?.addEventListener("keydown", (event) => {
+    listen(elements.lifetimeAbout, "keydown", (event) => {
       if (!started()) return;
       if (["ArrowDown", "PageDown", " "].includes(event.key)) {
         event.preventDefault();
@@ -836,7 +846,7 @@ export function createLifetimeController({
         snapToAdjacentSection(-1);
       }
     });
-    elements.lifetimeAbout?.addEventListener("click", (event) => {
+    listen(elements.lifetimeAbout, "click", (event) => {
       const link = event.target.closest(".lifetime-explore-link[data-iso3]");
       if (link && elements.lifetimeAbout.contains(link)) {
         const country = countries().find((item) => item.iso3 === link.dataset.iso3);
@@ -848,7 +858,7 @@ export function createLifetimeController({
         downloadSectionImage(downloadButton.closest(".lifetime-story-section"));
       }
     });
-    elements.lifetimeAbout?.addEventListener("scroll", () => {
+    listen(elements.lifetimeAbout, "scroll", () => {
       if (!started() || scrollFrame != null) return;
       scrollFrame = requestAnimationFrame(() => {
         scrollFrame = null;
@@ -856,12 +866,12 @@ export function createLifetimeController({
         if (sectionIndex != null) setActiveSection(sectionIndex);
       });
     });
-    elements.lifetimeJourney?.addEventListener("click", (event) => {
+    listen(elements.lifetimeJourney, "click", (event) => {
       const dot = event.target.closest(".lifetime-progress-dot[data-index]");
       if (!dot || !elements.lifetimeJourney.contains(dot)) return;
       scrollToSection(Number(dot.dataset.index));
     });
-    elements.lifetimeBirthYear?.addEventListener("input", () => {
+    listen(elements.lifetimeBirthYear, "input", () => {
       const value = Number(elements.lifetimeBirthYear.value);
       // Only a real, past (<= present) data year counts; anything else leaves
       // birthYear null so the Begin button stays disabled.
@@ -872,7 +882,7 @@ export function createLifetimeController({
       render();
       syncUrl();
     });
-    elements.lifetimeBirthYear?.addEventListener("keydown", (event) => {
+    listen(elements.lifetimeBirthYear, "keydown", (event) => {
       if (event.key !== "Enter" || elements.lifetimeButtonBegin.disabled) {
         return;
       }
@@ -909,12 +919,29 @@ export function createLifetimeController({
       blurDismissMs: LIFETIME_COUNTRY_BLUR_DISMISS_MS,
       closeOnOutsideClick: false,
     });
-    elements.lifetimeCountry?.addEventListener("blur", () => {
-      setTimeout(() => {
+    listen(elements.lifetimeCountry, "blur", () => {
+      clearTimeout(countryBlurTimer);
+      countryBlurTimer = setTimeout(() => {
         const country = selectedCountry();
         elements.lifetimeCountry.value = country ? country.name : "";
       }, LIFETIME_COUNTRY_BLUR_DISMISS_MS);
     });
+    return true;
+  }
+
+  function dispose() {
+    if (!eventController) return false;
+    eventController.abort();
+    eventController = null;
+    countryCombobox?.dispose();
+    countryCombobox = null;
+    clearTimeout(countryBlurTimer);
+    countryBlurTimer = null;
+    if (scrollFrame != null) cancelAnimationFrame(scrollFrame);
+    scrollFrame = null;
+    active = false;
+    elements.lifetimeView.hidden = true;
+    return true;
   }
 
   // preserveStory: true is the "Explore Country's Dataset" round-trip — the
@@ -1002,7 +1029,8 @@ export function createLifetimeController({
   }
 
   return {
-    bindEvents,
+    init,
+    dispose,
     setActive,
     render,
     isActive: () => active,

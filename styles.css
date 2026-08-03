@@ -227,7 +227,7 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     top: 0;
     margin: var(--margin);
     font-family: var(--font-serif);
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     line-height: var(--button-size);
     height: var(--button-size);
     font-weight: 400;
@@ -244,9 +244,8 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     z-index: var(--z-title);
     top: 0;
     left: 50%;
-    transform: translateX(-50%);
     margin: var(--margin);
-    transform: translateY( calc((var(--button-size) - 24px)/2) );
+    transform: translate3d( -50%, calc((var(--button-size) - 24px)/2), 0);
     font-weight: 500;
     line-height: 24px;
     color: var(--color-subtle);

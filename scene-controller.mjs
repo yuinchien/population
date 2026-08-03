@@ -1235,7 +1235,7 @@ export function createSceneController({
       clearCanvasHover();
       return;
     }
-    // Same reasoning as the pointerup guard in bindEvents(): raycasting
+    // Same reasoning as the pointerup guard installed by init(): raycasting
     // mid-transition would test against pre-transition positions, since the
     // morph itself runs on the GPU rather than updating the CPU-side
     // position attribute.
@@ -1300,25 +1300,30 @@ export function createSceneController({
     }
   }
 
-  function bindEvents() {
+  let eventController = null;
+
+  function init() {
+    if (eventController) return false;
+    eventController = new AbortController();
+    const { signal } = eventController;
     controls.addEventListener("change", clampMapPanTarget);
 
     elements.mapPanHint.hidden = false;
     elements.mapResetView.hidden = false;
-    elements.mapPanHint.addEventListener("click", dismissMapPanHint);
-    elements.mapResetView.addEventListener("click", resetMapView);
+    elements.mapPanHint.addEventListener("click", dismissMapPanHint, { signal });
+    elements.mapResetView.addEventListener("click", resetMapView, { signal });
 
     renderer.domElement.addEventListener("pointermove", (event) => {
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
       lastPointerEvent = event;
       if (!countryBorderHitTester) ensureCountryBorders();
-    });
+    }, { signal });
     renderer.domElement.addEventListener("pointerleave", () => {
       pointer.set(Infinity, Infinity);
       lastPointerEvent = null;
       clearCanvasHover();
-    });
+    }, { signal });
     renderer.domElement.addEventListener("pointerdown", (event) => {
       canvasPointerDownPos = { x: event.clientX, y: event.clientY };
       dismissMapPanHint();
@@ -1331,13 +1336,14 @@ export function createSceneController({
         clearFocusResumeTimer();
         if (getViewMode() === "globe") controls.autoRotate = true;
       }
-    });
+    }, { signal });
     // Dismissing on the "change" event fired by controls.update() would also
     // fire for purely programmatic camera moves (initializeViewMode, the
     // reset-view tween, view-mode morphs) — genuine pointerdown/wheel input
     // is the actual signal that the user tried panning or zooming.
     renderer.domElement.addEventListener("wheel", dismissMapPanHint, {
       passive: true,
+      signal,
     });
     renderer.domElement.addEventListener("pointerup", (event) => {
       const downPos = canvasPointerDownPos;
@@ -1357,7 +1363,8 @@ export function createSceneController({
 
       const country = hitCountryAtPointer();
       if (country) onOpenCountry(country);
-    });
+    }, { signal });
+    return true;
   }
 
   let animFrameId = null;
@@ -1396,6 +1403,9 @@ export function createSceneController({
 
   function dispose() {
     stop();
+    eventController?.abort();
+    eventController = null;
+    controls.removeEventListener("change", clampMapPanTarget);
     clearFocusResumeTimer();
     calloutController.clear();
     if (pointsMesh) {
@@ -1439,7 +1449,7 @@ export function createSceneController({
   }
 
   return {
-    bindEvents,
+    init,
     setup,
     initializeViewMode,
     applyYear,

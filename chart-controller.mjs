@@ -215,7 +215,7 @@ export function createChartController({
           // *unmixed* line color picks wrong for anything color-mix
           // lightens substantially, so resolve the actual rendered
           // background first. Wrapped defensively: this runs once,
-          // unconditionally, during bindEvents/renderCountryChips, and a
+          // unconditionally, during init/renderCountryChips, and a
           // computed-style format this doesn't recognize previously threw
           // there and took the whole app's init down with it — a
           // decorative contrast pick should never be able to do that.
@@ -645,15 +645,20 @@ export function createChartController({
     trendChart.cancelAnimation();
   }
 
-  function bindEvents() {
+  let eventController = null;
+
+  function init() {
+    if (eventController) return false;
+    eventController = new AbortController();
+    const { signal } = eventController;
     elements.chartMetricTabs.addEventListener("change", () => {
       setMetric(elements.chartMetricTabs.value);
-    });
+    }, { signal });
     elements.chartCountryChips.addEventListener("click", (event) => {
       const button = event.target.closest(".chip-remove[data-iso3]");
       if (!button || !elements.chartCountryChips.contains(button)) return;
       removeCountry(button.dataset.iso3);
-    });
+    }, { signal });
     countryCombobox = createCountryCombobox({
       input: elements.chartCountrySearch,
       list: elements.chartCountrySuggestions,
@@ -677,21 +682,37 @@ export function createChartController({
         if (!wasOpen) setCountryPickerExpanded(false);
       },
     });
-    elements.chartCountryPickerSummary.addEventListener("click", () =>
-      setCountryPickerExpanded(true),
+    elements.chartCountryPickerSummary.addEventListener(
+      "click",
+      () => setCountryPickerExpanded(true),
+      { signal },
     );
-    elements.chartCountryPickerCancel.addEventListener("click", () =>
-      setCountryPickerExpanded(false),
+    elements.chartCountryPickerCancel.addEventListener(
+      "click",
+      () => setCountryPickerExpanded(false),
+      { signal },
     );
     document.addEventListener("click", (event) => {
       if (!event.composedPath().includes(elements.chartCountryPicker)) {
         setCountryPickerExpanded(false);
       }
-    });
+    }, { signal });
+    return true;
+  }
+
+  function dispose() {
+    if (!eventController) return false;
+    eventController.abort();
+    eventController = null;
+    countryCombobox?.dispose();
+    countryCombobox = null;
+    cancelAnimation();
+    return true;
   }
 
   return {
-    bindEvents,
+    init,
+    dispose,
     renderChart,
     renderTable,
     cancelAnimation,

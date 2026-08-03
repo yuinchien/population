@@ -31,6 +31,7 @@ export function createOverlayController({
 }) {
   let returnFocus = null;
   let inerted = [];
+  let initialized = false;
 
   panel.setAttribute("role", "dialog");
   panel.setAttribute("aria-modal", "true");
@@ -107,17 +108,28 @@ export function createOverlayController({
     if (!panel.hidden) requestClose?.();
   }
 
-  document.addEventListener("keydown", handleKeydown);
-  scrim?.addEventListener("click", handleScrimClick);
+  function init() {
+    if (initialized) return false;
+    initialized = true;
+    document.addEventListener("keydown", handleKeydown);
+    scrim?.addEventListener("click", handleScrimClick);
+    return true;
+  }
+
+  function dispose() {
+    if (!initialized) return false;
+    close({ restoreFocus: false });
+    document.removeEventListener("keydown", handleKeydown);
+    scrim?.removeEventListener("click", handleScrimClick);
+    initialized = false;
+    return true;
+  }
 
   return {
+    init,
+    dispose,
     open,
     close,
     isOpen: () => !panel.hidden,
-    destroy() {
-      close({ restoreFocus: false });
-      document.removeEventListener("keydown", handleKeydown);
-      scrim?.removeEventListener("click", handleScrimClick);
-    },
   };
 }

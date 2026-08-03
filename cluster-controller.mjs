@@ -73,6 +73,7 @@ export function createClusterController({
   let nodes = [];
   let nodesBuilt = false;
   let interactionBound = false;
+  let eventController = null;
   let anchors = null;
   let labelRects = [];
   let medianAgeDomain = null;
@@ -520,6 +521,8 @@ export function createClusterController({
 
   function setupInteraction() {
     if (interactionBound) return;
+    init();
+    const { signal } = eventController;
     canvas.addEventListener("pointermove", (event) => {
       const node = nodeAtClientPoint(event.clientX, event.clientY);
       const hoverChanged = node !== hoveredNode;
@@ -545,19 +548,25 @@ export function createClusterController({
       canvas.style.cursor = "default";
       hideTooltip();
       hideArchetypeTooltip();
-    });
+    }, { signal });
     canvas.addEventListener("pointerleave", () => {
       const hover = resolveClusterHover(hoveredNode, null);
       hoveredNode = hover.node;
       if (hover.changed) paintFrame();
       hideTooltip();
       hideArchetypeTooltip();
-    });
+    }, { signal });
     canvas.addEventListener("click", (event) => {
       const node = nodeAtClientPoint(event.clientX, event.clientY);
       if (node) onCountryClick(node.country);
-    });
+    }, { signal });
     interactionBound = true;
+  }
+
+  function init() {
+    if (eventController) return false;
+    eventController = new AbortController();
+    return true;
   }
 
   function renderLayout(yearIndex = currentYearIndex) {
@@ -614,6 +623,14 @@ export function createClusterController({
     territoryForce = null;
   }
 
+  function dispose() {
+    deactivate();
+    eventController?.abort();
+    eventController = null;
+    interactionBound = false;
+    context?.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+  }
+
   function setYear(year) {
     if (!active || !medianAgeDomain) return;
     const yearIndex = getYears().indexOf(year);
@@ -635,6 +652,8 @@ export function createClusterController({
   }
 
   return {
+    init,
+    dispose,
     activate,
     deactivate,
     isActive: () => active,
