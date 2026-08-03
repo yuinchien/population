@@ -7,9 +7,12 @@ test("createInitialAppState defines one coherent navigation state", () => {
 
   assert.equal(state.currentTheme, "light");
   assert.equal(state.viewMode, "globe");
-  assert.equal(state.chartPanelActive, false);
-  assert.equal(state.clusterActive, false);
-  assert.equal(state.searchActive, false);
+  assert.deepEqual(state.navigation, {
+    activeView: null,
+    overlay: null,
+    menuOpen: false,
+    lifetimeStarted: false,
+  });
   assert.equal(state.selectedCountry, null);
   assert.deepEqual(state.detailSort, {
     key: "population",

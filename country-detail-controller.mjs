@@ -109,7 +109,6 @@ export function createCountryDetailController({
   chartLineGrowMs,
   chartMarkerFadeInMs,
   updateStatusPanel,
-  updateViewModeAvailability,
   stopTour,
   goToYear,
   showTooltip,

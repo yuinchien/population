@@ -3,8 +3,12 @@ import test from "node:test";
 import {
   bodyClassState,
   createUiStateRenderer,
-  shouldRenderScene,
 } from "../ui-state-renderer.mjs";
+import {
+  createInitialNavigationState,
+  shouldRenderScene,
+  updateNavigationState,
+} from "../navigation-state.mjs";
 
 function fakeBody() {
   const classes = new Set();
@@ -22,8 +26,10 @@ function fakeBody() {
 test("body classes are derived from one UI state snapshot", () => {
   assert.deepEqual(
     bodyClassState({
-      searchActive: true,
-      infoOpen: true,
+      activeView: "search",
+      overlay: "info",
+      menuOpen: false,
+      lifetimeStarted: false,
     }),
     {
       "view-chart": false,
@@ -56,34 +62,55 @@ test("opening a modal surface closes the menu and keeps detail derived", () => {
   assert.equal(body.classes.has("detail"), false);
 });
 
-test("detail remains active until every detail surface closes", () => {
+test("overlay transitions are mutually exclusive", () => {
   const body = fakeBody();
   const renderer = createUiStateRenderer({ body });
 
-  renderer.update({ groupDetailOpen: true, infoOpen: true });
-  renderer.update({ infoOpen: false });
+  renderer.update({ groupDetailOpen: true });
+  assert.equal(renderer.getState().overlay, "group");
+
+  renderer.update({ infoOpen: true });
+  assert.equal(renderer.getState().overlay, "info");
+  assert.equal(body.classes.has("info-open"), true);
   assert.equal(body.classes.has("detail"), true);
 
-  renderer.update({ groupDetailOpen: false });
+  renderer.update({ infoOpen: false });
   assert.equal(body.classes.has("detail"), false);
 });
 
+test("view transitions use one mutually exclusive activeView field", () => {
+  const state = createInitialNavigationState();
+  updateNavigationState(state, { chartActive: true });
+  assert.equal(state.activeView, "chart");
+
+  updateNavigationState(state, { searchActive: true });
+  assert.equal(state.activeView, "search");
+
+  updateNavigationState(state, { chartActive: false });
+  assert.equal(state.activeView, "search");
+});
+
 test("scene renders only when no full-screen or modal UI covers it", () => {
-  assert.equal(shouldRenderScene({}), true);
-  for (const key of [
-    "chartActive",
-    "clusterActive",
-    "searchActive",
-    "lifetimeActive",
-    "groupDetailOpen",
-    "countryDetailOpen",
-    "infoOpen",
-    "menuOpen",
-  ]) {
+  assert.equal(shouldRenderScene(createInitialNavigationState()), true);
+  for (const activeView of ["chart", "cluster", "search", "lifetime"]) {
     assert.equal(
-      shouldRenderScene({ [key]: true }),
+      shouldRenderScene({
+        ...createInitialNavigationState(),
+        activeView,
+      }),
       false,
-      `${key} should pause the scene`,
+      `${activeView} should pause the scene`,
     );
   }
+  for (const overlay of ["group", "country", "info"]) {
+    assert.equal(
+      shouldRenderScene({ ...createInitialNavigationState(), overlay }),
+      false,
+      `${overlay} should pause the scene`,
+    );
+  }
+  assert.equal(
+    shouldRenderScene({ ...createInitialNavigationState(), menuOpen: true }),
+    false,
+  );
 });

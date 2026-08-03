@@ -65,8 +65,8 @@ import { createViewRouter } from "./view-router.mjs";
 import { createSceneController, easeOutCubic } from "./scene-controller.mjs";
 import {
   createUiStateRenderer,
-  shouldRenderScene,
 } from "./ui-state-renderer.mjs";
+import { shouldRenderScene } from "./navigation-state.mjs";
 
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see chart-controller.mjs's
@@ -192,7 +192,7 @@ let loadCountryAgeStructure = async () => null;
 const appState = createInitialAppState({
   theme: document.documentElement.dataset.theme || "dark",
 });
-const uiStateRenderer = createUiStateRenderer();
+const uiStateRenderer = createUiStateRenderer({ state: appState.navigation });
 function syncSceneRendering(state = uiStateRenderer.getState()) {
   if (!sceneController.isReady()) return;
   if (shouldRenderScene(state)) sceneController.start();
@@ -205,7 +205,7 @@ function updateUiState(patch) {
 }
 let lifetimeController = null;
 let lifetimeControllerPromise = null;
-let lifetimeRequestedActive = false;
+const isViewActive = (view) => appState.navigation.activeView === view;
 
 function activePopulationSeries(country) {
   return projectionData.populationSeries(country);
@@ -216,11 +216,11 @@ async function ensureCountryDemographics() {
   const data = await loadCountryDemographicMetrics();
   if (!data) return null;
   countryDemographicMetrics = data;
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     chartController.renderChart();
     chartController.renderTable();
   }
-  if (appState.clusterActive) clusterController.render(appState.currentYearIndex);
+  if (isViewActive("cluster")) clusterController.render(appState.currentYearIndex);
   if (lifetimeController?.isActive()) lifetimeController.render();
   if (appState.selectedCountry) countryDetailController.refreshDemographics();
   else if (appState.selectedLegend) renderDetailPanel();
@@ -522,7 +522,7 @@ function setTourButtonState(playing) {
 
 // #clusterPlay's own play/pause state — a separate button and function from
 // setTourButtonState above (rather than one button branching on
-// appState.clusterActive) so each has a fixed, correct label instead of
+// the active navigation view) so each has a fixed, correct label instead of
 // needing to track which mode is currently driving it.
 function setClusterPlayButtonState(playing) {
   elements.clusterPlayIcon.textContent = playing ? "pause" : "play_arrow";
@@ -691,7 +691,7 @@ function applyYear(year, { instant = false } = {}) {
   // marker) cheap by touching only what's actually visible. Closing the
   // overlay (setChartPanelActive) does one full applyYear() call to catch
   // the 3D scene up to wherever this left it.
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     updateYearLabels(year);
     chartController.renderChart();
     chartController.renderTable();
@@ -700,11 +700,11 @@ function applyYear(year, { instant = false } = {}) {
     return;
   }
 
-  // Same reasoning as the appState.chartPanelActive branch above — the 3D scene is
+  // Same reasoning as the chart branch above — the 3D scene is
   // hidden behind the cluster overlay, so skip repositioning it and just
   // reclassify/reposition the (already-built) particles instead.
   // setClusterActive(false) does the 3D catch-up when the overlay closes.
-  if (appState.clusterActive) {
+  if (isViewActive("cluster")) {
     updateYearLabels(year);
     clusterController.setYear(year);
     applyClusterStatus(year, { instant });
@@ -798,7 +798,7 @@ function legendEntriesFor(mode) {
 function renderLegend(modeOverride = null) {
   const mode =
     modeOverride ??
-    (appState.clusterActive ? clusterController.getColorMode() : appState.colorMode);
+    (isViewActive("cluster") ? clusterController.getColorMode() : appState.colorMode);
   const entries = legendEntriesFor(mode);
   elements.legend.replaceChildren(
     ...entries.map(([label, color]) => {
@@ -956,20 +956,20 @@ function setDetailSort(key) {
   renderDetailPanel();
 }
 
-// Keeps other UI in sync with the detail panels' visibility. Switching view
-// mode while either panel is open would rebuild the active dot set out from
-// under its population-ratio bars and callout anchors mid-read, so the
-// toggle is disabled whenever one is visible; the body class lets
-// stylesheets target "detail panel open" state generally (layout, canvas
-// dimming, etc.) without every consumer re-deriving it from the panels.
-function updateViewModeAvailability() {
-  const groupDetailOpen = !elements.detailPanel.hidden;
-  const countryDetailOpen = !elements.countryPanel.hidden;
-  const isOpen = groupDetailOpen || countryDetailOpen;
+// Applies an explicit overlay transition. The overlay DOM is an output of
+// navigation now, never an alternate source of truth for whether detail is
+// open. Switching view mode while a detail overlay is active would rebuild
+// its underlying dot set, so those controls stay disabled for group/country.
+function setActiveOverlay(overlay) {
+  const isDetailOpen = overlay === "group" || overlay === "country";
   elements.viewMode.querySelectorAll("button").forEach((btn) => {
-    btn.disabled = isOpen;
+    btn.disabled = isDetailOpen;
   });
-  const nextUiState = updateUiState({ groupDetailOpen, countryDetailOpen });
+  const nextUiState = updateUiState({
+    groupDetailOpen: overlay === "group",
+    countryDetailOpen: overlay === "country",
+    infoOpen: overlay === "info",
+  });
   if (!nextUiState.menuOpen) {
     elements.menuToggle.setAttribute("aria-expanded", "false");
   }
@@ -1010,7 +1010,7 @@ function renderDetailPanel() {
   });
   countryOverlay.close({ restoreFocus: false });
   detailOverlay.open({ focus: false });
-  updateViewModeAvailability();
+  setActiveOverlay("group");
   updateStatusPanel(year, { groupCountries: countries });
 }
 
@@ -1020,7 +1020,7 @@ function closeDetailPanel() {
   appState.selectedCountry = null;
   detailOverlay.close();
   countryOverlay.close();
-  updateViewModeAvailability();
+  setActiveOverlay(null);
   renderLegend();
   // Match chart-view close behavior: the underlying global status was
   // already established before opening the detail overlay, so restore it
@@ -1059,13 +1059,12 @@ function closeDetailPanel() {
 
 function openInfoPanel() {
   infoOverlay.open();
-  updateUiState({ infoOpen: true });
-  elements.menuToggle.setAttribute("aria-expanded", "false");
+  setActiveOverlay("info");
 }
 
 function closeInfoPanel() {
   infoOverlay.close();
-  updateUiState({ infoOpen: false });
+  setActiveOverlay(null);
 }
 
 // Returns to the group table this country was opened from (if any),
@@ -1090,11 +1089,11 @@ function closeCountryDetail() {
 // countries — instead of always landing back on the plain globe.
 function urlStateFromApp() {
   const state = { mode: appState.viewMode, projection: projectionData.scenario() };
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     Object.assign(state, { view: "chart", metric: appState.chartMetricKey, countries: appState.selectedChartCountries });
-  } else if (appState.clusterActive) {
+  } else if (isViewActive("cluster")) {
     Object.assign(state, { view: "cluster" });
-  } else if (appState.searchActive) {
+  } else if (isViewActive("search")) {
     Object.assign(state, {
       view: "search",
       ...(appState.searchSelectedIso3 ? { country: appState.searchSelectedIso3 } : {}),
@@ -1146,12 +1145,12 @@ function applyUrlStateFromLocation(search) {
     setSearchActive(true);
     if (state.country) selectSearchCountry(state.country);
   } else if (state.view === "lifetime") {
-    lifetimeRequestedActive = true;
+    updateUiState({ lifetimeActive: true });
     ensureCountryDemographics();
     ensureCountryTrajectory();
     ensureCountryAgeStructure();
     ensureLifetimeController().then((controller) => {
-      if (!lifetimeRequestedActive) return;
+      if (!isViewActive("lifetime")) return;
       controller.applyUrlState(state);
       controller.setActive(true);
     });
@@ -1304,7 +1303,6 @@ const countryDetailController = createCountryDetailController({
   chartLineGrowMs: CHART_LINE_GROW_MS,
   chartMarkerFadeInMs: CHART_MARKER_FADE_IN_MS,
   updateStatusPanel,
-  updateViewModeAvailability,
   stopTour: () => tourController.stop(),
   goToYear,
   showTooltip: showChartTooltip,
@@ -1321,7 +1319,7 @@ function openCountryDetail(country) {
   // overlay are both full-screen, so the chart has to step aside first.
   // Remembered (see appState.detailEntryMode) so closing back out restores Chart
   // instead of landing on whichever of Globe/Map is underneath.
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     appState.detailEntryMode = "chart";
     setChartPanelActive(false);
   }
@@ -1345,7 +1343,7 @@ function renderCountryDetail(options = { animate: true }) {
   countryOverlay.open({ focus: false });
   countryDetailController.render(country, options);
   if (options.animate !== false) countryOverlay.open();
-  updateViewModeAvailability();
+  setActiveOverlay("country");
 }
 
 function setProjectionScenario(scenario, { sync = true } = {}) {
@@ -1362,11 +1360,11 @@ function setProjectionScenario(scenario, { sync = true } = {}) {
     elements.chartProjectionScenario.value = scenario;
   }
 
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     chartController.renderChart();
     chartController.renderTable();
     setProjectionScenarioLabel(badgeLabel());
-  } else if (appState.clusterActive) {
+  } else if (isViewActive("cluster")) {
     clusterController.refreshData(appState.currentYearIndex);
     if (appState.currentYearIndex >= 0) updateYearLabels(yearsData[appState.currentYearIndex]);
   } else if (lifetimeController?.isActive()) {
@@ -1495,13 +1493,13 @@ function setClusterActive(active) {
 }
 
 function setLifetimeActive(active, options) {
-  lifetimeRequestedActive = active;
+  updateUiState({ lifetimeActive: active });
   if (active) {
     ensureCountryDemographics();
     ensureCountryTrajectory();
     ensureCountryAgeStructure();
     return ensureLifetimeController().then((controller) => {
-      if (lifetimeRequestedActive) controller.setActive(true, options);
+      if (isViewActive("lifetime")) controller.setActive(true, options);
     });
   }
   lifetimeController?.setActive(active, options);
@@ -1630,7 +1628,7 @@ const searchViewLifecycle = createSearchViewLifecycle({
       countryDetailController.reset();
       appState.selectedCountry = null;
       countryOverlay.close({ restoreFocus: false });
-      updateViewModeAvailability();
+      setActiveOverlay(null);
       renderLegend();
       if (appState.currentYearIndex >= 0) {
         updateStatusPanel(yearsData[appState.currentYearIndex], { instant: true });
@@ -1919,7 +1917,7 @@ function setColorMode(mode) {
   } else {
     appState.selectedLegend = null;
     detailOverlay.close({ restoreFocus: false });
-    updateViewModeAvailability();
+    setActiveOverlay(null);
   }
   sceneController.recolor();
   if (keepDetailOpen) renderDetailPanel();
@@ -1958,7 +1956,7 @@ function bindYearSliderEvents({ minYear, maxYear, defaultYear }) {
     // "The Postwar Boom" the entire time and only jump to the right
     // chapter once the drag is released, well after the particles
     // themselves had already moved on.
-    if (appState.clusterActive) {
+    if (isViewActive("cluster")) {
       const year = Number(elements.yearSlider.value);
       clusterController.setYear(year);
       applyClusterStatus(year);
@@ -1982,7 +1980,7 @@ function bindColorModeEvents() {
   elements.colorMode.hidden = false;
   elements.colorMode.querySelectorAll("button").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (appState.clusterActive) {
+      if (isViewActive("cluster")) {
         setClusterColorMode(btn.dataset.mode);
       } else {
         setColorMode(btn.dataset.mode);
@@ -1998,7 +1996,7 @@ function bindLegendEvents() {
     // Remembered (see appState.detailEntryMode) so closing the detail panel
     // back out restores Cluster instead of landing on whichever of
     // Globe/Map is underneath.
-    if (appState.clusterActive) {
+    if (isViewActive("cluster")) {
       appState.detailEntryMode = "cluster";
       setClusterActive(false);
     }
@@ -2028,7 +2026,7 @@ function bindViewRouter() {
   syncViewModeButtons(appState.viewMode);
   const lifetimeViewLifecycle = {
     name: "lifetime",
-    isActive: () => lifetimeRequestedActive,
+    isActive: () => isViewActive("lifetime"),
     activate: (options) => setLifetimeActive(true, options),
     deactivate: (options) => setLifetimeActive(false, options),
   };
@@ -2139,7 +2137,7 @@ function bindMilestoneEvents() {
   elements.milestoneTour.addEventListener("click", tourController.toggle);
   // Cluster's own once-through 1950-2100 sweep — a separate button
   // (#clusterPlay, swapped in via CSS for #milestoneTour) rather than this
-  // same button branching on appState.clusterActive.
+  // same button branching on the centralized active view.
   elements.clusterPlay.addEventListener("click", playClusterTimelineOnce);
   // #exploreMilestones' markup is gone along with the old #milestoneRow —
   // guarded the same way as its .hidden toggle above, rather than
@@ -2272,10 +2270,10 @@ window.addEventListener("resize", () => {
   if (appState.selectedCountry) {
     resizeCountryDetail();
   }
-  if (appState.chartPanelActive) {
+  if (isViewActive("chart")) {
     resizeTrendChart();
   }
-  if (appState.clusterActive) {
+  if (isViewActive("cluster")) {
     resizeCluster();
   }
 });

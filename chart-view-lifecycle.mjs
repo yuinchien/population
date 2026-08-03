@@ -16,14 +16,13 @@ export function createChartViewLifecycle({
 }) {
   return createViewLifecycle({
     name: "chart",
-    isActive: () => state.chartPanelActive,
+    isActive: () => state.navigation.activeView === "chart",
     setActiveState: (active) => {
       if (active) assertReady();
-      state.chartPanelActive = active;
+      updateUiState({ chartActive: active });
     },
     setVisible: (active) => {
       panel.hidden = !active;
-      updateUiState({ chartActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "chart" : underlyingMode()),

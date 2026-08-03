@@ -14,14 +14,13 @@ export function createClusterViewLifecycle({
 }) {
   return createViewLifecycle({
     name: "cluster",
-    isActive: () => state.clusterActive,
+    isActive: () => state.navigation.activeView === "cluster",
     setActiveState: (active) => {
       if (active) assertReady();
-      state.clusterActive = active;
+      updateUiState({ clusterActive: active });
     },
     setVisible: (active) => {
       view.hidden = !active;
-      updateUiState({ clusterActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "cluster" : underlyingMode()),

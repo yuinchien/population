@@ -15,15 +15,14 @@ export function createSearchViewLifecycle({
 }) {
   return createViewLifecycle({
     name: "search",
-    isActive: () => state.searchActive,
+    isActive: () => state.navigation.activeView === "search",
     setActiveState: (active) => {
       if (active) assertReady();
-      state.searchActive = active;
+      updateUiState({ searchActive: active });
     },
     setVisible: (active) => {
       view.hidden = !active;
       bar.hidden = !active;
-      updateUiState({ searchActive: active });
     },
     onVisibilityChange: (active) =>
       syncModeButtons(active ? "search" : underlyingMode()),

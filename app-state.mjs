@@ -1,3 +1,5 @@
+import { createInitialNavigationState } from "./navigation-state.mjs";
+
 const DEFAULT_CHART_COUNTRIES = ["USA", "JPN", "IND", "DEU", "NGA"];
 
 // Durable, user-visible application state lives here. Rendering resources,
@@ -7,6 +9,7 @@ export function createInitialAppState({
   theme = "dark",
   chartCountries = DEFAULT_CHART_COUNTRIES,
 } = {}) {
+  const navigation = Object.seal(createInitialNavigationState());
   return Object.seal({
     currentYearIndex: -1,
     historicalCutoffYear: Infinity,
@@ -17,10 +20,8 @@ export function createInitialAppState({
     selectedCountry: null,
     detailEntryMode: null,
     detailSort: { key: "population", direction: "desc" },
-    chartPanelActive: false,
-    clusterActive: false,
     clusterStatusPeriod: null,
-    searchActive: false,
+    navigation,
     searchSelectedIso3: null,
     chartMetricKey: "ageDependencyRatio",
     selectedChartCountries: [...chartCountries],
