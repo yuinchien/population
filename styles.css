@@ -245,7 +245,8 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    margin: calc(7px + var(--margin)) var(--margin);
+    margin: var(--margin);
+    transform: translateY( calc((var(--button-size) - 24px)/2) );
     font-weight: 500;
     line-height: 24px;
     color: var(--color-subtle);
@@ -253,7 +254,6 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     border-radius: 40px;
     padding: 0 10px;
 }
-
 
 
 .milestone-nav {
