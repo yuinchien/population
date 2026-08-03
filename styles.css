@@ -705,6 +705,15 @@ body.country-detail #colorMode {
     overflow: hidden;
 }
 
+/* Opening the panel moves DOM focus here (see script.js's detailOverlay/
+   countryOverlay initialFocus) rather than onto the close button, so a
+   keyboard Tab from here reaches the close button as the very first stop.
+   The panel itself doesn't need a visible ring for that — it just appeared
+   on screen, which is signal enough. */
+.detail-panel:focus {
+    outline: none;
+}
+
 /* #detailNav is a full-height left sidebar, not confined to the space below
    the header the way .detail-panel-main's own header is — so this panel
    specifically overrides the base .detail-panel row/column template to be

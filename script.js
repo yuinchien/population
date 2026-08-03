@@ -1242,13 +1242,18 @@ function hideClusterArchetypeTooltip() {
 const detailOverlay = createOverlayController({
   panel: elements.detailPanel,
   labelledBy: elements.detailTitle.id,
-  initialFocus: () => elements.detailClose,
+  // Focus the panel itself, not the close button — the panel appearing is
+  // already an obvious visual cue, so a button-shaped focus ring on open
+  // would just be a distraction. The panel is still a real Tab stop
+  // (tabIndex -1, set by the controller), so keyboard users can Tab from
+  // there into the close button and the rest of the panel's controls.
+  initialFocus: () => null,
   requestClose: closeDetailPanel,
 });
 const countryOverlay = createOverlayController({
   panel: elements.countryPanel,
   labelledBy: elements.countryTitle.id,
-  initialFocus: () => elements.countryClose,
+  initialFocus: () => null,
   requestClose: closeCountryDetail,
 });
 const infoOverlay = createOverlayController({
