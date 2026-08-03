@@ -4,6 +4,7 @@ import {
   clusterBoundaryCorrection,
   clusterEntranceOrder,
   clusterEntranceScale,
+  labelCollisionCorrection,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -84,6 +85,31 @@ test("clusterBoundaryCorrection keeps a particle inside its cluster territory", 
   assert.deepEqual(
     clusterBoundaryCorrection({ x: 48, y: 20, radius: 10 }, own, competitor),
     { x: -14, y: 0 },
+  );
+});
+
+test("labelCollisionCorrection keeps the full particle outside title bounds", () => {
+  const rect = { x: 100, y: 80, width: 120, height: 24 };
+  assert.deepEqual(
+    labelCollisionCorrection({ x: 160, y: 70, radius: 20 }, rect, 12),
+    { x: 0, y: -22 },
+  );
+  assert.deepEqual(
+    labelCollisionCorrection({ x: 50, y: 92, radius: 20 }, rect, 12),
+    { x: 0, y: 0 },
+  );
+});
+
+test("labelCollisionCorrection resolves a fast particle's predicted position", () => {
+  const rect = { x: 100, y: 80, width: 120, height: 24 };
+  const node = { x: 70, y: 92, vx: 80, vy: 0, radius: 10 };
+  assert.deepEqual(
+    labelCollisionCorrection(
+      { ...node, x: node.x + node.vx, y: node.y + node.vy },
+      rect,
+      12,
+    ),
+    { x: 0, y: -34 },
   );
 });
 

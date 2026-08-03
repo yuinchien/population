@@ -16,6 +16,7 @@ import {
   clusterBoundaryCorrection,
   clusterEntranceOrder,
   clusterEntranceScale,
+  labelCollisionCorrection,
   clusterNodeAtPoint,
   resolveClusterHover,
   seededClusterPosition,
@@ -197,41 +198,19 @@ export function createClusterController({
       forceNodes.forEach((node) => {
         if (!node.archetype) return;
         labelRects.forEach((rect) => {
-          const gap = node.radius + LABEL_PARTICLE_GAP;
-          const left = rect.x - gap;
-          const right = rect.x + rect.width + gap;
-          const top = rect.y - gap;
-          const bottom = rect.y + rect.height + gap;
-          if (
-            node.x <= left ||
-            node.x >= right ||
-            node.y <= top ||
-            node.y >= bottom
-          ) {
-            return;
-          }
-          const distances = [
-            { axis: "x", target: left, distance: node.x - left },
-            { axis: "x", target: right, distance: right - node.x },
-            { axis: "y", target: top, distance: node.y - top },
-            { axis: "y", target: bottom, distance: bottom - node.y },
-          ];
-          const nearest = distances.reduce((best, candidate) =>
-            candidate.distance < best.distance ? candidate : best,
+          const correction = labelCollisionCorrection(
+            {
+              x: node.x + (node.vx ?? 0),
+              y: node.y + (node.vy ?? 0),
+              radius: node.radius,
+            },
+            rect,
+            LABEL_PARTICLE_GAP,
           );
-          // Use damped repulsion instead of snapping positions directly to
-          // the boundary. Snapping fights the anchor/collision forces on
-          // alternating ticks and makes nearby particles visibly vibrate.
-          // The larger exclusion gap above gives this softer force room to
-          // settle before a circle reaches the visible rectangle.
-          const strength = 0.18 + alpha * 0.22;
-          if (nearest.axis === "x") {
-            node.vx =
-              node.vx * 0.65 + (nearest.target - node.x) * strength;
-          } else {
-            node.vy =
-              node.vy * 0.65 + (nearest.target - node.y) * strength;
-          }
+          // Correct the predicted next position, not only the current one,
+          // so high-velocity year transitions cannot tunnel through a title.
+          node.vx += correction.x * (0.8 + alpha * 0.2);
+          node.vy += correction.y * (0.8 + alpha * 0.2);
         });
       });
     }
@@ -366,8 +345,10 @@ export function createClusterController({
       .force("x", forceXInstance)
       .force("y", forceYInstance)
       .force("collide", collideForce)
-      .force("label-avoidance", labelAvoidanceForce)
       .force("territory", territoryForce)
+      // Keep title avoidance last so no later force can push a node back
+      // through a label during the same simulation step.
+      .force("label-avoidance", labelAvoidanceForce)
       .alphaTarget(0)
       .on("tick", paintFrame)
       .stop();
@@ -476,8 +457,35 @@ export function createClusterController({
     context.restore();
   }
 
+  function resolveLabelOverlaps() {
+    // A hard post-tick projection is the rendering invariant. The predictive
+    // force above steers motion naturally; this final pass guarantees that
+    // even an unusually large velocity or radius change never reaches paint.
+    for (let pass = 0; pass < 2; pass++) {
+      nodes.forEach((node) => {
+        if (!node.archetype) return;
+        labelRects.forEach((rect) => {
+          const correction = labelCollisionCorrection(
+            node,
+            rect,
+            LABEL_PARTICLE_GAP,
+          );
+          if (correction.x) {
+            node.x += correction.x;
+            node.vx = 0;
+          }
+          if (correction.y) {
+            node.y += correction.y;
+            node.vy = 0;
+          }
+        });
+      });
+    }
+  }
+
   function paintFrame() {
     if (!context || !anchors) return;
+    resolveLabelOverlaps();
     context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     sortedNodes = nodes
       .filter((node) => node.archetype)
