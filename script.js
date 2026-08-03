@@ -725,6 +725,13 @@ function applyYear(year, { instant = false } = {}) {
     updateStatusPanel(year, { instant });
   }
   sceneController.rebuildCallouts(year);
+  // Milestone tour (auto-play or manual Prev/Next) camera assist — see
+  // sceneController.focusPeakCountry()'s own comment for why this is keyed
+  // off the destination year being an exact milestone year rather than
+  // threading tour-state through applyYear().
+  if (activeGlobalTrendMilestones().has(year)) {
+    sceneController.focusPeakCountry(year);
+  }
   syncUrlFromState();
 }
 

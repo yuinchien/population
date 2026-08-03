@@ -306,6 +306,22 @@ export function createSceneController({
   let mapPanHintSeen = localStorage.getItem(MAP_PAN_HINT_STORAGE_KEY) === "1";
   let resetTween = null; // { fromPos, fromTarget, start } while animating back to center
 
+  // Milestone-tour camera assist: when the tour (or manual Prev/Next
+  // milestone stepping) lands on a year with peak-population callouts, the
+  // Globe camera rotates to face the biggest one rather than leaving it
+  // wherever it happened to be — a callout on the sphere's far side is
+  // otherwise invisible with no indication anything is there. See
+  // focusPeakCountry() below.
+  // Duration scales with how far the camera actually has to turn (see
+  // focusPeakCountry()) — a neighboring-country nudge and a rotate to the
+  // sphere's far side both used to take the same fixed 700ms, which made
+  // the big turns feel like a hard snap rather than a smooth pan.
+  const FOCUS_TWEEN_MIN_MS = 500;
+  const FOCUS_TWEEN_MAX_MS = 1800;
+  const FOCUS_HOLD_MS = 1500;
+  let focusTween = null; // { fromDir, toDir, distance, durationMs, start }
+  let focusResumeTimer = null;
+
   function latLonToVector3(lat, lon, radius) {
     const phi = ((90 - lat) * Math.PI) / 180;
     const theta = ((lon + 180) * Math.PI) / 180;
@@ -878,6 +894,95 @@ export function createSceneController({
     }
   }
 
+  function clearFocusResumeTimer() {
+    if (focusResumeTimer != null) {
+      clearTimeout(focusResumeTimer);
+      focusResumeTimer = null;
+    }
+  }
+
+  // Same lat/lon-averaged anchor callout-controller.mjs computes for its own
+  // labels, recomputed here rather than exposed by that module since this is
+  // the only other place that needs a country's on-globe direction.
+  function countryGlobeAnchor(country) {
+    const source = country._xyzGlobe;
+    const count = source.length / 3;
+    const anchor = new THREE.Vector3();
+    for (let i = 0; i < count; i++) {
+      anchor.x += source[i * 3];
+      anchor.y += source[i * 3 + 1];
+      anchor.z += source[i * 3 + 2];
+    }
+    anchor.divideScalar(count);
+    return anchor.normalize();
+  }
+
+  function biggestPeakCountry(year) {
+    const candidates = getCountries().filter(
+      (country) => getPeakYear(country) === year,
+    );
+    if (!candidates.length) return null;
+    return candidates.reduce((best, country) => {
+      const pop = getPopulationAt(country) ?? 0;
+      const bestPop = best ? getPopulationAt(best) ?? 0 : -Infinity;
+      return pop > bestPop ? country : best;
+    }, null);
+  }
+
+  // Called whenever the milestone tour (auto-play or manual Prev/Next) lands
+  // on a milestone year. Global milestones (Peak Humanity, Super-Aged
+  // Planet, etc.) aren't about any one country, but any peak-population
+  // callouts that happen to fall on this same year can otherwise be sitting
+  // on the Globe's far side, invisible, with no indication anything is
+  // there — so this just aims the camera at the biggest one, if any. Map
+  // view already shows the whole world at once; the only thing that can
+  // hide a callout there is the user having panned/zoomed away, so this
+  // just snaps back to the default framing instead of computing a facing
+  // direction.
+  function focusPeakCountry(year) {
+    if (getViewMode() === "map") {
+      if (!isMapViewAtDefault()) resetMapView();
+      return;
+    }
+    if (getViewMode() !== "globe") return;
+    const target = biggestPeakCountry(year);
+    if (!target) return;
+    clearFocusResumeTimer();
+    controls.autoRotate = false;
+    const fromDir = camera.position.clone().normalize();
+    const toDir = countryGlobeAnchor(target);
+    // 0 (already facing it) to π (exact opposite side) — scaled linearly
+    // into the duration range so a short hop and a full half-globe turn
+    // each read as smooth pans at their own natural pace, instead of both
+    // racing to fit the same fixed window.
+    const angle = fromDir.angleTo(toDir);
+    focusTween = {
+      fromDir,
+      toDir,
+      distance: camera.position.length(),
+      durationMs:
+        FOCUS_TWEEN_MIN_MS +
+        (FOCUS_TWEEN_MAX_MS - FOCUS_TWEEN_MIN_MS) * (angle / Math.PI),
+      start: performance.now(),
+    };
+  }
+
+  function updateFocusTween() {
+    if (!focusTween) return;
+    const elapsed = performance.now() - focusTween.start;
+    const t = easeOutCubic(Math.min(1, elapsed / focusTween.durationMs));
+    const dir = focusTween.fromDir.clone().lerp(focusTween.toDir, t).normalize();
+    camera.position.copy(dir.multiplyScalar(focusTween.distance));
+    if (elapsed >= focusTween.durationMs) {
+      focusTween = null;
+      clearFocusResumeTimer();
+      focusResumeTimer = setTimeout(() => {
+        focusResumeTimer = null;
+        if (getViewMode() === "globe") controls.autoRotate = true;
+      }, FOCUS_HOLD_MS);
+    }
+  }
+
   // URL-selected map mode is initial state, not a user-triggered transition.
   // Configure the camera, controls, material, and dot sizing before the first
   // population layout is written so the globe never flashes or scrambles in.
@@ -918,6 +1023,8 @@ export function createSceneController({
     const toPositions = computeTargetPositions(mode);
     setViewModeState(mode);
     resetTween = null;
+    focusTween = null;
+    clearFocusResumeTimer();
     if (mode === "map") {
       showMapPanHintIfNeeded();
     } else {
@@ -1216,6 +1323,15 @@ export function createSceneController({
     renderer.domElement.addEventListener("pointerdown", (event) => {
       canvasPointerDownPos = { x: event.clientX, y: event.clientY };
       dismissMapPanHint();
+      // A manual grab takes over the camera outright — cancel any in-flight
+      // facing tween/hold rather than fight the user's own drag, restoring
+      // autoRotate immediately (exactly the state it'd be in without this
+      // feature at all).
+      if (focusTween || focusResumeTimer != null) {
+        focusTween = null;
+        clearFocusResumeTimer();
+        if (getViewMode() === "globe") controls.autoRotate = true;
+      }
     });
     // Dismissing on the "change" event fired by controls.update() would also
     // fire for purely programmatic camera moves (initializeViewMode, the
@@ -1252,6 +1368,7 @@ export function createSceneController({
     timer.update(timestamp);
     updateTransition();
     updateResetTween();
+    updateFocusTween();
     controls.update(timer.getDelta());
     updateDotUniforms(timer.getElapsed());
     if (
@@ -1278,6 +1395,7 @@ export function createSceneController({
 
   function dispose() {
     stop();
+    clearFocusResumeTimer();
     calloutController.clear();
     if (pointsMesh) {
       scene.remove(pointsMesh);
@@ -1336,5 +1454,6 @@ export function createSceneController({
     dispose,
     setLoadCountryBorders,
     isReady,
+    focusPeakCountry,
   };
 }
