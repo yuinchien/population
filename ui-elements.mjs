@@ -36,6 +36,7 @@ export function getAppElements(root = document) {
     exploreMilestones: root.querySelector("#exploreMilestones"),
     status: root.querySelector("#status"),
     headerTitle: root.querySelector("#headerTitle"),
+    projectionScenarioLabel: root.querySelector("#projectionScenarioLabel"),
     tooltip: root.querySelector("#tooltip"),
     chartTooltip: root.querySelector("#chartTooltip"),
     clusterArchetypeTooltip: root.querySelector("#clusterArchetypeTooltip"),

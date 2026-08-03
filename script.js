@@ -683,6 +683,7 @@ function applyYear(year, { instant = false } = {}) {
     updateYearLabels(year);
     chartController.renderChart();
     chartController.renderTable();
+    setProjectionScenarioLabel(badgeLabel());
     syncUrlFromState();
     return;
   }
@@ -1345,6 +1346,7 @@ function setProjectionScenario(scenario, { sync = true } = {}) {
   if (appState.chartPanelActive) {
     chartController.renderChart();
     chartController.renderTable();
+    setProjectionScenarioLabel(badgeLabel());
   } else if (appState.clusterActive) {
     clusterController.refreshData(appState.currentYearIndex);
     if (appState.currentYearIndex >= 0) updateYearLabels(yearsData[appState.currentYearIndex]);
@@ -1516,6 +1518,7 @@ async function ensureLifetimeController() {
           setLifetimeActive(false, { preserveStory: true });
           openCountryDetail(country);
         },
+        onActiveSectionChange: setProjectionScenarioLabel,
       });
       lifetimeController.bindEvents();
       lifetimeController.setBirthYearMax();
@@ -1742,6 +1745,16 @@ function badgeLabel() {
     : `${capitalizeFirstLetter(projectionData.scenario())} Projection`;
 }
 
+// Shared top-center "Historical" / "{Scenario} Projection" indicator for
+// Chart view (driven by year changes below) and Lifetime view (driven by
+// lifetime-controller.mjs's onActiveSectionChange dep, since its acts aren't
+// tied to the global year slider). null hides it.
+function setProjectionScenarioLabel(text) {
+  if (!elements.projectionScenarioLabel) return;
+  elements.projectionScenarioLabel.textContent = text ?? "";
+  elements.projectionScenarioLabel.hidden = !text;
+}
+
 // Chart is a full-screen overlay, not a real member of the Globe/Map
 // toggle's selection state — opening it never touches which of those two
 // is "active", so whichever was selected before is still the one shown
@@ -1759,6 +1772,7 @@ const chartViewLifecycle = createChartViewLifecycle({
     ensureCountryDemographics();
     chartController.renderChart({ animate: true });
     chartController.renderTable();
+    setProjectionScenarioLabel(badgeLabel());
   },
   closeCountryPicker: () => {
     // Always reopens collapsed, regardless of how it was left — an editor
@@ -1768,6 +1782,7 @@ const chartViewLifecycle = createChartViewLifecycle({
   },
   cancelAnimation: () => chartController.cancelAnimation(),
   catchUpScene: () => {
+    setProjectionScenarioLabel(null);
     if (appState.currentYearIndex < 0) return;
     // While the overlay was open, applyYear() took its chart-only fast path
     // and left the 3D scene stale (still showing whatever year it had

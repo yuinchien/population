@@ -24,6 +24,9 @@ import {
 } from "./lifetime-share-card.mjs";
 
 const LIFETIME_SECTION_COUNT = 3;
+// The Horizon act is the only one that lands on a projected (not historical)
+// year — see setActIndex()'s onActiveSectionChange call below.
+const HORIZON_ACT_INDEX = 2;
 const LIFETIME_SCROLL_LOCK_MS = 900;
 const LIFETIME_WHEEL_IDLE_MS = 240;
 const LIFETIME_COUNTRY_SUGGESTION_LIMIT = 40;
@@ -336,7 +339,7 @@ function createExploreCountryLink(country) {
   return link;
 }
 
-function createStorySection(act, index, country, projectionScenario) {
+function createStorySection(act, index, country) {
   const section = document.createElement("section");
   section.className = "lifetime-story-section";
   section.dataset.index = String(index);
@@ -359,15 +362,6 @@ function createStorySection(act, index, country, projectionScenario) {
   const label = document.createElement("div");
   label.className = "lifetime-section-label";
   label.append(document.createTextNode(actLabel(index)));
-  // The Horizon act is the only one that lands on a projected (not
-  // historical) year, so it's the only label that needs to say which UN
-  // projection variant that year's numbers come from.
-  if (index === 2 && projectionScenario) {
-    const scenarioSuffix = document.createElement("span");
-    scenarioSuffix.className = "lifetime-section-label-scenario";
-    scenarioSuffix.textContent = ` (${capitalizeFirstLetter(projectionScenario)} Projection)`;
-    label.append(scenarioSuffix);
-  }
 
   const copy = document.createElement("p");
   copy.className = "lifetime-act-copy";
@@ -435,6 +429,7 @@ export function createLifetimeController({
   catchUpScene,
   onOpenCountry,
   updateUiState,
+  onActiveSectionChange,
 }) {
   let active = false;
   let birthYear = null;
@@ -582,12 +577,29 @@ export function createLifetimeController({
     syncUrl();
   }
 
+  // Text for the shared top-center projection-scenario label (owned by
+  // script.js, also used by Chart view) — null hides it. Only the Horizon
+  // act warrants it; every other act (and the "not started" state, -1) is a
+  // historical year with nothing to disambiguate.
+  function projectionLabelFor(index) {
+    return index === HORIZON_ACT_INDEX
+      ? `${capitalizeFirstLetter(getProjectionScenario?.() ?? "medium")} Projection`
+      : null;
+  }
+
+  // Every actIndex write funnels through here so the shared label always
+  // matches whichever act (if any) is actually showing.
+  function setActIndex(index) {
+    actIndex = index;
+    onActiveSectionChange?.(projectionLabelFor(actIndex));
+  }
+
   function setActiveSection(index) {
     const clamped = Math.min(
       LIFETIME_SECTION_COUNT - 1,
       Math.max(0, index),
     );
-    actIndex = clamped;
+    setActIndex(clamped);
     elements.lifetimeJourney
       ?.querySelectorAll(".lifetime-progress-dot")
       .forEach((dot, i) => {
@@ -697,9 +709,8 @@ export function createLifetimeController({
 
   function renderStory(country) {
     if (!active || !started()) return;
-    const projectionScenario = getProjectionScenario?.() ?? "medium";
     const sections = buildStory(country).map((act, index) =>
-      createStorySection(act, index, country, projectionScenario),
+      createStorySection(act, index, country),
     );
     elements.lifetimeAbout.replaceChildren(...sections);
     renderProgressDots();
@@ -713,7 +724,7 @@ export function createLifetimeController({
       scrollFrame = null;
     }
     teardownEntrances();
-    actIndex = -1;
+    setActIndex(-1);
     scrollLockedUntil = 0;
     lastWheelAt = 0;
     elements.lifetimeAbout?.replaceChildren();
@@ -760,14 +771,14 @@ export function createLifetimeController({
     birthYear = years().includes(value) && value <= presentYear() ? value : null;
     const country = selectedCountry();
     if (!Number.isFinite(birthYear) || !country) {
-      actIndex = -1;
+      setActIndex(-1);
       updateBirthYearError();
       render();
       syncUrl();
       return;
     }
 
-    actIndex = 0;
+    setActIndex(0);
     // The Arrival act opens on the birth year; no need to build the story here.
     const targetYear = birthYear;
     trackEvent("lifetime_begin", {
@@ -858,7 +869,7 @@ export function createLifetimeController({
       birthYear =
         years().includes(value) && value <= presentYear() ? value : null;
       // Editing an input backs out of a running story.
-      if (started()) actIndex = -1;
+      if (started()) setActIndex(-1);
       render();
       syncUrl();
     });
@@ -885,7 +896,7 @@ export function createLifetimeController({
       onInput: (value) => {
         if (!value.trim() && countryIso) {
           countryIso = null;
-          actIndex = -1;
+          setActIndex(-1);
           render();
           syncUrl();
         }
@@ -931,19 +942,28 @@ export function createLifetimeController({
         btn.dataset.mode === (nextActive ? "lifetime" : getViewMode()),
       ),
     );
+    // The shared projection-scenario label is a fixed element outside
+    // #lifetimeView, so it needs an explicit hide here too — toggling
+    // #lifetimeView's own [hidden] (above) doesn't touch it, and the
+    // preserveStory pause (below) never calls resetStory(), which is the
+    // only other place that would otherwise clear it.
+    if (!nextActive) onActiveSectionChange?.(null);
     if (nextActive) {
       if (!preserveStory) {
         titleBeforeLifetime = elements.headerTitle?.textContent ?? "";
         viewModeHiddenBeforeStory = elements.buttonsContainer.hidden;
         render();
-      } else if (pausedScrollTop != null) {
-        // Toggling [hidden] doesn't reliably preserve scrollTop across the
-        // round-trip — restore it explicitly once layout has settled.
-        const restoreTo = pausedScrollTop;
-        pausedScrollTop = null;
-        requestAnimationFrame(() => {
-          elements.lifetimeAbout.scrollTop = restoreTo;
-        });
+      } else {
+        onActiveSectionChange?.(projectionLabelFor(actIndex));
+        if (pausedScrollTop != null) {
+          // Toggling [hidden] doesn't reliably preserve scrollTop across the
+          // round-trip — restore it explicitly once layout has settled.
+          const restoreTo = pausedScrollTop;
+          pausedScrollTop = null;
+          requestAnimationFrame(() => {
+            elements.lifetimeAbout.scrollTop = restoreTo;
+          });
+        }
       }
       stopTour();
     } else if (preserveStory) {
