@@ -565,6 +565,60 @@ body.country-detail #colorMode {
     height: 80px;
 }
 
+/* Map pan/zoom hint pill and reset-view button. Both are standalone
+   position: fixed elements (not inside .timeline's flex row), so unlike
+   .milestone-nav-btn siblings they never need the width-collapse treatment
+   above — a fixed element takes no space from its layout neighbors even
+   while invisible. Both fade via opacity/pointer-events (toggled by a
+   .visible class from scene-controller.mjs) rather than the [hidden]
+   attribute, since [hidden] is display:none and can't transition. */
+.map-pan-hint {
+    position: fixed;
+    z-index: var(--z-dock);
+    top: var(--margin);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+.map-pan-hint.visible {
+    opacity: 1;
+}
+
+.map-reset-view {
+    position: fixed;
+    z-index: calc(var(--z-dock) + 1);
+    top: var(--margin);
+    right: 306px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--button-size);
+    height: var(--button-size);
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    color: var(--color-text);
+    background: var(--color-surface);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.map-reset-view.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 #tooltip,
 #chartTooltip,
 #clusterArchetypeTooltip {

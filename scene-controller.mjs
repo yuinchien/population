@@ -296,6 +296,16 @@ export function createSceneController({
   let lastTooltipUpdate = 0;
   let yearChangePulseStart = -Infinity;
 
+  // Map pan/zoom affordance: a hint pill shown once ever (localStorage), and
+  // a reset-view button shown whenever the map camera has drifted from its
+  // default centered/zoomed state. Both are map-mode-only, driven off the
+  // same controls "change" listener clampMapPanTarget already uses.
+  const MAP_PAN_HINT_STORAGE_KEY = "mapPanHintSeen";
+  const MAP_RESET_TWEEN_MS = 500;
+  const MAP_VIEW_DEFAULT_EPSILON = 0.5;
+  let mapPanHintSeen = localStorage.getItem(MAP_PAN_HINT_STORAGE_KEY) === "1";
+  let resetTween = null; // { fromPos, fromTarget, start } while animating back to center
+
   function latLonToVector3(lat, lon, radius) {
     const phi = ((90 - lat) * Math.PI) / 180;
     const theta = ((lon + 180) * Math.PI) / 180;
@@ -790,11 +800,82 @@ export function createSceneController({
     const clampedY = THREE.MathUtils.clamp(controls.target.y, -maxY, maxY);
     const dx = clampedX - controls.target.x;
     const dy = clampedY - controls.target.y;
-    if (dx === 0 && dy === 0) return;
-    controls.target.x = clampedX;
-    controls.target.y = clampedY;
-    camera.position.x += dx;
-    camera.position.y += dy;
+    if (dx !== 0 || dy !== 0) {
+      controls.target.x = clampedX;
+      controls.target.y = clampedY;
+      camera.position.x += dx;
+      camera.position.y += dy;
+    }
+    updateMapResetViewVisibility();
+  }
+
+  // Shown once ever (per browser) the first time Map view becomes active;
+  // dismissed the moment the user pans or zooms, or clicks the pill itself.
+  function showMapPanHintIfNeeded() {
+    if (mapPanHintSeen) return;
+    elements.mapPanHint.classList.add("visible");
+  }
+
+  function dismissMapPanHint() {
+    if (mapPanHintSeen) return;
+    mapPanHintSeen = true;
+    localStorage.setItem(MAP_PAN_HINT_STORAGE_KEY, "1");
+    elements.mapPanHint.classList.remove("visible");
+  }
+
+  function hideMapPanHint() {
+    elements.mapPanHint.classList.remove("visible");
+  }
+
+  function isMapViewAtDefault() {
+    const distance = camera.position.distanceTo(controls.target);
+    return (
+      Math.abs(controls.target.x) < MAP_VIEW_DEFAULT_EPSILON &&
+      Math.abs(controls.target.y) < MAP_VIEW_DEFAULT_EPSILON &&
+      Math.abs(distance - VIEW_CONFIG.map.cameraDistance) <
+        MAP_VIEW_DEFAULT_EPSILON
+    );
+  }
+
+  function updateMapResetViewVisibility() {
+    elements.mapResetView.classList.toggle(
+      "visible",
+      getViewMode() === "map" && !isMapViewAtDefault(),
+    );
+  }
+
+  // Animates the map camera/target back to their default centered, zoomed-out
+  // position — same easeInOutCubic used by the globe/map morph transition,
+  // just applied to camera position + controls.target directly rather than
+  // the dot buffer.
+  function resetMapView() {
+    if (getViewMode() !== "map" || transition || resetTween) return;
+    resetTween = {
+      fromPos: camera.position.clone(),
+      fromTarget: controls.target.clone(),
+      start: performance.now(),
+    };
+    dismissMapPanHint();
+  }
+
+  function updateResetTween() {
+    if (!resetTween) return;
+    const elapsed = performance.now() - resetTween.start;
+    const t = easeInOutCubic(Math.min(1, elapsed / MAP_RESET_TWEEN_MS));
+    camera.position.lerpVectors(
+      resetTween.fromPos,
+      new THREE.Vector3(0, 0, VIEW_CONFIG.map.cameraDistance),
+      t,
+    );
+    controls.target.lerpVectors(
+      resetTween.fromTarget,
+      new THREE.Vector3(0, 0, 0),
+      t,
+    );
+    if (elapsed >= MAP_RESET_TWEEN_MS) {
+      resetTween = null;
+      updateMapResetViewVisibility();
+    }
   }
 
   // URL-selected map mode is initial state, not a user-triggered transition.
@@ -809,6 +890,7 @@ export function createSceneController({
     pointsMesh.material.uniforms.uIsMap.value = 1;
     applySettledViewControls();
     controls.update();
+    showMapPanHintIfNeeded();
   }
 
   // Snaps an interrupted morph to the destination view. applyYear() immediately
@@ -835,6 +917,13 @@ export function createSceneController({
     const scramblePositions = computeScramblePositions(activeTotal);
     const toPositions = computeTargetPositions(mode);
     setViewModeState(mode);
+    resetTween = null;
+    if (mode === "map") {
+      showMapPanHintIfNeeded();
+    } else {
+      hideMapPanHint();
+      elements.mapResetView.classList.remove("visible");
+    }
     // Anchors are computed from the globe/map basis, so a mode toggle needs
     // its own rebuild even though the selected year hasn't changed.
     rebuildCallouts(getYears()[getCurrentYearIndex()]);
@@ -1108,6 +1197,11 @@ export function createSceneController({
   function bindEvents() {
     controls.addEventListener("change", clampMapPanTarget);
 
+    elements.mapPanHint.hidden = false;
+    elements.mapResetView.hidden = false;
+    elements.mapPanHint.addEventListener("click", dismissMapPanHint);
+    elements.mapResetView.addEventListener("click", resetMapView);
+
     renderer.domElement.addEventListener("pointermove", (event) => {
       pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
       pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -1121,6 +1215,14 @@ export function createSceneController({
     });
     renderer.domElement.addEventListener("pointerdown", (event) => {
       canvasPointerDownPos = { x: event.clientX, y: event.clientY };
+      dismissMapPanHint();
+    });
+    // Dismissing on the "change" event fired by controls.update() would also
+    // fire for purely programmatic camera moves (initializeViewMode, the
+    // reset-view tween, view-mode morphs) — genuine pointerdown/wheel input
+    // is the actual signal that the user tried panning or zooming.
+    renderer.domElement.addEventListener("wheel", dismissMapPanHint, {
+      passive: true,
     });
     renderer.domElement.addEventListener("pointerup", (event) => {
       const downPos = canvasPointerDownPos;
@@ -1149,6 +1251,7 @@ export function createSceneController({
     animFrameId = requestAnimationFrame(animate);
     timer.update(timestamp);
     updateTransition();
+    updateResetTween();
     controls.update(timer.getDelta());
     updateDotUniforms(timer.getElapsed());
     if (

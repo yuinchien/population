@@ -46,6 +46,8 @@ export function getAppElements(root = document) {
     viewMode: root.querySelector("#viewMode"),
     buttonsContainer: root.querySelector("#buttonsContainer"),
     calloutLayer: root.querySelector("#calloutLayer"),
+    mapPanHint: root.querySelector("#mapPanHint"),
+    mapResetView: root.querySelector("#mapResetView"),
     detailPanel,
     detailFlag: detailPanelHeader.flag,
     detailTitle: detailPanelHeader.title,
