@@ -68,6 +68,7 @@ import {
 } from "./ui-state-renderer.mjs";
 import { shouldRenderScene } from "./navigation-state.mjs";
 import { renderFormattedText } from "./formatted-text.mjs";
+import { createMobileStorySheet } from "./mobile-story-sheet.mjs";
 
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see chart-controller.mjs's
@@ -79,6 +80,10 @@ const CHART_LINE_GROW_MS = 500;
 const CHART_MARKER_FADE_IN_MS = 320;
 
 const elements = getAppElements();
+const mobileStorySheet = createMobileStorySheet({
+  sheet: elements.mobileStorySheet,
+  handle: elements.mobileStoryHandle,
+});
 assertElements(
   elements,
   [
@@ -196,7 +201,9 @@ const appState = createInitialAppState({
 const uiStateRenderer = createUiStateRenderer({ state: appState.navigation });
 function syncSceneRendering(state = uiStateRenderer.getState()) {
   if (!sceneController.isReady()) return;
-  if (shouldRenderScene(state)) sceneController.start();
+  const sceneVisible = shouldRenderScene(state);
+  sceneController.setTransientUiVisible(sceneVisible);
+  if (sceneVisible) sceneController.start();
   else sceneController.stop();
 }
 function updateUiState(patch) {
@@ -2241,6 +2248,7 @@ async function init() {
       defaultYears[Math.floor(Math.random() * defaultYears.length)] ?? minYear;
 
     sceneController.init();
+    mobileStorySheet.init();
     detailOverlay.init();
     countryOverlay.init();
     infoOverlay.init();
@@ -2311,6 +2319,7 @@ window.addEventListener("pagehide", (event) => {
   if (event.persisted) return;
   tourController.stop();
   lifetimeController?.dispose();
+  mobileStorySheet.dispose();
   searchCountryCombobox?.dispose();
   chartController.dispose();
   clusterController.dispose();

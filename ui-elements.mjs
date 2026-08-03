@@ -18,6 +18,8 @@ export function getAppElements(root = document) {
     : {};
 
   return {
+    mobileStorySheet: root.querySelector("#mobileStorySheet"),
+    mobileStoryHandle: root.querySelector("#mobileStoryHandle"),
     menuToggle: root.querySelector("#menuToggle"),
     menuShim: root.querySelector("#menuShim"),
     infoButton: root.querySelector("#infoButton"),

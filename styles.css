@@ -168,6 +168,17 @@ canvas.hovering-dot {
     backdrop-filter: blur(16px);
 }
 
+/* On larger screens the sheet wrapper is structurally transparent, leaving
+   the existing fixed status, legend, and timeline layout untouched. */
+.mobile-story-sheet,
+.mobile-story-content {
+    display: contents;
+}
+
+.mobile-story-handle {
+    display: none;
+}
+
 .hide-for-detail {
     overflow: hidden;
     max-height: 300px;
@@ -222,7 +233,10 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
 
 .header-title {
     position: fixed;
-    z-index: var(--z-title);
+    /* .status-wrapper occupies the full left sidebar at --z-title and is
+       later in the DOM. Stay one tier above it so the title is never painted
+       under the narrative surface. */
+    z-index: calc(var(--z-title) + 1);
     left: 0;
     top: 0;
     margin: var(--margin);
@@ -355,12 +369,12 @@ button.milestone-nav-btn {
     position: fixed;
     right: 0;
     top: 0;
-    /*padding: var(--margin);*/
     z-index: var(--z-panel-over-menu);
     transition: opacity 0.2s ease;
     max-height: none;
     overflow: hidden;
     margin: var(--margin);
+    transition: transform 0.2s ease-out;
 }
 
 
@@ -3341,12 +3355,103 @@ body.info-open .timeline {
     .sparkline-svg {
         aspect-ratio: 3 / 1;
     }
-    .status-wrapper {
-        width: auto;
-        display: none;
+    .mobile-story-sheet {
+        --mobile-sheet-offset: calc(100% - 92px);
+        position: fixed;
+        z-index: var(--z-panel);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        height: min(72dvh, 600px);
+        border-radius: 20px 20px 0 0;
+        box-shadow: 0 -8px 30px color-mix(in srgb, #000 22%, transparent);
+        overflow: hidden;
+        transform: translate3d(0, var(--mobile-sheet-offset), 0);
+        transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+        will-change: transform;
     }
-    .legend-wrapper {
-        display: none;
+
+    .mobile-story-sheet.is-expanded {
+        --mobile-sheet-offset: 0px;
+    }
+
+    .mobile-story-sheet.is-dragging {
+        transition: none;
+    }
+
+    body.view-chart .mobile-story-sheet,
+    body.view-search .mobile-story-sheet,
+    body.view-lifetime .mobile-story-sheet,
+    body.detail .mobile-story-sheet {
+        transform: translate3d(0, 100%, 0);
+        pointer-events: none;
+    }
+
+    .mobile-story-handle {
+        display: flex;
+        flex: 0 0 32px;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        width: 100%;
+        padding: 4px 12px;
+        margin-bottom: 4px;
+        border: 0;
+        color: var(--color-text);
+        background: transparent;
+        touch-action: none;
+        cursor: ns-resize;
+    }
+
+    .mobile-story-grabber {
+        width: 36px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--color-subtle);
+    }
+
+    .mobile-story-content {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0 8px;
+    }
+
+    .mobile-story-sheet .timeline {
+        position: static;
+        order: 1;
+        flex: 0 0 56px;
+        width: 100%;
+        height: 76px;
+        padding: 0;
+    }
+
+    .mobile-story-sheet .status-wrapper {
+        position: static;
+        order: 2;
+        display: block;
+        width: auto;
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+    }
+
+    .mobile-story-sheet #status {
+        padding: 14px 0 18px;
+    }
+
+    .mobile-story-sheet .legend-wrapper {
+        position: static;
+        order: 3;
+        display: flex;
+        width: auto;
+        padding: 0 0 var(--margin);
     }
 
     .detail-panel {

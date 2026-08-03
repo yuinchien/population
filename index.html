@@ -341,6 +341,36 @@
             </div>
         </section>
 
+        <div class="header-title" id="headerTitle">
+            World Population.
+        </div>
+        <div id="projectionScenarioLabel" class="projection-scenario-label" hidden></div>
+        <button
+            id="mapResetView"
+            class="map-reset-view"
+            type="button"
+            aria-label="Reset map view"
+            title="Reset view"
+            hidden
+        >
+            <span class="material-symbols-outlined">filter_center_focus</span>
+        </button>
+        <div id="mapPanHint" class="map-pan-hint glass" hidden>
+            Drag to pan &middot; Scroll to zoom
+        </div>
+
+        <aside id="mobileStorySheet" class="mobile-story-sheet glass" aria-label="Explore the visualization">
+            <button
+                id="mobileStoryHandle"
+                class="mobile-story-handle"
+                type="button"
+                aria-label="Expand or collapse the story sheet"
+                aria-expanded="false"
+                aria-controls="mobileStoryContent"
+            >
+                <span class="mobile-story-grabber" aria-hidden="true"></span>
+            </button>
+            <div id="mobileStoryContent" class="mobile-story-content">
         <div class="timeline hide-for-chart hide-for-lifetime">
             <button
                 id="milestoneTour"
@@ -398,28 +428,9 @@
                 >
             </button>
         </div>
-        <button
-            id="mapResetView"
-            class="map-reset-view"
-            type="button"
-            aria-label="Reset map view"
-            title="Reset view"
-            hidden
-        >
-            <span class="material-symbols-outlined">filter_center_focus</span>
-        </button>
-        <div id="mapPanHint" class="map-pan-hint glass" hidden>
-            Drag to pan &middot; Scroll to zoom
-        </div>
         <div class="status-wrapper glass hide-for-chart hide-for-lifetime hide-for-search">
             <div id="status" class="paragraph">Loading population data…</div>
         </div>
-        <div class="header-title" id="headerTitle">
-            World Population.
-        </div>
-        <div id="projectionScenarioLabel" class="projection-scenario-label" hidden></div>
-
-
         <div class="legend-wrapper hide-for-search hide-for-lifetime hide-for-chart">
             <div id="colorMode" class="tab-group" hidden>
                 <button
@@ -442,6 +453,8 @@
             </div>
             <div id="legend"></div>
         </div>
+            </div>
+        </aside>
 
         <div class="milestone-progress">
             <div

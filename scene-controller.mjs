@@ -300,9 +300,11 @@ export function createSceneController({
   // default centered/zoomed state. Both are map-mode-only, driven off the
   // same controls "change" listener clampMapPanTarget already uses.
   const MAP_PAN_HINT_STORAGE_KEY = "mapPanHintSeen";
+  const MAP_PAN_HINT_DURATION_MS = 3500;
   const MAP_RESET_TWEEN_MS = 500;
   const MAP_VIEW_DEFAULT_EPSILON = 0.5;
   let mapPanHintSeen = localStorage.getItem(MAP_PAN_HINT_STORAGE_KEY) === "1";
+  let mapPanHintTimer = null;
   let resetTween = null; // { fromPos, fromTarget, start } while animating back to center
 
   // Milestone-tour camera assist: when the tour (or manual Prev/Next
@@ -824,22 +826,39 @@ export function createSceneController({
     updateMapResetViewVisibility();
   }
 
-  // Shown once ever (per browser) the first time Map view becomes active;
-  // dismissed the moment the user pans or zooms, or clicks the pill itself.
+  function clearMapPanHintTimer() {
+    if (mapPanHintTimer === null) return;
+    clearTimeout(mapPanHintTimer);
+    mapPanHintTimer = null;
+  }
+
+  // Shown briefly, once per browser, when Map becomes the visible base view.
+  // Interaction dismisses it immediately; covered views hide it without
+  // consuming the one-time hint.
   function showMapPanHintIfNeeded() {
-    if (mapPanHintSeen) return;
+    if (mapPanHintSeen || getViewMode() !== "map") return;
+    clearMapPanHintTimer();
     elements.mapPanHint.classList.add("visible");
+    mapPanHintTimer = setTimeout(dismissMapPanHint, MAP_PAN_HINT_DURATION_MS);
   }
 
   function dismissMapPanHint() {
-    if (mapPanHintSeen) return;
-    mapPanHintSeen = true;
-    localStorage.setItem(MAP_PAN_HINT_STORAGE_KEY, "1");
+    clearMapPanHintTimer();
+    if (!mapPanHintSeen) {
+      mapPanHintSeen = true;
+      localStorage.setItem(MAP_PAN_HINT_STORAGE_KEY, "1");
+    }
     elements.mapPanHint.classList.remove("visible");
   }
 
   function hideMapPanHint() {
+    clearMapPanHintTimer();
     elements.mapPanHint.classList.remove("visible");
+  }
+
+  function setTransientUiVisible(visible) {
+    if (visible && getViewMode() === "map") showMapPanHintIfNeeded();
+    else hideMapPanHint();
   }
 
   function isMapViewAtDefault() {
@@ -1403,6 +1422,7 @@ export function createSceneController({
 
   function dispose() {
     stop();
+    hideMapPanHint();
     eventController?.abort();
     eventController = null;
     controls.removeEventListener("change", clampMapPanTarget);
@@ -1457,6 +1477,7 @@ export function createSceneController({
     recolor,
     recomputeThemeColors,
     setViewMode,
+    setTransientUiVisible,
     colorFor,
     hasUnclassifiedIncome: () => hasUnclassifiedIncome,
     resize,
