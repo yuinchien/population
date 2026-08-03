@@ -9,6 +9,25 @@ const BODY_CLASS_FOR_STATE = {
   menuOpen: "menu-open",
 };
 
+const SCENE_COVERING_STATE_KEYS = [
+  "chartActive",
+  "clusterActive",
+  "searchActive",
+  "lifetimeActive",
+  "groupDetailOpen",
+  "countryDetailOpen",
+  "infoOpen",
+  "menuOpen",
+];
+
+// The Three.js scene only needs to animate while Globe/Map is the visible,
+// interactive surface. Every state here either replaces it or places a modal
+// scrim above it, so continuing the RAF loop would spend CPU/GPU on pixels the
+// user cannot interact with.
+export function shouldRenderScene(state) {
+  return !SCENE_COVERING_STATE_KEYS.some((key) => Boolean(state[key]));
+}
+
 export function bodyClassState(state) {
   const classes = Object.fromEntries(
     Object.entries(BODY_CLASS_FOR_STATE).map(([key, className]) => [

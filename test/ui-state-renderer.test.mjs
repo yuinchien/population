@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   bodyClassState,
   createUiStateRenderer,
+  shouldRenderScene,
 } from "../ui-state-renderer.mjs";
 
 function fakeBody() {
@@ -65,4 +66,24 @@ test("detail remains active until every detail surface closes", () => {
 
   renderer.update({ groupDetailOpen: false });
   assert.equal(body.classes.has("detail"), false);
+});
+
+test("scene renders only when no full-screen or modal UI covers it", () => {
+  assert.equal(shouldRenderScene({}), true);
+  for (const key of [
+    "chartActive",
+    "clusterActive",
+    "searchActive",
+    "lifetimeActive",
+    "groupDetailOpen",
+    "countryDetailOpen",
+    "infoOpen",
+    "menuOpen",
+  ]) {
+    assert.equal(
+      shouldRenderScene({ [key]: true }),
+      false,
+      `${key} should pause the scene`,
+    );
+  }
 });

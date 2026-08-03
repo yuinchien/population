@@ -181,10 +181,9 @@ export function easeOutCubic(t) {
 // the dot point-cloud buffer, the globe<->map morph transition, hover/click
 // hit-testing, and the peak-population callout labels (via
 // callout-controller.mjs, constructed internally since it needs a live
-// camera/scene reference). The render loop (see start/animate) never
-// pauses — it runs underneath whichever overlay (Chart/Cluster/Search/
-// Lifetime) is showing, each of which has its own cheap fast-path instead
-// of the scene itself stopping.
+// camera/scene reference). App-level UI state pauses the render loop whenever
+// an overlay (Chart/Cluster/Search/Lifetime/detail/settings/menu) covers the
+// scene and resumes it when Globe or Map becomes interactive again.
 export function createSceneController({
   elements,
   getCountries,
@@ -1383,14 +1382,16 @@ export function createSceneController({
   }
 
   function start() {
-    animate();
+    if (animFrameId !== null) return false;
+    animFrameId = requestAnimationFrame(animate);
+    return true;
   }
 
   function stop() {
-    if (animFrameId !== null) {
-      cancelAnimationFrame(animFrameId);
-      animFrameId = null;
-    }
+    if (animFrameId === null) return false;
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+    return true;
   }
 
   function dispose() {

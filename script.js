@@ -63,7 +63,10 @@ import { createSearchViewLifecycle } from "./search-view-lifecycle.mjs";
 import { createClusterViewLifecycle } from "./cluster-view-lifecycle.mjs";
 import { createViewRouter } from "./view-router.mjs";
 import { createSceneController, easeOutCubic } from "./scene-controller.mjs";
-import { createUiStateRenderer } from "./ui-state-renderer.mjs";
+import {
+  createUiStateRenderer,
+  shouldRenderScene,
+} from "./ui-state-renderer.mjs";
 
 // How long each trend-chart line takes to grow up from a flat baseline into
 // its real shape when the chart first appears (see chart-controller.mjs's
@@ -190,7 +193,16 @@ const appState = createInitialAppState({
   theme: document.documentElement.dataset.theme || "dark",
 });
 const uiStateRenderer = createUiStateRenderer();
-const updateUiState = (patch) => uiStateRenderer.update(patch);
+function syncSceneRendering(state = uiStateRenderer.getState()) {
+  if (!sceneController.isReady()) return;
+  if (shouldRenderScene(state)) sceneController.start();
+  else sceneController.stop();
+}
+function updateUiState(patch) {
+  const state = uiStateRenderer.update(patch);
+  syncSceneRendering(state);
+  return state;
+}
 let lifetimeController = null;
 let lifetimeControllerPromise = null;
 let lifetimeRequestedActive = false;
@@ -2225,6 +2237,7 @@ async function init() {
     applyYear(defaultYear);
     renderLegend();
     applyUrlStateFromLocation(initialSearch);
+    syncSceneRendering();
   } catch (error) {
     elements.status.textContent = `Could not load data: ${error.message}`;
   }
@@ -2268,4 +2281,3 @@ window.addEventListener("resize", () => {
 });
 
 init();
-sceneController.start();
