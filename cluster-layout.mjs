@@ -74,31 +74,32 @@ export function clusterBoundaryCorrection(
   };
 }
 
-// Returns the shortest translation that moves a particle's center outside a
-// title rectangle expanded by its radius and the desired visual gap. Using an
-// expanded rectangle turns circle/title collision into a stable point/box
-// test and keeps the full bubble—not just its center—clear of the text.
+// Returns the shortest translation that moves a particle outside a pill-shaped
+// title boundary. Treating the label as a horizontal capsule (rather than an
+// axis-aligned box) lets bubbles follow its rounded corners naturally while
+// keeping their full radius and the requested visual gap clear of the text.
 export function labelCollisionCorrection(node, rect, gap = 0) {
   const clearance = Math.max(0, node.radius ?? 0) + Math.max(0, gap);
-  const left = rect.x - clearance;
-  const right = rect.x + rect.width + clearance;
-  const top = rect.y - clearance;
-  const bottom = rect.y + rect.height + clearance;
-  if (node.x <= left || node.x >= right || node.y <= top || node.y >= bottom) {
+  const labelRadius = Math.min(rect.width, rect.height) / 2;
+  const collisionRadius = labelRadius + clearance;
+  const centerY = rect.y + rect.height / 2;
+  const segmentStart = rect.x + labelRadius;
+  const segmentEnd = rect.x + rect.width - labelRadius;
+  const closestX = Math.max(segmentStart, Math.min(segmentEnd, node.x));
+  const dx = node.x - closestX;
+  const dy = node.y - centerY;
+  const distance = Math.hypot(dx, dy);
+  if (distance >= collisionRadius) {
     return { x: 0, y: 0 };
   }
-
-  const candidates = [
-    { x: left - node.x, y: 0 },
-    { x: right - node.x, y: 0 },
-    { x: 0, y: top - node.y },
-    { x: 0, y: bottom - node.y },
-  ];
-  return candidates.reduce((nearest, candidate) =>
-    Math.abs(candidate.x || candidate.y) < Math.abs(nearest.x || nearest.y)
-      ? candidate
-      : nearest,
-  );
+  // A point exactly on the capsule's center line has no radial direction;
+  // move it upward deterministically so it cannot remain trapped in-place.
+  if (distance === 0) return { x: 0, y: -collisionRadius };
+  const overlap = collisionRadius - distance;
+  return {
+    x: (dx / distance) * overlap,
+    y: (dy / distance) * overlap,
+  };
 }
 
 // Nodes are supplied in canvas draw order (bottommost first). Iterating in

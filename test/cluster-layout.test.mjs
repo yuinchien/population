@@ -113,6 +113,24 @@ test("labelCollisionCorrection resolves a fast particle's predicted position", (
   );
 });
 
+test("labelCollisionCorrection follows rounded title corners", () => {
+  const rect = { x: 100, y: 80, width: 120, height: 24 };
+  // This point is inside the old square exclusion corner but outside the
+  // rounded capsule, so it can remain and create a more natural contour.
+  assert.deepEqual(
+    labelCollisionCorrection({ x: 72, y: 52, radius: 10 }, rect, 4),
+    { x: 0, y: 0 },
+  );
+
+  const correction = labelCollisionCorrection(
+    { x: 96, y: 76, radius: 10 },
+    rect,
+    4,
+  );
+  assert.ok(correction.x < 0);
+  assert.ok(correction.y < 0);
+});
+
 test("cluster splits into two phases at the 1990 boundary", () => {
   assert.equal(clusterPhaseForYear(1989), CLUSTER_PHASES.historical);
   assert.equal(clusterPhaseForYear(1990), CLUSTER_PHASES.divergence);

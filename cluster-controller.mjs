@@ -32,9 +32,9 @@ const AXES = {
   lifeExpectancy: "lifeExpectancy",
 };
 const RADIUS_OPTIONS = { minRadius: 3, maxRadius: 148 };
-const LABEL_HEIGHT = 24;
-const LABEL_PADDING_X = 4;
-const LABEL_PARTICLE_GAP = 12;
+const LABEL_HEIGHT = 20;
+const LABEL_PADDING_X = 2;
+const LABEL_PARTICLE_GAP = 6;
 const CLUSTER_BOUNDARY_GAP = 16;
 // Resolve the dense, anchor-centered seed layout before exposing the canvas.
 // Manual D3 ticks do not dispatch the tick listener, so this removes the
