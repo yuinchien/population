@@ -582,6 +582,28 @@ function showStatus(text, { instant = false } = {}) {
   el.classList.add("status-fade-in");
 }
 
+const CLUSTER_INTRO_TITLE =
+  "See how countries move through demographic change.";
+const CLUSTER_INTRO_COPY =
+  "Each bubble is a country, sized by population and grouped by its demographic trajectory. Drag the timeline to explore year by year, or press Play to watch the world reorganize from 1950 to 2100.";
+let clusterIntroActive = false;
+
+function showClusterIntro() {
+  clusterIntroActive = true;
+  appState.clusterStatusPeriod = null;
+  const title = document.createElement("strong");
+  title.className = "cluster-intro-title";
+  title.textContent = CLUSTER_INTRO_TITLE;
+  const copy = document.createElement("span");
+  copy.textContent = CLUSTER_INTRO_COPY;
+  elements.status.replaceChildren(title, copy);
+}
+
+function revealClusterStatus(year, options) {
+  clusterIntroActive = false;
+  applyClusterStatus(year, options);
+}
+
 // Cluster's own #status narration — a handful of ~30-40 year chapters
 // (CLUSTER_STATUS_PERIODS, cluster-config.mjs) rather than a per-year
 // figure like Globe/Map's own status text, since there's no single number
@@ -590,6 +612,7 @@ function showStatus(text, { instant = false } = {}) {
 // appState.clusterStatusPeriod above) so scrubbing within one chapter doesn't
 // retrigger its fade every year.
 function applyClusterStatus(year, options) {
+  if (clusterIntroActive) return;
   const period = clusterStatusForYear(year);
   if (period === appState.clusterStatusPeriod) return;
   appState.clusterStatusPeriod = period;
@@ -625,6 +648,7 @@ function playClusterTimelineOnce() {
     stopClusterPlayback();
     return;
   }
+  revealClusterStatus(yearsData[appState.currentYearIndex], { instant: true });
   setClusterPlayButtonState(true);
   goToYear(yearsData[0]);
   const step = () => {
@@ -1463,11 +1487,10 @@ const clusterViewLifecycle = createClusterViewLifecycle({
     updateColorModeControls(clusterController.getColorMode());
     renderLegend();
     clusterController.activate(appState.currentYearIndex);
-    if (appState.currentYearIndex >= 0) {
-      applyClusterStatus(yearsData[appState.currentYearIndex]);
-    }
+    showClusterIntro();
   },
   exit: () => {
+    clusterIntroActive = false;
     stopClusterPlayback();
     clusterController.deactivate();
     updateColorModeControls(appState.colorMode);
@@ -1957,7 +1980,7 @@ function bindYearSliderEvents({ minYear, maxYear, defaultYear }) {
     if (isViewActive("cluster")) {
       const year = Number(elements.yearSlider.value);
       clusterController.setYear(year);
-      applyClusterStatus(year);
+      revealClusterStatus(year);
     }
   });
   elements.yearSlider.addEventListener("change", () => {
