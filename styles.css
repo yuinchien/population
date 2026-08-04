@@ -249,6 +249,10 @@ body.view-cluster .milestone-nav-btn.show-for-cluster {
     /*text-decoration: underline;*/
 }
 
+body.view-search .header-title {
+    display: none;
+}
+
 /* Shared "Historical" / "{Scenario} Projection" indicator for Chart and
    Lifetime view (script.js's setProjectionScenarioLabel, lifetime-controller.mjs's
    onActiveSectionChange) — one label instead of each view rendering its own,
@@ -2024,7 +2028,7 @@ select::picker(select) {
    panel — with its own .detail-panel-header and close button — so the search
    bar steps out of the way rather than staying pinned over it. Closing that
    panel returns to the list. */
-body.view-search.detail #searchBar {
+body.view-search.country-detail #searchBar {
     display: none;
 }
 
