@@ -117,7 +117,7 @@ export function getAppElements(root = document) {
   };
 }
 
-export function missingElements(elements, keys) {
+function missingElements(elements, keys) {
   return keys.filter((key) => !elements[key]);
 }
 

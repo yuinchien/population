@@ -164,12 +164,12 @@ const TOOLTIP_UPDATE_INTERVAL_MS = 100;
 // pointer moved between down and up, rather than relying on "click" alone.
 const CANVAS_CLICK_MAX_DRAG_PX = 6;
 
-export function easeInOutCubic(t) {
+function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 // Arrives at the scramble point already moving (no decel-to-a-stop), so
 // it can flow straight into easeOutCubic's departure without a stall.
-export function easeInCubic(t) {
+function easeInCubic(t) {
   return t * t * t;
 }
 // Leaves the scramble point at full speed and decelerates into rest.

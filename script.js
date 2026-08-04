@@ -2182,13 +2182,6 @@ function bindPanelCloseEvents() {
   elements.countryClose.addEventListener("click", closeCountryDetail);
   elements.infoButton.addEventListener("click", openInfoPanel);
   elements.infoClose.addEventListener("click", closeInfoPanel);
-  // elements.detailBack.addEventListener("click", () => {
-  //   if (appState.selectedCountry) {
-  //     closeCountryDetail();
-  //   } else {
-  //     closeDetailPanel();
-  //   }
-  // });
 }
 
 function bindMilestoneEvents() {

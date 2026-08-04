@@ -18,7 +18,7 @@ export function formatFertility(value) {
   return `${Number(value).toFixed(1)}`;
 }
 
-export function formatDependencyRatio(value) {
+function formatDependencyRatio(value) {
   if (value == null) return "N/A";
   return Number(value).toFixed(1);
 }
