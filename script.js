@@ -83,6 +83,13 @@ const elements = getAppElements();
 const mobileStorySheet = createMobileStorySheet({
   sheet: elements.mobileStorySheet,
   handle: elements.mobileStoryHandle,
+  responsiveContent: [
+    {
+      element: elements.chartDetailTable,
+      desktopSlot: elements.chartDetailTableDesktop,
+      mobileSlot: elements.chartDetailTableMobile,
+    },
+  ],
 });
 assertElements(
   elements,

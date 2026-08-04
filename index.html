@@ -207,9 +207,10 @@
                         hidden
                     ></svg>
                 </div>
-                <div class="detail-table">
+                <div id="chartDetailTableDesktop" class="chart-detail-table-desktop-slot">
+                <div id="chartDetailTable" class="detail-table">
 
-                    <div class="controls">
+                    <div id="chartControls" class="controls">
                         <select id="chartMetricTabs" class="custom-select">
                             <button>
                                 <div>
@@ -267,6 +268,7 @@
                         class="detail-row header monospace"
                     ></div>
                     <div id="chartTableRows" class="detail-rows no-scrollbar monospace"></div>
+                </div>
                 </div>
             </div>
 
@@ -371,6 +373,7 @@
                 <span class="mobile-story-grabber" aria-hidden="true"></span>
             </button>
             <div id="mobileStoryContent" class="mobile-story-content">
+        <div id="chartDetailTableMobile" class="mobile-chart-detail-table"></div>
         <div class="timeline hide-for-chart hide-for-lifetime">
             <button
                 id="milestoneTour"

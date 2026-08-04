@@ -1,12 +1,22 @@
 export function createMobileStorySheet({
   sheet,
   handle,
+  responsiveContent = [],
   media = window.matchMedia("(max-width: 720px)"),
 }) {
   let initialized = false;
   let expanded = false;
   let drag = null;
   let eventController = null;
+
+  function placeResponsiveContent() {
+    responsiveContent.forEach(({ element, desktopSlot, mobileSlot }) => {
+      const target = media.matches ? mobileSlot : desktopSlot;
+      if (element && target && element.parentElement !== target) {
+        target.append(element);
+      }
+    });
+  }
 
   const collapsedOffset = () =>
     Math.max(0, sheet.getBoundingClientRect().height - 164);
@@ -76,6 +86,8 @@ export function createMobileStorySheet({
     handle.addEventListener("pointercancel", finishDrag, { signal });
     handle.addEventListener("keydown", handleKeydown, { signal });
     window.addEventListener("resize", () => render(), { signal });
+    media.addEventListener("change", placeResponsiveContent, { signal });
+    placeResponsiveContent();
     render();
     return true;
   }
@@ -86,6 +98,9 @@ export function createMobileStorySheet({
     eventController = null;
     initialized = false;
     drag = null;
+    responsiveContent.forEach(({ element, desktopSlot }) => {
+      if (element && desktopSlot) desktopSlot.append(element);
+    });
     return true;
   }
 
