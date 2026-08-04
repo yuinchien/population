@@ -16,7 +16,13 @@ export function createInitialAppState({
     currentTheme: theme,
     colorMode: "region",
     viewMode: "globe",
-    selectedLegend: null,
+    // The group-detail panel's active filters: at most one per group
+    // (age/migration/region/income), keyed by mode, combined with AND —
+    // see countryMatchesAllFilters (detail-table.mjs) and
+    // toggleDetailFilter (script.js). Populated from the search view's
+    // category grid, the panel's own #detailNav sidebar, or the outer
+    // Globe/Map #legend sidebar — all three funnel through the same toggle.
+    selectedLegends: {},
     selectedCountry: null,
     detailEntryMode: null,
     detailSort: { key: "population", direction: "desc" },

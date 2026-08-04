@@ -13,7 +13,8 @@ import {
 } from "./detail-group-categories.mjs";
 import {
   buildDetailColumns,
-  selectDetailCountries,
+  countryMatchesAllFilters,
+  sortDetailCountries,
 } from "./detail-table.mjs";
 import { nextSortState, renderSortableTable } from "./detail-table-view.mjs";
 import { createCountryDetailController } from "./country-detail-controller.mjs";
@@ -222,6 +223,39 @@ let lifetimeController = null;
 let lifetimeControllerPromise = null;
 const isViewActive = (view) => appState.navigation.activeView === view;
 
+// appState.selectedLegends' whole shape (map keyed by mode) is spelled out
+// in its own comment in app-state.mjs — these three helpers are the only
+// way the rest of the app reads it, so every consumer agrees on what
+// "active"/"the one to show" means.
+function hasSelectedLegend() {
+  return Object.keys(appState.selectedLegends).length > 0;
+}
+
+function detailFilterEntries() {
+  return Object.values(appState.selectedLegends);
+}
+
+// The most-recently-toggled-on filter — used wherever something needs a
+// single value (the panel's --detail-color, the URL's one "group" param),
+// even though the table itself is filtered by every active entry.
+function primaryLegend() {
+  const entries = detailFilterEntries();
+  return entries.length ? entries[entries.length - 1] : null;
+}
+
+// Age/migration categories are the only ones with a "subgroup population"
+// concept (e.g. Super-aged society's 65+ headcount) — region/income don't
+// have one. Both an age *and* a migration filter can be active at once
+// (they're different groups), which leaves no single subgroup to show; that
+// rare combination just falls back to each country's plain total instead of
+// arbitrarily picking one.
+function activeAgeOrMigrationLegend() {
+  const candidates = detailFilterEntries().filter(
+    (legend) => legend.mode === "age" || legend.mode === "migration",
+  );
+  return candidates.length === 1 ? candidates[0] : null;
+}
+
 function activePopulationSeries(country) {
   return projectionData.populationSeries(country);
 }
@@ -238,7 +272,7 @@ async function ensureCountryDemographics() {
   if (isViewActive("cluster")) clusterController.render(appState.currentYearIndex);
   if (lifetimeController?.isActive()) lifetimeController.render();
   if (appState.selectedCountry) countryDetailController.refreshDemographics();
-  else if (appState.selectedLegend) renderDetailPanel();
+  else if (hasSelectedLegend()) renderDetailPanel();
   return data;
 }
 
@@ -390,8 +424,8 @@ function buildGlobalPopulationStatus(year) {
 
 // groupCountries lets a caller that already has the filtered+sorted group
 // list (renderDetailPanel, right after building its table from the same
-// list) hand it over instead of this recomputing selectDetailCountries()
-// a second time on every year change; other callers just omit it and it's
+// list) hand it over instead of this recomputing selectedCountries() a
+// second time on every year change; other callers just omit it and it's
 // computed here as before.
 function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
   const isProjected = year > appState.historicalCutoffYear;
@@ -436,7 +470,7 @@ function updateStatusPanel(year, { instant = false, groupCountries } = {}) {
     );
     return;
   }
-  if (appState.selectedLegend && !elements.detailPanel.hidden) {
+  if (hasSelectedLegend() && !elements.detailPanel.hidden) {
     updateMilestoneNav(null);
     return;
   }
@@ -769,7 +803,7 @@ function applyYear(year, { instant = false } = {}) {
   if (appState.selectedCountry) {
     countryDetailController.updateYear(year);
     updateStatusPanel(year, { instant });
-  } else if (!appState.selectedLegend) {
+  } else if (!hasSelectedLegend()) {
     updateStatusPanel(year, { instant });
   }
   sceneController.rebuildCallouts(year);
@@ -846,7 +880,7 @@ function renderLegend(modeOverride = null) {
       item.dataset.mode = mode;
       item.classList.toggle(
         "active",
-        appState.selectedLegend?.mode === mode && appState.selectedLegend?.label === label,
+        appState.selectedLegends[mode]?.label === label,
       );
       const swatch = document.createElement("span");
       swatch.className = "legend-swatch";
@@ -859,6 +893,9 @@ function renderLegend(modeOverride = null) {
   );
 }
 
+// Shared by both the search view's category grid and the detail panel's
+// own sidebar — same markup, same multi-select semantics (one active
+// filter per group, combined across groups via appState.selectedLegends).
 function getDetailNav() {
   const sections = [
     { label: "Age", mode: "age", items: AGE_CATEGORIES },
@@ -904,7 +941,7 @@ function getDetailNav() {
         if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
         button.classList.toggle(
           "active",
-          appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === item.key,
+          appState.selectedLegends[mode]?.key === item.key,
         );
         button.textContent = displayGroupLabel(item.label);
         return button;
@@ -934,14 +971,15 @@ function metricFor(country, key) {
 }
 
 function selectedCountries() {
-  if (!appState.selectedLegend) return [];
-  return selectDetailCountries({
-    countries: countriesData,
-    legend: appState.selectedLegend,
-    columns: detailColumns(),
-    sort: appState.detailSort,
-    metricFor,
-  });
+  const entries = detailFilterEntries();
+  if (!entries.length) return [];
+  return sortDetailCountries(
+    countriesData.filter((country) =>
+      countryMatchesAllFilters(country, entries, metricFor),
+    ),
+    detailColumns(),
+    appState.detailSort,
+  );
 }
 
 // Single source of truth for the detail-panel table: each column knows how
@@ -952,30 +990,29 @@ function selectedCountries() {
 // full region/income column list, since most of those columns wouldn't be
 // relevant to (e.g.) a "Migration inflow" cohort.
 function detailColumns() {
+  const specialLegend = activeAgeOrMigrationLegend();
   const metricKeys =
-    appState.selectedLegend?.mode === "age"
+    specialLegend?.mode === "age"
       ? AGE_COLUMN_KEYS
-      : appState.selectedLegend?.mode === "migration"
+      : specialLegend?.mode === "migration"
         ? MIGRATION_COLUMN_KEYS
         : undefined;
   // Age/migration curated tables show the subgroup's own population (e.g.
   // Super-aged society's 65+ headcount) rather than each country's total —
   // region/income keep the plain country total.
-  const populationFor =
-    appState.selectedLegend?.mode === "age" || appState.selectedLegend?.mode === "migration"
-      ? (country) =>
-          subgroupPopulationFor(appState.selectedLegend, {
-            population: activePopulationAt(country),
-            olderPopulationShare: metricFor(country, "olderPopulationShare"),
-            youthDependencyRatio: metricFor(country, "youthDependencyRatio"),
-            ageDependencyRatio: metricFor(country, "ageDependencyRatio"),
-            netMigrationRate: metricFor(country, "netMigrationRate"),
-          })
-      : activePopulationAt;
-  const populationLabel =
-    appState.selectedLegend?.mode === "age" || appState.selectedLegend?.mode === "migration"
-      ? subgroupPopulationLabelFor(appState.selectedLegend)
-      : undefined;
+  const populationFor = specialLegend
+    ? (country) =>
+        subgroupPopulationFor(specialLegend, {
+          population: activePopulationAt(country),
+          olderPopulationShare: metricFor(country, "olderPopulationShare"),
+          youthDependencyRatio: metricFor(country, "youthDependencyRatio"),
+          ageDependencyRatio: metricFor(country, "ageDependencyRatio"),
+          netMigrationRate: metricFor(country, "netMigrationRate"),
+        })
+    : activePopulationAt;
+  const populationLabel = specialLegend
+    ? subgroupPopulationLabelFor(specialLegend)
+    : undefined;
   return buildDetailColumns({
     currentYearIndex: appState.currentYearIndex,
     metricFor,
@@ -1015,7 +1052,7 @@ function renderDetailPanel() {
   // A country drill-down (from a row click or a dot click) takes over the
   // country panel; re-running this on the next year change would otherwise
   // stomp it back to the group table.
-  if (!appState.selectedLegend || appState.selectedCountry || appState.currentYearIndex < 0) return;
+  if (!hasSelectedLegend() || appState.selectedCountry || appState.currentYearIndex < 0) return;
   // Group tables use demographic columns that are no longer part of the
   // initial Globe payload. Opening a group is their first-use boundary;
   // ensureCountryDemographics() memoizes the request and re-renders this
@@ -1025,11 +1062,12 @@ function renderDetailPanel() {
   const columns = detailColumns();
   const countries = selectedCountries();
   const year = yearsData[appState.currentYearIndex];
-  elements.detailPanel.style.setProperty(
-    "--detail-color",
-    appState.selectedLegend.color,
-  );
-  elements.detailTitle.textContent = displayGroupLabel(appState.selectedLegend.label);
+  // Colored/titled off the most-recently-toggled-on filter; every active
+  // one (not just that one) is what actually filters the table below.
+  elements.detailPanel.style.setProperty("--detail-color", primaryLegend().color);
+  elements.detailTitle.textContent = detailFilterEntries()
+    .map((legend) => displayGroupLabel(legend.label))
+    .join(" + ");
   elements.detailSubtitle.textContent = `${countries.length} countries · ${year}`;
   renderDetailNav();
 
@@ -1052,7 +1090,7 @@ function renderDetailPanel() {
 
 function closeDetailPanel() {
   countryDetailController.reset();
-  appState.selectedLegend = null;
+  appState.selectedLegends = {};
   appState.selectedCountry = null;
   detailOverlay.close();
   countryOverlay.close();
@@ -1109,7 +1147,7 @@ function closeInfoPanel() {
 function closeCountryDetail() {
   countryDetailController.reset();
   appState.selectedCountry = null;
-  if (appState.selectedLegend) {
+  if (hasSelectedLegend()) {
     renderDetailPanel();
   } else {
     closeDetailPanel();
@@ -1138,8 +1176,12 @@ function urlStateFromApp() {
     lifetimeController.applyToUrlState(state);
   } else if (appState.selectedCountry) {
     Object.assign(state, { view: "country", country: appState.selectedCountry.iso3 });
-  } else if (appState.selectedLegend) {
-    Object.assign(state, { view: "group", groupMode: appState.selectedLegend.mode, group: appState.selectedLegend.key });
+  } else if (hasSelectedLegend()) {
+    // Only the primary (most-recently-toggled-on) filter round-trips
+    // through the URL — a combined multi-filter view doesn't fully
+    // deep-link yet, same known simplification as colorMode not doing so.
+    const primary = primaryLegend();
+    Object.assign(state, { view: "group", groupMode: primary.mode, group: primary.key });
   }
   if (appState.currentYearIndex >= 0) state.year = yearsData[appState.currentYearIndex];
   return state;
@@ -1199,13 +1241,13 @@ function applyUrlStateFromLocation(search) {
       const entry = legendEntriesFor(state.groupMode).find(
         ([label]) => label === state.group,
       );
-      if (entry) selectLegendItem(entry[0], entry[1]);
+      if (entry) toggleDetailFilter(state.groupMode, entry[0], entry[0], entry[1]);
     } else {
       const categories =
         state.groupMode === "age" ? AGE_CATEGORIES : MIGRATION_CATEGORIES;
       const category = categories.find((c) => c.key === state.group);
       if (category) {
-        selectDetailGroup(
+        toggleDetailFilter(
           state.groupMode,
           category.key,
           category.label,
@@ -1218,41 +1260,40 @@ function applyUrlStateFromLocation(search) {
   }
 }
 
-function selectLegendItem(label, color, mode = appState.colorMode) {
-  if (appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === label) {
-    // closeDetailPanel();
-    return;
-  }
-
-  appState.detailSort = { key: 'population', direction: "desc" };
-
+// Single entry point for every "pick a group" trigger — the search view's
+// category grid, the detail panel's own #detailNav sidebar, and the outer
+// Globe/Map #legend sidebar all funnel through here (as does URL-state
+// restoration; toggling from an empty state is just "select"). At most one
+// active filter per group (mode): clicking a tile already active for its
+// group clears it, a different tile in the same group replaces it, tiles
+// in other groups combine (AND — see countryMatchesAllFilters/
+// selectedCountries). Toggling the last active filter off closes the
+// panel; toggling the first one on opens it.
+function toggleDetailFilter(mode, key, label, color, sortKey, sortDirection) {
   tourController.stop();
-  appState.selectedLegend = { mode, key: label, label, color };
-  renderLegend(mode);
-  renderDetailPanel();
-  syncUrlFromState();
-}
-
-// Selects an age/migration cohort from the detail panel's own nav — unlike
-// selectLegendItem (region/income, shared with the outer #legend sidebar),
-// this never touches the outer legend, since "age"/"migration" aren't modes
-// it knows how to render. `sortKey`/`sortDirection`, when given, are the
-// metric and direction that actually explain the category (e.g. descending
-// oldAgeDependencyRatio for "Aged society", or ascending netMigrationRate
-// for "Migration outflow" so the strongest — most negative — outflows sort
-// first), so the table opens sorted by the number that matters instead of
-// always falling back to population.
-function selectDetailGroup(mode, key, label, color, sortKey, sortDirection) {
-  if (appState.selectedLegend?.mode === mode && appState.selectedLegend?.key === key) {
-    // closeDetailPanel();
-    return;
+  if (appState.selectedLegends[mode]?.key === key) {
+    delete appState.selectedLegends[mode];
+  } else {
+    appState.selectedLegends[mode] = {
+      mode,
+      key,
+      label,
+      color,
+      sortKey,
+      sortDirection,
+    };
+    // A freshly added group's own natural sort (e.g. oldAgeDependencyRatio
+    // for "Aged society") takes over; region/income default to population.
+    appState.detailSort = sortKey
+      ? { key: sortKey, direction: sortDirection ?? "desc" }
+      : { key: "population", direction: "desc" };
   }
-  tourController.stop();
-  appState.selectedLegend = { mode, key, label, color };
-  if (sortKey) {
-    appState.detailSort = { key: sortKey, direction: sortDirection ?? "desc" };
+  renderLegend();
+  if (hasSelectedLegend()) {
+    renderDetailPanel();
+  } else {
+    closeDetailPanel();
   }
-  renderDetailPanel();
   syncUrlFromState();
 }
 
@@ -1647,6 +1688,11 @@ const searchViewLifecycle = createSearchViewLifecycle({
   stopTour: () => tourController.stop(),
   prepare: () => {
     appState.searchSelectedIso3 = null;
+    // Age/Migration category tiles need demographic metrics to classify
+    // countries by — kick the (cached-after-first-load) fetch off now
+    // rather than waiting for a tile click, same as Chart/Lifetime already
+    // do on entry.
+    ensureCountryDemographics();
     renderCategoryGrid();
     renderSearchCountryGrid();
     renderSearchCountryChip();
@@ -1680,19 +1726,6 @@ function setSearchActive(active) {
 }
 
 function renderCategoryGrid() {
-  // const categories = [...AGE_CATEGORIES, ...MIGRATION_CATEGORIES];
-  // let items = categories.map((item, index) => {
-  //   const button = document.createElement("button");
-  //   button.className = "search-category-item";
-  //   button.dataset.mode = item.mode;
-  //   button.dataset.key = item.key;
-  //   button.dataset.label = item.label;
-  //   button.dataset.color = item.color;
-  //   if (item.sortKey) button.dataset.sortKey = item.sortKey;
-  //   if (item.sortDirection) button.dataset.sortDirection = item.sortDirection;
-  //   button.textContent = displayGroupLabel(item.label);
-  //   return button;
-  // });
   const items = getDetailNav();
   elements.searchCategoryGrid.replaceChildren(...items);
 }
@@ -1760,15 +1793,6 @@ function selectSearchCountry(iso3) {
   // rather than to whichever of Globe/Map is underneath.
   appState.detailEntryMode = "search";
   openCountryDetail(country);
-}
-
-// A category tile in the search view's grid opens the same group-detail
-// panel #detailNav's own age/migration items do — same as selectSearchCountry
-// above, appState.detailEntryMode is set first so closing the panel comes back here
-// instead of Globe/Map.
-function selectSearchCategory(mode, key, label, color, sortKey, sortDirection) {
-  appState.detailEntryMode = "search";
-  selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
 }
 
 // Both ways out of a selection — the chip's X and the detail panel's own
@@ -1939,18 +1963,22 @@ function setClusterColorMode(mode) {
 
 function setColorMode(mode) {
   if (mode === appState.colorMode) return;
-  const keepDetailOpen = appState.selectedLegend && !elements.detailPanel.hidden;
+  const keepDetailOpen = hasSelectedLegend() && !elements.detailPanel.hidden;
   appState.colorMode = mode;
   updateColorModeControls(mode);
 
   if (keepDetailOpen) {
     // Switching Region/Income while browsing a group's detail should let
     // the user keep exploring, not boot them back to the globe — land on
-    // that mode's first legend entry instead of closing the panel.
+    // that mode's first legend entry instead of closing the panel. Only the
+    // mode being switched *to* is touched: any age/migration filter (or a
+    // filter for the mode *not* being switched) stays active alongside it.
+    const other = mode === "region" ? "income" : "region";
+    delete appState.selectedLegends[other];
     const [label, color] = legendEntriesFor(mode)[0];
-    appState.selectedLegend = { mode, key: label, label, color };
+    appState.selectedLegends[mode] = { mode, key: label, label, color };
   } else {
-    appState.selectedLegend = null;
+    appState.selectedLegends = {};
     detailOverlay.close({ restoreFocus: false });
     setActiveOverlay(null);
   }
@@ -2035,10 +2063,11 @@ function bindLegendEvents() {
       appState.detailEntryMode = "cluster";
       setClusterActive(false);
     }
-    selectLegendItem(
+    toggleDetailFilter(
+      item.dataset.mode,
+      item.dataset.label,
       item.dataset.label,
       item.dataset.color,
-      item.dataset.mode,
     );
   });
 }
@@ -2048,11 +2077,7 @@ function bindDetailNavEvents() {
     const item = event.target.closest(".detail-nav-item[data-key]");
     if (!item || !elements.detailNav.contains(item)) return;
     const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
-    if (mode === "region" || mode === "income") {
-      selectLegendItem(label, color, mode);
-    } else {
-      selectDetailGroup(mode, key, label, color, sortKey, sortDirection);
-    }
+    toggleDetailFilter(mode, key, label, color, sortKey, sortDirection);
   });
 }
 
@@ -2116,12 +2141,11 @@ function bindSearchViewEvents() {
     const item = event.target.closest(".detail-nav-item[data-key]");
     if (!item || !elements.searchCategoryGrid.contains(item)) return;
     const { mode, key, label, color, sortKey, sortDirection } = item.dataset;
-    if (mode === "region" || mode === "income") {
-      appState.detailEntryMode = "search";
-      selectLegendItem(label, color, mode);
-    } else {
-      selectSearchCategory(mode, key, label, color, sortKey, sortDirection);
-    }
+    // Remembered so closing the detail panel returns here (see
+    // closeDetailPanel()'s "search" branch) rather than to whichever of
+    // Globe/Map is underneath.
+    appState.detailEntryMode = "search";
+    toggleDetailFilter(mode, key, label, color, sortKey, sortDirection);
   });
   elements.searchCountryChips.addEventListener("click", (event) => {
     const button = event.target.closest(".chip-remove[data-iso3]");

@@ -72,8 +72,12 @@ export function countryMatchesLegend(country, legend, metricFor) {
   return false;
 }
 
-export function filterDetailCountries(countries, legend, metricFor) {
-  return countries.filter((country) =>
+// The group-detail panel's active filters: independently toggleable, at
+// most one per group (age/migration/region/income), combined with AND
+// across groups — a country has to pass every active filter's own
+// single-legend test, not just one of them.
+export function countryMatchesAllFilters(country, legends, metricFor) {
+  return legends.every((legend) =>
     countryMatchesLegend(country, legend, metricFor),
   );
 }
@@ -98,20 +102,6 @@ export function sortDetailCountries(countries, columns, sort) {
     }
     return a.name.localeCompare(b.name);
   });
-}
-
-export function selectDetailCountries({
-  countries,
-  legend,
-  columns,
-  sort,
-  metricFor,
-}) {
-  return sortDetailCountries(
-    filterDetailCountries(countries, legend, metricFor),
-    columns,
-    sort,
-  );
 }
 
 export function buildDetailRows(countries, columns, options = {}) {

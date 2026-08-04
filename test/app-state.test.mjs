@@ -26,6 +26,7 @@ test("createInitialAppState does not share mutable defaults", () => {
 
   first.selectedChartCountries.push("FRA");
   first.detailSort.direction = "asc";
+  first.selectedLegends.region = { mode: "region", key: "Europe" };
 
   assert.deepEqual(second.selectedChartCountries, [
     "USA",
@@ -38,6 +39,7 @@ test("createInitialAppState does not share mutable defaults", () => {
     key: "population",
     direction: "desc",
   });
+  assert.deepEqual(second.selectedLegends, {});
 });
 
 test("application state has a fixed top-level shape", () => {

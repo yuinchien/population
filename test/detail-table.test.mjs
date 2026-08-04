@@ -3,9 +3,9 @@ import test from "node:test";
 import {
   buildDetailColumns,
   buildDetailRows,
+  countryMatchesAllFilters,
   countryMatchesLegend,
-  filterDetailCountries,
-  selectDetailCountries,
+  sortDetailCountries,
 } from "../detail-table.mjs";
 
 const countries = [
@@ -25,26 +25,6 @@ const countries = [
     fertility: [2.4, 2.3],
   }),
 ];
-
-test("filterDetailCountries filters by region or income legend", () => {
-  assert.deepEqual(
-    filterDetailCountries(countries, {
-      mode: "region",
-      key: "Europe",
-      label: "Europe",
-    }).map((entry) => entry.name),
-    ["Borduria", "Aland"],
-  );
-
-  assert.deepEqual(
-    filterDetailCountries(countries, {
-      mode: "income",
-      key: "Middle-income countries",
-      label: "Middle-income countries",
-    }).map((entry) => entry.name),
-    ["Calistan"],
-  );
-});
 
 test("countryMatchesLegend classifies by age category using current-year metrics", () => {
   const metricFor = (testCountry, key) => testCountry.metrics[key]?.[0];
@@ -117,20 +97,45 @@ test("countryMatchesLegend classifies by migration category using current-year m
   );
 });
 
-test("selectDetailCountries sorts values without mutating the source list", () => {
+test("countryMatchesAllFilters requires every active filter to match (AND across groups)", () => {
+  const metricFor = (testCountry, key) => testCountry.metrics[key]?.[0];
+  const agedEurope = country("AgedEuropia", "High-income countries", "Europe", {
+    populations: [1],
+    olderPopulationShare: [25],
+  });
+  const agedAsia = country("AgedAsiana", "High-income countries", "Asia", {
+    populations: [1],
+    olderPopulationShare: [25],
+  });
+
+  const regionFilter = { mode: "region", key: "Europe", label: "Europe" };
+  const ageFilter = { mode: "age", key: "superAged", label: "Super-aged society" };
+
+  assert.equal(
+    countryMatchesAllFilters(agedEurope, [regionFilter, ageFilter], metricFor),
+    true,
+  );
+  assert.equal(
+    countryMatchesAllFilters(agedAsia, [regionFilter, ageFilter], metricFor),
+    false,
+  );
+  // No active filters at all — nothing to fail, so everything passes.
+  assert.equal(countryMatchesAllFilters(agedAsia, [], metricFor), true);
+});
+
+test("sortDetailCountries sorts values without mutating the source list", () => {
   const columns = buildDetailColumns({
     currentYearIndex: 1,
     metricFor: metricForYear(1),
   });
-  const selected = selectDetailCountries({
-    countries,
-    legend: { mode: "region", key: "Europe", label: "Europe" },
-    columns,
-    sort: { key: "population", direction: "desc" },
+  const europe = countries.filter((entry) => entry.region === "Europe");
+  const sorted = sortDetailCountries(europe, columns, {
+    key: "population",
+    direction: "desc",
   });
 
   assert.deepEqual(
-    selected.map((entry) => entry.name),
+    sorted.map((entry) => entry.name),
     ["Aland", "Borduria"],
   );
   assert.deepEqual(
@@ -139,20 +144,19 @@ test("selectDetailCountries sorts values without mutating the source list", () =
   );
 });
 
-test("selectDetailCountries puts missing metric values last", () => {
+test("sortDetailCountries puts missing metric values last", () => {
   const columns = buildDetailColumns({
     currentYearIndex: 1,
     metricFor: metricForYear(1),
   });
-  const selected = selectDetailCountries({
-    countries,
-    legend: { mode: "region", key: "Europe", label: "Europe" },
-    columns,
-    sort: { key: "populationGrowth", direction: "desc" },
+  const europe = countries.filter((entry) => entry.region === "Europe");
+  const sorted = sortDetailCountries(europe, columns, {
+    key: "populationGrowth",
+    direction: "desc",
   });
 
   assert.deepEqual(
-    selected.map((entry) => entry.name),
+    sorted.map((entry) => entry.name),
     ["Borduria", "Aland"],
   );
 });
